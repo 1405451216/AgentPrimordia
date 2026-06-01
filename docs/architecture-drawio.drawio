@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-05-27T00:00:00.000Z" agent="CodeCast" version="21.0.0" type="device">
+  <diagram name="CodeCast 系统架构" id="codecast-architecture">
+    <mxGraphModel dx="2000" dy="1500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 标题 -->
+        <mxCell id="title" value="&lt;b&gt;CodeCast 智能体系统架构图&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=24;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Frontend 层 -->
+        <mxCell id="frontend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="80" width="1000" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="frontend_label" value="&lt;b&gt;Frontend (React)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;resizable=0;points=[];autosize=0;strokeColor=none;fillColor=#dae8fc;fontSize=14;fontColor=#1a5276;" vertex="1" parent="1">
+          <mxGeometry x="580" y="85" width="240" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- 聊天区卡片 -->
+        <mxCell id="chat_card" value="&lt;b&gt;聊天区内联卡片&lt;/b&gt;&lt;br&gt;显示子 Agent 进度" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="115" width="220" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- 侧边栏面板 -->
+        <mxCell id="sidebar_panel" value="&lt;b&gt;侧边栏 Agents 面板&lt;/b&gt;&lt;br&gt;管理所有子 Agent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="930" y="115" width="220" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Backend 层 -->
+        <mxCell id="backend_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="200" y="230" width="1000" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="backend_label" value="&lt;b&gt;Backend (Go)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;resizable=0;points=[];autosize=0;strokeColor=none;fillColor=#d5e8d4;fontSize=14;fontColor=#196f3d;" vertex="1" parent="1">
+          <mxGeometry x="600" y="235" width="200" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- AgentPool -->
+        <mxCell id="agentpool_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="230" y="265" width="940" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="agentpool_label" value="&lt;b&gt;AgentPool (Semaphore=10)&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;resizable=0;points=[];autosize=0;strokeColor=none;fillColor=#e1d5e7;fontSize=13;fontColor=#5b2c6f;" vertex="1" parent="1">
+          <mxGeometry x="550" y="270" width="300" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- SubAgents -->
+        <mxCell id="subagent1" value="&lt;b&gt;SubAgent 1&lt;/b&gt;&lt;br&gt;后端架构" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;shadow=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="260" y="305" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="subagent2" value="&lt;b&gt;SubAgent 2&lt;/b&gt;&lt;br&gt;前端界面" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;shadow=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="480" y="305" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="subagent3" value="&lt;b&gt;SubAgent 3&lt;/b&gt;&lt;br&gt;测试/部署" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;shadow=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="700" y="305" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="subagent_n" value="..." style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="930" y="320" width="60" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Tool Executor Layer -->
+        <mxCell id="tool_layer_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="420" width="840" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_layer_label" value="&lt;b&gt;Tool Executor Layer&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;resizable=0;points=[];autosize=0;strokeColor=none;fillColor=#ffe6cc;fontSize=12;fontColor=#9c661f;" vertex="1" parent="1">
+          <mxGeometry x="570" y="423" width="260" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- Tools -->
+        <mxCell id="tool_read" value="read_file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="295" y="448" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_write" value="write_file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="420" y="448" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_edit" value="edit_file" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="545" y="448" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_run" value="run_command" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="670" y="448" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_search" value="search" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="795" y="448" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="tool_web" value="web_fetch" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d79b00;fontSize=10;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="920" y="448" width="110" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Persistence Layer -->
+        <mxCell id="persistence_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="450" y="515" width="500" height="75" as="geometry" />
+        </mxCell>
+        <mxCell id="persistence_label" value="&lt;b&gt;Persistence Layer&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;resizable=0;points=[];autosize=0;strokeColor=none;fillColor=#f5f5f5;fontSize=12;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="590" y="518" width="220" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="persistence_path" value="~/.codecast/agents/{session}/{agent}.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontFamily=Courier New;fontSize=11;shadow=0;" vertex="1" parent="1">
+          <mxGeometry x="500" y="543" width="400" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- API 层 -->
+        <mxCell id="api_box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8e8e8;strokeColor=#333333;strokeWidth=2;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="450" y="635" width="500" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="api_label" value="&lt;b&gt;DeepSeek API&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=top;resizable=0;points=[];autosize=0;strokeColor=none;fillColor=#e8e8e8;fontSize=13;fontColor=#1a1a1a;" vertex="1" parent="1">
+          <mxGeometry x="620" y="638" width="160" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="api_model" value="deepseek-v4-flash&lt;br&gt;(Function Calling)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;shadow=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="550" y="660" width="300" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线: Frontend -> Backend -->
+        <mxCell id="edge_fb_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" source="chat_card" target="agentpool_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_fb_1_label" value="Wails Events&lt;br&gt;(agent:progress)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=#ffffff;fontSize=10;fontColor=#6c8ebf;" connectable="0" vertex="1" parent="edge_fb_1">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+        <mxCell id="edge_fb_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" source="sidebar_panel" target="agentpool_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线: SubAgents -> Tool Layer -->
+        <mxCell id="edge_st_1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=1.5;dashed=1;" edge="1" source="subagent1" target="tool_layer_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_st_2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=1.5;dashed=1;" edge="1" source="subagent2" target="tool_layer_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_st_3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=1.5;dashed=1;" edge="1" source="subagent3" target="tool_layer_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线: Backend -> Persistence -->
+        <mxCell id="edge_bp" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=1.5;dashed=1;" edge="1" source="agentpool_box" target="persistence_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线: Backend -> API -->
+        <mxCell id="edge_ba" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;labelBackgroundColor=#ffffff;" edge="1" source="backend_box" target="api_box" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_ba_label" value="LLM 调用 / Function Calling" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=#ffffff;fontSize=10;fontColor=#82b366;" connectable="0" vertex="1" parent="edge_ba">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset" /></mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- 第二页：Agent Loop 流程 -->
+  <diagram name="Agent Loop 执行流程" id="agent-loop-flow">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 标题 -->
+        <mxCell id="flow_title" value="&lt;b&gt;Agent Loop 执行流程（ReAct 模式）&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=22;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="450" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- 开始节点 -->
+        <mxCell id="start" value="初始化&lt;br&gt;创建 SubAgent" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="80" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- LLM 调用 -->
+        <mxCell id="llm_call" value="&lt;b&gt;LLM 调用&lt;/b&gt;&lt;br&gt;(含工具描述)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;shadow=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="180" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 解析响应 -->
+        <mxCell id="parse_resp" value="&lt;b&gt;解析响应&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;shadow=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="280" width="200" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- 判断节点 -->
+        <mxCell id="decision" value="响应含&lt;br&gt;&lt;b&gt;tool_calls&lt;/b&gt;?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;shadow=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="510" y="370" width="180" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- 执行工具 -->
+        <mxCell id="exec_tool" value="&lt;b&gt;执行工具&lt;/b&gt;&lt;br&gt;read/write/edit/run/search/web" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;shadow=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="200" y="385" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- 观察结果 -->
+        <mxCell id="observe_result" value="&lt;b&gt;观察结果&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;shadow=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="210" y="485" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 追加消息 -->
+        <mxCell id="append_msg" value="&lt;b&gt;追加消息到历史&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;shadow=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="210" y="565" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- 任务完成 -->
+        <mxCell id="task_complete" value="&lt;b&gt;任务完成&lt;/b&gt;&lt;br&gt;返回结果" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;shadow=1;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="385" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- 失败判断 -->
+        <mxCell id="fail_decision" value="超过 maxTurns&lt;br&gt;或出错?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;shadow=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="515" y="545" width="170" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- 标记失败 -->
+        <mxCell id="mark_failed" value="&lt;b&gt;标记失败&lt;/b&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;shadow=1;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="555" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 循环箭头标签 -->
+        <mxCell id="loop_label" value="循环 (maxTurns=50)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontColor=#b85450;fontStyle=2;" vertex="1" parent="1">
+          <mxGeometry x="130" y="430" width="130" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线 -->
+        <mxCell id="f1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=2;" edge="1" source="start" target="llm_call" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=2;" edge="1" source="llm_call" target="parse_resp" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=2;" edge="1" source="parse_resp" target="decision" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f4_yes" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;fontSize=12;fontColor=#b85450;fontStyle=1;" edge="1" source="decision" target="exec_tool" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f5_no" value="否 (纯文本)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontColor=#82b366;fontStyle=1;" edge="1" source="decision" target="task_complete" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;" edge="1" source="exec_tool" target="observe_result" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;" edge="1" source="observe_result" target="append_msg" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;curved=1;" edge="1" source="append_msg" target="llm_call" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="590" />
+              <mxPoint x="310" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="f9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;" edge="1" source="decision" target="fail_decision" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f10_yes" value="是" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#b85450;strokeWidth=2;fontSize=12;fontColor=#b85450;fontStyle=1;" edge="1" source="fail_decision" target="mark_failed" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="f11_no" value="否" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;strokeWidth=2;fontSize=12;fontColor=#82b366;fontStyle=1;" edge="1" source="fail_decision" target="llm_call" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <!-- 第三页：数据结构 -->
+  <diagram name="数据结构关系" id="data-structure">
+    <mxGraphModel dx="1400" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 标题 -->
+        <mxCell id="ds_title" value="&lt;b&gt;CodeCast 数据结构关系图&lt;/b&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=22;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="480" y="20" width="350" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- SubAgent 类 -->
+        <mxCell id="class_subagent" value="&lt;b&gt;SubAgent&lt;/b&gt;&lt;hr&gt;- ID: string&lt;br&gt;- SessionID: string&lt;br&gt;- ParentMsgID: string&lt;br&gt;- Title: string&lt;br&gt;- Prompt: string&lt;br&gt;- FilesScope: []string&lt;br&gt;- Status: AgentStatus&lt;br&gt;- Messages: []AgentMessage&lt;br&gt;- Result: string&lt;br&gt;- Error: string&lt;br&gt;- TurnCount: int&lt;br&gt;- MaxTurns: int&lt;br&gt;- CreatedAt: time.Time&lt;br&gt;- UpdatedAt: time.Time&lt;br&gt;- Mode: AgentMode&lt;br&gt;- ctx: context.Context&lt;br&gt;- cancel: context.CancelFunc" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;align=left;spacingLeft=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="280" height="340" as="geometry" />
+        </mxCell>
+
+        <!-- AgentMessage 类 -->
+        <mxCell id="class_message" value="&lt;b&gt;AgentMessage&lt;/b&gt;&lt;hr&gt;- Role: string&lt;br&gt;- Content: string&lt;br&gt;- ToolCalls: []ToolCall&lt;br&gt;- ToolResult: *ToolResult" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;align=left;spacingLeft=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="100" y="120" width="240" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ToolCall 类 -->
+        <mxCell id="class_toolcall" value="&lt;b&gt;ToolCall&lt;/b&gt;&lt;hr&gt;- ID: string&lt;br&gt;- Name: string&lt;br&gt;- Args: string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;align=left;spacingLeft=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="50" y="300" width="200" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- ToolResult 类 -->
+        <mxCell id="class_toolresult" value="&lt;b&gt;ToolResult&lt;/b&gt;&lt;hr&gt;- ToolCallID: string&lt;br&gt;- Content: string&lt;br&gt;- IsError: bool" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;align=left;spacingLeft=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="50" y="440" width="220" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- AgentPool 类 -->
+        <mxCell id="class_pool" value="&lt;b&gt;AgentPool&lt;/b&gt;&lt;hr&gt;- mu: sync.Mutex&lt;br&gt;- agents: map[string]*SubAgent&lt;br&gt;- semaphore: chan struct{}&lt;br&gt;- queue: []*SubAgent&lt;br&gt;- ctx: context.Context&lt;br&gt;- cancel: context.CancelFunc&lt;br&gt;- app: *App" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;align=left;spacingLeft=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="900" y="100" width="280" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- AgentEvent 类 -->
+        <mxCell id="class_event" value="&lt;b&gt;AgentEvent&lt;/b&gt;&lt;hr&gt;- AgentID: string&lt;br&gt;- Type: string&lt;br&gt;- Status: AgentStatus&lt;br&gt;- Turn: int&lt;br&gt;- MaxTurns: int&lt;br&gt;- ToolName: string&lt;br&gt;- Message: string" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;align=left;spacingLeft=10;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="920" y="320" width="250" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- 关系连线 -->
+        <mxCell id="rel_sa_msg" value="1..*" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="class_subagent" target="class_message" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rel_msg_tc" value="0..*" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=classic;endFill=1;" edge="1" source="class_message" target="class_toolcall" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rel_msg_tr" value="0..1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#333333;strokeWidth=1.5;endArrow=classic;endFill=1;dashed=1;" edge="1" source="class_message" target="class_toolresult" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rel_pool_sa" value="manages&lt;br&gt;1..*" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;strokeWidth=2;endArrow=diamond;endFill=0;" edge="1" source="class_pool" target="class_subagent" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rel_pool_event" value="emits" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d79b00;strokeWidth=1.5;endArrow=open;endFill=0;dashed=1;" edge="1" source="class_pool" target="class_event" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

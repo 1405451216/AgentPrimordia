@@ -1,0 +1,35 @@
+name: 新 Provider/Tool 贡献
+description: 贡献新的 LLM Provider 或工具
+labels: ["contribution", "provider/tool"]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: 名称
+      description: Provider 或 Tool 名称
+      placeholder: "DeepSeek / Slack / Notion"
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: 类型
+      options:
+        - LLM Provider
+        - 内置 Tool
+        - MCP Server 集成
+        - 插件
+  - type: textarea
+    id: api
+    attributes:
+      label: API 文档链接
+      description: 提供 API 文档或 SDK 链接
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 贡献检查清单
+      options:
+        - label: 已阅读 CONTRIBUTING.md
+        - label: 理解 TDD 流程（Red → Green → Refactor）
+        - label: 确认无第三方依赖引入（仅 modernc.org/sqlite）
+        - label: 准备提交含测试的 PR

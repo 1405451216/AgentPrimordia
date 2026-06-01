@@ -1,0 +1,14 @@
+services:
+  go-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["sh", "/opt/ap-demo/run-go.sh"]
+    container_name: ap-go-demo
+
+  ts-demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["sh", "/opt/ap-demo/run-ts.sh"]
+    container_name: ap-ts-demo

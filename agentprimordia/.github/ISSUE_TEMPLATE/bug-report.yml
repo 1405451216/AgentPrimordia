@@ -1,0 +1,65 @@
+name: Bug 报告
+description: 报告 AgentPrimordia 的 Bug
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢提交 Bug 报告！请提供以下信息帮助我们快速定位问题。
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 清晰描述遇到的问题
+      placeholder: "Agent 在执行 Shell 工具时超时但未返回错误..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 如何复现这个问题
+      placeholder: |
+        1. 创建 Agent 配置 MaxTurns=5
+        2. 调用 agent.Run() 传入包含 Shell 工具调用的提示
+        3. 等待超时...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 你期望发生什么
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么（含错误信息）
+  - type: input
+    id: version
+    attributes:
+      label: AP 版本
+      description: `ap version` 的输出
+      placeholder: "0.1.0"
+  - type: input
+    id: goversion
+    attributes:
+      label: Go 版本
+      placeholder: "go1.22.0"
+  - type: dropdown
+    id: module
+    attributes:
+      label: 涉及模块
+      multiple: true
+      options:
+        - agent (ReAct Loop)
+        - llm (Provider)
+        - tools (Registry/MCP)
+        - memory (SQLite/Vector)
+        - pool (调度)
+        - guardrail (安全)
+        - metrics (指标)
+        - otel (可观测性)
+        - CLI (ap)

@@ -1,0 +1,44 @@
+name: Nightly
+
+on:
+  schedule:
+    # 每天 UTC 02:00 运行
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  full-test:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run all tests
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem -run=^$ ./...
+
+      - name: Coverage report
+        run: |
+          echo "## 覆盖率报告" >> $GITHUB_STEP_SUMMARY
+          go tool cover -func=coverage.out >> $GITHUB_STEP_SUMMARY
+
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build . --tag agentprimordia:nightly
+
+      - name: Verify image
+        run: docker run --rm agentprimordia:nightly echo "Docker image OK"

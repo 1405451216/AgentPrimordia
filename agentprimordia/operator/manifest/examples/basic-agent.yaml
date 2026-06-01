@@ -1,0 +1,26 @@
+# 最小 AgentDeployment 示例
+apiVersion: agent.primordia.dev/v1
+kind: AgentDeployment
+metadata:
+  name: basic-agent
+spec:
+  replicas: 1
+  template:
+    provider: openai
+    model: gpt-4o
+    systemPrompt: "你是一个智能助手，用中文回答问题。"
+    maxTurns: 20
+    apiSecretRef: openai-api-key
+    tools:
+      - name: filesystem
+        config:
+          rootDir: "/data"
+    memory:
+      backend: sqlite
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi

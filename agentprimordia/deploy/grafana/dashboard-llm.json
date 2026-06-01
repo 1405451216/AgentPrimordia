@@ -1,0 +1,133 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "LLM 调用总量",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(ap_llm_total_calls)",
+          "legendFormat": "总量"
+        }
+      ]
+    },
+    {
+      "title": "LLM 错误总量",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(ap_llm_total_calls{status=\"error\"})",
+          "legendFormat": "错误"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Token 消耗",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(ap_token_usage_total{type=\"input\"})",
+          "legendFormat": "输入"
+        },
+        {
+          "expr": "sum(ap_token_usage_total{type=\"output\"})",
+          "legendFormat": "输出"
+        }
+      ]
+    },
+    {
+      "title": "按 Provider 调用分布",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(ap_llm_total_calls) by (provider)",
+          "legendFormat": "{{provider}}"
+        }
+      ]
+    },
+    {
+      "title": "调用延迟趋势",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ap_llm_latency_ms_bucket[5m])) by (le, provider))",
+          "legendFormat": "{{provider}} P50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ap_llm_latency_ms_bucket[5m])) by (le, provider))",
+          "legendFormat": "{{provider}} P95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ap_llm_latency_ms_bucket[5m])) by (le, provider))",
+          "legendFormat": "{{provider}} P99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      }
+    },
+    {
+      "title": "Token 消耗趋势",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(ap_token_usage_total{type=\"input\"}[5m])) by (model)",
+          "legendFormat": "{{model}} 输入"
+        },
+        {
+          "expr": "sum(rate(ap_token_usage_total{type=\"output\"}[5m])) by (model)",
+          "legendFormat": "{{model}} 输出"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["agentprimordia", "llm"],
+  "templating": {
+    "list": [
+      {
+        "name": "provider",
+        "type": "query",
+        "query": "label_values(ap_llm_total_calls, provider)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      },
+      {
+        "name": "model",
+        "type": "query",
+        "query": "label_values(ap_llm_total_calls, model)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "AgentPrimordia - LLM Operations",
+  "uid": "ap-llm-operations"
+}

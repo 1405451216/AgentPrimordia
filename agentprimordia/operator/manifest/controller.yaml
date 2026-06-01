@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agentprimordia-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentprimordia-operator
+  namespace: agentprimordia-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agentprimordia-operator
+rules:
+  - apiGroups: ["agent.primordia.dev"]
+    resources: ["agentdeployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["agent.primordia.dev"]
+    resources: ["agentdeployments/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agentprimordia-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agentprimordia-operator
+subjects:
+  - kind: ServiceAccount
+    name: agentprimordia-operator
+    namespace: agentprimordia-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentprimordia-operator
+  namespace: agentprimordia-system
+  labels:
+    app: agentprimordia-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agentprimordia-operator
+  template:
+    metadata:
+      labels:
+        app: agentprimordia-operator
+    spec:
+      serviceAccountName: agentprimordia-operator
+      containers:
+        - name: operator
+          image: ghcr.io/agentprimordia/operator:latest
+          args:
+            - --metrics-addr=:8080
+            - --leader-elect=false
+          ports:
+            - containerPort: 8080
+              name: metrics
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5

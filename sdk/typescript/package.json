@@ -1,0 +1,44 @@
+{
+  "name": "@agentprimordia/sdk",
+  "version": "0.1.0",
+  "description": "AgentPrimordia - Universal AI Agent Development Framework for TypeScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": ["agent", "ai", "llm", "react-loop", "tool-system", "multi-agent", "framework"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentprimordia/ap.git",
+    "directory": "sdk/typescript"
+  },
+  "homepage": "https://github.com/agentprimordia/ap#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "peerDependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "better-sqlite3": {
+      "optional": true
+    }
+  }
+}

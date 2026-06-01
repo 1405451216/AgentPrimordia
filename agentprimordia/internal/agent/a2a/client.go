@@ -1,0 +1,236 @@
+package a2a
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"strings"
+)
+
+// ClientOption Client 配置选项
+type ClientOption func(*A2AClient)
+
+func WithClientLogger(logger *slog.Logger) ClientOption {
+	return func(c *A2AClient) { c.logger = logger }
+}
+
+func WithClientHTTPClient(httpClient *http.Client) ClientOption {
+	return func(c *A2AClient) { c.httpClient = httpClient }
+}
+
+func WithClientAuth(auth Authenticator) ClientOption {
+	return func(c *A2AClient) { c.auth = auth }
+}
+
+func WithClientAPIKey(key string) ClientOption {
+	return func(c *A2AClient) { c.apiKey = key }
+}
+
+func WithClientBearerToken(token string) ClientOption {
+	return func(c *A2AClient) { c.bearerToken = token }
+}
+
+// A2AClient A2A 协议客户端
+type A2AClient struct {
+	baseURL     string
+	httpClient  *http.Client
+	auth        Authenticator
+	apiKey      string
+	bearerToken string
+	logger      *slog.Logger
+	nextID      int
+}
+
+func NewA2AClient(baseURL string, opts ...ClientOption) *A2AClient {
+	c := &A2AClient{
+		baseURL:    strings.TrimRight(baseURL, "/"),
+		httpClient: http.DefaultClient,
+		logger:     slog.Default(),
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+func (c *A2AClient) FetchAgentCard() (*AgentCard, error) {
+	req, err := http.NewRequest("GET", c.baseURL+"/", nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("获取 AgentCard 失败, 状态码: %d", resp.StatusCode)
+	}
+
+	var card AgentCard
+	if err := json.NewDecoder(resp.Body).Decode(&card); err != nil {
+		return nil, fmt.Errorf("解析 AgentCard 失败: %w", err)
+	}
+	return &card, nil
+}
+
+func (c *A2AClient) CreateTask(message *A2AMessage, taskID string) (*Task, error) {
+	params := map[string]any{
+		"message": message,
+	}
+	if taskID != "" {
+		params["task_id"] = taskID
+	}
+
+	resp, err := c.call("task/create", params)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, fmt.Errorf("创建任务错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+	}
+
+	var task Task
+	if err := json.Unmarshal(resp.Result, &task); err != nil {
+		return nil, fmt.Errorf("解析任务结果失败: %w", err)
+	}
+	return &task, nil
+}
+
+func (c *A2AClient) GetTask(taskID string) (*Task, error) {
+	resp, err := c.call("task/get", map[string]string{"id": taskID})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, fmt.Errorf("获取任务错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+	}
+
+	var task Task
+	if err := json.Unmarshal(resp.Result, &task); err != nil {
+		return nil, fmt.Errorf("解析任务结果失败: %w", err)
+	}
+	return &task, nil
+}
+
+func (c *A2AClient) CancelTask(taskID string) error {
+	resp, err := c.call("task/cancel", map[string]string{"id": taskID})
+	if err != nil {
+		return err
+	}
+	if resp.Error != nil {
+		return fmt.Errorf("取消任务错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+	}
+	return nil
+}
+
+func (c *A2AClient) StreamEvents(taskID string) (<-chan *TaskEvent, error) {
+	url := fmt.Sprintf("%s/tasks/%s/events", c.baseURL, taskID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("创建 SSE 请求失败: %w", err)
+	}
+	c.setAuthHeaders(req)
+	req.Header.Set("Accept", "text/event-stream")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("SSE 连接失败: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("SSE 连接失败, 状态码: %d", resp.StatusCode)
+	}
+
+	ch := make(chan *TaskEvent, 64)
+	go func() {
+		defer close(ch)
+		defer resp.Body.Close()
+		c.readSSEStream(resp.Body, ch)
+	}()
+
+	return ch, nil
+}
+
+func (c *A2AClient) call(method string, params any) (*JSONRPCResponse, error) {
+	c.nextID++
+	paramsJSON, err := json.Marshal(params)
+	if err != nil {
+		return nil, fmt.Errorf("序列化参数失败: %w", err)
+	}
+
+	reqBody := JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      c.nextID,
+		Method:  method,
+		Params:  paramsJSON,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("序列化请求失败: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", c.baseURL+"/", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应失败: %w", err)
+	}
+
+	var rpcResp JSONRPCResponse
+	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+	return &rpcResp, nil
+}
+
+func (c *A2AClient) readSSEStream(reader io.Reader, ch chan<- *TaskEvent) {
+	scanner := bufio.NewScanner(reader)
+	var dataBuf strings.Builder
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "data: ") {
+			dataBuf.WriteString(strings.TrimPrefix(line, "data: "))
+		} else if line == "" && dataBuf.Len() > 0 {
+			var event TaskEvent
+			if err := json.Unmarshal([]byte(dataBuf.String()), &event); err == nil {
+				ch <- &event
+			}
+			dataBuf.Reset()
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		slog.Warn("SSE 流读取错误", "error", err)
+	}
+}
+
+func (c *A2AClient) setAuthHeaders(req *http.Request) {
+	if c.apiKey != "" {
+		req.Header.Set("X-API-Key", c.apiKey)
+	}
+	if c.bearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.bearerToken)
+	}
+}

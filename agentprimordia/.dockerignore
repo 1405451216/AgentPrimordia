@@ -1,0 +1,15 @@
+.git
+.gitignore
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+coverage.html
+docs/
+.idea/
+.vscode/
+node_modules/
+dist/

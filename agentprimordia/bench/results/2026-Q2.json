@@ -1,0 +1,48 @@
+{
+  "date": "2026-Q2",
+  "version": "0.1.0",
+  "environment": {
+    "go": "1.26",
+    "os": "linux/amd64",
+    "cpu": "4 cores",
+    "memory": "8GB"
+  },
+  "results": {
+    "tool_calling_accuracy": {
+      "description": "工具调用准确率（50个场景）",
+      "unit": "%",
+      "value": null,
+      "note": "需配置真实 LLM 后运行"
+    },
+    "rag_recall_at_5": {
+      "description": "RAG 检索 Recall@5",
+      "unit": "%",
+      "value": null,
+      "note": "需配置真实 LLM 后运行"
+    },
+    "agent_run_throughput": {
+      "description": "单 Agent 运行吞吐量",
+      "unit": "ops/sec",
+      "value": null,
+      "note": "运行 go test -bench=BenchmarkAgentRun"
+    },
+    "pool_10_concurrent": {
+      "description": "10 并发 Agent 吞吐量",
+      "unit": "ops/sec",
+      "value": null,
+      "note": "运行 go test -bench=BenchmarkConcurrent"
+    },
+    "vector_search_10k": {
+      "description": "10K 向量搜索延迟 P95",
+      "unit": "ms",
+      "value": null,
+      "note": "运行 go test -bench=BenchmarkVectorSearch"
+    },
+    "memory_search_1k": {
+      "description": "1K 记忆搜索延迟 P95",
+      "unit": "ms",
+      "value": null,
+      "note": "运行 go test -bench=BenchmarkMemoryLatency"
+    }
+  }
+}

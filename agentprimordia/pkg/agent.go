@@ -1,0 +1,255 @@
+// Package ap 提供 AgentPrimordia 框架的公共 API。
+//
+// AgentPrimordia 是一个通用 Go Agent 开发框架，核心能力包括：
+//   - ReAct 循环引擎（Agent 推理 + 工具调用）
+//   - 多 Agent 编排（Pipeline / Handoff / Parallel / DAG）
+//   - 工具系统（注册、权限、作用域）
+//   - 记忆存储（SQLite + FTS5 + 向量检索）
+//   - LLM 抽象层（OpenAI / Anthropic / Gemini / Ollama / Azure / Cohere / Mistral）
+//   - Pool 调度（并发任务分发、重试、会话管理）
+//
+// 所有类型通过类型别名从 internal 包导出，用户只需导入此包即可使用完整功能。
+package ap
+
+import (
+	"agentprimordia/internal/agent"
+	"agentprimordia/internal/memory"
+)
+
+// Agent 是所有 Agent 实现的核心接口，编排模式和 Pool 均面向此接口编程
+type Agent = agent.Agent
+
+// ReActAgent 是基于 ReAct（推理+行动）循环的 Agent 实现
+type ReActAgent = agent.ReActAgent
+
+// ReActConfig 是 ReActAgent 的配置结构，包含模型、工具、记忆、钩子等全部依赖
+type ReActConfig = agent.ReActConfig
+
+// PromptTemplate 支持 {{.Variable}} 格式的系统提示词模板，可自动注入 Agent 名称、权限规则等变量
+type PromptTemplate = agent.PromptTemplate
+
+// AgentStatus 表示 Agent 的当前运行状态
+type AgentStatus = agent.AgentStatus
+
+// AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、工具调用次数等
+type AgentStats = agent.AgentStats
+
+// Message 表示对话中的一条消息，包含角色、内容和可选的工具调用
+type Message = agent.Message
+
+// Role 表示消息发送者的角色（system / user / assistant / tool）
+type Role = agent.Role
+
+// ToolCall 表示 LLM 发起的工具调用请求，包含调用 ID、工具名称和 JSON 参数
+type ToolCall = agent.ToolCall
+
+// Thought 表示 LLM 的推理输出，包含文本内容和可选的工具调用列表
+type Thought = agent.Thought
+
+// Response 表示 Agent 的最终响应，包含内容、工具调用、用量和指标
+type Response = agent.Response
+
+// AgentUsage 表示 LLM 调用的 Token 用量统计
+type AgentUsage = agent.Usage
+
+// AgentMetrics 表示 Agent 运行期间的性能指标，包括轮次、工具数、延迟等
+type AgentMetrics = agent.Metrics
+
+// MemoryStore 是 Agent 所需的记忆存储接口，由 memory.Memory 通过适配器实现
+type MemoryStore = agent.MemoryStore
+
+// MemoryEpisode 是 Agent 使用的一集记忆，包含内容、摘要、主题、重要性等
+type MemoryEpisode = agent.MemoryEpisode
+
+// SummaryExtractor 是摘要提取接口，供 Agent 层依赖，由 memory.Summarizer 实现
+type SummaryExtractor = memory.SummaryExtractor
+
+// SummaryResult 是摘要提取的结果，包含摘要文本和主题标签
+type SummaryResult = memory.SummaryResult
+
+// Summarizer 使用 LLM 从内容中提取摘要和标签
+type Summarizer = memory.Summarizer
+
+// EventPublisher 是 Agent 所需的事件发布接口，用于异步发布生命周期事件
+type EventPublisher = agent.EventPublisher
+
+// MetricsRecorder 是 Agent 所需的指标记录接口，用于收集 LLM 调用、工具调用等指标
+type MetricsRecorder = agent.MetricsRecorder
+
+// StreamEvent 是流式输出的事件，包含事件类型、内容和附加数据
+type StreamEvent = agent.StreamEvent
+
+// StreamEventType 标识流式事件的类型（token / thought / tool_call / tool_result / complete / error）
+type StreamEventType = agent.StreamEventType
+
+// MessageBus 是统一消息总线接口，支持 Agent 间的点对点消息发送和广播
+type MessageBus = agent.MessageBus
+
+// LocalMessageBus 是进程内消息总线实现，支持注册、发送、广播和订阅
+type LocalMessageBus = agent.LocalMessageBus
+
+// BusMessage 是统一消息结构，包含发送方、接收方、类型、内容和元数据
+type BusMessage = agent.BusMessage
+
+// BusMessageType 是统一消息类型，覆盖任务请求/结果、查询/响应、交接、广播、状态更新、通知
+type BusMessageType = agent.BusMessageType
+
+// BusMessageHandler 是消息处理函数类型，接收消息并返回响应
+type BusMessageHandler = agent.BusMessageHandler
+
+// RAGDocument 是 RAG 检索返回的文档片段，包含 ID、内容、相关度分数和来源
+type RAGDocument = agent.RAGDocument
+
+// RAGProvider 是 Agent 可使用的 RAG 检索接口，由 memory.RAGStore 通过适配器实现
+type RAGProvider = agent.RAGProvider
+
+// RAGMode 控制 RAG 在 ReAct Loop 中的注入方式（auto / first / on_demand）
+type RAGMode = agent.RAGMode
+
+// RAGConfig 配置 RAG 注入行为，包括提供者、模式、TopK、最低分数和上下文模板
+type RAGConfig = agent.RAGConfig
+
+// Transport 是跨进程 Agent 通信传输层接口，定义发送、接收、启动和关闭方法
+type Transport = agent.Transport
+
+// HTTPTransport 是基于 HTTP 的跨进程 Agent 通信传输层实现
+type HTTPTransport = agent.HTTPTransport
+
+const (
+	// RoleSystem 表示系统角色消息
+	RoleSystem = agent.RoleSystem
+	// RoleUser 表示用户角色消息
+	RoleUser = agent.RoleUser
+	// RoleAssistant 表示助手角色消息
+	RoleAssistant = agent.RoleAssistant
+	// RoleTool 表示工具角色消息
+	RoleTool = agent.RoleTool
+
+	// StatusIdle 表示 Agent 处于空闲状态
+	StatusIdle = agent.StatusIdle
+	// StatusRunning 表示 Agent 正在运行
+	StatusRunning = agent.StatusRunning
+	// StatusPaused 表示 Agent 已暂停
+	StatusPaused = agent.StatusPaused
+	// StatusCompleted 表示 Agent 已完成
+	StatusCompleted = agent.StatusCompleted
+	// StatusFailed 表示 Agent 执行失败
+	StatusFailed = agent.StatusFailed
+	// StatusCancelled 表示 Agent 已取消
+	StatusCancelled = agent.StatusCancelled
+
+	// StreamEventToken 表示逐 token 输出事件
+	StreamEventToken = agent.StreamEventToken
+	// StreamEventThought 表示推理/思考事件
+	StreamEventThought = agent.StreamEventThought
+	// StreamEventToolCall 表示工具调用开始事件
+	StreamEventToolCall = agent.StreamEventToolCall
+	// StreamEventToolResult 表示工具执行结果事件
+	StreamEventToolResult = agent.StreamEventToolResult
+	// StreamEventComplete 表示运行完成事件
+	StreamEventComplete = agent.StreamEventComplete
+	// StreamEventError 表示错误事件
+	StreamEventError = agent.StreamEventError
+
+	// RAGModeAuto 在每轮推理前自动查询知识库并注入上下文
+	RAGModeAuto = agent.RAGModeAuto
+	// RAGModeFirst 仅在第一轮推理前查询知识库
+	RAGModeFirst = agent.RAGModeFirst
+	// RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search 工具时查询
+	RAGModeOnDemand = agent.RAGModeOnDemand
+
+	// BusMsgTaskRequest 表示任务请求消息
+	BusMsgTaskRequest = agent.BusMsgTaskRequest
+	// BusMsgTaskResult 表示任务结果消息
+	BusMsgTaskResult = agent.BusMsgTaskResult
+	// BusMsgQuery 表示查询消息
+	BusMsgQuery = agent.BusMsgQuery
+	// BusMsgResponse 表示查询响应消息
+	BusMsgResponse = agent.BusMsgResponse
+	// BusMsgHandoff 表示 Agent 交接消息
+	BusMsgHandoff = agent.BusMsgHandoff
+	// BusMsgBroadcast 表示广播消息
+	BusMsgBroadcast = agent.BusMsgBroadcast
+	// BusMsgStatusUpdate 表示状态更新消息
+	BusMsgStatusUpdate = agent.BusMsgStatusUpdate
+	// BusMsgNotify 表示通知消息
+	BusMsgNotify = agent.BusMsgNotify
+)
+
+var (
+	// NewReActAgent 创建基于 ReAct 循环的 Agent 实例
+	NewReActAgent = agent.NewReActAgent
+	// NewPromptTemplate 创建支持变量注入的提示词模板
+	NewPromptTemplate = agent.NewPromptTemplate
+	// DefaultSystemPrompt 返回默认系统提示词模板，包含 Agent 名称和权限规则占位符
+	DefaultSystemPrompt = agent.DefaultSystemPrompt
+	// UserMessage 创建用户角色的消息快捷函数
+	UserMessage = agent.UserMessage
+	// SystemMessage 创建系统角色的消息快捷函数
+	SystemMessage = agent.SystemMessage
+	// FormatRAGDocuments 将 RAG 文档列表格式化为可注入 Prompt 的上下文字符串
+	FormatRAGDocuments = agent.FormatRAGDocuments
+	// NewSummarizer 创建基于 LLM 的摘要提取器
+	NewSummarizer = memory.NewSummarizer
+	// DefaultCleanupConfig 返回记忆自动清理的默认配置（30 天过期、24 小时间隔、保留 tool 角色）
+	DefaultCleanupConfig = memory.DefaultCleanupConfig
+	// NewLocalMessageBus 创建本地进程内消息总线实例
+	NewLocalMessageBus = agent.NewLocalMessageBus
+	// NewHTTPTransport 创建基于 HTTP 的跨进程传输层实例
+	NewHTTPTransport = agent.NewHTTPTransport
+)
+
+// ===== DAG 工作流引擎 =====
+
+// DAGWorkflow 是 DAG 工作流引擎，支持拓扑排序、并行执行、条件分支和重试
+type DAGWorkflow = agent.DAGWorkflow
+
+// DAGNode 是 DAG 工作流节点
+type DAGNode = agent.DAGNode
+
+// DAGEdge 是 DAG 工作流边（含条件谓词）
+type DAGEdge = agent.DAGEdge
+
+// DAGNodeResult 是节点执行结果
+type DAGNodeResult = agent.DAGNodeResult
+
+// DAGResult 是 DAG 工作流执行结果
+type DAGResult = agent.DAGResult
+
+// DAGMetrics 是 DAG 执行指标
+type DAGMetrics = agent.DAGMetrics
+
+// NodeExecutionStats 是单节点执行统计
+type NodeExecutionStats = agent.NodeExecutionStats
+
+// DAGBuilder 是声明式 DAG 构建器，提供链式 API
+type DAGBuilder = agent.DAGBuilder
+
+// NodeHandler 是节点处理函数类型
+type NodeHandler = agent.NodeHandler
+
+// NodePair 是节点定义对（ID + Handler），用于 Sequential/Parallel
+type NodePair = agent.NodePair
+
+// ===== 子任务/Agent 委派 =====
+
+// AgentDelegateNode 将 Agent 实例包装为 DAG 节点
+type AgentDelegateNode = agent.AgentDelegateNode
+
+// SubWorkflowNode 将子工作流包装为 DAG 节点
+type SubWorkflowNode = agent.SubWorkflowNode
+
+var (
+	NewDAGWorkflow       = agent.NewDAGWorkflow
+	NewDAGBuilder        = agent.NewDAGBuilder
+	MakeNode             = agent.MakeNode
+	NewAgentDelegateNode = agent.NewAgentDelegateNode
+	NewSubWorkflowNode   = agent.NewSubWorkflowNode
+	MapFromDependent     = agent.MapFromDependent
+	MapConcatAll         = agent.MapConcatAll
+	MapPassThrough       = agent.MapPassThrough
+	MapTemplate          = agent.MapTemplate
+	ConditionOnOutput    = agent.ConditionOnOutput
+	ConditionOnError     = agent.ConditionOnError
+	ConditionOnSuccess   = agent.ConditionOnSuccess
+)

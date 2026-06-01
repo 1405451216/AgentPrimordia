@@ -1,0 +1,58 @@
+# 多 Agent 编排示例：含自动扩缩容和健康检查
+apiVersion: agent.primordia.dev/v1
+kind: AgentDeployment
+metadata:
+  name: code-reviewer
+spec:
+  replicas: 3
+  template:
+    provider: openai
+    model: gpt-4o
+    systemPrompt: "你是一个代码审查助手，负责检查代码质量并给出改进建议。"
+    maxTurns: 25
+    apiSecretRef: openai-api-key
+    tools:
+      - name: filesystem
+        config:
+          rootDir: "/workspace"
+      - name: shell
+        config:
+          commandWhitelist: "go,git,grep"
+      - name: web
+    memory:
+      backend: sqlite
+      sizeLimit: 1Gi
+      pvcName: reviewer-memory
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "2"
+        memory: 1Gi
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+    targetConcurrentTasks: 5
+  healthCheck:
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+---
+# API Key Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openai-api-key
+type: Opaque
+stringData:
+  api-key: ${OPENAI_API_KEY}
