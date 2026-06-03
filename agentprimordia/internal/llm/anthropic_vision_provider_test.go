@@ -226,7 +226,7 @@ func TestAnthropicCompleteMultimodal_WithMockServer(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -272,7 +272,7 @@ func TestAnthropicCompleteMultimodal_APIError(t *testing.T) {
 				"message": "Invalid API key",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -327,7 +327,7 @@ func TestResolveMaxTokens_FromConfig(t *testing.T) {
 func TestAnthropicComplete_BackwardCompatible(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 
 		messages := body["messages"].([]any)
 		firstMsg := messages[0].(map[string]any)
@@ -340,7 +340,7 @@ func TestAnthropicComplete_BackwardCompatible(t *testing.T) {
 			"content": []map[string]string{{"type": "text", "text": "Response: " + content}},
 			"usage":   map[string]int{"input_tokens": 10, "output_tokens": 5},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

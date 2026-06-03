@@ -23,10 +23,10 @@ func TestDistributed_TwoNodeTCP(t *testing.T) {
 
 	discovery := NewLocalDiscovery()
 
-	discovery.Register(context.Background(), &AgentInfo{
+	_ = discovery.Register(context.Background(), &AgentInfo{
 		ID: "node-1", Name: "Node1", Address: node1.Addr(),
 	})
-	discovery.Register(context.Background(), &AgentInfo{
+	_ = discovery.Register(context.Background(), &AgentInfo{
 		ID: "node-2", Name: "Node2", Address: node2.Addr(),
 	})
 
@@ -116,7 +116,7 @@ func TestDistributed_MultiNodeBroadcast(t *testing.T) {
 
 	discovery := NewLocalDiscovery()
 	for i, node := range nodes {
-		discovery.Register(context.Background(), &AgentInfo{
+		_ = discovery.Register(context.Background(), &AgentInfo{
 			ID:      fmt.Sprintf("node-%d", i),
 			Name:    fmt.Sprintf("Node%d", i),
 			Address: node.Addr(),
@@ -181,7 +181,7 @@ func TestDistributed_DiscoveryAndCommunicate(t *testing.T) {
 		t.Fatalf("Register agent1 failed: %v", err)
 	}
 
-	localDisc.Register(context.Background(), agent2Info)
+	_ = localDisc.Register(context.Background(), agent2Info)
 
 	found, err := httpDisc.Discover(context.Background(), "agent-comm-2")
 	if err != nil {

@@ -170,7 +170,7 @@ func TestCount_All(t *testing.T) {
 	ctx := context.Background()
 	for i := 0; i < 5; i++ {
 		ep := MustEpisode("session-1", "user", "Message")
-		store.Add(ctx, ep)
+		_ = store.Add(ctx, ep)
 	}
 
 	count, err := store.Count(ctx, "")
@@ -189,11 +189,11 @@ func TestCount_BySession(t *testing.T) {
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
 		ep := MustEpisode("session-a", "user", "Message A")
-		store.Add(ctx, ep)
+		_ = store.Add(ctx, ep)
 	}
 	for i := 0; i < 7; i++ {
 		ep := MustEpisode("session-b", "user", "Message B")
-		store.Add(ctx, ep)
+		_ = store.Add(ctx, ep)
 	}
 
 	countA, err := store.Count(ctx, "session-a")
@@ -223,8 +223,8 @@ func TestSearch_BasicMatch(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "I like programming in Go"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "I like programming in Go"))
 
 	results, err := store.Search(ctx, "fox", &SearchOptions{Limit: 10})
 	if err != nil {
@@ -240,7 +240,7 @@ func TestSearch_NoMatch(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Hello world"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Hello world"))
 
 	results, err := store.Search(ctx, "nonexistentterm", &SearchOptions{Limit: 10})
 	if err != nil {
@@ -256,8 +256,8 @@ func TestSearch_WithSessionFilter(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("session-a", "user", "Go programming language"))
-	store.Add(ctx, MustEpisode("session-b", "user", "Python programming language"))
+	_ = store.Add(ctx, MustEpisode("session-a", "user", "Go programming language"))
+	_ = store.Add(ctx, MustEpisode("session-b", "user", "Python programming language"))
 
 	results, err := store.Search(ctx, "programming", &SearchOptions{
 		SessionID: "session-a",
@@ -280,7 +280,7 @@ func TestSearch_WithLimit(t *testing.T) {
 
 	ctx := context.Background()
 	for i := 0; i < 10; i++ {
-		store.Add(ctx, MustEpisode("s1", "user", "test message about search"))
+		_ = store.Add(ctx, MustEpisode("s1", "user", "test message about search"))
 	}
 
 	results, err := store.Search(ctx, "search", &SearchOptions{Limit: 3})
@@ -297,8 +297,8 @@ func TestSearch_WithRoleFilter(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "What is Go?"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "Go is a programming language"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "What is Go?"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "Go is a programming language"))
 
 	results, err := store.Search(ctx, "Go", &SearchOptions{
 		Limit:      10,
@@ -322,7 +322,7 @@ func TestSearch_SummarySearch(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Long content here")
 	ep.Summary = "Short summary about AI"
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	results, err := store.Search(ctx, "AI", &SearchOptions{Limit: 10})
 	if err != nil {
@@ -339,7 +339,7 @@ func TestList_Pagination(t *testing.T) {
 
 	ctx := context.Background()
 	for i := 0; i < 15; i++ {
-		store.Add(ctx, MustEpisode("s1", "user", "message"))
+		_ = store.Add(ctx, MustEpisode("s1", "user", "message"))
 	}
 
 	page1, err := store.List(ctx, &ListOptions{Limit: 5, Offset: 0})
@@ -375,7 +375,7 @@ func TestList_Ordering(t *testing.T) {
 	var firstID string
 	for i := 0; i < 5; i++ {
 		ep := MustEpisode("s1", "user", "message")
-		store.Add(ctx, ep)
+		_ = store.Add(ctx, ep)
 		if i == 0 {
 			firstID = ep.ID
 		}
@@ -412,9 +412,9 @@ func TestList_BySession(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("session-x", "user", "msg x1"))
-	store.Add(ctx, MustEpisode("session-y", "user", "msg y1"))
-	store.Add(ctx, MustEpisode("session-x", "user", "msg x2"))
+	_ = store.Add(ctx, MustEpisode("session-x", "user", "msg x1"))
+	_ = store.Add(ctx, MustEpisode("session-y", "user", "msg y1"))
+	_ = store.Add(ctx, MustEpisode("session-x", "user", "msg x2"))
 
 	results, err := store.List(ctx, &ListOptions{
 		SessionID: "session-x",
@@ -521,7 +521,7 @@ func TestEnhanced_UpdateSummary(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Hello world")
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	err := store.UpdateSummary(ctx, ep.ID, "Greeting", "greeting,hello")
 	if err != nil {
@@ -543,7 +543,7 @@ func TestEnhanced_SetImportance(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Important message")
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	err := store.SetImportance(ctx, ep.ID, 0.8)
 	if err != nil {
@@ -563,11 +563,11 @@ func TestEnhanced_SearchByTag(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Message 1")
 	ep1.Topics = "go,programming"
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "Message 2")
 	ep2.Topics = "python,data"
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	results, err := store.SearchByTag(ctx, "go", nil)
 	if err != nil {
@@ -585,7 +585,7 @@ func TestEnhanced_SearchByTag_NoResults(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
 	ep.Topics = "go"
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	results, err := store.SearchByTag(ctx, "nonexistent", nil)
 	if err != nil {
@@ -603,15 +603,15 @@ func TestEnhanced_GetImportant(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Low importance")
 	ep1.Importance = 0.2
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "High importance")
 	ep2.Importance = 0.9
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	ep3 := MustEpisode("s1", "user", "Medium importance")
 	ep3.Importance = 0.5
-	store.Add(ctx, ep3)
+	_ = store.Add(ctx, ep3)
 
 	results, err := store.GetImportant(ctx, 0.5, 10)
 	if err != nil {
@@ -632,7 +632,7 @@ func TestEnhanced_GetImportant_Empty(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Low importance")
 	ep.Importance = 0.1
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	results, err := store.GetImportant(ctx, 0.9, 10)
 	if err != nil {
@@ -648,7 +648,7 @@ func TestEnhanced_GetTimeline(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Today message"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Today message"))
 
 	results, err := store.GetTimeline(ctx, 7)
 	if err != nil {
@@ -664,7 +664,7 @@ func TestEnhanced_CleanupExpired(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Recent message"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Recent message"))
 
 	deleted, err := store.CleanupExpired(ctx, 30)
 	if err != nil {
@@ -680,7 +680,7 @@ func TestEnhanced_CleanupExpired_None(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Message"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Message"))
 
 	deleted, err := store.CleanupExpired(ctx, 0)
 	if err != nil {
@@ -696,8 +696,8 @@ func TestEnhanced_Stats(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Message 1"))
-	store.Add(ctx, MustEpisode("s2", "user", "Message 2"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Message 1"))
+	_ = store.Add(ctx, MustEpisode("s2", "user", "Message 2"))
 
 	stats, err := store.Stats(ctx)
 	if err != nil {
@@ -720,7 +720,7 @@ func TestEnhanced_Topics_Default(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	got, _ := store.Get(ctx, ep.ID)
 	if got.Topics != "" {
@@ -755,8 +755,8 @@ func TestSearchAdvanced(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Go programming language"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "Python data science"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Go programming language"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "Python data science"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:    "Go",
@@ -778,7 +778,7 @@ func TestSearchAdvanced_SemanticWeight(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Go programming language"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Go programming language"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:          "Go",
@@ -801,11 +801,11 @@ func TestGetMemoriesByTag(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Message about Go")
 	ep1.Topics = "go,programming"
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "Message about Python")
 	ep2.Topics = "python,data"
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	results, err := store.GetMemoriesByTag(ctx, "go", 10)
 	if err != nil {
@@ -821,9 +821,9 @@ func TestGetMemoriesBySession(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("session-a", "user", "Msg A1"))
-	store.Add(ctx, MustEpisode("session-b", "user", "Msg B1"))
-	store.Add(ctx, MustEpisode("session-a", "user", "Msg A2"))
+	_ = store.Add(ctx, MustEpisode("session-a", "user", "Msg A1"))
+	_ = store.Add(ctx, MustEpisode("session-b", "user", "Msg B1"))
+	_ = store.Add(ctx, MustEpisode("session-a", "user", "Msg A2"))
 
 	results, err := store.GetMemoriesBySession(ctx, "session-a")
 	if err != nil {
@@ -846,11 +846,11 @@ func TestGetImportantMemories(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Low")
 	ep1.Importance = 0.2
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "High")
 	ep2.Importance = 0.9
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	results, err := store.GetImportantMemories(ctx, 0.5, 10)
 	if err != nil {
@@ -893,8 +893,8 @@ func TestClearAll_BySession(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("session-a", "user", "Msg A"))
-	store.Add(ctx, MustEpisode("session-b", "user", "Msg B"))
+	_ = store.Add(ctx, MustEpisode("session-a", "user", "Msg A"))
+	_ = store.Add(ctx, MustEpisode("session-b", "user", "Msg B"))
 
 	err := store.ClearAll(ctx, "session-a")
 	if err != nil {
@@ -916,8 +916,8 @@ func TestClearAll_EntireStore(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Msg 1"))
-	store.Add(ctx, MustEpisode("s2", "user", "Msg 2"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Msg 1"))
+	_ = store.Add(ctx, MustEpisode("s2", "user", "Msg 2"))
 
 	err := store.ClearAll(ctx, "")
 	if err != nil {
@@ -935,7 +935,7 @@ func TestExportMemories_JSON(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Export test"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Export test"))
 
 	data, err := store.ExportMemories(ctx, "", "json")
 	if err != nil {
@@ -951,7 +951,7 @@ func TestExportMemories_Markdown(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Export test"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Export test"))
 
 	data, err := store.ExportMemories(ctx, "", "markdown")
 	if err != nil {
@@ -967,11 +967,11 @@ func TestImportMemories(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Original"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Original"))
 
 	// 导出再导入
 	data, _ := store.ExportMemories(ctx, "", "json")
-	store.ClearAll(ctx, "")
+	_ = store.ClearAll(ctx, "")
 
 	count, err := store.ImportMemories(ctx, data, "json")
 	if err != nil {

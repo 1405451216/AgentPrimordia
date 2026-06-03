@@ -407,7 +407,7 @@ func extractJSON(text string) string {
 	}
 
 	// 尝试直接提取 { ... } 或 [ ... ]
-	re = regexp.MustCompile("(?s)(\\{.*\\}|\\[.*\\])")
+	re = regexp.MustCompile(`(?s)(\{.*\}|\[.*\])`)
 	matches = re.FindStringSubmatch(text)
 	if len(matches) >= 1 {
 		jsonCandidate := strings.TrimSpace(matches[1])

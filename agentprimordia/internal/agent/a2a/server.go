@@ -89,7 +89,7 @@ func (s *A2AServer) handleAgentCard(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	data, _ := json.Marshal(s.card)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func (s *A2AServer) handleJSONRPC(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +125,7 @@ func (s *A2AServer) handleJSONRPC(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	data, _ := json.Marshal(resp)
-	w.Write(data)
+	_, _ = w.Write(data)
 }
 
 func (s *A2AServer) handleTaskCreate(req *JSONRPCRequest) *JSONRPCResponse {
@@ -158,7 +158,7 @@ func (s *A2AServer) handleTaskCreate(req *JSONRPCRequest) *JSONRPCResponse {
 	}
 
 	if s.taskHandler != nil {
-		go s.taskHandler.HandleTask(params.TaskID, params.Message)
+		go func() { _ = s.taskHandler.HandleTask(params.TaskID, params.Message) }()
 	}
 
 	result, _ := json.Marshal(created)
@@ -239,7 +239,7 @@ func (s *A2AServer) handleSSEEvents(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
-			fmt.Fprint(w, FormatSSEEvent(event))
+			_, _ = fmt.Fprint(w, FormatSSEEvent(event))
 			flusher.Flush()
 		}
 	}
@@ -257,11 +257,11 @@ func (s *A2AServer) authenticate(r *http.Request) error {
 func writeA2AJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func writeJSONRPCError(w http.ResponseWriter, id interface{}, code int, msg, data string) {
 	resp := NewJSONRPCError(id, code, msg, data)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }

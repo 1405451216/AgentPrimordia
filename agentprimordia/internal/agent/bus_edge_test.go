@@ -143,7 +143,7 @@ func TestLocalMessageBus_SendTimestampSet(t *testing.T) {
 	}
 
 	before := time.Now()
-	bus.Send(context.Background(), msg)
+	_, _ = bus.Send(context.Background(), msg)
 	after := time.Now()
 
 	if capturedTimestamp.Before(before) || capturedTimestamp.After(after) {
@@ -207,7 +207,7 @@ func TestLocalMessageBus_SubscribeFullChannel(t *testing.T) {
 	bus.Register("full-agent", handler)
 
 	for i := 0; i < 16; i++ {
-		bus.Send(context.Background(), &BusMessage{
+		_, _ = bus.Send(context.Background(), &BusMessage{
 			From:    "sender",
 			To:      "full-agent",
 			Type:    BusMsgTaskRequest,

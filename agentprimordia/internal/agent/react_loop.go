@@ -309,12 +309,12 @@ func (a *ReActAgent) ragMinScore() float32 {
 
 // searchRAG 执行 RAG 检索并返回格式化上下文
 func (a *ReActAgent) searchRAG(ctx context.Context, query string) (string, []*RAGDocument) {
-	a.fireHook(HookBeforeRAG, &HookContext{Metadata: map[string]any{"query": query}})
+	_ = a.fireHook(HookBeforeRAG, &HookContext{Metadata: map[string]any{"query": query}})
 
 	docs, err := a.config.RAG.Provider.Search(ctx, query, a.ragTopK())
 	if err != nil {
 		a.logger.Warn("RAG 检索失败", "error", err, "query", query)
-		a.fireHook(HookOnError, &HookContext{Error: err})
+		_ = a.fireHook(HookOnError, &HookContext{Error: err})
 		return "", nil
 	}
 
@@ -327,7 +327,7 @@ func (a *ReActAgent) searchRAG(ctx context.Context, query string) (string, []*RA
 		}
 	}
 
-	a.fireHook(HookAfterRAG, &HookContext{Metadata: map[string]any{"results": len(filtered), "query": query}})
+	_ = a.fireHook(HookAfterRAG, &HookContext{Metadata: map[string]any{"results": len(filtered), "query": query}})
 
 	if len(filtered) == 0 {
 		return "", nil
@@ -438,7 +438,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		a.stats.TotalMessages = len(history)
 		a.statsMu.Unlock()
 
-		a.fireHook(HookBeforeTurn, &HookContext{Turn: turn})
+		_ = a.fireHook(HookBeforeTurn, &HookContext{Turn: turn})
 		a.publishEvent("turn.start", map[string]int{"turn": turn})
 
 		var turnSpan Span = &NoopSpan{}
@@ -530,7 +530,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 		a.saveMemory(ctx, assistantMsg)
 
-		a.fireHook(HookAfterLLM, &HookContext{Turn: turn})
+		_ = a.fireHook(HookAfterLLM, &HookContext{Turn: turn})
 		a.publishEvent("llm.response", map[string]int{"turn": turn})
 
 		if len(thought.ToolCalls) == 0 {
@@ -549,9 +549,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 			_ = a.lifecycle.SetStatus(StatusCompleted)
 			a.saveCheckpoint(ctx, history, turn+1, response.Metrics)
-			a.fireHook(HookOnComplete, &HookContext{Response: response})
+			_ = a.fireHook(HookOnComplete, &HookContext{Response: response})
 			turnSpan.End()
-			a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
+			_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
 			if a.config.Metrics != nil {
 				a.config.Metrics.RecordTurn(time.Since(turnStart))
 			}
@@ -571,7 +571,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		for _, tc := range thought.ToolCalls {
 			a.emitStream(cfg, StreamEvent{Type: StreamEventToolCall, Content: tc.Name, Data: tc})
-			a.fireHook(HookBeforeTool, &HookContext{ToolCall: &tc, Turn: turn})
+			_ = a.fireHook(HookBeforeTool, &HookContext{ToolCall: &tc, Turn: turn})
 			a.publishEvent("tool.call", map[string]string{"tool": tc.Name, "turn": fmt.Sprintf("%d", turn)})
 
 			if a.hitlMgr != nil && a.hitlMgr.ShouldInterrupt(tc.Name, InterruptToolConfirm) {
@@ -643,7 +643,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 			if err != nil {
 				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: fmt.Sprintf("tool %s error: %v", tc.Name, err)})
-				a.fireHook(HookOnError, &HookContext{Error: err, Turn: turn})
+				_ = a.fireHook(HookOnError, &HookContext{Error: err, Turn: turn})
 				a.publishEvent("agent.error", map[string]string{"tool": tc.Name, "error": err.Error()})
 			} else {
 				a.emitStream(cfg, StreamEvent{Type: StreamEventToolResult, Content: result.Content, Data: result})
@@ -651,10 +651,10 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 			if cfg.stream {
 				if err == nil {
-					a.fireHook(HookAfterTool, &HookContext{ToolResult: result, Turn: turn})
+					_ = a.fireHook(HookAfterTool, &HookContext{ToolResult: result, Turn: turn})
 				}
 			} else {
-				a.fireHook(HookAfterTool, &HookContext{ToolResult: result, Turn: turn})
+				_ = a.fireHook(HookAfterTool, &HookContext{ToolResult: result, Turn: turn})
 				a.publishEvent("tool.result", map[string]string{"tool": tc.Name})
 			}
 
@@ -668,7 +668,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 
 		turnSpan.End()
-		a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
+		_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
 		if a.config.Metrics != nil {
 			a.config.Metrics.RecordTurn(time.Since(turnStart))
 		}
@@ -704,7 +704,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 	_ = a.lifecycle.SetStatus(StatusFailed)
 	a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: ErrMaxTurnsExceeded.Error()})
-	a.fireHook(HookOnError, &HookContext{Error: ErrMaxTurnsExceeded})
+	_ = a.fireHook(HookOnError, &HookContext{Error: ErrMaxTurnsExceeded})
 	a.logger.Warn("Agent 超出最大轮次", "name", a.config.Name, "max_turns", a.config.MaxTurns)
 
 	response := &Response{
@@ -744,7 +744,7 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 		a.logger.Info("Agent 启动", "name", a.config.Name, "session", a.config.SessionID)
 	}
 	a.publishEvent("agent.start", map[string]string{"name": a.config.Name})
-	a.fireHook(HookBeforeRun, &HookContext{})
+	_ = a.fireHook(HookBeforeRun, &HookContext{})
 
 	if a.config.Metrics != nil {
 		a.config.Metrics.IncActiveAgents()
@@ -1041,7 +1041,7 @@ func (a *ReActAgent) completeWithRetry(ctx context.Context, messages []llm.ChatM
 
 // handleOnError triggers error hook
 func (a *ReActAgent) handleOnError(_ context.Context, err error) {
-	a.fireHook(HookOnError, &HookContext{Error: err})
+	_ = a.fireHook(HookOnError, &HookContext{Error: err})
 }
 
 // Stats returns current agent statistics
@@ -1165,7 +1165,7 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 		}
 	}()
 
-	a.fireHook(HookBeforeRun, &HookContext{})
+	_ = a.fireHook(HookBeforeRun, &HookContext{})
 	a.publishEvent("agent.resume", map[string]string{"name": a.config.Name, "from_turn": fmt.Sprintf("%d", state.TurnCount)})
 
 	prevMetrics := state.Metrics

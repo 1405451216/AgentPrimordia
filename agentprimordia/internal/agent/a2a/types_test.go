@@ -63,7 +63,7 @@ func TestAgentCard_NewDefault(t *testing.T) {
 
 	data, _ := json.Marshal(card)
 	var m map[string]string
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 	if m["protocol"] != "a2a" {
 		t.Error("序列化后 protocol 应为 a2a")
 	}
@@ -136,7 +136,7 @@ func TestFilePart_Marshal(t *testing.T) {
 	p := NewFilePartFromURI("https://example.com/file.pdf", "application/pdf")
 	data, _ := json.Marshal(p)
 	var decoded map[string]any
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 	if decoded["type"] != "file" {
 		t.Errorf("FilePart type 错误: %v", decoded["type"])
 	}
@@ -146,7 +146,7 @@ func TestDataPart_Marshal(t *testing.T) {
 	p := NewDataPart(json.RawMessage(`{"key":"value"}`))
 	data, _ := json.Marshal(p)
 	var decoded map[string]any
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 	if decoded["type"] != "data" {
 		t.Error("DataPart type 错误")
 	}
@@ -210,7 +210,7 @@ func TestArtifact_Fields(t *testing.T) {
 	}
 	data, _ := json.Marshal(a)
 	var decoded Artifact
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 	if decoded.ArtifactID != "art-001" {
 		t.Errorf("ArtifactID 不匹配: got %s", decoded.ArtifactID)
 	}
@@ -243,7 +243,7 @@ func TestSecurityScheme_Marshal(t *testing.T) {
 	ss := SecurityScheme{Scheme: AuthBearer, In: "header", Name: "Authorization"}
 	data, _ := json.Marshal(ss)
 	var decoded SecurityScheme
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 	if decoded.Scheme != AuthBearer {
 		t.Errorf("AuthType 不匹配: got %s", decoded.Scheme)
 	}
@@ -259,7 +259,7 @@ func TestAgentSkills_Marshal(t *testing.T) {
 	}
 	data, _ := json.Marshal(skill)
 	var decoded AgentSkill
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 	if decoded.ID != "skill-csv-parse" {
 		t.Errorf("Skill ID 不匹配: got %s", decoded.ID)
 	}

@@ -24,7 +24,7 @@ func TestTelemetryProvider_DefaultNoop(t *testing.T) {
 	}
 	span := tr.Start("test", agent.SpanKindInternal)
 	span.End()
-	tp.Shutdown()
+	_ = tp.Shutdown()
 }
 
 func TestTelemetryProvider_WithTraces(t *testing.T) {
@@ -41,7 +41,7 @@ func TestTelemetryProvider_WithTraces(t *testing.T) {
 	if lt.String() == "" {
 		t.Error("LoggingTracer should have output after span end")
 	}
-	tp.Shutdown()
+	_ = tp.Shutdown()
 }
 
 func TestTelemetryProvider_WithOTLPExport(t *testing.T) {
@@ -62,7 +62,7 @@ func TestTelemetryProvider_WithOTLPExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExportNow error: %v", err)
 	}
-	tp.Shutdown()
+	_ = tp.Shutdown()
 }
 
 func TestTelemetryProvider_ExportNow_NoExporter(t *testing.T) {
@@ -74,7 +74,7 @@ func TestTelemetryProvider_ExportNow_NoExporter(t *testing.T) {
 	if err == nil {
 		t.Error("should error when no exporter configured")
 	}
-	tp.Shutdown()
+	_ = tp.Shutdown()
 }
 
 func TestTelemetryProvider_BridgeEnabled(t *testing.T) {
@@ -82,5 +82,5 @@ func TestTelemetryProvider_BridgeEnabled(t *testing.T) {
 	if tp.BridgeEnabled() {
 		t.Error("BridgeEnabled should be false without -tags otel")
 	}
-	tp.Shutdown()
+	_ = tp.Shutdown()
 }

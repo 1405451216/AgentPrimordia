@@ -548,7 +548,7 @@ func (m *HandoffManager) GetProtocol() *HandoffProtocol {
 // buildHandoffPrompt 构建交接提示词
 func buildHandoffPrompt(ctx *HandoffContext) string {
 	parts := []string{
-		fmt.Sprintf("[交接通知] 来自上一阶段Agent的交接"),
+		"[交接通知] 来自上一阶段Agent的交接",
 		fmt.Sprintf("\n说明: %s", ctx.Message),
 		fmt.Sprintf("\n优先级: %d/%d", ctx.Priority, 10),
 		fmt.Sprintf("紧急程度: %s", ctx.Urgency),

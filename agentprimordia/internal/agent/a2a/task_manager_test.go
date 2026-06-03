@@ -42,7 +42,7 @@ func TestTaskManager_DuplicateCreate(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "dup-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
+	_, _ = tm.Create(task)
 
 	_, err := tm.Create(&Task{ID: "dup-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
 	if err == nil {
@@ -55,7 +55,7 @@ func TestTaskManager_StateTransition(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "task-002", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
+	_, _ = tm.Create(task)
 
 	if err := tm.Update("task-002", TaskWorking, nil); err != nil {
 		t.Fatalf("submitted→working 应成功: %v", err)
@@ -76,7 +76,7 @@ func TestTaskManager_InvalidTransition(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "task-003", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
+	_, _ = tm.Create(task)
 
 	err := tm.Update("task-003", TaskCompleted, nil)
 	if err == nil {
@@ -89,8 +89,8 @@ func TestTaskManager_TerminalStateNoTransition(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "task-004", State: TaskWorking, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
-	tm.Update("task-004", TaskCompleted, nil)
+	_, _ = tm.Create(task)
+	_ = tm.Update("task-004", TaskCompleted, nil)
 
 	err := tm.Update("task-004", TaskWorking, nil)
 	if err == nil {
@@ -103,7 +103,7 @@ func TestTaskManager_Cancel(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "task-005", State: TaskWorking, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
+	_, _ = tm.Create(task)
 
 	if err := tm.Cancel("task-005"); err != nil {
 		t.Fatalf("Cancel 失败: %v", err)
@@ -120,7 +120,7 @@ func TestTaskManager_AddArtifact(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "task-006", State: TaskWorking, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
+	_, _ = tm.Create(task)
 
 	artifact := Artifact{
 		ArtifactID: "art-001",
@@ -210,12 +210,12 @@ func TestTaskManager_SubscribeAndPublish(t *testing.T) {
 	defer tm.Cleanup()
 
 	task := &Task{ID: "task-sub-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}}
-	tm.Create(task)
+	_, _ = tm.Create(task)
 
 	ch := tm.Subscribe("task-sub-001")
 	defer tm.Unsubscribe("task-sub-001", ch)
 
-	tm.Update("task-sub-001", TaskWorking, nil)
+	_ = tm.Update("task-sub-001", TaskWorking, nil)
 
 	select {
 	case event := <-ch:
@@ -255,7 +255,7 @@ func TestTaskManager_ListWithFilter(t *testing.T) {
 
 	states := []TaskState{TaskSubmitted, TaskWorking, TaskCompleted, TaskFailed}
 	for i, s := range states {
-		tm.Create(&Task{ID: fmt.Sprintf("filter-%d", i), State: s, Message: &A2AMessage{Role: "user"}})
+		_, _ = tm.Create(&Task{ID: fmt.Sprintf("filter-%d", i), State: s, Message: &A2AMessage{Role: "user"}})
 		time.Sleep(time.Millisecond)
 	}
 
@@ -278,7 +278,7 @@ func TestTaskManager_ListWithFilter(t *testing.T) {
 func TestTaskManager_Cleanup(t *testing.T) {
 	tm := NewTaskManager()
 
-	tm.Create(&Task{ID: "cleanup-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "cleanup-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
 	tm.Cleanup()
 
 	list := tm.List(TaskFilter{})
@@ -304,7 +304,7 @@ func TestTaskManager_DeepCopyIsolation(t *testing.T) {
 			Parts: []Part{NewTextPart("original")},
 		},
 	}
-	tm.Create(original)
+	_, _ = tm.Create(original)
 
 	got, _ := tm.Get("copy-001")
 

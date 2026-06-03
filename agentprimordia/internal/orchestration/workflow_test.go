@@ -33,22 +33,22 @@ func TestWorkflow_LinearExecution(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "step1",
 		Name:  "步骤1-数据收集",
 		Type:  TaskNode,
 		Agent: step1Agent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "step2",
 		Name:  "步骤2-数据处理",
 		Type:  TaskNode,
 		Agent: step2Agent,
 	})
 
-	wf.AddTransition(&Transition{From: "step1", To: "step2"})
-	wf.SetStartNode("step1")
+	_ = wf.AddTransition(&Transition{From: "step1", To: "step2"})
+	_ = wf.SetStartNode("step1")
 
 	input := map[string]any{"data": "test_data"}
 	result, err := wf.Execute(input)
@@ -103,7 +103,7 @@ func TestWorkflow_ConditionalBranching(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "check",
 		Name:  "条件检查",
 		Type:  ConditionNode,
@@ -115,31 +115,31 @@ func TestWorkflow_ConditionalBranching(t *testing.T) {
 		},
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "branchA",
 		Name:  "分支A",
 		Type:  TaskNode,
 		Agent: branchAAgent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "branchB",
 		Name:  "分支B",
 		Type:  TaskNode,
 		Agent: branchBAgent,
 	})
 
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{
 		From:      "check",
 		To:        "branchA",
 		Condition: &TransitionCondition{Type: "condition", Field: "condition_result", Operator: "==", Value: true},
 	})
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{
 		From:      "check",
 		To:        "branchB",
 		Condition: &TransitionCondition{Type: "condition", Field: "condition_result", Operator: "!=", Value: true},
 	})
-	wf.SetStartNode("check")
+	_ = wf.SetStartNode("check")
 
 	input := map[string]any{"should_branch_a": true}
 	result, err := wf.Execute(input)
@@ -170,7 +170,7 @@ func TestWorkflow_LoopExecution(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "loop_task",
 		Name:  "循环任务",
 		Type:  TaskNode,
@@ -180,7 +180,7 @@ func TestWorkflow_LoopExecution(t *testing.T) {
 		},
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:   "loop_end",
 		Name: "循环结束检查",
 		Type: LoopEndNode,
@@ -191,9 +191,9 @@ func TestWorkflow_LoopExecution(t *testing.T) {
 		},
 	})
 
-	wf.AddTransition(&Transition{From: "loop_task", To: "loop_end"})
-	wf.AddTransition(&Transition{From: "loop_end", To: "loop_task"})
-	wf.SetStartNode("loop_task")
+	_ = wf.AddTransition(&Transition{From: "loop_task", To: "loop_end"})
+	_ = wf.AddTransition(&Transition{From: "loop_end", To: "loop_task"})
+	_ = wf.SetStartNode("loop_task")
 
 	input := map[string]any{"data": "test_data"}
 	result, err := wf.Execute(input)
@@ -237,38 +237,38 @@ func TestWorkflow_ParallelForkJoin(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:   "fork",
 		Name: "并行分发",
 		Type: ParallelNode,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "task1",
 		Name:  "任务1",
 		Type:  TaskNode,
 		Agent: task1Agent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "task2",
 		Name:  "任务2",
 		Type:  TaskNode,
 		Agent: task2Agent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "merge",
 		Name:  "结果合并",
 		Type:  TaskNode,
 		Agent: mergeAgent,
 	})
 
-	wf.AddTransition(&Transition{From: "fork", To: "task1"})
-	wf.AddTransition(&Transition{From: "fork", To: "task2"})
-	wf.AddTransition(&Transition{From: "task1", To: "merge"})
-	wf.AddTransition(&Transition{From: "task2", To: "merge"})
-	wf.SetStartNode("fork")
+	_ = wf.AddTransition(&Transition{From: "fork", To: "task1"})
+	_ = wf.AddTransition(&Transition{From: "fork", To: "task2"})
+	_ = wf.AddTransition(&Transition{From: "task1", To: "merge"})
+	_ = wf.AddTransition(&Transition{From: "task2", To: "merge"})
+	_ = wf.SetStartNode("fork")
 
 	input := map[string]any{"parallel_data": "test"}
 	result, err := wf.Execute(input)
@@ -316,7 +316,7 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 		},
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:   "failing_step",
 		Name: "可能失败的步骤",
 		Type: TaskNode,
@@ -328,7 +328,7 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 		}),
 	})
 
-	wf.SetStartNode("failing_step")
+	_ = wf.SetStartNode("failing_step")
 
 	result, err := wf.Execute(map[string]any{})
 	if err != nil && attemptCount < 3 {
@@ -369,22 +369,22 @@ func TestWorkflow_ErrorHandling_Fallback(t *testing.T) {
 		},
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "main",
 		Name:  "主节点",
 		Type:  TaskNode,
 		Agent: mainAgent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "fallback_node",
 		Name:  "回退节点",
 		Type:  FallbackNode,
 		Agent: fallbackAgent,
 	})
 
-	wf.AddTransition(&Transition{From: "main", To: "fallback_node"})
-	wf.SetStartNode("main")
+	_ = wf.AddTransition(&Transition{From: "main", To: "fallback_node"})
+	_ = wf.SetStartNode("main")
 
 	result, err := wf.Execute(map[string]any{})
 	if err != nil {
@@ -434,38 +434,38 @@ func TestWorkflow_StateMachine(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "initial",
 		Name:  "初始状态",
 		Type:  TaskNode,
 		Agent: state1Agent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "processing",
 		Name:  "处理状态",
 		Type:  TaskNode,
 		Agent: state2Agent,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "completed",
 		Name:  "完成状态",
 		Type:  TaskNode,
 		Agent: state3Agent,
 	})
 
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{
 		From:      "initial",
 		To:        "processing",
 		Condition: &TransitionCondition{Field: "next_state", Operator: "==", Value: "processing"},
 	})
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{
 		From:      "processing",
 		To:        "completed",
 		Condition: &TransitionCondition{Field: "next_state", Operator: "==", Value: "completed"},
 	})
-	wf.SetStartNode("initial")
+	_ = wf.SetStartNode("initial")
 
 	input := map[string]any{"action": "start"}
 	result, err := wf.Execute(input)
@@ -499,7 +499,7 @@ func TestWorkflow_VariablesAndMapping(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "process",
 		Name:  "数据处理",
 		Type:  TaskNode,
@@ -513,7 +513,7 @@ func TestWorkflow_VariablesAndMapping(t *testing.T) {
 		},
 	})
 
-	wf.SetStartNode("process")
+	_ = wf.SetStartNode("process")
 
 	wf.SetVariable("predefined_var", "hello")
 	input := map[string]any{"input_data": "raw_test_data"}
@@ -548,14 +548,14 @@ func TestWorkflow_PauseResumeCancel(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "task1",
 		Name:  "任务1",
 		Type:  TaskNode,
 		Agent: simpleAgent,
 	})
 
-	wf.SetStartNode("task1")
+	_ = wf.SetStartNode("task1")
 
 	initialStatus := wf.GetStatus()
 	if initialStatus != WfStatusPending {
@@ -609,7 +609,7 @@ func TestWorkflow_MetricsCollection(t *testing.T) {
 			nodeType = ConditionNode
 		}
 
-		wf.AddNode(&WorkflowNode{
+		_ = wf.AddNode(&WorkflowNode{
 			ID:    nodeID,
 			Name:  fmt.Sprintf("节点%d", i),
 			Type:  nodeType,
@@ -618,11 +618,11 @@ func TestWorkflow_MetricsCollection(t *testing.T) {
 
 		if i > 0 {
 			prevNodeID := fmt.Sprintf("node_%d", i-1)
-			wf.AddTransition(&Transition{From: prevNodeID, To: nodeID})
+			_ = wf.AddTransition(&Transition{From: prevNodeID, To: nodeID})
 		}
 	}
 
-	wf.SetStartNode("node_0")
+	_ = wf.SetStartNode("node_0")
 
 	result, err := wf.Execute(map[string]any{"metrics_test": true})
 	if err != nil {
@@ -661,7 +661,7 @@ func TestWorkflow_ExportImport(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "export_step",
 		Name:  "导出步骤",
 		Type:  TaskNode,
@@ -672,7 +672,7 @@ func TestWorkflow_ExportImport(t *testing.T) {
 		},
 	})
 
-	wf.SetStartNode("export_step")
+	_ = wf.SetStartNode("export_step")
 
 	input := map[string]any{"export_key": "export_value"}
 	_, err := wf.Execute(input)
@@ -713,14 +713,14 @@ func TestWorkflow_EventSystem(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	wf.AddNode(&WorkflowNode{
+	_ = wf.AddNode(&WorkflowNode{
 		ID:    "event_step",
 		Name:  "事件步骤",
 		Type:  TaskNode,
 		Agent: eventAgent,
 	})
 
-	wf.SetStartNode("event_step")
+	_ = wf.SetStartNode("event_step")
 
 	var collectedEvents []*WorkflowEvent
 	done := make(chan struct{})
@@ -806,15 +806,4 @@ func (a *alwaysFailAgent) Embeddings(ctx context.Context, texts []string) ([][]f
 
 func (a *alwaysFailAgent) Info() llm.ModelInfo {
 	return llm.ModelInfo{}
-}
-
-func workflowStringsJoin(parts []string, sep string) string {
-	if len(parts) == 0 {
-		return ""
-	}
-	result := parts[0]
-	for i := 1; i < len(parts); i++ {
-		result += sep + parts[i]
-	}
-	return result
 }

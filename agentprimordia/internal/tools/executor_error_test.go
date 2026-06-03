@@ -48,7 +48,7 @@ func TestExecutor_Execute_UnknownTool(t *testing.T) {
 
 func TestExecutor_Execute_InvalidArgs(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", description: "Echo", response: "ok"})
+	_ = reg.Register(&mockTool{name: "echo", description: "Echo", response: "ok"})
 
 	executor := NewExecutor(reg)
 
@@ -70,7 +70,7 @@ func TestExecutor_Execute_InvalidArgs(t *testing.T) {
 
 func TestExecutor_Execute_ToolError(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&errorTool{name: "fail_tool"})
+	_ = reg.Register(&errorTool{name: "fail_tool"})
 
 	executor := NewExecutor(reg)
 
@@ -93,7 +93,7 @@ func TestExecutor_Execute_ToolError(t *testing.T) {
 
 func TestExecutor_Execute_ContextCancelled(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "slow", response: "ok", delay: 5 * time.Second})
+	_ = reg.Register(&mockTool{name: "slow", response: "ok", delay: 5 * time.Second})
 
 	executor := NewExecutor(reg).WithTimeout(100 * time.Millisecond)
 
@@ -130,7 +130,7 @@ func (n *nilResultTool) Execute(ctx context.Context, args json.RawMessage) (*Res
 
 func TestExecutor_Execute_ToolReturnsNilResultWithError(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&nilResultTool{})
+	_ = reg.Register(&nilResultTool{})
 
 	executor := NewExecutor(reg)
 	result, err := executor.Execute(context.Background(), &FunctionCall{
@@ -165,7 +165,7 @@ func TestExecutor_ExecuteBatch_Empty(t *testing.T) {
 
 func TestExecutor_ExecuteBatch_WithNilCall(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", response: "ok"})
+	_ = reg.Register(&mockTool{name: "echo", response: "ok"})
 
 	executor := NewExecutor(reg)
 
@@ -184,7 +184,7 @@ func TestExecutor_ExecuteBatch_WithNilCall(t *testing.T) {
 
 func TestExecutor_ExecuteBatch_Success(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", response: "ok"})
+	_ = reg.Register(&mockTool{name: "echo", response: "ok"})
 
 	executor := NewExecutor(reg)
 
@@ -208,7 +208,7 @@ func TestExecutor_ExecuteBatch_Success(t *testing.T) {
 
 func TestExecutor_Execute_MetadataSet(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", response: "ok"})
+	_ = reg.Register(&mockTool{name: "echo", response: "ok"})
 
 	executor := NewExecutor(reg)
 	result, err := executor.Execute(context.Background(), &FunctionCall{
@@ -256,7 +256,7 @@ func TestExtractPathFromArgs(t *testing.T) {
 
 func TestExecutor_Execute_ScopeDenied_NoPath(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", response: "ok"})
+	_ = reg.Register(&mockTool{name: "echo", response: "ok"})
 
 	policy := NewFileScopePolicy()
 	policy.SetScope("agent-1", []string{"/src/"})
@@ -280,13 +280,13 @@ func TestExecutor_Execute_ScopeDenied_NoPath(t *testing.T) {
 
 func TestExecutor_Execute_RequireConfirmation_Logging(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "confirm_tool", response: "ok"})
+	_ = reg.Register(&mockTool{name: "confirm_tool", response: "ok"})
 
 	perm := Permission{
 		RequireConfirmation: true,
 		ConfirmFunc:         func(toolName string, args json.RawMessage) bool { return true },
 	}
-	reg.SetPermission("confirm_tool", perm)
+	_ = reg.SetPermission("confirm_tool", perm)
 
 	executor := NewExecutor(reg)
 	result, err := executor.Execute(context.Background(), &FunctionCall{

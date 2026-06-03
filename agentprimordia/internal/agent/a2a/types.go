@@ -228,23 +228,23 @@ func (m *A2AMessage) UnmarshalJSON(data []byte) error {
 		var typeHint struct {
 			TypeName string `json:"type"`
 		}
-		json.Unmarshal(rp, &typeHint)
+		_ = json.Unmarshal(rp, &typeHint)
 		switch typeHint.TypeName {
 		case "text":
 			var p TextPart
-			json.Unmarshal(rp, &p)
+			_ = json.Unmarshal(rp, &p)
 			m.Parts[i] = p
 		case "file":
 			var p FilePart
-			json.Unmarshal(rp, &p)
+			_ = json.Unmarshal(rp, &p)
 			m.Parts[i] = p
 		case "data":
 			var p DataPart
-			json.Unmarshal(rp, &p)
+			_ = json.Unmarshal(rp, &p)
 			m.Parts[i] = p
 		default:
 			var p TextPart
-			json.Unmarshal(rp, &p)
+			_ = json.Unmarshal(rp, &p)
 			m.Parts[i] = p
 		}
 	}
@@ -283,6 +283,6 @@ func (b *stringsBuilder) String() string { return string(b.data) }
 
 func generateID(prefix string) string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return fmt.Sprintf("%s-%s", prefix, hex.EncodeToString(b))
 }

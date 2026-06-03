@@ -10,7 +10,7 @@ import (
 
 func TestExecutor_WithScopePolicy_Allowed(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&scopeTestTool{name: "allowed_tool"})
+	_ = reg.Register(&scopeTestTool{name: "allowed_tool"})
 
 	policy := NewFileScopePolicy()
 	policy.SetScope("agent-1", []string{"/src/"})
@@ -33,7 +33,7 @@ func TestExecutor_WithScopePolicy_Allowed(t *testing.T) {
 
 func TestExecutor_WithScopePolicy_Denied(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&scopeTestTool{name: "denied_tool"})
+	_ = reg.Register(&scopeTestTool{name: "denied_tool"})
 
 	policy := NewFileScopePolicy()
 	policy.SetScope("agent-1", []string{"/src/"})
@@ -56,7 +56,7 @@ func TestExecutor_WithScopePolicy_Denied(t *testing.T) {
 
 func TestExecutor_WithScopePolicy_Nil(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&scopeTestTool{name: "no_policy_tool"})
+	_ = reg.Register(&scopeTestTool{name: "no_policy_tool"})
 
 	exec := NewExecutor(reg)
 
@@ -76,7 +76,7 @@ func TestExecutor_WithScopePolicy_Nil(t *testing.T) {
 
 func TestExecutor_WithFileLock(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&scopeTestTool{name: "lock_tool"})
+	_ = reg.Register(&scopeTestTool{name: "lock_tool"})
 
 	fl := concurrency.NewFileLockManager()
 

@@ -55,8 +55,8 @@ func TestCostTracker_RecordMultiple(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, nil)
 
-	tracker.Record("model-a", "s1", "a1", llm.Usage{PromptTokens: 2000, CompletionTokens: 1000, TotalTokens: 3000})
-	tracker.Record("model-b", "s1", "a1", llm.Usage{PromptTokens: 500, CompletionTokens: 200, TotalTokens: 700})
+	_ = tracker.Record("model-a", "s1", "a1", llm.Usage{PromptTokens: 2000, CompletionTokens: 1000, TotalTokens: 3000})
+	_ = tracker.Record("model-b", "s1", "a1", llm.Usage{PromptTokens: 500, CompletionTokens: 200, TotalTokens: 700})
 
 	summary := tracker.Summary()
 	if summary.CallCount != 2 {
@@ -92,8 +92,8 @@ func TestCostTracker_Summary(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, nil)
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 200, CompletionTokens: 100, TotalTokens: 300})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 200, CompletionTokens: 100, TotalTokens: 300})
 
 	summary := tracker.Summary()
 	if summary.CallCount != 2 {
@@ -120,7 +120,7 @@ func TestCostTracker_BudgetExceed(t *testing.T) {
 		t.Error("CheckBudget should be false before any calls")
 	}
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 1000, CompletionTokens: 500, TotalTokens: 1500})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 1000, CompletionTokens: 500, TotalTokens: 1500})
 
 	if !tracker.CheckBudget() {
 		t.Error("CheckBudget should be true after exceeding budget")
@@ -136,7 +136,7 @@ func TestCostTracker_BudgetNotExceed(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, budget)
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
 
 	if tracker.CheckBudget() {
 		t.Error("CheckBudget should be false when within budget")
@@ -157,7 +157,7 @@ func TestCostTracker_BudgetCallback(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, budget)
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 1000, CompletionTokens: 500, TotalTokens: 1500})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 1000, CompletionTokens: 500, TotalTokens: 1500})
 
 	if callbackSummary == nil {
 		t.Error("OnBudgetExceed callback should have been called")
@@ -173,7 +173,7 @@ func TestCostTracker_Reset(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, nil)
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
 	tracker.Reset()
 
 	summary := tracker.Summary()
@@ -196,7 +196,7 @@ func TestCostTracker_ConcurrentRecord(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15})
+			_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15})
 		}()
 	}
 	wg.Wait()
@@ -259,7 +259,7 @@ func TestBudgetConfig_NilBudget(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, nil)
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100000, CompletionTokens: 50000, TotalTokens: 150000})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100000, CompletionTokens: 50000, TotalTokens: 150000})
 
 	if tracker.CheckBudget() {
 		t.Error("CheckBudget should always be false when no budget config")
@@ -275,12 +275,12 @@ func TestCostTracker_TokenBudget(t *testing.T) {
 	}
 	tracker := NewCostTracker(pricing, budget)
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
 	if tracker.CheckBudget() {
 		t.Error("should not exceed token budget yet")
 	}
 
-	tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
+	_ = tracker.Record("test-model", "s1", "a1", llm.Usage{PromptTokens: 100, CompletionTokens: 50, TotalTokens: 150})
 	if !tracker.CheckBudget() {
 		t.Error("should exceed token budget now (300 > 200)")
 	}

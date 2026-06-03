@@ -222,7 +222,7 @@ func TestGeminiCompleteMultimodal_WithMockServer(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -266,7 +266,7 @@ func TestGeminiCompleteMultimodal_APIError(t *testing.T) {
 				"status":  "INVALID_ARGUMENT",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -308,7 +308,7 @@ func TestGeminiResolveMaxTokens_FromRequest(t *testing.T) {
 func TestGeminiComplete_BackwardCompatible(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 
 		contents := body["contents"].([]any)
 		firstContent := contents[0].(map[string]any)
@@ -326,7 +326,7 @@ func TestGeminiComplete_BackwardCompatible(t *testing.T) {
 			},
 			"usageMetadata": map[string]int{"totalTokenCount": 15},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

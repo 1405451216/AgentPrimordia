@@ -14,9 +14,9 @@ func setupTestServer(responseBody string) (*httptest.Server, *map[string]any) {
 	captured := &map[string]any{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		json.Unmarshal(body, captured)
+		_ = json.Unmarshal(body, captured)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(responseBody))
+		_, _ = w.Write([]byte(responseBody))
 	}))
 	return srv, captured
 }
@@ -310,7 +310,7 @@ func TestOpenAIProvider_ResponseFormat_JSONObject(t *testing.T) {
 func TestOpenAIProvider_ResponseFormat_Stream(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		w.Write([]byte("data: {\"id\":\"test\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"{}\"}}]}\n\ndata: [DONE]\n\n"))
+		_, _ = w.Write([]byte("data: {\"id\":\"test\",\"object\":\"chat.completion.chunk\",\"choices\":[{\"delta\":{\"content\":\"{}\"}}]}\n\ndata: [DONE]\n\n"))
 	}))
 	defer srv.Close()
 
@@ -335,7 +335,7 @@ func TestOllamaProvider_ResponseFormat_Stream(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		var req map[string]any
-		json.Unmarshal(body, &req)
+		_ = json.Unmarshal(body, &req)
 
 		if req["stream"] != true {
 			t.Errorf("stream should be true")
@@ -349,7 +349,7 @@ func TestOllamaProvider_ResponseFormat_Stream(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("{\"model\":\"test\",\"message\":{\"content\":\"{}\",\"role\":\"assistant\"},\"done\":true}\n"))
+		_, _ = w.Write([]byte("{\"model\":\"test\",\"message\":{\"content\":\"{}\",\"role\":\"assistant\"},\"done\":true}\n"))
 	}))
 	defer srv.Close()
 

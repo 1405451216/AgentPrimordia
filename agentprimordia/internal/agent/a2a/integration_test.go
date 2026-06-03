@@ -19,15 +19,15 @@ type processingTaskHandler struct {
 func (h *processingTaskHandler) HandleTask(taskID string, message *A2AMessage) error {
 	go func() {
 		time.Sleep(10 * time.Millisecond)
-		h.tm.Update(taskID, TaskWorking, nil)
+		_ = h.tm.Update(taskID, TaskWorking, nil)
 		time.Sleep(10 * time.Millisecond)
-		h.tm.AddArtifact(taskID, Artifact{
+		_ = h.tm.AddArtifact(taskID, Artifact{
 			ArtifactID: "result-001",
 			MimeType:   "text/plain",
 			URI:        "https://example.com/result.txt",
 			CreatedAt:  time.Now(),
 		})
-		h.tm.Update(taskID, TaskCompleted, &TaskStatus{State: TaskCompleted})
+		_ = h.tm.Update(taskID, TaskCompleted, &TaskStatus{State: TaskCompleted})
 	}()
 	return nil
 }
@@ -96,8 +96,8 @@ func TestIntegration_MultiAgentDiscovery(t *testing.T) {
 	agent2Card.Description = "报告撰写Agent"
 	agent2Card.Capabilities.OutputModes = []string{"text", "application/docx"}
 
-	disc.Register(agent1Card)
-	disc.Register(agent2Card)
+	_ = disc.Register(agent1Card)
+	_ = disc.Register(agent2Card)
 
 	agents := disc.List()
 	if len(agents) != 2 {
@@ -261,7 +261,7 @@ func TestIntegration_DiscoveryWatchAndConnect(t *testing.T) {
 
 	card := NewAgentCard("watch-agent", "WatchAgent")
 	card.Endpoints = AgentEndpoints{BaseURL: "http://localhost:8080/"}
-	disc.Register(card)
+	_ = disc.Register(card)
 
 	select {
 	case event := <-watchCh:
@@ -304,7 +304,7 @@ func TestIntegration_CancelPreventsCompletion(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "cancel-prevent-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "cancel-prevent-001", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	httpServer := httptest.NewServer(server.Handler())

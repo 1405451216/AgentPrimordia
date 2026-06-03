@@ -33,7 +33,7 @@ func TestRegistry_DuplicateRegister(t *testing.T) {
 func TestRegistry_Unregister_NotSupported(t *testing.T) {
 	// Registry 当前没有 Unregister 方法，此测试验证行为一致性
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "keep", response: "ok"})
+	_ = reg.Register(&mockTool{name: "keep", response: "ok"})
 
 	if reg.Count() != 1 {
 		t.Errorf("expected 1 tool, got %d", reg.Count())
@@ -115,7 +115,7 @@ func TestRegistry_GetPermission_NonExistent(t *testing.T) {
 
 func TestRegistry_GetPermission_DefaultPermission(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "tool_with_perm", response: "ok"})
+	_ = reg.Register(&mockTool{name: "tool_with_perm", response: "ok"})
 
 	perm, exists := reg.GetPermission("tool_with_perm")
 	if !exists {
@@ -131,7 +131,7 @@ func TestRegistry_GetPermission_DefaultPermission(t *testing.T) {
 
 func TestRegistry_Definitions_NilParameters(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "nil_params", description: "No params", params: nil, response: "ok"})
+	_ = reg.Register(&mockTool{name: "nil_params", description: "No params", params: nil, response: "ok"})
 
 	defs := reg.Definitions()
 	if len(defs) != 1 {
@@ -149,7 +149,7 @@ func TestRegistry_Definitions_NilParameters(t *testing.T) {
 
 func TestRegistry_Definitions_WithParameters(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{
+	_ = reg.Register(&mockTool{
 		name:        "param_tool",
 		description: "Has params",
 		params:      json.RawMessage(`{"type":"object","properties":{"x":{"type":"number"}}}`),
@@ -182,7 +182,7 @@ func TestRegistry_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		go func(idx int) {
 			name := string(rune('a' + idx%26))
-			reg.Register(&mockTool{name: name, response: "ok"})
+			_ = reg.Register(&mockTool{name: name, response: "ok"})
 			done <- true
 		}(i)
 	}

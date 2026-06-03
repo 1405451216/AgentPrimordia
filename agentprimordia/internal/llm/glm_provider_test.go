@@ -182,7 +182,7 @@ func TestCompleteMultimodal_GLM_WithMockServer(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -229,7 +229,7 @@ func TestCompleteMultimodal_GLM_APIError(t *testing.T) {
 				"code":    "invalid_api_key",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -271,7 +271,7 @@ func TestResolveMaxTokens_GLM_FromRequest(t *testing.T) {
 func TestComplete_GLM_BackwardCompatible(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 
 		messages := body["messages"].([]any)
 		firstMsg := messages[0].(map[string]any)
@@ -287,7 +287,7 @@ func TestComplete_GLM_BackwardCompatible(t *testing.T) {
 			},
 			"usage": map[string]int{"total_tokens": 18},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

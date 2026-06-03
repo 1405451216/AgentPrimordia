@@ -701,9 +701,7 @@ func (o *Orchestrator) buildDependencyGraph() map[string][]string {
 
 	// 从 InputFrom 构建
 	for _, step := range o.steps {
-		for _, inputFrom := range step.InputFrom {
-			deps[step.ID] = append(deps[step.ID], inputFrom)
-		}
+		deps[step.ID] = append(deps[step.ID], step.InputFrom...)
 	}
 
 	return deps

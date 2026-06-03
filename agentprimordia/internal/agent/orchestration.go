@@ -86,14 +86,14 @@ func (p *Pipeline) Run(ctx context.Context, initialInput string) (*PipelineResul
 		p.logger.Info("Pipeline 步骤开始", "step", step.Name, "index", i)
 
 		if p.hooks != nil {
-			p.hooks.Fire(ctx, &HookContext{Point: HookBeforePipelineStep, Metadata: map[string]any{"step": step.Name, "index": i}})
+			_ = p.hooks.Fire(ctx, &HookContext{Point: HookBeforePipelineStep, Metadata: map[string]any{"step": step.Name, "index": i}})
 		}
 
 		resp, err := step.Agent.Run(ctx, UserMessage(input))
 		stepDuration := time.Since(stepStart)
 
 		if p.hooks != nil {
-			p.hooks.Fire(ctx, &HookContext{Point: HookAfterPipelineStep, Metadata: map[string]any{"step": step.Name, "index": i}})
+			_ = p.hooks.Fire(ctx, &HookContext{Point: HookAfterPipelineStep, Metadata: map[string]any{"step": step.Name, "index": i}})
 		}
 
 		sr := StepResult{
@@ -187,7 +187,7 @@ func (h *Handoff) Run(ctx context.Context, input string) (*HandoffResult, error)
 		h.logger.Info("Handoff 执行", "agent", agent.Name(), "handoff", i)
 
 		if h.hooks != nil {
-			h.hooks.Fire(ctx, &HookContext{Point: HookBeforeHandoff, Metadata: map[string]any{"agent": agent.Name(), "handoff": i}})
+			_ = h.hooks.Fire(ctx, &HookContext{Point: HookBeforeHandoff, Metadata: map[string]any{"agent": agent.Name(), "handoff": i}})
 		}
 
 		resp, err := agent.Run(ctx, UserMessage(currentInput))
@@ -198,7 +198,7 @@ func (h *Handoff) Run(ctx context.Context, input string) (*HandoffResult, error)
 		currentInput = resp.Content
 
 		if h.hooks != nil {
-			h.hooks.Fire(ctx, &HookContext{Point: HookAfterHandoff, Metadata: map[string]any{"agent": agent.Name(), "handoff": i}})
+			_ = h.hooks.Fire(ctx, &HookContext{Point: HookAfterHandoff, Metadata: map[string]any{"agent": agent.Name(), "handoff": i}})
 		}
 
 		// 检查是否需要继续交接（如果路由函数认为还需要处理）
@@ -252,7 +252,7 @@ func ParallelRun(ctx context.Context, agents []Agent, input string, hooks Hooks)
 			defer wg.Done()
 
 			if hooks != nil {
-				hooks.Fire(ctx, &HookContext{Point: HookBeforeParallelAgent, AgentID: agent.Name(), Metadata: map[string]any{"index": idx}})
+				_ = hooks.Fire(ctx, &HookContext{Point: HookBeforeParallelAgent, AgentID: agent.Name(), Metadata: map[string]any{"index": idx}})
 			}
 
 			agentStart := time.Now()
@@ -260,7 +260,7 @@ func ParallelRun(ctx context.Context, agents []Agent, input string, hooks Hooks)
 			duration := time.Since(agentStart)
 
 			if hooks != nil {
-				hooks.Fire(ctx, &HookContext{Point: HookAfterParallelAgent, AgentID: agent.Name(), Metadata: map[string]any{"index": idx}})
+				_ = hooks.Fire(ctx, &HookContext{Point: HookAfterParallelAgent, AgentID: agent.Name(), Metadata: map[string]any{"index": idx}})
 			}
 
 			mu.Lock()

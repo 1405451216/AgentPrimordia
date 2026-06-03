@@ -126,7 +126,7 @@ func TestPool_CancelTask(t *testing.T) {
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		pool.Cancel("cancel-me")
+		_ = pool.Cancel("cancel-me")
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -232,7 +232,7 @@ func TestPool_Stats(t *testing.T) {
 		{ID: "stat-1", Title: "Stat Task", Prompt: "Stat me"},
 	}
 
-	pool.Dispatch(context.Background(), tasks)
+	_, _ = pool.Dispatch(context.Background(), tasks)
 
 	stats = pool.Stats()
 	if stats.TotalTasks != 1 {
@@ -272,7 +272,7 @@ func TestPool_EventChannel(t *testing.T) {
 		{ID: "event-task", Title: "Event Task", Prompt: "Emit events"},
 	}
 
-	pool.Dispatch(context.Background(), tasks)
+	_, _ = pool.Dispatch(context.Background(), tasks)
 
 	select {
 	case <-done:

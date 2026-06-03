@@ -25,7 +25,7 @@ func mcpHandler(responses map[string]any) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(MCPResponse{
+		_ = json.NewEncoder(w).Encode(MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Result:  resp,
@@ -81,7 +81,7 @@ func TestMCPClient_Initialize_Success(t *testing.T) {
 func TestMCPClient_Initialize_ServerError(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("internal server error"))
+		_, _ = w.Write([]byte("internal server error"))
 	}))
 	defer ts.Close()
 
@@ -126,10 +126,10 @@ func TestMCPClient_CallTool_Success(t *testing.T) {
 func TestMCPClient_CallTool_Error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req MCPRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(MCPResponse{
+		_ = json.NewEncoder(w).Encode(MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Error: &MCPError{
@@ -319,10 +319,10 @@ func TestMCPToolAdapter_Execute_InvalidArgs(t *testing.T) {
 func TestMCPToolAdapter_Execute_Error(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req MCPRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(MCPResponse{
+		_ = json.NewEncoder(w).Encode(MCPResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
 			Error: &MCPError{
@@ -554,7 +554,7 @@ func TestMCPServer_Initialize(t *testing.T) {
 	}
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error.Message)
 	}
@@ -574,8 +574,8 @@ func TestMCPServer_Initialize(t *testing.T) {
 
 func TestMCPServer_ToolsList(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "tool_a", description: "Tool A"})
-	reg.Register(&mockTool{name: "tool_b", description: "Tool B"})
+	_ = reg.Register(&mockTool{name: "tool_a", description: "Tool A"})
+	_ = reg.Register(&mockTool{name: "tool_b", description: "Tool B"})
 
 	server := NewMCPServer(MCPServerConfig{Name: "test-server", Version: "1.0.0"}, reg)
 
@@ -587,7 +587,7 @@ func TestMCPServer_ToolsList(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 
 	result, ok := resp.Result.(map[string]any)
 	if !ok {
@@ -604,7 +604,7 @@ func TestMCPServer_ToolsList(t *testing.T) {
 
 func TestMCPServer_ToolsCall(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", description: "Echo tool"})
+	_ = reg.Register(&mockTool{name: "echo", description: "Echo tool"})
 
 	server := NewMCPServer(MCPServerConfig{Name: "test-server", Version: "1.0.0"}, reg)
 
@@ -616,7 +616,7 @@ func TestMCPServer_ToolsCall(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error.Message)
 	}
@@ -634,7 +634,7 @@ func TestMCPServer_ToolsCall_NotFound(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error == nil {
 		t.Error("expected error for unknown tool")
 	}
@@ -658,7 +658,7 @@ func TestMCPServer_ResourcesList(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 
 	result, ok := resp.Result.(map[string]any)
 	if !ok {
@@ -692,7 +692,7 @@ func TestMCPServer_ResourcesRead(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error.Message)
 	}
@@ -722,7 +722,7 @@ func TestMCPServer_ResourcesRead_NoHandler(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error == nil {
 		t.Error("expected error when no resource handler")
 	}
@@ -747,7 +747,7 @@ func TestMCPServer_PromptsList(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 
 	result, ok := resp.Result.(map[string]any)
 	if !ok {
@@ -786,7 +786,7 @@ func TestMCPServer_PromptsGet(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error.Message)
 	}
@@ -816,7 +816,7 @@ func TestMCPServer_Ping(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error != nil {
 		t.Fatalf("unexpected error: %v", resp.Error.Message)
 	}
@@ -834,7 +834,7 @@ func TestMCPServer_MethodNotFound(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error == nil {
 		t.Error("expected error for unknown method")
 	}
@@ -854,7 +854,7 @@ func TestMCPServer_InvalidJSON(t *testing.T) {
 	server.ServeHTTP(rec, req)
 
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.Error == nil {
 		t.Error("expected error for invalid JSON")
 	}

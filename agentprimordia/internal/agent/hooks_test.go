@@ -44,7 +44,7 @@ func TestHookManager_PriorityOrdering(t *testing.T) {
 		return nil
 	}, 0)
 
-	m.Fire(context.Background(), &HookContext{Point: HookAfterTurn})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookAfterTurn})
 
 	if len(order) != 3 || order[0] != 1 || order[1] != 2 || order[2] != 3 {
 		t.Errorf("优先级顺序错误，得到 %v", order)
@@ -66,7 +66,7 @@ func TestHookManager_ConditionalExecution(t *testing.T) {
 		return nil
 	}, 5, Always, "always-hook")
 
-	m.Fire(context.Background(), &HookContext{Point: HookAfterTurn, Turn: 2})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookAfterTurn, Turn: 2})
 	if turn3Called {
 		t.Error("turn=3 条件钩子不应在 turn=2 时触发")
 	}
@@ -92,7 +92,7 @@ func TestHookManager_OnTurnsGreaterCondition(t *testing.T) {
 	}, 0, OnTurnsGreater(5), "")
 
 	for i := 1; i <= 7; i++ {
-		m.Fire(context.Background(), &HookContext{Point: HookAfterTurn, Turn: i})
+		_ = m.Fire(context.Background(), &HookContext{Point: HookAfterTurn, Turn: i})
 	}
 
 	if atomic.LoadInt32(&called) != 2 {
@@ -112,13 +112,13 @@ func TestHookManager_OnErrorCondition(t *testing.T) {
 		return nil
 	}, 0, OnError(), "")
 
-	m.Fire(context.Background(), &HookContext{Point: HookOnError})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookOnError})
 	if errorHookCalled {
 		t.Error("无错误时 OnError 条件钩子不应触发")
 	}
 
 	testErr := errors.New("test error")
-	m.Fire(context.Background(), &HookContext{Point: HookOnError, Error: testErr})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookOnError, Error: testErr})
 	if !errorHookCalled {
 		t.Error("有错误时 OnError 条件钩子应触发")
 	}
@@ -136,7 +136,7 @@ func TestHookManager_StateTransitionCondition(t *testing.T) {
 		return nil
 	}, 0, OnStateTransition("running", "completed"), "")
 
-	m.Fire(context.Background(), &HookContext{
+	_ = m.Fire(context.Background(), &HookContext{
 		Point:    HookOnStateChange,
 		OldState: "idle",
 		NewState: "running",
@@ -145,7 +145,7 @@ func TestHookManager_StateTransitionCondition(t *testing.T) {
 		t.Error("idle->running 不应匹配 running->completed 条件")
 	}
 
-	m.Fire(context.Background(), &HookContext{
+	_ = m.Fire(context.Background(), &HookContext{
 		Point:    HookOnStateChange,
 		OldState: "running",
 		NewState: "completed",
@@ -169,7 +169,7 @@ func TestHookManager_RemoveByID(t *testing.T) {
 		return nil
 	}, 0, Always, "hook-b")
 
-	m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
 	if atomic.LoadInt32(&called) != 2 {
 		t.Errorf("移除前应有 2 个钩子，实际调用 %d", called)
 	}
@@ -177,7 +177,7 @@ func TestHookManager_RemoveByID(t *testing.T) {
 	m.RemoveByID("hook-a")
 
 	atomic.StoreInt32(&called, 0)
-	m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
 	if atomic.LoadInt32(&called) != 1 {
 		t.Errorf("移除后应有 1 个钩子，实际调用 %d", called)
 	}
@@ -189,9 +189,9 @@ func TestHookManager_Stats(t *testing.T) {
 	m.Register(HookBeforeRun, func(_ context.Context, _ *HookContext) error { return nil })
 	m.Register(HookAfterTurn, func(_ context.Context, _ *HookContext) error { return errors.New("fail") })
 
-	m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
-	m.Fire(context.Background(), &HookContext{Point: HookAfterTurn})
-	m.Fire(context.Background(), &HookContext{Point: HookAfterTurn})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookAfterTurn})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookAfterTurn})
 
 	stats := m.Stats().Snapshot()
 	totalFired := stats["total_fired"].(int64)
@@ -260,7 +260,7 @@ func TestHookMiddleware_Chain(t *testing.T) {
 
 	m.Register(HookBeforeRun, func(_ context.Context, _ *HookContext) error { return nil })
 
-	m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
 
 	if len(beforeOrder) != 2 || beforeOrder[0] != "mid1-before" || beforeOrder[1] != "mid2-before" {
 		t.Errorf("中间件 Before 顺序错误: %v", beforeOrder)
@@ -579,8 +579,8 @@ func TestMetricsCollectionMiddleware(t *testing.T) {
 		return errors.New("test error")
 	})
 
-	m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
-	m.Fire(context.Background(), &HookContext{Point: HookAfterRun})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookBeforeRun})
+	_ = m.Fire(context.Background(), &HookContext{Point: HookAfterRun})
 
 	snap := stats.Snapshot()
 	if snap["total_fired"].(int64) != 2 {

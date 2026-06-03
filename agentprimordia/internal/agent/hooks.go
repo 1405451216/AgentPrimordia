@@ -409,45 +409,45 @@ func (m *HookManager) RegisteredPoints() []HookPoint {
 // ===== 便捷方法 =====
 
 func (m *HookManager) OnReasoning(ctx context.Context, thought *Thought) {
-	m.Fire(ctx, &HookContext{Point: HookAfterLLM})
+	_ = m.Fire(ctx, &HookContext{Point: HookAfterLLM})
 }
 
 func (m *HookManager) OnComplete(ctx context.Context, resp *Response) {
-	m.Fire(ctx, &HookContext{Point: HookOnComplete, Response: resp})
+	_ = m.Fire(ctx, &HookContext{Point: HookOnComplete, Response: resp})
 }
 
 func (m *HookManager) OnTurnComplete(ctx context.Context, turn int, thought *Thought) {
-	m.Fire(ctx, &HookContext{Point: HookAfterTurn, Turn: turn})
+	_ = m.Fire(ctx, &HookContext{Point: HookAfterTurn, Turn: turn})
 }
 
 func (m *HookManager) OnToolUse(ctx context.Context, tc *ToolCall) {
-	m.Fire(ctx, &HookContext{Point: HookBeforeTool, ToolCall: tc})
+	_ = m.Fire(ctx, &HookContext{Point: HookBeforeTool, ToolCall: tc})
 }
 
 func (m *HookManager) OnToolResult(ctx context.Context, result *ToolResult) {
-	m.Fire(ctx, &HookContext{Point: HookAfterTool, ToolResult: result})
+	_ = m.Fire(ctx, &HookContext{Point: HookAfterTool, ToolResult: result})
 }
 
 func (m *HookManager) OnError(ctx context.Context, err error) {
-	m.Fire(ctx, &HookContext{Point: HookOnError, Error: err})
+	_ = m.Fire(ctx, &HookContext{Point: HookOnError, Error: err})
 }
 
 // ===== 新增便捷方法 =====
 
 func (m *HookManager) OnStream(ctx context.Context, event *StreamEvent) {
-	m.Fire(ctx, &HookContext{Point: HookOnStream, StreamChunk: event})
+	_ = m.Fire(ctx, &HookContext{Point: HookOnStream, StreamChunk: event})
 }
 
 func (m *HookManager) OnStreamStart(ctx context.Context) {
-	m.Fire(ctx, &HookContext{Point: HookOnStreamStart})
+	_ = m.Fire(ctx, &HookContext{Point: HookOnStreamStart})
 }
 
 func (m *HookManager) OnStreamEnd(ctx context.Context, duration time.Duration) {
-	m.Fire(ctx, &HookContext{Point: HookOnStreamEnd, Duration: duration})
+	_ = m.Fire(ctx, &HookContext{Point: HookOnStreamEnd, Duration: duration})
 }
 
 func (m *HookManager) OnStateChange(ctx context.Context, agentID, oldState, newState, reason string) {
-	m.Fire(ctx, &HookContext{
+	_ = m.Fire(ctx, &HookContext{
 		Point:    HookOnStateChange,
 		AgentID:  agentID,
 		OldState: oldState,
@@ -457,7 +457,7 @@ func (m *HookManager) OnStateChange(ctx context.Context, agentID, oldState, newS
 }
 
 func (m *HookManager) OnMemoryRead(ctx context.Context, query string, result any) {
-	m.Fire(ctx, &HookContext{
+	_ = m.Fire(ctx, &HookContext{
 		Point:        HookAfterMemoryRead,
 		MemoryQuery:  query,
 		MemoryResult: result,
@@ -465,14 +465,14 @@ func (m *HookManager) OnMemoryRead(ctx context.Context, query string, result any
 }
 
 func (m *HookManager) OnMemoryWrite(ctx context.Context, sessionID string) {
-	m.Fire(ctx, &HookContext{
+	_ = m.Fire(ctx, &HookContext{
 		Point:     HookAfterMemoryWrite,
 		SessionID: sessionID,
 	})
 }
 
 func (m *HookManager) OnContextWindowUpdate(ctx context.Context, usage float64, limit int) {
-	m.Fire(ctx, &HookContext{
+	_ = m.Fire(ctx, &HookContext{
 		Point:              HookContextWindowUpdate,
 		ContextWindowUsage: usage,
 		ContextWindowLimit: limit,
@@ -480,11 +480,11 @@ func (m *HookManager) OnContextWindowUpdate(ctx context.Context, usage float64, 
 }
 
 func (m *HookManager) OnShutdown(ctx context.Context) {
-	m.Fire(ctx, &HookContext{Point: HookBeforeShutdown})
+	_ = m.Fire(ctx, &HookContext{Point: HookBeforeShutdown})
 }
 
 func (m *HookManager) OnShutdownComplete(ctx context.Context) {
-	m.Fire(ctx, &HookContext{Point: HookAfterShutdown})
+	_ = m.Fire(ctx, &HookContext{Point: HookAfterShutdown})
 }
 
 // AllHookPoints 返回所有定义的钩子点常量

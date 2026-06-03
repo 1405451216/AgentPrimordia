@@ -169,7 +169,7 @@ func TestReActAgent_RAG_ContextReplacement(t *testing.T) {
 		WithResponse("Final answer")
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockEchoTool{name: "echo_tool"})
+	_ = registry.Register(&mockEchoTool{name: "echo_tool"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-replace",

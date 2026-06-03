@@ -54,8 +54,8 @@ func TestConversationalMemory_WindowManagement(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 8; i++ {
-		mem.AddMessage(ctx, "user", fmt.Sprintf("Message %d", i), nil)
-		mem.AddMessage(ctx, "assistant", fmt.Sprintf("Response %d", i), nil)
+		_ = mem.AddMessage(ctx, "user", fmt.Sprintf("Message %d", i), nil)
+		_ = mem.AddMessage(ctx, "assistant", fmt.Sprintf("Response %d", i), nil)
 	}
 
 	currentCount := mem.GetMessageCount()
@@ -80,8 +80,8 @@ func TestConversationalMemory_SummaryCompression(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 10; i++ {
-		mem.AddMessage(ctx, "user", fmt.Sprintf("User question about topic %d with detailed explanation", i), nil)
-		mem.AddMessage(ctx, "assistant", fmt.Sprintf("Assistant response about topic %d with comprehensive answer and examples", i), nil)
+		_ = mem.AddMessage(ctx, "user", fmt.Sprintf("User question about topic %d with detailed explanation", i), nil)
+		_ = mem.AddMessage(ctx, "assistant", fmt.Sprintf("Assistant response about topic %d with comprehensive answer and examples", i), nil)
 	}
 
 	summary := mem.GetSummary()
@@ -104,8 +104,8 @@ func TestConversationalMemory_ClearAndReset(t *testing.T) {
 
 	ctx := context.Background()
 
-	mem.AddMessage(ctx, "user", "Test message", nil)
-	mem.AddMessage(ctx, "assistant", "Test response", nil)
+	_ = mem.AddMessage(ctx, "user", "Test message", nil)
+	_ = mem.AddMessage(ctx, "assistant", "Test response", nil)
 
 	mem.Clear()
 
@@ -127,9 +127,9 @@ func TestConversationalMemory_ExportImport(t *testing.T) {
 
 	ctx := context.Background()
 
-	mem.AddMessage(ctx, "system", "You are a helpful assistant.", map[string]string{"type": "system"})
-	mem.AddMessage(ctx, "user", "Hello!", nil)
-	mem.AddMessage(ctx, "assistant", "Hi there!", nil)
+	_ = mem.AddMessage(ctx, "system", "You are a helpful assistant.", map[string]string{"type": "system"})
+	_ = mem.AddMessage(ctx, "user", "Hello!", nil)
+	_ = mem.AddMessage(ctx, "assistant", "Hi there!", nil)
 
 	data, err := mem.Export()
 	if err != nil {
@@ -159,9 +159,9 @@ func TestConversationalMemory_Stats(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 12; i++ {
-		mem.AddMessage(ctx, "user", fmt.Sprintf("User message %d", i), nil)
+		_ = mem.AddMessage(ctx, "user", fmt.Sprintf("User message %d", i), nil)
 		if i%2 == 0 {
-			mem.AddMessage(ctx, "assistant", fmt.Sprintf("Assistant response %d", i), nil)
+			_ = mem.AddMessage(ctx, "assistant", fmt.Sprintf("Assistant response %d", i), nil)
 		}
 	}
 
@@ -195,7 +195,7 @@ func TestConversationalMemory_Metadata(t *testing.T) {
 
 	ctx := context.Background()
 
-	mem.AddMessage(ctx, "user", "Test", map[string]string{"source": "web"})
+	_ = mem.AddMessage(ctx, "user", "Test", map[string]string{"source": "web"})
 
 	messages := mem.GetMessages()
 	foundMetadata := false
@@ -248,8 +248,8 @@ func TestConversationalMemory_HighVolume(t *testing.T) {
 
 	startTime := time.Now()
 	for i := 0; i < 200; i++ {
-		mem.AddMessage(ctx, "user", fmt.Sprintf("User message number %d with some content", i), nil)
-		mem.AddMessage(ctx, "assistant", fmt.Sprintf("Assistant response number %d with helpful information", i), nil)
+		_ = mem.AddMessage(ctx, "user", fmt.Sprintf("User message number %d with some content", i), nil)
+		_ = mem.AddMessage(ctx, "assistant", fmt.Sprintf("Assistant response number %d with helpful information", i), nil)
 	}
 	duration := time.Since(startTime)
 
@@ -278,7 +278,7 @@ func BenchmarkConversationalMemory_AddMessage(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		mem.AddMessage(ctx, "user", fmt.Sprintf("Benchmark message %d", i), nil)
+		_ = mem.AddMessage(ctx, "user", fmt.Sprintf("Benchmark message %d", i), nil)
 	}
 }
 
@@ -289,8 +289,8 @@ func BenchmarkConversationalMemory_GetMessages(b *testing.B) {
 
 	ctx := context.Background()
 	for i := 0; i < 80; i++ {
-		mem.AddMessage(ctx, "user", fmt.Sprintf("Message %d", i), nil)
-		mem.AddMessage(ctx, "assistant", fmt.Sprintf("Response %d", i), nil)
+		_ = mem.AddMessage(ctx, "user", fmt.Sprintf("Message %d", i), nil)
+		_ = mem.AddMessage(ctx, "assistant", fmt.Sprintf("Response %d", i), nil)
 	}
 
 	b.ResetTimer()

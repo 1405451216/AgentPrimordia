@@ -104,7 +104,7 @@ func TestInMemoryCache_Clear(t *testing.T) {
 	resp := &CompletionResponse{ID: "resp", Content: "answer"}
 	_ = cache.Set(context.Background(), "query", resp)
 
-	cache.Clear(context.Background())
+	_ = cache.Clear(context.Background())
 
 	stats := cache.Stats(context.Background())
 	if stats.EntryCount != 0 {

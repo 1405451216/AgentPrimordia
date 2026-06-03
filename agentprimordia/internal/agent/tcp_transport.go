@@ -186,7 +186,7 @@ func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *Bu
 			continue
 		}
 
-		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		if _, err := conn.Write(data); err != nil {
 			conn.Close()
 			t.pool.Invalidate(target)
@@ -214,8 +214,8 @@ func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *Bu
 
 // readAckResponse 从连接中读取ACK响应
 func (t *TCPTransport) readAckResponse(conn net.Conn, msgID string) error {
-	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	defer conn.SetReadDeadline(time.Time{})
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
 
 	var buf [4096]byte
 	n, err := conn.Read(buf[:])
@@ -290,7 +290,7 @@ func (t *TCPTransport) acceptLoop() {
 func (t *TCPTransport) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
 	var msg BusMessage
 	if err := json.NewDecoder(conn).Decode(&msg); err != nil {
 		t.logger.Warn("TCP 解码消息失败", "error", err)
@@ -312,8 +312,8 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 
 func (t *TCPTransport) sendAck(conn net.Conn, seqStr string) {
 	ackData := fmt.Sprintf(`{"type":"ack","seq":%s}`, seqStr)
-	conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	conn.Write([]byte(ackData + "\n"))
+	_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_, _ = conn.Write([]byte(ackData + "\n"))
 }
 
 func (t *TCPTransport) handleAck(seq uint64) {

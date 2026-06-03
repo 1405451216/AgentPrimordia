@@ -11,9 +11,8 @@ type NodeHandler func(ctx context.Context, input string) (string, error)
 
 // NodeHandlerFunc 将普通函数包装为 Agent 接口（用于 DSL 构建器）
 type NodeHandlerFunc struct {
-	handler  NodeHandler
-	nodeID   string
-	metadata map[string]string
+	handler NodeHandler
+	nodeID  string
 }
 
 func (n *NodeHandlerFunc) Name() string {

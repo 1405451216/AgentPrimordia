@@ -66,7 +66,7 @@ func TestPool_GetTasksBySession_Empty(t *testing.T) {
 	tasks := []TaskConfig{
 		{ID: "t1", Title: "Task", Prompt: "Do", SessionID: "session-1"},
 	}
-	pool.Dispatch(context.Background(), tasks)
+	_, _ = pool.Dispatch(context.Background(), tasks)
 
 	results := pool.GetTasksBySession("nonexistent-session")
 	if len(results) != 0 {
@@ -95,7 +95,7 @@ func TestPool_CancelBySession(t *testing.T) {
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		pool.CancelBySession("cancel-session")
+		_ = pool.CancelBySession("cancel-session")
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -142,7 +142,7 @@ func TestPool_GetTask(t *testing.T) {
 		{ID: "get-task-1", Title: "GetTask", Prompt: "Do something", SessionID: "session-x"},
 	}
 
-	pool.Dispatch(context.Background(), tasks)
+	_, _ = pool.Dispatch(context.Background(), tasks)
 
 	result, found := pool.GetTask("get-task-1")
 	if !found {

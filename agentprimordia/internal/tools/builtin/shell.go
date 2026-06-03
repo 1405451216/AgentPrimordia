@@ -144,7 +144,7 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	}
 
 	action := ""
-	json.Unmarshal(params["action"], &action)
+	_ = json.Unmarshal(params["action"], &action)
 
 	if action != "execute" {
 		return tools.NewErrorResult(fmt.Sprintf("unknown action: %s", action)), nil
@@ -152,7 +152,7 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 
 	command := ""
 	if raw, ok := params["command"]; ok && raw != nil {
-		json.Unmarshal(raw, &command)
+		_ = json.Unmarshal(raw, &command)
 	}
 	if strings.TrimSpace(command) == "" {
 		return tools.NewErrorResult("command is required"), nil
@@ -190,7 +190,7 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	timeoutSec := int(s.defaultTimeout.Seconds())
 	if raw, ok := params["timeout"]; ok && raw != nil {
 		var v float64
-		json.Unmarshal(raw, &v)
+		_ = json.Unmarshal(raw, &v)
 		if v > 0 {
 			timeoutSec = int(v)
 		}
@@ -198,7 +198,7 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 
 	workdir := ""
 	if raw, ok := params["workdir"]; ok && raw != nil {
-		json.Unmarshal(raw, &workdir)
+		_ = json.Unmarshal(raw, &workdir)
 	}
 
 	// 验证 workdir 是否在允许范围内

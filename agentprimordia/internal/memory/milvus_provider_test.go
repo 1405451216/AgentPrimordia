@@ -16,14 +16,14 @@ func TestMilvusClient_CreateCollection(t *testing.T) {
 		}
 
 		var req map[string]any
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		collName := req["collectionName"].(string)
 		if collName == "" {
 			t.Error("missing collection name")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data":    nil,
@@ -49,7 +49,7 @@ func TestMilvusClient_CreateCollection(t *testing.T) {
 func TestMilvusClient_ListCollections(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data":    []string{"collection1", "collection2", "test_collection"},
@@ -79,11 +79,11 @@ func TestMilvusClient_ListCollections(t *testing.T) {
 func TestMilvusClient_Insert(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req map[string]any
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		_ = req["data"].([]any)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data": map[string]any{
@@ -124,7 +124,7 @@ func TestMilvusClient_Insert(t *testing.T) {
 func TestMilvusClient_Search(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data": map[string]any{
@@ -178,7 +178,7 @@ func TestMilvusClient_Search(t *testing.T) {
 func TestMilvusClient_Delete(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data": map[string]any{
@@ -207,7 +207,7 @@ func TestMilvusClient_Delete(t *testing.T) {
 func TestMilvusClient_Query(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data": []map[string]any{
@@ -245,7 +245,7 @@ func TestMilvusClient_Query(t *testing.T) {
 func TestMilvusClient_DescribeCollection(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 			"data": MilvusCollection{
@@ -285,7 +285,7 @@ func TestMilvusClient_DropCollection(t *testing.T) {
 			t.Errorf("expected DELETE method, got %s", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "success",
 		})
@@ -307,7 +307,7 @@ func TestMilvusClient_DropCollection(t *testing.T) {
 func TestMilvusClient_HealthCheck(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    0,
 			"message": "healthy",
 		})
@@ -331,7 +331,7 @@ func TestMilvusClient_GetStats(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 
 		if strings.Contains(r.URL.Path, "collections/test_coll") {
-			json.NewEncoder(w).Encode(map[string]any{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code":    0,
 				"message": "success",
 				"data": MilvusCollection{
@@ -343,7 +343,7 @@ func TestMilvusClient_GetStats(t *testing.T) {
 				},
 			})
 		} else {
-			json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": nil})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": nil})
 		}
 	}))
 	defer server.Close()
@@ -376,15 +376,15 @@ func TestMilvusClient_Integration(t *testing.T) {
 
 		switch {
 		case strings.Contains(r.URL.Path, "health"):
-			json.NewEncoder(w).Encode(map[string]any{"code": 0})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0})
 		case strings.HasSuffix(r.URL.Path, "collections") && r.Method == "POST":
-			json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": nil})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": nil})
 		case strings.HasSuffix(r.URL.Path, "collections") && r.Method == "GET":
-			json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": []string{"coll1"}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": []string{"coll1"}})
 		case strings.HasSuffix(r.URL.Path, "entities") && r.Method == "POST":
-			json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": map[string]any{"ids": []int64{1}}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": map[string]any{"ids": []int64{1}}})
 		case strings.HasSuffix(r.URL.Path, "search"):
-			json.NewEncoder(w).Encode(map[string]any{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"code": 0,
 				"data": map[string]any{
 					"results": []map[string]any{
@@ -393,9 +393,9 @@ func TestMilvusClient_Integration(t *testing.T) {
 				},
 			})
 		case strings.HasSuffix(r.URL.Path, "query"):
-			json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": []map[string]any{{"id": 1}}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": []map[string]any{{"id": 1}}})
 		default:
-			json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": nil})
+			_ = json.NewEncoder(w).Encode(map[string]any{"code": 0, "data": nil})
 		}
 	}))
 	defer server.Close()
@@ -460,7 +460,7 @@ func TestMilvusClient_Integration(t *testing.T) {
 func TestMilvusClient_ErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"code":    1100,
 			"message": "internal error",
 		})

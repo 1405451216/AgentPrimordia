@@ -355,7 +355,7 @@ func TestEnhancedRAGPipeline_Ingest(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-	os.WriteFile(testFile, []byte("这是第一句话。这是第二句话。这是第三句话。"), 0644)
+	_ = os.WriteFile(testFile, []byte("这是第一句话。这是第二句话。这是第三句话。"), 0644)
 
 	result, err := pipeline.Ingest(context.Background(), testFile)
 	if err != nil {
@@ -386,8 +386,8 @@ func TestEnhancedRAGPipeline_MultipleDocs(t *testing.T) {
 	})
 
 	tmpDir := t.TempDir()
-	os.WriteFile(filepath.Join(tmpDir, "a.txt"), []byte("line1\nline2\nline3"), 0644)
-	os.WriteFile(filepath.Join(tmpDir, "b.txt"), []byte("lineA\nlineB"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "a.txt"), []byte("line1\nline2\nline3"), 0644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "b.txt"), []byte("lineA\nlineB"), 0644)
 
 	result, err := pipeline.Ingest(context.Background(), tmpDir)
 	if err != nil {

@@ -168,12 +168,6 @@ func (l *Lifecycle) manageRunningDone(status AgentStatus) {
 	}
 }
 
-// resetRunningDone 重置 runningDone 通道（用于重新运行场景）
-func (l *Lifecycle) resetRunningDone() {
-	l.runningDone = make(chan struct{})
-	l.runningDoneOnce = sync.Once{}
-}
-
 // GracefulShutdown 请求优雅关闭
 // 标记优雅关闭信号，等待当前运行中的 Agent 完成当前 turn
 // 如果 ctx 超时，则回退到强制停止

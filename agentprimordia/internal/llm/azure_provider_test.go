@@ -150,7 +150,7 @@ func TestAzureOpenAIProvider_Complete_Success(t *testing.T) {
 				"total_tokens":      15,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -178,7 +178,7 @@ func TestAzureOpenAIProvider_Complete_APIError(t *testing.T) {
 				"code":    "deployment_not_found",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -200,7 +200,7 @@ func TestAzureOpenAIProvider_Complete_APIError(t *testing.T) {
 func TestAzureOpenAIProvider_Complete_HTTPError(t *testing.T) {
 	server, provider := newAzureTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Rate limited")
+		_, _ = fmt.Fprint(w, "Rate limited")
 	})
 	defer server.Close()
 
@@ -220,7 +220,7 @@ func TestAzureOpenAIProvider_Complete_HTTPError(t *testing.T) {
 func TestAzureOpenAIProvider_CallTools_Success(t *testing.T) {
 	server, provider := newAzureTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		tools, ok := reqBody["tools"].([]any)
 		if !ok || len(tools) == 0 {
@@ -255,7 +255,7 @@ func TestAzureOpenAIProvider_CallTools_Success(t *testing.T) {
 				"total_tokens":      45,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -288,16 +288,16 @@ func TestAzureOpenAIProvider_CallTools_Success(t *testing.T) {
 func TestAzureOpenAIProvider_Stream_Basic(t *testing.T) {
 	server, provider := newAzureTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 		if !reqBody["stream"].(bool) {
 			t.Error("expected stream=true")
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-azure-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-azure-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" from Azure\"},\"finish_reason\":null}]}\n\n")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-azure-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n")
-		fmt.Fprint(w, "data: [DONE]\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-azure-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-azure-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" from Azure\"},\"finish_reason\":null}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-azure-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n")
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	})
 	defer server.Close()
 
@@ -351,7 +351,7 @@ func TestAzureOpenAIProvider_Embeddings_EmptyDeployment(t *testing.T) {
 				"total_tokens":  5,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -389,7 +389,7 @@ func TestAzureOpenAIProvider_Embeddings_CustomDeployment(t *testing.T) {
 				"total_tokens":  3,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -485,7 +485,7 @@ func TestAzureOpenAIProvider_Headers(t *testing.T) {
 				"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 

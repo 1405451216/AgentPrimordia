@@ -49,7 +49,7 @@ func TestCohereProvider_Complete_Success(t *testing.T) {
 			},
 			"finish_reason": "COMPLETE",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -80,7 +80,7 @@ func TestCohereProvider_Complete_Error(t *testing.T) {
 				"code":    "invalid_request",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -102,16 +102,16 @@ func TestCohereProvider_Complete_Error(t *testing.T) {
 func TestCohereProvider_Stream_Basic(t *testing.T) {
 	server, provider := newCohereTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 		if stream, ok := reqBody["stream"].(bool); !ok || !stream {
 			t.Error("expected stream=true")
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"type\":\"content-delta\",\"delta\":{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"Hello\"}]}}}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"content-delta\",\"delta\":{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\" Cohere\"}]}}}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"content-delta\",\"delta\":{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"!\"}]}}}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"message_end\",\"usage\":{\"billed_units\":{\"input_tokens\":10,\"output_tokens\":5},\"tokens\":{\"input_tokens\":15,\"output_tokens\":8}}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"content-delta\",\"delta\":{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"Hello\"}]}}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"content-delta\",\"delta\":{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\" Cohere\"}]}}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"content-delta\",\"delta\":{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"!\"}]}}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"message_end\",\"usage\":{\"billed_units\":{\"input_tokens\":10,\"output_tokens\":5},\"tokens\":{\"input_tokens\":15,\"output_tokens\":8}}}\n\n")
 	})
 	defer server.Close()
 
@@ -153,7 +153,7 @@ func TestCohereProvider_Stream_Basic(t *testing.T) {
 func TestCohereProvider_CallTools_Success(t *testing.T) {
 	server, provider := newCohereTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		tools, ok := reqBody["tools"].([]any)
 		if !ok || len(tools) == 0 {
@@ -188,7 +188,7 @@ func TestCohereProvider_CallTools_Success(t *testing.T) {
 			},
 			"finish_reason": "TOOL_CALL",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -258,7 +258,7 @@ func TestCohereProvider_New_NoAPIKey(t *testing.T) {
 func TestCohereProvider_Complete_HTTPError(t *testing.T) {
 	server, provider := newCohereTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Rate limited")
+		_, _ = fmt.Fprint(w, "Rate limited")
 	})
 	defer server.Close()
 

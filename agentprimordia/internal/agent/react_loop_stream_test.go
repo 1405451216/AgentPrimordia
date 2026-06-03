@@ -150,7 +150,7 @@ func TestReActAgent_StreamRun_WithToolCall(t *testing.T) {
 	}
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockTimeTool{name: "get_time"})
+	_ = registry.Register(&mockTimeTool{name: "get_time"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-tool",
@@ -193,7 +193,7 @@ func TestReActAgent_StreamRun_MaxTurnsExceeded(t *testing.T) {
 	loopMock := &streamLoopLLM{maxToolCalls: 5}
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockTool{name: "loop_tool", response: "more data"})
+	_ = registry.Register(&mockTool{name: "loop_tool", response: "more data"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-max-turns",

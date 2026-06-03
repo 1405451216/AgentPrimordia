@@ -192,7 +192,7 @@ func TestAgentTool_RegistryIntegration(t *testing.T) {
 	agentTool := NewAgentTool(sub)
 
 	registry := tools.NewRegistry()
-	registry.Register(agentTool)
+	_ = registry.Register(agentTool)
 
 	retrieved, exists := registry.Get("agent_search-agent")
 	if !exists {

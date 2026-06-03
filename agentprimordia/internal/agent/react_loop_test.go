@@ -47,7 +47,7 @@ func TestReActAgent_SingleToolCall(t *testing.T) {
 		WithResponse("The current time is 12:00 PM.")
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockTimeTool{name: "get_time"})
+	_ = registry.Register(&mockTimeTool{name: "get_time"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "tool-agent",
@@ -82,7 +82,7 @@ func TestReActAgent_MultipleToolCalls(t *testing.T) {
 		WithResponse("I've searched for all three languages.")
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockSearchTool{name: "search"})
+	_ = registry.Register(&mockSearchTool{name: "search"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "multi-tool-agent",
@@ -110,7 +110,7 @@ func TestReActAgent_MaxTurnsExceeded(t *testing.T) {
 	}
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockTool{name: "loop_tool", response: "more data needed"})
+	_ = registry.Register(&mockTool{name: "loop_tool", response: "more data needed"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "loop-agent",
@@ -184,7 +184,7 @@ func TestReActAgent_Hooks_Fired(t *testing.T) {
 		WithResponse("Done!")
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockEchoTool{name: "echo"})
+	_ = registry.Register(&mockEchoTool{name: "echo"})
 
 	hooks := NewHookManager()
 	hooks.Register(HookAfterLLM, func(ctx context.Context, hctx *HookContext) error {
@@ -331,7 +331,7 @@ func TestReActAgent_GracefulShutdown(t *testing.T) {
 	mockLLM.WithResponse("final answer")
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockEchoTool{name: "echo"})
+	_ = registry.Register(&mockEchoTool{name: "echo"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "graceful-agent",

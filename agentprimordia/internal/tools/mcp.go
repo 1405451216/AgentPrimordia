@@ -573,7 +573,7 @@ func (s *MCPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (s *MCPServer) handleInitialize(req MCPRequest) *MCPResponse {
@@ -792,7 +792,7 @@ func schemaFromRaw(raw json.RawMessage) map[string]any {
 
 func writeMCPError(w http.ResponseWriter, id int, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(MCPResponse{
+	_ = json.NewEncoder(w).Encode(MCPResponse{
 		JSONRPC: "2.0",
 		ID:      id,
 		Error:   &MCPError{Code: code, Message: message},

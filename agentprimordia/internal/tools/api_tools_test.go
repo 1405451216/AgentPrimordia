@@ -20,7 +20,7 @@ func TestHTTPClientTool_GetRequest(t *testing.T) {
 			t.Errorf("expected GET method, got %s", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"message": "hello"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"message": "hello"})
 	}))
 	defer server.Close()
 
@@ -36,7 +36,7 @@ func TestHTTPClientTool_GetRequest(t *testing.T) {
 	}
 
 	var response map[string]any
-	json.Unmarshal([]byte(result.Content), &response)
+	_ = json.Unmarshal([]byte(result.Content), &response)
 
 	if response["status_code"].(float64) != 200 {
 		t.Errorf("expected status 200, got %v", response["status_code"])
@@ -53,9 +53,9 @@ func TestHTTPClientTool_PostRequest(t *testing.T) {
 			t.Errorf("expected POST method, got %s", r.Method)
 		}
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 		w.WriteHeader(201)
-		json.NewEncoder(w).Encode(map[string]any{"id": 123, "received": body})
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": 123, "received": body})
 	}))
 	defer server.Close()
 
@@ -72,7 +72,7 @@ func TestHTTPClientTool_PostRequest(t *testing.T) {
 	}
 
 	var response map[string]any
-	json.Unmarshal([]byte(result.Content), &response)
+	_ = json.Unmarshal([]byte(result.Content), &response)
 
 	if response["status_code"].(float64) != 201 {
 		t.Errorf("expected status 201, got %v", response["status_code"])
@@ -80,7 +80,7 @@ func TestHTTPClientTool_PostRequest(t *testing.T) {
 
 	bodyStr := response["body"].(string)
 	var bodyMap map[string]any
-	json.Unmarshal([]byte(bodyStr), &bodyMap)
+	_ = json.Unmarshal([]byte(bodyStr), &bodyMap)
 	if bodyMap == nil || bodyMap["id"].(float64) != 123 {
 		t.Error("expected id=123 in response")
 	}
@@ -96,7 +96,7 @@ func TestHTTPClientTool_BearerAuth(t *testing.T) {
 		if authHeader != "Bearer test-token-123" {
 			t.Errorf("expected Bearer token, got: %s", authHeader)
 		}
-		w.Write([]byte(`{"authenticated": true}`))
+		_, _ = w.Write([]byte(`{"authenticated": true}`))
 	}))
 	defer server.Close()
 
@@ -114,10 +114,10 @@ func TestHTTPClientTool_BearerAuth(t *testing.T) {
 	}
 
 	var response map[string]any
-	json.Unmarshal([]byte(result.Content), &response)
+	_ = json.Unmarshal([]byte(result.Content), &response)
 	bodyStr := response["body"].(string)
 	var bodyData map[string]any
-	json.Unmarshal([]byte(bodyStr), &bodyData)
+	_ = json.Unmarshal([]byte(bodyStr), &bodyData)
 	if bodyData == nil || bodyData["authenticated"].(bool) != true {
 		t.Error("authentication failed")
 	}
@@ -131,18 +131,18 @@ func TestGitTool_Status(t *testing.T) {
 
 	initCmd := exec.CommandContext(context.Background(), "git", "init")
 	initCmd.Dir = tmpDir
-	initCmd.Run()
+	_ = initCmd.Run()
 
 	configName := exec.CommandContext(context.Background(), "git", "config", "user.email", "test@example.com")
 	configName.Dir = tmpDir
-	configName.Run()
+	_ = configName.Run()
 
 	configEmail := exec.CommandContext(context.Background(), "git", "config", "user.name", "Test User")
 	configEmail.Dir = tmpDir
-	configEmail.Run()
+	_ = configEmail.Run()
 
 	testFile := filepath.Join(tmpDir, "test.txt")
-	os.WriteFile(testFile, []byte("hello"), 0644)
+	_ = os.WriteFile(testFile, []byte("hello"), 0644)
 
 	statusInput := map[string]any{"action": "status"}
 	statusBytes, _ := json.Marshal(statusInput)
@@ -152,7 +152,7 @@ func TestGitTool_Status(t *testing.T) {
 	}
 
 	var statusData map[string][]string
-	json.Unmarshal([]byte(result.Content), &statusData)
+	_ = json.Unmarshal([]byte(result.Content), &statusData)
 
 	if len(statusData["untracked"]) == 0 {
 		t.Error("expected untracked files in status")
@@ -177,7 +177,7 @@ func TestGitTool_Log(t *testing.T) {
 	}
 
 	var commits []map[string]string
-	json.Unmarshal([]byte(result.Content), &commits)
+	_ = json.Unmarshal([]byte(result.Content), &commits)
 
 	if len(commits) == 0 {
 		t.Error("expected at least 1 commit")
@@ -215,7 +215,7 @@ func TestAPITools_Integration(t *testing.T) {
 
 	t.Log("\n1. Testing HTTP Client Tool...")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{"service": "api_test", "version": "1.0"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"service": "api_test", "version": "1.0"})
 	}))
 	defer server.Close()
 
@@ -261,11 +261,11 @@ func setupGitRepo(t *testing.T, dir string) {
 
 func createCommit(t *testing.T, dir string, message string) {
 	filePath := filepath.Join(dir, "file.txt")
-	os.WriteFile(filePath, []byte("content"), 0644)
+	_ = os.WriteFile(filePath, []byte("content"), 0644)
 
 	addCmd := exec.CommandContext(context.Background(), "git", "add", ".")
 	addCmd.Dir = dir
-	addCmd.Run()
+	_ = addCmd.Run()
 
 	commitCmd := exec.CommandContext(context.Background(), "git", "commit", "-m", message)
 	commitCmd.Dir = dir

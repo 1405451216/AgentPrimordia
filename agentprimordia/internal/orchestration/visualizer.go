@@ -170,7 +170,7 @@ func (v *Visualizer) renderPlantUMLNode(sb *strings.Builder, wf *WorkflowExecuti
 		sb.WriteString("endif\n")
 
 	case LoopStartNode:
-		sb.WriteString(fmt.Sprintf("repeat\n"))
+		sb.WriteString("repeat\n")
 		sb.WriteString(fmt.Sprintf("  :%s;\n", escapePlantUML(node.Name)))
 		transitions := wf.transitions[nodeID]
 		for _, tr := range transitions {
@@ -179,7 +179,7 @@ func (v *Visualizer) renderPlantUMLNode(sb *strings.Builder, wf *WorkflowExecuti
 		sb.WriteString("repeat while (continue?)\n")
 
 	case ParallelNode:
-		sb.WriteString(fmt.Sprintf("fork\n"))
+		sb.WriteString("fork\n")
 		transitions := wf.transitions[nodeID]
 		for i, tr := range transitions {
 			if i > 0 {

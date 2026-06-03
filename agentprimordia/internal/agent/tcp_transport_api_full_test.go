@@ -92,7 +92,7 @@ func TestTCPTransportAPI_PoolStatsAfterStart(t *testing.T) {
 	if err := tr.Start("127.0.0.1:0"); err != nil {
 		t.Fatalf("Start 失败: %v", err)
 	}
-	defer tr.Close()
+	defer func() { _ = tr.Close() }()
 
 	active, idle := tr.PoolStats()
 	if active != 0 || idle != 0 {
@@ -239,7 +239,7 @@ func TestTCPTransportAPI_DoubleStart(t *testing.T) {
 	if err := tr.Start("127.0.0.1:0"); err != nil {
 		t.Fatalf("第一次 Start 失败: %v", err)
 	}
-	defer tr.Close()
+	defer func() { _ = tr.Close() }()
 
 	err := tr.Start("127.0.0.1:0")
 	if err == nil {
@@ -320,11 +320,11 @@ func TestTCPTransportAPI_ConcurrentStartClose(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			tr.Start("127.0.0.1:0")
+			_ = tr.Start("127.0.0.1:0")
 		}()
 		go func() {
 			defer wg.Done()
-			tr.Close()
+			_ = tr.Close()
 		}()
 		wg.Wait()
 

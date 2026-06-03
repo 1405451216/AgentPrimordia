@@ -128,7 +128,7 @@ func TestLifecycle_WaitResume(t *testing.T) {
 		lc.Resume()
 	}()
 
-	lc.WaitPause(context.Background())
+	_ = lc.WaitPause(context.Background())
 	err := lc.WaitResume(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

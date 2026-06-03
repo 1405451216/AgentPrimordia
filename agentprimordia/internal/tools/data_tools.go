@@ -99,7 +99,7 @@ func (t *CSVTool) readCSV(params map[string]any) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open file error: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()
@@ -255,13 +255,13 @@ func (t *CSVTool) writeCSV(params map[string]any) (*Result, error) {
 	dataBytes, _ := json.Marshal(params["data"])
 
 	var data []map[string]any
-	json.Unmarshal(dataBytes, &data)
+	_ = json.Unmarshal(dataBytes, &data)
 
 	file, err := os.Create(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("create file error: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
@@ -277,14 +277,14 @@ func (t *CSVTool) writeCSV(params map[string]any) (*Result, error) {
 	for key := range data[0] {
 		headers = append(headers, key)
 	}
-	writer.Write(headers)
+	_ = writer.Write(headers)
 
 	for _, row := range data {
 		record := make([]string, len(headers))
 		for i, header := range headers {
 			record[i] = fmt.Sprintf("%v", row[header])
 		}
-		writer.Write(record)
+		_ = writer.Write(record)
 	}
 
 	return &Result{
@@ -506,7 +506,7 @@ func (t *SQLiteTool) executeQuery(ctx context.Context, params map[string]any) (*
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	columns, err := rows.Columns()
 	if err != nil {

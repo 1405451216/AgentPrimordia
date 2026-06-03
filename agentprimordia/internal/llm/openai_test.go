@@ -149,7 +149,7 @@ func TestOpenAIProvider_Complete_APIError(t *testing.T) {
 func TestOpenAIProvider_Complete_HTTPError(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Rate limited")
+		_, _ = fmt.Fprint(w, "Rate limited")
 	})
 	defer server.Close()
 
@@ -166,7 +166,7 @@ func TestOpenAIProvider_Complete_HTTPError(t *testing.T) {
 
 func TestOpenAIProvider_Complete_InvalidJSON(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "not json")
+		_, _ = fmt.Fprint(w, "not json")
 	})
 	defer server.Close()
 
@@ -187,10 +187,10 @@ func TestOpenAIProvider_Stream_Basic(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" world\"},\"finish_reason\":null}]}\n\n")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n")
-		fmt.Fprint(w, "data: [DONE]\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" world\"},\"finish_reason\":null}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n")
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	})
 	defer server.Close()
 
@@ -227,8 +227,8 @@ func TestOpenAIProvider_Stream_Basic(t *testing.T) {
 func TestOpenAIProvider_Stream_DoneSignal(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Done\"},\"finish_reason\":\"stop\"}]}\n\n")
-		fmt.Fprint(w, "data: [DONE]\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Done\"},\"finish_reason\":\"stop\"}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	})
 	defer server.Close()
 
@@ -253,7 +253,7 @@ func TestOpenAIProvider_Stream_ContextCancel(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		for i := 0; i < 100; i++ {
-			fmt.Fprintf(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"chunk%d\"},\"finish_reason\":null}]}\n\n", i)
+			_, _ = fmt.Fprintf(w, "data: {\"id\":\"chatcmpl-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"chunk%d\"},\"finish_reason\":null}]}\n\n", i)
 			w.(http.Flusher).Flush()
 			time.Sleep(10 * time.Millisecond)
 		}

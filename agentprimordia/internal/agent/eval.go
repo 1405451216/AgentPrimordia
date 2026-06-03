@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 )
 
 type Evaluator interface {
@@ -355,7 +354,7 @@ func parseLLMEvalResponse(resp string) (*EvalResult, error) {
 
 			scoreStr := extractJSONNumber(segment, `"score"`)
 			if scoreStr != "" {
-				fmt.Sscanf(scoreStr, "%f", &score)
+				_, _ = fmt.Sscanf(scoreStr, "%f", &score)
 			} else if passed {
 				score = 1.0
 			}
@@ -430,7 +429,6 @@ func extractJSONString(json, key string) string {
 
 type EvalRunner struct {
 	evaluators []Evaluator
-	mu         sync.Mutex
 }
 
 func NewEvalRunner(evaluators ...Evaluator) *EvalRunner {

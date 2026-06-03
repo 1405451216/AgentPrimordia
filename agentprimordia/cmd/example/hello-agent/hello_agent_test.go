@@ -57,7 +57,7 @@ func TestHelloAgent_BasicRun(t *testing.T) {
 func TestHelloAgent_WithTools(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "test.txt")
-	os.WriteFile(testFile, []byte("hello from test file"), 0644)
+	_ = os.WriteFile(testFile, []byte("hello from test file"), 0644)
 
 	demoLLM := demo.NewDemoLLM(
 		"文件内容已读取完成：hello from test file",
@@ -102,7 +102,7 @@ func TestHelloAgent_WithTools(t *testing.T) {
 func TestHelloAgent_MultiTurn(t *testing.T) {
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "data.json")
-	os.WriteFile(testFile, []byte(`{"name":"test","value":42}`), 0644)
+	_ = os.WriteFile(testFile, []byte(`{"name":"test","value":42}`), 0644)
 
 	multiLLM := demo.NewDemoLLM(
 		"我需要先读取文件来了解数据结构",

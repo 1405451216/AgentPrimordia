@@ -85,7 +85,7 @@ func (d *DebugServer) AddSnapshot(snapshot MemorySnapshot) {
 
 func (d *DebugServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(`
+	_, _ = w.Write([]byte(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -189,7 +189,7 @@ func (d *DebugServer) handleEvents(w http.ResponseWriter, r *http.Request) {
 	d.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(events)
+	_ = json.NewEncoder(w).Encode(events)
 }
 
 func (d *DebugServer) handleSnapshots(w http.ResponseWriter, r *http.Request) {
@@ -199,5 +199,5 @@ func (d *DebugServer) handleSnapshots(w http.ResponseWriter, r *http.Request) {
 	d.mu.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(snapshots)
+	_ = json.NewEncoder(w).Encode(snapshots)
 }

@@ -24,9 +24,8 @@ type GroupChatConfig struct {
 
 // GroupChat 多 Agent 对话管理器
 type GroupChat struct {
-	agents        []Agent
-	speakerOrder  []string
-	maxRounds     int
+	agents    []Agent
+	maxRounds int
 	selectSpeaker SpeakerSelector
 	bus           MessageBus
 	mu            sync.RWMutex

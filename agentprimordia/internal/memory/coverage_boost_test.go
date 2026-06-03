@@ -11,7 +11,7 @@ import (
 func TestTextFileLoader_LoadFile(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.txt")
-	os.WriteFile(f, []byte("hello world"), 0644)
+	_ = os.WriteFile(f, []byte("hello world"), 0644)
 
 	loader := NewTextFileLoader()
 	docs, err := loader.Load(context.Background(), f)
@@ -31,9 +31,9 @@ func TestTextFileLoader_LoadFile(t *testing.T) {
 
 func TestTextFileLoader_LoadDir(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "a.txt"), []byte("aaa"), 0644)
-	os.WriteFile(filepath.Join(dir, "b.md"), []byte("bbb"), 0644)
-	os.WriteFile(filepath.Join(dir, "c.bin"), []byte("ccc"), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "a.txt"), []byte("aaa"), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "b.md"), []byte("bbb"), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "c.bin"), []byte("ccc"), 0644)
 
 	loader := NewTextFileLoader()
 	docs, err := loader.Load(context.Background(), dir)
@@ -48,7 +48,7 @@ func TestTextFileLoader_LoadDir(t *testing.T) {
 func TestTextFileLoader_UnsupportedExt(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.exe")
-	os.WriteFile(f, []byte("binary"), 0644)
+	_ = os.WriteFile(f, []byte("binary"), 0644)
 
 	loader := NewTextFileLoader()
 	_, err := loader.Load(context.Background(), f)
@@ -60,7 +60,7 @@ func TestTextFileLoader_UnsupportedExt(t *testing.T) {
 func TestTextFileLoader_FileTooLarge(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "big.txt")
-	os.WriteFile(f, []byte(strings.Repeat("x", 200)), 0644)
+	_ = os.WriteFile(f, []byte(strings.Repeat("x", 200)), 0644)
 
 	loader := &TextFileLoader{MaxFileSize: 100}
 	_, err := loader.Load(context.Background(), f)
@@ -162,7 +162,7 @@ func TestLineSplitter_DefaultValue(t *testing.T) {
 func TestDocumentPipeline_Process(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "doc.txt")
-	os.WriteFile(f, []byte("hello world from pipeline"), 0644)
+	_ = os.WriteFile(f, []byte("hello world from pipeline"), 0644)
 
 	loader := NewTextFileLoader()
 	splitter := NewCharacterSplitter(1000, 100)
@@ -187,8 +187,8 @@ func TestConvMem_AddAndGet(t *testing.T) {
 	mem := NewConversationalMemory(ConversationalMemoryConfig{MaxMessages: 10})
 	ctx := context.Background()
 
-	mem.AddMessage(ctx, "user", "Hello", nil)
-	mem.AddMessage(ctx, "assistant", "Hi there!", nil)
+	_ = mem.AddMessage(ctx, "user", "Hello", nil)
+	_ = mem.AddMessage(ctx, "assistant", "Hi there!", nil)
 
 	msgs := mem.GetMessages()
 	if len(msgs) != 2 {
@@ -204,8 +204,8 @@ func TestConvMem_TriggerCompression(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 6; i++ {
-		mem.AddMessage(ctx, "user", "message "+string(rune('A'+i)), nil)
-		mem.AddMessage(ctx, "assistant", "response "+string(rune('A'+i)), nil)
+		_ = mem.AddMessage(ctx, "user", "message "+string(rune('A'+i)), nil)
+		_ = mem.AddMessage(ctx, "assistant", "response "+string(rune('A'+i)), nil)
 	}
 
 	summary := mem.GetSummary()
@@ -219,7 +219,7 @@ func TestConvMem_RecentMessages(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 10; i++ {
-		mem.AddMessage(ctx, "user", "msg", nil)
+		_ = mem.AddMessage(ctx, "user", "msg", nil)
 	}
 
 	recent := mem.GetRecentMessages(3)
@@ -231,7 +231,7 @@ func TestConvMem_RecentMessages(t *testing.T) {
 func TestConvMem_Clear(t *testing.T) {
 	mem := NewConversationalMemory(ConversationalMemoryConfig{})
 	ctx := context.Background()
-	mem.AddMessage(ctx, "user", "test", nil)
+	_ = mem.AddMessage(ctx, "user", "test", nil)
 
 	mem.Clear()
 	if mem.GetMessageCount() != 0 {
@@ -242,8 +242,8 @@ func TestConvMem_Clear(t *testing.T) {
 func TestConvMem_Stats(t *testing.T) {
 	mem := NewConversationalMemory(ConversationalMemoryConfig{})
 	ctx := context.Background()
-	mem.AddMessage(ctx, "user", "hello", nil)
-	mem.AddMessage(ctx, "assistant", "hi", nil)
+	_ = mem.AddMessage(ctx, "user", "hello", nil)
+	_ = mem.AddMessage(ctx, "assistant", "hi", nil)
 
 	stats := mem.GetStats()
 	if stats["current_messages"] != 2 {
@@ -257,7 +257,7 @@ func TestConvMem_Stats(t *testing.T) {
 func TestConvMem_ExportImportRoundTrip(t *testing.T) {
 	mem := NewConversationalMemory(ConversationalMemoryConfig{})
 	ctx := context.Background()
-	mem.AddMessage(ctx, "user", "export test", nil)
+	_ = mem.AddMessage(ctx, "user", "export test", nil)
 
 	data, err := mem.Export()
 	if err != nil {
@@ -287,7 +287,7 @@ func TestConvMem_WindowLimit(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		mem.AddMessage(ctx, "user", "msg", nil)
+		_ = mem.AddMessage(ctx, "user", "msg", nil)
 	}
 
 	if mem.GetMessageCount() > 3 {
@@ -300,7 +300,7 @@ func TestConvMem_TotalCount(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		mem.AddMessage(ctx, "user", "msg", nil)
+		_ = mem.AddMessage(ctx, "user", "msg", nil)
 	}
 
 	if mem.GetTotalMessageCount() != 5 {

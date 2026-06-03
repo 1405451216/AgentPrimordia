@@ -70,7 +70,7 @@ func TestRAGStore_Query_WithEmbedder(t *testing.T) {
 	// 添加一些文档
 	for i := 0; i < 5; i++ {
 		ep := MustEpisode("s1", "user", "document content")
-		rag.Add(context.Background(), ep)
+		_ = rag.Add(context.Background(), ep)
 	}
 
 	results, err := rag.Query(context.Background(), "document", 3)
@@ -91,7 +91,7 @@ func TestRAGStore_HybridSearch(t *testing.T) {
 	rag := NewRAGStore(store, embedder)
 
 	ep := MustEpisode("s1", "user", "golang programming language")
-	rag.Add(context.Background(), ep)
+	_ = rag.Add(context.Background(), ep)
 
 	results, err := rag.HybridSearch(context.Background(), "golang", 5)
 	if err != nil {

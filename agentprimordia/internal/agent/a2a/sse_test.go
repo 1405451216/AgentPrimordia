@@ -49,7 +49,7 @@ func TestTaskEvent_MessageEvent(t *testing.T) {
 
 	data, _ := json.Marshal(event)
 	var decoded TaskEvent
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 
 	if decoded.Message == nil || len(decoded.Message.Parts) != 1 {
 		t.Fatal("Message Parts 解析失败")
@@ -73,7 +73,7 @@ func TestTaskEvent_ArtifactEvent(t *testing.T) {
 
 	data, _ := json.Marshal(event)
 	var decoded TaskEvent
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 
 	if decoded.Artifact == nil || decoded.Artifact.ArtifactID != "art-001" {
 		t.Error("Artifact 解析失败")
@@ -89,7 +89,7 @@ func TestTaskEvent_ErrorEvent(t *testing.T) {
 
 	data, _ := json.Marshal(event)
 	var decoded TaskEvent
-	json.Unmarshal(data, &decoded)
+	_ = json.Unmarshal(data, &decoded)
 
 	if decoded.Type != EventError || decoded.Error != "连接超时" {
 		t.Errorf("Error 事件解析错误: type=%s, error=%s", decoded.Type, decoded.Error)

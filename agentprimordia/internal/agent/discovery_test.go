@@ -53,7 +53,7 @@ func TestLocalDiscovery_Unregister(t *testing.T) {
 	ctx := context.Background()
 
 	info := &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"}
-	d.Register(ctx, info)
+	_ = d.Register(ctx, info)
 
 	if err := d.Unregister(ctx, "agent-1"); err != nil {
 		t.Fatalf("Unregister failed: %v", err)
@@ -79,9 +79,9 @@ func TestLocalDiscovery_ListAgents(t *testing.T) {
 	d := NewLocalDiscovery()
 	ctx := context.Background()
 
-	d.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
-	d.Register(ctx, &AgentInfo{ID: "agent-2", Name: "planner", Address: "localhost:8081"})
-	d.Register(ctx, &AgentInfo{ID: "agent-3", Name: "coder", Address: "localhost:8082"})
+	_ = d.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
+	_ = d.Register(ctx, &AgentInfo{ID: "agent-2", Name: "planner", Address: "localhost:8081"})
+	_ = d.Register(ctx, &AgentInfo{ID: "agent-3", Name: "coder", Address: "localhost:8082"})
 
 	agents, err := d.ListAgents(ctx)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestLocalDiscovery_Heartbeat(t *testing.T) {
 	ctx := context.Background()
 
 	info := &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"}
-	d.Register(ctx, info)
+	_ = d.Register(ctx, info)
 
 	before, _ := d.Discover(ctx, "agent-1")
 	time.Sleep(10 * time.Millisecond)
@@ -171,8 +171,8 @@ func TestHTTPDiscovery_ListAgents(t *testing.T) {
 	client := NewHTTPDiscovery(ts.URL)
 	ctx := context.Background()
 
-	client.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
-	client.Register(ctx, &AgentInfo{ID: "agent-2", Name: "planner", Address: "localhost:8081"})
+	_ = client.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
+	_ = client.Register(ctx, &AgentInfo{ID: "agent-2", Name: "planner", Address: "localhost:8081"})
 
 	agents, err := client.ListAgents(ctx)
 	if err != nil {
@@ -194,7 +194,7 @@ func TestHTTPDiscovery_Unregister(t *testing.T) {
 	client := NewHTTPDiscovery(ts.URL)
 	ctx := context.Background()
 
-	client.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
+	_ = client.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
 
 	if err := client.Unregister(ctx, "agent-1"); err != nil {
 		t.Fatalf("Unregister failed: %v", err)
@@ -216,7 +216,7 @@ func TestHTTPDiscovery_Heartbeat(t *testing.T) {
 	client := NewHTTPDiscovery(ts.URL)
 	ctx := context.Background()
 
-	client.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
+	_ = client.Register(ctx, &AgentInfo{ID: "agent-1", Name: "worker", Address: "localhost:8080"})
 
 	before, _ := client.Discover(ctx, "agent-1")
 	time.Sleep(10 * time.Millisecond)
@@ -410,8 +410,8 @@ func TestAuthenticatedDiscovery_DiscoverWithRoleFilter(t *testing.T) {
 	computeToken, _ := auth.GenerateToken(computeIdentity)
 	searchToken, _ := auth.GenerateToken(searchIdentity)
 
-	d.Register(context.Background(), &AgentInfo{ID: "agent-1", Name: "ComputeWorker", Address: "localhost:8081"}, computeToken)
-	d.Register(context.Background(), &AgentInfo{ID: "agent-2", Name: "SearchWorker", Address: "localhost:8082"}, searchToken)
+	_ = d.Register(context.Background(), &AgentInfo{ID: "agent-1", Name: "ComputeWorker", Address: "localhost:8081"}, computeToken)
+	_ = d.Register(context.Background(), &AgentInfo{ID: "agent-2", Name: "SearchWorker", Address: "localhost:8082"}, searchToken)
 
 	computeAgents, err := d.ListAgentsByRole(context.Background(), "compute")
 	if err != nil {

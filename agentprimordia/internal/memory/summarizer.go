@@ -167,7 +167,7 @@ func (s *SQLiteStore) autoCleanup(cfg CleanupConfig) {
 	if len(cfg.PreserveRoles) > 0 {
 		s.cleanupWithPreserve(ctx, cfg.MaxAgeDays, cfg.PreserveRoles)
 	} else {
-		s.CleanupExpired(ctx, cfg.MaxAgeDays)
+		_, _ = s.CleanupExpired(ctx, cfg.MaxAgeDays)
 	}
 }
 

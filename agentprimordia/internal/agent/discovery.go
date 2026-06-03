@@ -684,7 +684,7 @@ func (s *DiscoveryServer) handleDiscover(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
 
 // handleListAgents 处理列出 Agent 请求
@@ -696,7 +696,7 @@ func (s *DiscoveryServer) handleListAgents(w http.ResponseWriter, r *http.Reques
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(agents)
+	_ = json.NewEncoder(w).Encode(agents)
 }
 
 // handleHeartbeat 处理心跳请求
@@ -719,5 +719,5 @@ func (s *DiscoveryServer) handleHeartbeat(w http.ResponseWriter, r *http.Request
 func writeDiscoveryJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	_ = json.NewEncoder(w).Encode(v)
 }

@@ -56,7 +56,7 @@ func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
 	b.ReportAllocs()
 
 	registry := tools.NewRegistry()
-	registry.Register(&benchMockTool{name: "bench_tool"})
+	_ = registry.Register(&benchMockTool{name: "bench_tool"})
 
 	b.ResetTimer()
 
@@ -87,7 +87,7 @@ func BenchmarkReActAgent_MaxTurns(b *testing.B) {
 	b.ReportAllocs()
 
 	registry := tools.NewRegistry()
-	registry.Register(&benchMockTool{name: "loop_tool"})
+	_ = registry.Register(&benchMockTool{name: "loop_tool"})
 
 	b.ResetTimer()
 

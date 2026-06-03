@@ -81,7 +81,7 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 	}
 
 	action := ""
-	json.Unmarshal(params["action"], &action)
+	_ = json.Unmarshal(params["action"], &action)
 
 	if action != "fetch" {
 		return tools.NewErrorResult(fmt.Sprintf("unknown action: %s", action)), nil
@@ -89,7 +89,7 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 
 	rawURL := ""
 	if raw, ok := params["url"]; ok && raw != nil {
-		json.Unmarshal(raw, &rawURL)
+		_ = json.Unmarshal(raw, &rawURL)
 	}
 	if strings.TrimSpace(rawURL) == "" {
 		return tools.NewErrorResult("url is required"), nil
@@ -100,7 +100,7 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 
 	method := "GET"
 	if raw, ok := params["method"]; ok && raw != nil {
-		json.Unmarshal(raw, &method)
+		_ = json.Unmarshal(raw, &method)
 	}
 	if method == "" {
 		method = "GET"
@@ -109,7 +109,7 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 	timeoutSec := int(w.timeout.Seconds())
 	if raw, ok := params["timeout"]; ok && raw != nil {
 		var v float64
-		json.Unmarshal(raw, &v)
+		_ = json.Unmarshal(raw, &v)
 		if v > 0 {
 			timeoutSec = int(v)
 		}
@@ -117,12 +117,12 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 
 	var customHeaders map[string]string
 	if raw, ok := params["headers"]; ok && raw != nil {
-		json.Unmarshal(raw, &customHeaders)
+		_ = json.Unmarshal(raw, &customHeaders)
 	}
 
 	bodyStr := ""
 	if raw, ok := params["body"]; ok && raw != nil {
-		json.Unmarshal(raw, &bodyStr)
+		_ = json.Unmarshal(raw, &bodyStr)
 	}
 
 	reqCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)

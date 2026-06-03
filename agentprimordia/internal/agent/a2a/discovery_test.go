@@ -27,10 +27,10 @@ func TestLocalDiscovery_RegisterUpdate(t *testing.T) {
 	d := NewLocalDiscovery()
 
 	card1 := NewAgentCard("agent-001", "V1")
-	d.Register(card1)
+	_ = d.Register(card1)
 
 	card2 := NewAgentCard("agent-001", "V2")
-	d.Register(card2)
+	_ = d.Register(card2)
 
 	reg, _ := d.Resolve("agent-001")
 	if reg.Card.Name != "V2" {
@@ -41,7 +41,7 @@ func TestLocalDiscovery_RegisterUpdate(t *testing.T) {
 func TestLocalDiscovery_Deregister(t *testing.T) {
 	d := NewLocalDiscovery()
 	card := NewAgentCard("agent-002", "AgentTwo")
-	d.Register(card)
+	_ = d.Register(card)
 
 	if err := d.Deregister("agent-002"); err != nil {
 		t.Fatalf("Deregister 失败: %v", err)
@@ -71,9 +71,9 @@ func TestLocalDiscovery_ResolveNotFound(t *testing.T) {
 
 func TestLocalDiscovery_List(t *testing.T) {
 	d := NewLocalDiscovery()
-	d.Register(NewAgentCard("a1", "Agent1"))
-	d.Register(NewAgentCard("a2", "Agent2"))
-	d.Register(NewAgentCard("a3", "Agent3"))
+	_ = d.Register(NewAgentCard("a1", "Agent1"))
+	_ = d.Register(NewAgentCard("a2", "Agent2"))
+	_ = d.Register(NewAgentCard("a3", "Agent3"))
 
 	list := d.List()
 	if len(list) != 3 {
@@ -94,7 +94,7 @@ func TestLocalDiscovery_WatchRegister(t *testing.T) {
 	ch := d.Watch()
 
 	card := NewAgentCard("watch-001", "WatchAgent")
-	d.Register(card)
+	_ = d.Register(card)
 
 	select {
 	case event := <-ch:
@@ -114,10 +114,10 @@ func TestLocalDiscovery_WatchDeregister(t *testing.T) {
 	ch := d.Watch()
 
 	card := NewAgentCard("watch-002", "WatchAgent")
-	d.Register(card)
+	_ = d.Register(card)
 	<-ch
 
-	d.Deregister("watch-002")
+	_ = d.Deregister("watch-002")
 
 	select {
 	case event := <-ch:
@@ -134,11 +134,11 @@ func TestLocalDiscovery_WatchUpdate(t *testing.T) {
 	ch := d.Watch()
 
 	card := NewAgentCard("watch-003", "V1")
-	d.Register(card)
+	_ = d.Register(card)
 	<-ch
 
 	card2 := NewAgentCard("watch-003", "V2")
-	d.Register(card2)
+	_ = d.Register(card2)
 
 	select {
 	case event := <-ch:
@@ -157,7 +157,7 @@ func TestLocalDiscovery_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(idx int) {
 			card := NewAgentCard(fmt.Sprintf("concurrent-%d", idx), fmt.Sprintf("Agent%d", idx))
-			d.Register(card)
+			_ = d.Register(card)
 			done <- struct{}{}
 		}(i)
 	}

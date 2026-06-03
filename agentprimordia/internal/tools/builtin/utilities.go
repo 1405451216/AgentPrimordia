@@ -109,7 +109,7 @@ func (d *DateTimeTool) Execute(ctx context.Context, args json.RawMessage) (*tool
 
 	action := "now"
 	if raw, ok := params["action"]; ok && raw != nil {
-		json.Unmarshal(raw, &action)
+		_ = json.Unmarshal(raw, &action)
 	}
 
 	switch action {
@@ -117,7 +117,7 @@ func (d *DateTimeTool) Execute(ctx context.Context, args json.RawMessage) (*tool
 		format := time.RFC3339
 		if raw, ok := params["format"]; ok && raw != nil {
 			var f string
-			json.Unmarshal(raw, &f)
+			_ = json.Unmarshal(raw, &f)
 			format = getLayout(f)
 		}
 		return tools.NewResult(time.Now().Format(format)), nil

@@ -44,7 +44,7 @@ func TestFetchURL_Success(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body>hello world</body></html>"))
+		_, _ = w.Write([]byte("<html><body>hello world</body></html>"))
 	}))
 	defer ts.Close()
 
@@ -58,7 +58,7 @@ func TestFetchURL_Success(t *testing.T) {
 		t.Fatalf("error: %v, result: %v", err, result)
 	}
 	var resp map[string]any
-	json.Unmarshal([]byte(result.Content), &resp)
+	_ = json.Unmarshal([]byte(result.Content), &resp)
 
 	status, _ := resp["status_code"].(float64)
 	if status != 200 {
@@ -73,7 +73,7 @@ func TestFetchURL_Success(t *testing.T) {
 func TestFetchURL_NotFound(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("not found"))
+		_, _ = w.Write([]byte("not found"))
 	}))
 	defer ts.Close()
 
@@ -84,7 +84,7 @@ func TestFetchURL_NotFound(t *testing.T) {
 	})
 	result, _ := web.Execute(context.Background(), args)
 	var resp map[string]any
-	json.Unmarshal([]byte(result.Content), &resp)
+	_ = json.Unmarshal([]byte(result.Content), &resp)
 	status, _ := resp["status_code"].(float64)
 	if status != 404 {
 		t.Errorf("expected status 404, got %v", status)
@@ -94,7 +94,7 @@ func TestFetchURL_NotFound(t *testing.T) {
 func TestFetchTimeout(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(3 * time.Second)
-		w.Write([]byte("too slow"))
+		_, _ = w.Write([]byte("too slow"))
 	}))
 	defer ts.Close()
 
@@ -133,7 +133,7 @@ func TestResponseHeaders(t *testing.T) {
 		w.Header().Set("X-Custom-Header", "test-value")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"key":"value"}`))
+		_, _ = w.Write([]byte(`{"key":"value"}`))
 	}))
 	defer ts.Close()
 
@@ -147,7 +147,7 @@ func TestResponseHeaders(t *testing.T) {
 		t.Fatalf("error: %v, result: %v", err, result)
 	}
 	var resp map[string]any
-	json.Unmarshal([]byte(result.Content), &resp)
+	_ = json.Unmarshal([]byte(result.Content), &resp)
 
 	headers, ok := resp["headers"].(map[string]any)
 	if !ok {
@@ -171,7 +171,7 @@ func TestBodySizeLimit(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		w.Write(largeBody)
+		_, _ = w.Write(largeBody)
 	}))
 	defer ts.Close()
 
@@ -185,7 +185,7 @@ func TestBodySizeLimit(t *testing.T) {
 		t.Fatalf("error: %v, result: %v", err, result)
 	}
 	var resp map[string]any
-	json.Unmarshal([]byte(result.Content), &resp)
+	_ = json.Unmarshal([]byte(result.Content), &resp)
 	body, _ := resp["body"].(string)
 	if len(body) > 1024+200 {
 		t.Errorf("body should be truncated near limit, got len=%d", len(body))
@@ -207,7 +207,7 @@ func TestPOSTRequest(t *testing.T) {
 		receivedBody = string(buf[:n])
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"created"}`))
+		_, _ = w.Write([]byte(`{"status":"created"}`))
 	}))
 	defer ts.Close()
 
@@ -236,7 +236,7 @@ func TestCustomHeaders(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedAuth = r.Header.Get("Authorization")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok":true}`))
+		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer ts.Close()
 
@@ -335,7 +335,7 @@ func TestWeb_SSRF_IPv4MappedIPv6Blocked(t *testing.T) {
 func TestWeb_SSRF_AllowPrivateBypass(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	}))
 	defer ts.Close()
 

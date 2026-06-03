@@ -195,9 +195,9 @@ func (h *HybridCache) Set(ctx context.Context, query string, resp *CompletionRes
 
 func (h *HybridCache) Stats(ctx context.Context) CacheStats { return h.fingerprint.Stats(ctx) }
 func (h *HybridCache) Clear(ctx context.Context) error {
-	h.fingerprint.Clear(ctx)
+	_ = h.fingerprint.Clear(ctx)
 	if h.semantic != nil {
-		h.semantic.Clear(ctx)
+		_ = h.semantic.Clear(ctx)
 	}
 	return nil
 }

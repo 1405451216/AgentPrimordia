@@ -28,20 +28,20 @@ func newTestWorkflowForViz() *WorkflowExecution {
 	wf.nodes["parallel"] = &WorkflowNode{ID: "parallel", Name: "并行执行", Type: ParallelNode}
 	wf.nodes["end"] = &WorkflowNode{ID: "end", Name: "结束", Type: TaskNode}
 
-	wf.AddTransition(&Transition{From: "start", To: "check"})
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{From: "start", To: "check"})
+	_ = wf.AddTransition(&Transition{
 		From: "check", To: "process",
 		Condition: &TransitionCondition{Type: "condition", Expression: "x > 0"},
 	})
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{
 		From: "check", To: "fallback",
 		Condition: &TransitionCondition{Type: "condition", Expression: "x <= 0"},
 	})
-	wf.AddTransition(&Transition{From: "process", To: "parallel"})
-	wf.AddTransition(&Transition{From: "parallel", To: "end"})
-	wf.AddTransition(&Transition{From: "fallback", To: "end"})
+	_ = wf.AddTransition(&Transition{From: "process", To: "parallel"})
+	_ = wf.AddTransition(&Transition{From: "parallel", To: "end"})
+	_ = wf.AddTransition(&Transition{From: "fallback", To: "end"})
 
-	wf.SetStartNode("start")
+	_ = wf.SetStartNode("start")
 	wf.endNodeIDs = []string{"end"}
 
 	return wf
@@ -189,10 +189,10 @@ func TestVisualizer_LoopNode(t *testing.T) {
 	wf.nodes["task"] = &WorkflowNode{ID: "task", Name: "任务", Type: TaskNode}
 	wf.nodes["loop_end"] = &WorkflowNode{ID: "loop_end", Name: "循环结束", Type: LoopEndNode}
 
-	wf.AddTransition(&Transition{From: "loop_start", To: "task"})
-	wf.AddTransition(&Transition{From: "task", To: "loop_end"})
+	_ = wf.AddTransition(&Transition{From: "loop_start", To: "task"})
+	_ = wf.AddTransition(&Transition{From: "task", To: "loop_end"})
 
-	wf.SetStartNode("loop_start")
+	_ = wf.SetStartNode("loop_start")
 	wf.endNodeIDs = []string{"loop_end"}
 
 	viz := NewVisualizer()
@@ -254,17 +254,17 @@ func TestVisualizer_IntegrationWithWorkflow(t *testing.T) {
 	wf.nodes["output_a"] = &WorkflowNode{ID: "output_a", Name: "输出A", Type: TaskNode, Agent: mockAgent}
 	wf.nodes["output_b"] = &WorkflowNode{ID: "output_b", Name: "输出B", Type: TaskNode, Agent: mockAgent}
 
-	wf.AddTransition(&Transition{From: "input", To: "decide"})
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{From: "input", To: "decide"})
+	_ = wf.AddTransition(&Transition{
 		From: "decide", To: "output_a",
 		Condition: &TransitionCondition{Type: "condition", Expression: "score >= 80"},
 	})
-	wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&Transition{
 		From: "decide", To: "output_b",
 		Condition: &TransitionCondition{Type: "condition", Expression: "score < 80"},
 	})
 
-	wf.SetStartNode("input")
+	_ = wf.SetStartNode("input")
 	wf.endNodeIDs = []string{"output_a", "output_b"}
 
 	viz := NewVisualizer()

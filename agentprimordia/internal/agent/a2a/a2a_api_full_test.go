@@ -48,7 +48,7 @@ func TestServer_BearerAuth_ValidToken(t *testing.T) {
 	}
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error != nil {
 		t.Errorf("有效 Token 不应返回错误: %+v", resp.Error)
 	}
@@ -76,7 +76,7 @@ func TestServer_BearerAuth_InvalidToken(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeAuthFailed {
 		t.Errorf("无效 Bearer Token 应返回 AuthFailed, got: %+v", resp.Error)
 	}
@@ -157,7 +157,7 @@ func TestServer_TaskGet_EmptyID(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeInvalidParams {
 		t.Fatalf("空 ID 应返回 InvalidParams, got: %+v", resp.Error)
 	}
@@ -185,7 +185,7 @@ func TestServer_TaskCancel_EmptyID(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeInvalidParams {
 		t.Fatalf("空 ID 应返回 InvalidParams, got: %+v", resp.Error)
 	}
@@ -201,7 +201,7 @@ func TestServer_TaskCancel_CompletedTask(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "completed-task", State: TaskCompleted, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "completed-task", State: TaskCompleted, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	params, _ := json.Marshal(map[string]string{"id": "completed-task"})
@@ -214,7 +214,7 @@ func TestServer_TaskCancel_CompletedTask(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil {
 		t.Fatal("取消已完成任务应返回错误")
 	}
@@ -228,7 +228,7 @@ func TestServer_TaskCancel_FailedTask(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "failed-task", State: TaskFailed, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "failed-task", State: TaskFailed, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	params, _ := json.Marshal(map[string]string{"id": "failed-task"})
@@ -241,7 +241,7 @@ func TestServer_TaskCancel_FailedTask(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeTaskConflict {
 		t.Errorf("取消已失败任务应返回 TaskConflict, got: %+v", resp.Error)
 	}
@@ -429,7 +429,7 @@ func TestServer_EmptyRequestBody(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeParseError {
 		t.Errorf("空请求体应返回 ParseError, got: %+v", resp.Error)
 	}
@@ -453,7 +453,7 @@ func TestServer_InvalidJSONRPCVersion(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeParseError {
 		t.Errorf("无效 JSON-RPC 版本应返回 ParseError, got: %+v", resp.Error)
 	}
@@ -498,7 +498,7 @@ func TestServer_ConcurrentTaskCreate(t *testing.T) {
 			server.Handler().ServeHTTP(rec, req)
 
 			var resp JSONRPCResponse
-			json.Unmarshal(rec.Body.Bytes(), &resp)
+			_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 			if resp.Error == nil {
 				atomic.AddInt64(&successCount, 1)
 			}
@@ -544,7 +544,7 @@ func TestServer_NoAuthOnProtectedEndpoint(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeAuthFailed {
 		t.Errorf("无认证访问受保护端点应返回 AuthFailed, got: %+v", resp.Error)
 	}
@@ -573,7 +573,7 @@ func TestServer_BatchRequest(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeParseError {
 		t.Errorf("批量请求应返回 ParseError, got: %+v", resp.Error)
 	}
@@ -602,12 +602,12 @@ func TestServer_TaskLifecycle_FullTransition(t *testing.T) {
 	server.Handler().ServeHTTP(createRec, createReq)
 
 	var createResp JSONRPCResponse
-	json.Unmarshal(createRec.Body.Bytes(), &createResp)
+	_ = json.Unmarshal(createRec.Body.Bytes(), &createResp)
 	if createResp.Error != nil {
 		t.Fatalf("创建任务失败: %+v", createResp.Error)
 	}
 	var created Task
-	json.Unmarshal(createResp.Result, &created)
+	_ = json.Unmarshal(createResp.Result, &created)
 	if created.State != TaskSubmitted {
 		t.Fatalf("初始状态应为 submitted, got %s", created.State)
 	}
@@ -636,12 +636,12 @@ func TestServer_TaskLifecycle_FullTransition(t *testing.T) {
 	server.Handler().ServeHTTP(getRec, getReq)
 
 	var getResp JSONRPCResponse
-	json.Unmarshal(getRec.Body.Bytes(), &getResp)
+	_ = json.Unmarshal(getRec.Body.Bytes(), &getResp)
 	if getResp.Error != nil {
 		t.Fatalf("获取任务失败: %+v", getResp.Error)
 	}
 	var fetched Task
-	json.Unmarshal(getResp.Result, &fetched)
+	_ = json.Unmarshal(getResp.Result, &fetched)
 
 	if fetched.State != TaskCompleted {
 		t.Errorf("最终状态应为 completed, got %s", fetched.State)
@@ -656,7 +656,7 @@ func TestServer_TaskLifecycle_WithInputRequired(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "lifecycle-002", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "lifecycle-002", State: TaskSubmitted, Message: &A2AMessage{Role: "user"}})
 
 	// submitted → working
 	if err := tm.Update("lifecycle-002", TaskWorking, nil); err != nil {

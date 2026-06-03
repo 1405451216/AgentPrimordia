@@ -148,9 +148,8 @@ type WorkflowExecution struct {
 	transitions    map[string][]*Transition
 	startNodeID    string
 	endNodeIDs     []string
-	currentNode    *WorkflowNode
-	executionStack []*WorkflowNode
-	variables      map[string]any
+	currentNode *WorkflowNode
+	variables   map[string]any
 	history        []*ExecutionRecord
 	status         WorkflowStatus
 	result         *WorkflowResult
@@ -1057,16 +1056,6 @@ func (w *WorkflowExecution) recordPath(nodeID string) {
 	if w.result != nil {
 		w.result.PathTaken = append(w.result.PathTaken, nodeID)
 	}
-}
-
-func (w *WorkflowExecution) copyVariables() map[string]any {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-	copy := make(map[string]any)
-	for k, v := range w.variables {
-		copy[k] = v
-	}
-	return copy
 }
 
 func (w *WorkflowExecution) emitEvent(eventType, nodeID string, data any) {

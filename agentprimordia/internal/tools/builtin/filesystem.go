@@ -167,10 +167,10 @@ func (f *FileSystem) Execute(ctx context.Context, args json.RawMessage) (*tools.
 	}
 
 	action := ""
-	json.Unmarshal(params["action"], &action)
+	_ = json.Unmarshal(params["action"], &action)
 
 	rawPath := ""
-	json.Unmarshal(params["path"], &rawPath)
+	_ = json.Unmarshal(params["path"], &rawPath)
 
 	cleanPath := filepath.Clean(rawPath)
 	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, "\\..") {
@@ -287,12 +287,12 @@ func (f *FileSystem) readFile(_ context.Context, path string, params map[string]
 
 	if raw, ok := params["start_line"]; ok {
 		var v float64
-		json.Unmarshal(raw, &v)
+		_ = json.Unmarshal(raw, &v)
 		startLine = int(v)
 	}
 	if raw, ok := params["end_line"]; ok {
 		var v float64
-		json.Unmarshal(raw, &v)
+		_ = json.Unmarshal(raw, &v)
 		endLine = int(v)
 	}
 
@@ -319,7 +319,7 @@ func (f *FileSystem) writeFile(_ context.Context, path string, params map[string
 	var content struct {
 		Value string `json:"content"`
 	}
-	json.Unmarshal(params["content"], &content.Value)
+	_ = json.Unmarshal(params["content"], &content.Value)
 
 	if f.maxWriteSize > 0 && int64(len(content.Value)) > f.maxWriteSize {
 		return tools.NewErrorResult(fmt.Sprintf("content too large: %d bytes (max %d bytes)", len(content.Value), f.maxWriteSize)), nil
@@ -361,8 +361,8 @@ func (f *FileSystem) editFile(_ context.Context, path string, params map[string]
 		OldStr string `json:"old_str"`
 		NewStr string `json:"new_str"`
 	}
-	json.Unmarshal(params["old_str"], &editParams.OldStr)
-	json.Unmarshal(params["new_str"], &editParams.NewStr)
+	_ = json.Unmarshal(params["old_str"], &editParams.OldStr)
+	_ = json.Unmarshal(params["new_str"], &editParams.NewStr)
 
 	if editParams.OldStr == "" {
 		return tools.NewErrorResult("old_str is required for edit operation"), nil
@@ -443,7 +443,7 @@ func (f *FileSystem) searchInFile(path string, params map[string]json.RawMessage
 	var query struct {
 		Value string `json:"query"`
 	}
-	json.Unmarshal(params["query"], &query.Value)
+	_ = json.Unmarshal(params["query"], &query.Value)
 
 	if query.Value == "" {
 		return tools.NewErrorResult("query is required for search operation"), nil
@@ -469,7 +469,7 @@ func (f *FileSystem) searchInFile(path string, params map[string]json.RawMessage
 	var re *regexp.Regexp
 	if raw, ok := params["regex"]; ok {
 		var regexFlag bool
-		json.Unmarshal(raw, &regexFlag)
+		_ = json.Unmarshal(raw, &regexFlag)
 		if regexFlag {
 			// ReDoS 防护：限制正则复杂度，检测危险的重复量词嵌套
 			if hasReDoSPattern(query.Value) {
@@ -557,18 +557,18 @@ type searchDirectoryParams struct {
 func (f *FileSystem) searchDirectory(_ context.Context, dirPath string, params map[string]json.RawMessage) (*tools.Result, error) {
 	var p searchDirectoryParams
 	if raw, ok := params["query"]; ok {
-		json.Unmarshal(raw, &p.Query)
+		_ = json.Unmarshal(raw, &p.Query)
 	}
 	if p.Query == "" {
 		return tools.NewErrorResult("query is required for search_directory operation"), nil
 	}
 	if raw, ok := params["include"]; ok {
-		json.Unmarshal(raw, &p.Include)
+		_ = json.Unmarshal(raw, &p.Include)
 	}
 	maxResults := 50
 	if raw, ok := params["max_results"]; ok {
 		var v float64
-		json.Unmarshal(raw, &v)
+		_ = json.Unmarshal(raw, &v)
 		if v > 0 {
 			maxResults = int(v)
 		}
@@ -593,7 +593,7 @@ func (f *FileSystem) searchDirectory(_ context.Context, dirPath string, params m
 
 	var matches []matchEntry
 
-	err = filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+	_ = filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}

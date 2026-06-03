@@ -478,8 +478,3 @@ func (p *GeminiProvider) injectResponseFormat(config map[string]any, rf *Respons
 	}
 }
 
-type geminiEmbedResponse struct {
-	Embedding struct {
-		Values []float32 `json:"values"`
-	} `json:"embedding"`
-}

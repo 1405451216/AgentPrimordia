@@ -119,7 +119,7 @@ func TestMCPRegistry_LoadFromConfig_InvalidJSON(t *testing.T) {
 	r := NewMCPRegistry()
 	tmpDir := t.TempDir()
 	configPath := tmpDir + "/config.json"
-	os.WriteFile(configPath, []byte("invalid json"), 0o644)
+	_ = os.WriteFile(configPath, []byte("invalid json"), 0o644)
 
 	err := r.LoadFromConfig(configPath)
 	if err == nil {
@@ -148,7 +148,7 @@ func TestMCPRegistry_LoadFromConfig_Valid(t *testing.T) {
 			}
 		}
 	}`
-	os.WriteFile(configPath, []byte(config), 0o644)
+	_ = os.WriteFile(configPath, []byte(config), 0o644)
 
 	err := r.LoadFromConfig(configPath)
 	if err != nil {

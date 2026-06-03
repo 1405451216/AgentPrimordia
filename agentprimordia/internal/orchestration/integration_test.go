@@ -46,7 +46,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 	})
 
 	// 3. 添加步骤到Orchestrator
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "research",
 		Name:      "市场研究",
 		Agent:     researcherAgent,
@@ -54,7 +54,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		OutputKey: "market_research",
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "analysis",
 		Name:      "数据分析",
 		Agent:     analystAgent,
@@ -63,7 +63,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		OutputKey: "data_analysis",
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "report",
 		Name:      "报告生成",
 		Agent:     reporterAgent,
@@ -171,7 +171,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	debateSession.AddCollaborator(&Collaborator{
+	_ = debateSession.AddCollaborator(&Collaborator{
 		ID:          "pro",
 		Name:        "支持者",
 		Role:        "strategist",
@@ -180,7 +180,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		Weight:      1.0,
 	})
 
-	debateSession.AddCollaborator(&Collaborator{
+	_ = debateSession.AddCollaborator(&Collaborator{
 		ID:          "con",
 		Name:        "反对者",
 		Role:        "strategist",
@@ -231,7 +231,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	workflow.AddNode(&WorkflowNode{
+	_ = workflow.AddNode(&WorkflowNode{
 		ID:    "decision",
 		Name:  "决策节点",
 		Type:  ConditionNode,
@@ -243,19 +243,19 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		},
 	})
 
-	workflow.AddNode(&WorkflowNode{
+	_ = workflow.AddNode(&WorkflowNode{
 		ID:    "action",
 		Name:  "行动节点",
 		Type:  TaskNode,
 		Agent: actionAgent,
 	})
 
-	workflow.AddTransition(&Transition{
+	_ = workflow.AddTransition(&Transition{
 		From:      "decision",
 		To:        "action",
 		Condition: &TransitionCondition{Field: "should_proceed", Operator: "==", Value: true},
 	})
-	workflow.SetStartNode("decision")
+	_ = workflow.SetStartNode("decision")
 
 	workflowInput := map[string]any{
 		"proposal": "新市场进入策略",
@@ -305,21 +305,19 @@ func TestMultiAgentSystem_ParallelExecution(t *testing.T) {
 		Mode:        ParallelMode,
 	})
 
-	var agents []agent.Agent
 	for i := 0; i < 4; i++ {
 		idx := i
-		agent := agent.NewReActAgent(agent.ReActConfig{
+		ag := agent.NewReActAgent(agent.ReActConfig{
 			Name:         fmt.Sprintf("Worker-%d", idx),
 			SystemPrompt: fmt.Sprintf("你是工作者%d，处理分配的任务", idx),
 			Model:        demo.NewDemoLLM(fmt.Sprintf("任务%d已完成", idx)),
 			MaxTurns:     1,
 		})
-		agents = append(agents, agent)
 
-		orch.AddStep(&AgentStep{
+		_ = orch.AddStep(&AgentStep{
 			ID:        fmt.Sprintf("task_%d", idx),
 			Name:      fmt.Sprintf("并行任务%d", idx),
-			Agent:     agent,
+			Agent:     ag,
 			Prompt:    fmt.Sprintf("请处理任务%d", idx),
 			OutputKey: fmt.Sprintf("result_%d", idx),
 			Priority:  idx,
@@ -376,7 +374,7 @@ func TestMultiAgentSystem_ErrorRecovery(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "risky_step",
 		Name:      "可能失败的步骤",
 		Agent:     failingAgent,
@@ -388,7 +386,7 @@ func TestMultiAgentSystem_ErrorRecovery(t *testing.T) {
 		},
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "recovery_step",
 		Name:      "恢复步骤",
 		Agent:     recoveryAgent,
@@ -434,7 +432,7 @@ func TestMultiAgentSystem_StatePersistence(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:     "reviewer1",
 		Name:   "评审者1",
 		Role:   "reviewer",

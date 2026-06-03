@@ -53,10 +53,10 @@ func TestLifecycle_ValidTransitions(t *testing.T) {
 func TestLifecycle_StateHistory(t *testing.T) {
 	lc := NewLifecycle()
 
-	lc.SetStatus(StatusRunning)
-	lc.SetStatus(StatusPaused)
-	lc.SetStatus(StatusRunning)
-	lc.SetStatus(StatusCompleted)
+	_ = lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusPaused)
+	_ = lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusCompleted)
 
 	history := lc.History()
 	if len(history) != 4 {
@@ -83,12 +83,12 @@ func TestLifecycle_RegisterHook(t *testing.T) {
 		hookTo = to
 	})
 
-	lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusRunning)
 	if hookCalled {
 		t.Error("hook should not be called for running status")
 	}
 
-	lc.SetStatus(StatusCompleted)
+	_ = lc.SetStatus(StatusCompleted)
 	if !hookCalled {
 		t.Error("hook should be called for completed status")
 	}
@@ -108,7 +108,7 @@ func TestLifecycle_StateDuration(t *testing.T) {
 		t.Error("state duration should be non-negative")
 	}
 
-	lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusRunning)
 	runningDur := lc.StateDuration()
 	if runningDur < 0 {
 		t.Error("state duration should be non-negative")
@@ -118,20 +118,20 @@ func TestLifecycle_StateDuration(t *testing.T) {
 func TestLifecycle_TotalRunningTime(t *testing.T) {
 	lc := NewLifecycle()
 
-	lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusRunning)
 
 	total := lc.TotalRunningTime()
 	if total < 0 {
 		t.Error("total running time should be non-negative")
 	}
 
-	lc.SetStatus(StatusPaused)
+	_ = lc.SetStatus(StatusPaused)
 	pausedTotal := lc.TotalRunningTime()
 	if pausedTotal < 0 {
 		t.Error("paused total should still be non-negative")
 	}
 
-	lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusRunning)
 	resumedTotal := lc.TotalRunningTime()
 	if resumedTotal < pausedTotal {
 		t.Error("resumed total should be >= paused total")
@@ -145,13 +145,13 @@ func TestLifecycle_TransitionCount(t *testing.T) {
 		t.Errorf("initial count: expected 0, got %d", lc.TransitionCount())
 	}
 
-	lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusRunning)
 	if lc.TransitionCount() != 1 {
 		t.Errorf("after 1 transition: expected 1, got %d", lc.TransitionCount())
 	}
 
-	lc.SetStatus(StatusPaused)
-	lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusPaused)
+	_ = lc.SetStatus(StatusRunning)
 	if lc.TransitionCount() != 3 {
 		t.Errorf("after 3 transitions: expected 3, got %d", lc.TransitionCount())
 	}
@@ -159,8 +159,8 @@ func TestLifecycle_TransitionCount(t *testing.T) {
 
 func TestLifecycle_PausedCanCancel(t *testing.T) {
 	lc := NewLifecycle()
-	lc.SetStatus(StatusRunning)
-	lc.SetStatus(StatusPaused)
+	_ = lc.SetStatus(StatusRunning)
+	_ = lc.SetStatus(StatusPaused)
 
 	err := lc.SetStatus(StatusCancelled)
 	if err != nil {

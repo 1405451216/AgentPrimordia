@@ -97,7 +97,7 @@ func TestClient_GetTask(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "get-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "get-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	httpServer := httptest.NewServer(server.Handler())
@@ -132,7 +132,7 @@ func TestClient_CancelTask(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "cancel-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "cancel-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	httpServer := httptest.NewServer(server.Handler())
@@ -153,7 +153,7 @@ func TestClient_CancelTaskConflict(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "completed-001", State: TaskCompleted, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "completed-001", State: TaskCompleted, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	httpServer := httptest.NewServer(server.Handler())
@@ -232,7 +232,7 @@ func TestClient_StreamEvents(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "stream-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "stream-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	httpServer := httptest.NewServer(server.Handler())
@@ -257,7 +257,7 @@ func TestClient_StreamEvents(t *testing.T) {
 		t.Fatalf("SSE 状态码应为 200, got %d", resp.StatusCode)
 	}
 
-	tm.Update("stream-001", TaskCompleted, nil)
+	_ = tm.Update("stream-001", TaskCompleted, nil)
 
 	ch := make(chan *TaskEvent, 1)
 	go func() {
@@ -350,16 +350,16 @@ func TestClient_JSONRPCRequestFormat(t *testing.T) {
 		resp.ID = 1
 		result, _ := json.Marshal(map[string]string{"status": "ok"})
 		resp.Result = result
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer httpServer.Close()
 
 	client := NewA2AClient(httpServer.URL)
 	msg := &A2AMessage{Role: "user", Parts: []Part{NewTextPart("format test")}}
-	client.CreateTask(msg, "rpc-001")
+	_, _ = client.CreateTask(msg, "rpc-001")
 
 	var req JSONRPCRequest
-	json.Unmarshal(lastBody, &req)
+	_ = json.Unmarshal(lastBody, &req)
 	if req.JSONRPC != "2.0" {
 		t.Errorf("JSONRPC 版本应为 2.0, got %s", req.JSONRPC)
 	}

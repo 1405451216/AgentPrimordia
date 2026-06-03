@@ -222,7 +222,7 @@ func TestHITLManager_PendingRequest(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		<-pendingReady
-		mgr.RequestInterrupt(ctx, req)
+		_, _ = mgr.RequestInterrupt(ctx, req)
 	}()
 
 	go func() {
@@ -265,7 +265,7 @@ func TestHITLManager_OnInterruptCallback(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	mgr.RequestInterrupt(ctx, req)
+	_, _ = mgr.RequestInterrupt(ctx, req)
 
 	if !callbackCalled {
 		t.Error("OnInterrupt callback should have been called")

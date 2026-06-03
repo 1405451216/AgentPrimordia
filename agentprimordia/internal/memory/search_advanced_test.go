@@ -10,8 +10,8 @@ func TestSQLiteStore_SearchAdvanced_Basic(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "I like programming in Go"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "I like programming in Go"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:      "fox",
@@ -38,11 +38,11 @@ func TestSQLiteStore_SearchAdvanced_WithTags(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Message about Go programming")
 	ep1.Topics = "go,programming"
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "Message about Python data science")
 	ep2.Topics = "python,data"
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:      "programming",
@@ -65,8 +65,8 @@ func TestSQLiteStore_SearchAdvanced_MinScore(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "Something completely unrelated"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "Something completely unrelated"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:      "fox",
@@ -88,11 +88,11 @@ func TestSQLiteStore_SearchAdvanced_SemanticWeight(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "go programming language tutorial")
 	ep1.Importance = 0.8
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "go programming basics for beginners")
 	ep2.Importance = 0.2
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	resultsSemantic, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:          "go programming",
@@ -130,8 +130,8 @@ func TestSQLiteStore_SearchAdvanced_SessionFilter(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("session-a", "user", "Go programming language"))
-	store.Add(ctx, MustEpisode("session-b", "user", "Python programming language"))
+	_ = store.Add(ctx, MustEpisode("session-a", "user", "Go programming language"))
+	_ = store.Add(ctx, MustEpisode("session-b", "user", "Python programming language"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:      "programming",
@@ -154,7 +154,7 @@ func TestSQLiteStore_SearchAdvanced_EmptyQuery(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "Hello world"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "Hello world"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:      "",
@@ -175,11 +175,11 @@ func TestSQLiteStore_SearchAdvanced_CombinedScoreSorting(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Go is a great programming language for building fast applications")
 	ep1.Importance = 0.9
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "Go programming basics")
 	ep2.Importance = 0.1
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:          "Go programming",

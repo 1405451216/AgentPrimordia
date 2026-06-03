@@ -291,7 +291,7 @@ func TestRegisterValidation_ValidFullFields(t *testing.T) {
 		t.Fatalf("发现已注册 Agent 失败: 状态码 = %d", resp2.StatusCode)
 	}
 	var info AgentInfo
-	json.Unmarshal([]byte(body), &info)
+	_ = json.Unmarshal([]byte(body), &info)
 	if info.ID != "a1" || info.Name != "worker" {
 		t.Errorf("注册数据不匹配: ID=%q Name=%q", info.ID, info.Name)
 	}
@@ -398,7 +398,7 @@ func TestConcurrent_Register(t *testing.T) {
 		t.Fatalf("列出 Agent 失败: 状态码 %d", resp.StatusCode)
 	}
 	var agents []*AgentInfo
-	json.Unmarshal([]byte(body), &agents)
+	_ = json.Unmarshal([]byte(body), &agents)
 	if len(agents) != goroutines {
 		t.Errorf("并发注册后 Agent 数量 = %d, 期望 %d", len(agents), goroutines)
 	}
@@ -438,7 +438,7 @@ func TestCRUD_FullFlow(t *testing.T) {
 		t.Fatalf("CRUD 列出: 状态码 = %d", resp.StatusCode)
 	}
 	var agents []*AgentInfo
-	json.Unmarshal([]byte(body), &agents)
+	_ = json.Unmarshal([]byte(body), &agents)
 	if len(agents) != 1 || agents[0].ID != "crud-1" {
 		t.Errorf("CRUD 列出: agents = %v, 期望包含 crud-1", agents)
 	}
@@ -449,7 +449,7 @@ func TestCRUD_FullFlow(t *testing.T) {
 		t.Fatalf("CRUD 发现: 状态码 = %d", resp.StatusCode)
 	}
 	var info AgentInfo
-	json.Unmarshal([]byte(body), &info)
+	_ = json.Unmarshal([]byte(body), &info)
 	if info.Name != "crud-worker" {
 		t.Errorf("CRUD 发现: Name = %q, 期望 crud-worker", info.Name)
 	}

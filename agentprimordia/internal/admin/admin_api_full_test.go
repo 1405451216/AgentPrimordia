@@ -38,7 +38,7 @@ func TestAdminAPI_GetAgent_Existing(t *testing.T) {
 		tasks := []pool.TaskConfig{
 			{ID: agentID, Title: "存在性验证任务", Prompt: "执行任务"},
 		}
-		p.Dispatch(context.Background(), tasks)
+		_, _ = p.Dispatch(context.Background(), tasks)
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -751,7 +751,7 @@ func TestAdminAPI_XSS_JSONEncodingSafe(t *testing.T) {
 		t.Fatalf("解析 JSON 失败: %v", err)
 	}
 
-	if _, ok := result["error"].(string); ok {
+	if result["error"] != nil { // expected for 404
 	}
 }
 
@@ -772,7 +772,7 @@ func TestAdminAPI_ConcurrentDispatchAndQuery(t *testing.T) {
 		tasks := []pool.TaskConfig{
 			{ID: "concurrent-1", Title: "并发任务1", Prompt: "执行"},
 		}
-		p.Dispatch(context.Background(), tasks)
+		_, _ = p.Dispatch(context.Background(), tasks)
 	}()
 
 	for i := 0; i < 10; i++ {

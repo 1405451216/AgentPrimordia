@@ -73,7 +73,7 @@ func (r *MCPRegistry) Unregister(name string) error {
 	}
 
 	if entry.Cmd != nil && entry.Cmd.Process != nil {
-		entry.Cmd.Process.Signal(os.Interrupt)
+		_ = entry.Cmd.Process.Signal(os.Interrupt)
 	}
 
 	delete(r.servers, name)
@@ -155,7 +155,7 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 	select {
 	case <-time.After(2 * time.Second):
 	case <-ctx.Done():
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill()
 		return ctx.Err()
 	}
 
@@ -205,12 +205,12 @@ func (r *MCPRegistry) Stop(name string) error {
 	}
 
 	if entry.Client != nil {
-		entry.Client.Close()
+		_ = entry.Client.Close()
 		entry.Client = nil
 	}
 
 	if entry.Cmd != nil && entry.Cmd.Process != nil {
-		entry.Cmd.Process.Signal(os.Interrupt)
+		_ = entry.Cmd.Process.Signal(os.Interrupt)
 		entry.Cmd = nil
 	}
 
@@ -228,7 +228,7 @@ func (r *MCPRegistry) StopAll() {
 	r.mu.RUnlock()
 
 	for _, name := range names {
-		r.Stop(name)
+		_ = r.Stop(name)
 	}
 }
 

@@ -264,8 +264,8 @@ func TestSchemaFromStruct_EmbeddedStruct(t *testing.T) {
 
 func TestSchemaFromStruct_SkipUnexported(t *testing.T) {
 	type WithUnexported struct {
-		Public  string `json:"public"`
-		private string
+		Public string `json:"public"`
+		_      string
 	}
 
 	schema := SchemaFromStruct(WithUnexported{})

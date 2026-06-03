@@ -60,7 +60,7 @@ func TestRegistry_DuplicateRegistration(t *testing.T) {
 	reg := NewRegistry()
 	tool := &mockTool{name: "dup", response: "ok"}
 
-	reg.Register(tool)
+	_ = reg.Register(tool)
 	err := reg.Register(tool)
 	if err != nil {
 		t.Errorf("duplicate should be no-op, got: %v", err)
@@ -72,7 +72,7 @@ func TestRegistry_DuplicateRegistration(t *testing.T) {
 
 func TestRegistry_ListAndCount(t *testing.T) {
 	reg := NewRegistry()
-	reg.RegisterMultiple(
+	_ = reg.RegisterMultiple(
 		&mockTool{name: "a", response: "a"},
 		&mockTool{name: "b", response: "b"},
 		&mockTool{name: "c", response: "c"},
@@ -97,7 +97,7 @@ func TestRegistry_GetNonExistent(t *testing.T) {
 
 func TestRegistry_Definitions(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "weather", description: "Get weather", response: "sunny"})
+	_ = reg.Register(&mockTool{name: "weather", description: "Get weather", response: "sunny"})
 
 	defs := reg.Definitions()
 	if len(defs) != 1 {
@@ -114,7 +114,7 @@ func TestRegistry_Definitions(t *testing.T) {
 
 func TestRegistry_Permissions(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "secure", response: "ok"})
+	_ = reg.Register(&mockTool{name: "secure", response: "ok"})
 
 	err := reg.SetPermission("secure", Permission{RequireConfirmation: true})
 	if err != nil {
@@ -132,7 +132,7 @@ func TestRegistry_Permissions(t *testing.T) {
 
 func TestExecutor_ExecuteSuccess(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", description: "Echo", response: "hello!"})
+	_ = reg.Register(&mockTool{name: "echo", description: "Echo", response: "hello!"})
 
 	executor := NewExecutor(reg)
 	result, err := executor.Execute(context.Background(), &FunctionCall{
@@ -168,7 +168,7 @@ func TestExecutor_ExecuteNotFound(t *testing.T) {
 
 func TestExecutor_ExecuteTimeout(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "slow", response: "ok", delay: 200 * time.Millisecond})
+	_ = reg.Register(&mockTool{name: "slow", response: "ok", delay: 200 * time.Millisecond})
 
 	executor := NewExecutor(reg).WithTimeout(50 * time.Millisecond)
 
@@ -196,10 +196,10 @@ func TestNewResultHelpers(t *testing.T) {
 
 func TestExecutor_ConfirmationRequired_Denied(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "dangerous", description: "Dangerous", response: "boom"})
+	_ = reg.Register(&mockTool{name: "dangerous", description: "Dangerous", response: "boom"})
 
 	// 设置需要确认但没有回调
-	reg.SetPermission("dangerous", Permission{RequireConfirmation: true})
+	_ = reg.SetPermission("dangerous", Permission{RequireConfirmation: true})
 
 	executor := NewExecutor(reg)
 	result, err := executor.Execute(context.Background(), &FunctionCall{
@@ -216,10 +216,10 @@ func TestExecutor_ConfirmationRequired_Denied(t *testing.T) {
 
 func TestExecutor_ConfirmationCallback_Accepted(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "safe_op", description: "Safe Op", response: "done"})
+	_ = reg.Register(&mockTool{name: "safe_op", description: "Safe Op", response: "done"})
 
 	// 设置确认回调，始终允许
-	reg.SetPermission("safe_op", Permission{
+	_ = reg.SetPermission("safe_op", Permission{
 		RequireConfirmation: true,
 		ConfirmFunc: func(toolName string, args json.RawMessage) bool {
 			return true
@@ -241,10 +241,10 @@ func TestExecutor_ConfirmationCallback_Accepted(t *testing.T) {
 
 func TestExecutor_ConfirmationCallback_Rejected(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "risky_op", description: "Risky Op", response: "oops"})
+	_ = reg.Register(&mockTool{name: "risky_op", description: "Risky Op", response: "oops"})
 
 	// 设置确认回调，始终拒绝
-	reg.SetPermission("risky_op", Permission{
+	_ = reg.SetPermission("risky_op", Permission{
 		RequireConfirmation: true,
 		ConfirmFunc: func(toolName string, args json.RawMessage) bool {
 			return false
@@ -266,14 +266,14 @@ func TestExecutor_ConfirmationCallback_Rejected(t *testing.T) {
 
 func TestExecutor_ConfirmationConditional(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "cond_op", description: "Conditional Op", response: "ok"})
+	_ = reg.Register(&mockTool{name: "cond_op", description: "Conditional Op", response: "ok"})
 
 	// 条件性确认：只允许特定参数
-	reg.SetPermission("cond_op", Permission{
+	_ = reg.SetPermission("cond_op", Permission{
 		RequireConfirmation: true,
 		ConfirmFunc: func(toolName string, args json.RawMessage) bool {
 			var params map[string]any
-			json.Unmarshal(args, &params)
+			_ = json.Unmarshal(args, &params)
 			if mode, ok := params["mode"]; ok && mode == "safe" {
 				return true
 			}

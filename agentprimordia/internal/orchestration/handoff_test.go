@@ -291,7 +291,7 @@ func TestHandoffProtocol_Export(t *testing.T) {
 	}
 
 	var exported map[string]any
-	json.Unmarshal(data, &exported)
+	_ = json.Unmarshal(data, &exported)
 
 	if exported["config"] == nil {
 		t.Error("missing config in export")
@@ -363,7 +363,7 @@ func BenchmarkHandoffProtocol_Initiate(b *testing.B) {
 		i := 0
 		for pb.Next() {
 			i++
-			protocol.InitiateHandoff(context.Background(), fmt.Sprintf("S%d", i), fmt.Sprintf("T%d", i), HandoffDirect, ctx)
+			_, _ = protocol.InitiateHandoff(context.Background(), fmt.Sprintf("S%d", i), fmt.Sprintf("T%d", i), HandoffDirect, ctx)
 		}
 	})
 }
@@ -382,6 +382,6 @@ func BenchmarkHandoffManager_Execute(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		manager.ExecuteHandoff(context.Background(), "Source", "BenchmarkTarget", ctx)
+		_, _ = manager.ExecuteHandoff(context.Background(), "Source", "BenchmarkTarget", ctx)
 	}
 }

@@ -63,7 +63,7 @@ func TestOpenAI_Embeddings_Success(t *testing.T) {
 func TestOpenAI_Stream_APIError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		fmt.Fprint(w, "Service Unavailable")
+		_, _ = fmt.Fprint(w, "Service Unavailable")
 	}))
 	defer server.Close()
 
@@ -391,7 +391,7 @@ func TestAnthropicProvider_Complete_APIError(t *testing.T) {
 func TestAnthropicProvider_Complete_HTTPError(t *testing.T) {
 	server, provider := newAnthropicTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Rate limited")
+		_, _ = fmt.Fprint(w, "Rate limited")
 	})
 	defer server.Close()
 
@@ -409,10 +409,10 @@ func TestAnthropicProvider_Complete_HTTPError(t *testing.T) {
 func TestAnthropicProvider_Stream_Basic(t *testing.T) {
 	server, provider := newAnthropicTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\" Claude\"}}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":5}}\n\n")
-		fmt.Fprint(w, "data: {\"type\":\"message_stop\"}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\" Claude\"}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":5}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"type\":\"message_stop\"}\n\n")
 	})
 	defer server.Close()
 
@@ -445,7 +445,7 @@ func TestAnthropicProvider_Stream_Basic(t *testing.T) {
 func TestAnthropicProvider_Stream_Error(t *testing.T) {
 	server, provider := newAnthropicTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "Internal Server Error")
+		_, _ = fmt.Fprint(w, "Internal Server Error")
 	})
 	defer server.Close()
 
@@ -681,7 +681,7 @@ func TestGeminiProvider_Complete_APIError(t *testing.T) {
 func TestGeminiProvider_Complete_HTTPError(t *testing.T) {
 	server, provider := newGeminiTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Rate limited")
+		_, _ = fmt.Fprint(w, "Rate limited")
 	})
 	defer server.Close()
 
@@ -723,7 +723,7 @@ func TestGeminiProvider_Stream_Basic(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hello\"}],\"role\":\"model\"},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":3,\"totalTokenCount\":8}}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hello\"}],\"role\":\"model\"},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":3,\"totalTokenCount\":8}}\n\n")
 	})
 	defer server.Close()
 
@@ -749,7 +749,7 @@ func TestGeminiProvider_Stream_Basic(t *testing.T) {
 func TestGeminiProvider_Stream_Error(t *testing.T) {
 	server, provider := newGeminiTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "Internal error")
+		_, _ = fmt.Fprint(w, "Internal error")
 	})
 	defer server.Close()
 
@@ -926,7 +926,7 @@ func TestOllamaProvider_Complete_Success(t *testing.T) {
 func TestOllamaProvider_Complete_APIError(t *testing.T) {
 	server, provider := newOllamaTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "model not found")
+		_, _ = fmt.Fprint(w, "model not found")
 	})
 	defer server.Close()
 
@@ -946,9 +946,9 @@ func TestOllamaProvider_Stream_Basic(t *testing.T) {
 			t.Error("expected stream=true for Stream")
 		}
 
-		fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"Hello"},"done":false}` + "\n")
-		fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":" Ollama"},"done":false}` + "\n")
-		fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"!"},"done":true}` + "\n")
+		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"Hello"},"done":false}` + "\n")
+		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":" Ollama"},"done":false}` + "\n")
+		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"!"},"done":true}` + "\n")
 	})
 	defer server.Close()
 
@@ -981,7 +981,7 @@ func TestOllamaProvider_Stream_Basic(t *testing.T) {
 func TestOllamaProvider_Stream_Error(t *testing.T) {
 	server, provider := newOllamaTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, "model not found")
+		_, _ = fmt.Fprint(w, "model not found")
 	})
 	defer server.Close()
 

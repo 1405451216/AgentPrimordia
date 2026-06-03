@@ -178,8 +178,8 @@ func TestAdaptMemoryStore_Timeline(t *testing.T) {
 		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
 	}
 
-	adapter.Add(ctx, ep1)
-	adapter.Add(ctx, ep2)
+	_ = adapter.Add(ctx, ep1)
+	_ = adapter.Add(ctx, ep2)
 
 	byTag, err := adapter.GetMemoriesByTag(ctx, "go", 10)
 	if err != nil {
@@ -244,7 +244,7 @@ func TestAdaptMemoryStore_SearchByTagAndGetImportant(t *testing.T) {
 		Importance: 0.95,
 		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
 	}
-	adapter.Add(ctx, ep)
+	_ = adapter.Add(ctx, ep)
 
 	byTag, err := adapter.SearchByTag(ctx, "test", &memory.SearchOptions{Limit: 10})
 	if err != nil {
@@ -288,7 +288,7 @@ func TestAdaptMemoryStore_CleanupExpired(t *testing.T) {
 		Content:   "Test",
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
-	adapter.Add(ctx, ep)
+	_ = adapter.Add(ctx, ep)
 
 	deleted, err := adapter.CleanupExpired(ctx, 30)
 	if err != nil {

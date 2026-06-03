@@ -64,7 +64,7 @@ func TestInMemoryCache_Invalidate(t *testing.T) {
 	_ = cache.Set(context.Background(), "keep this message please", resp1)
 	_ = cache.Set(context.Background(), "remove that item now", resp2)
 
-	cache.Invalidate(context.Background(), "remove")
+	_ = cache.Invalidate(context.Background(), "remove")
 
 	got, ok := cache.Get(context.Background(), "remove that item now", 0.95)
 	if ok {
@@ -84,7 +84,7 @@ func TestInMemoryCache_InvalidateAll(t *testing.T) {
 	_ = cache.Set(context.Background(), "a", &CompletionResponse{})
 	_ = cache.Set(context.Background(), "b", &CompletionResponse{})
 
-	cache.InvalidateAll(context.Background())
+	_ = cache.InvalidateAll(context.Background())
 
 	stats := cache.Stats(context.Background())
 	if stats.EntryCount != 0 {
@@ -256,7 +256,7 @@ func TestCacheManager_EnableToggle(t *testing.T) {
 	resp := &CompletionResponse{ID: "r1", Content: "toggle"}
 	_ = mgr.Set(context.Background(), "q", resp)
 
-	got, ok := mgr.Get(context.Background(), "q", 0)
+	_, ok := mgr.Get(context.Background(), "q", 0)
 	if !ok {
 		t.Fatal("should hit when enabled")
 	}
@@ -268,8 +268,8 @@ func TestCacheManager_EnableToggle(t *testing.T) {
 	}
 
 	mgr.Enable(true)
-	got, ok = mgr.Get(context.Background(), "q", 0)
-	if !ok || got.Content != "toggle" {
+	resp2, ok := mgr.Get(context.Background(), "q", 0)
+	if !ok || resp2.Content != "toggle" {
 		t.Error("should hit again when re-enabled")
 	}
 }

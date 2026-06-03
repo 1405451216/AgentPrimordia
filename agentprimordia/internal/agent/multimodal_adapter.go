@@ -141,37 +141,6 @@ func (a *ReActAgent) StreamRunMultimodal(ctx context.Context, input *MultimodalM
 	return a.StreamRun(ctx, standardInput)
 }
 
-// convertToLLMMessagesMultimodal 将历史消息转换为 LLM 多模态消息格式
-func convertToLLMMessagesMultimodal(history []Message) []llm.ChatMessage {
-	msgs := make([]llm.ChatMessage, 0, len(history))
-	for _, m := range history {
-		msg := llm.ChatMessage{
-			Role:    string(m.Role),
-			Content: m.Content,
-		}
-		if m.Role == RoleAssistant && len(m.ToolCalls) > 0 {
-			msg.ToolCalls = make([]llm.FunctionCall, len(m.ToolCalls))
-			for j, tc := range m.ToolCalls {
-				msg.ToolCalls[j] = llm.FunctionCall{
-					ID:        tc.ID,
-					Name:      tc.Name,
-					Arguments: tc.Args,
-				}
-			}
-		}
-		if m.Role == RoleTool {
-			if id, ok := m.Metadata.Extra["tool_call_id"]; ok {
-				msg.ToolCallID = id
-			}
-			if isError, ok := m.Metadata.Extra["is_error"]; ok && isError == "true" {
-				msg.IsToolError = true
-			}
-		}
-		msgs = append(msgs, msg)
-	}
-	return msgs
-}
-
 // convertToLLMMessagesExt 将多模态历史消息转换为 LLM ChatMessageExt 格式
 func convertToLLMMessagesExt(history []*MultimodalMessage) []*llm.ChatMessageExt {
 	msgs := make([]*llm.ChatMessageExt, 0, len(history))

@@ -47,7 +47,7 @@ func TestMistralProvider_Complete_Success(t *testing.T) {
 				"total_tokens":      15,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -78,7 +78,7 @@ func TestMistralProvider_Complete_Error(t *testing.T) {
 				"code":    "invalid_request",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -100,16 +100,16 @@ func TestMistralProvider_Complete_Error(t *testing.T) {
 func TestMistralProvider_Stream_Basic(t *testing.T) {
 	server, provider := newMistralTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 		if !reqBody["stream"].(bool) {
 			t.Error("expected stream=true")
 		}
 
 		w.Header().Set("Content-Type", "text/event-stream")
-		fmt.Fprint(w, "data: {\"id\":\"mistral-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n")
-		fmt.Fprint(w, "data: {\"id\":\"mistral-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" Mistral\"},\"finish_reason\":null}]}\n\n")
-		fmt.Fprint(w, "data: {\"id\":\"mistral-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n")
-		fmt.Fprint(w, "data: [DONE]\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"mistral-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Hello\"},\"finish_reason\":null}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"mistral-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" Mistral\"},\"finish_reason\":null}]}\n\n")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"mistral-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"!\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":3,\"total_tokens\":8}}\n\n")
+		_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 	})
 	defer server.Close()
 
@@ -146,7 +146,7 @@ func TestMistralProvider_Stream_Basic(t *testing.T) {
 func TestMistralProvider_CallTools_Success(t *testing.T) {
 	server, provider := newMistralTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		tools, ok := reqBody["tools"].([]any)
 		if !ok || len(tools) == 0 {
@@ -181,7 +181,7 @@ func TestMistralProvider_CallTools_Success(t *testing.T) {
 				"total_tokens":      45,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -251,7 +251,7 @@ func TestMistralProvider_New_NoAPIKey(t *testing.T) {
 func TestMistralProvider_Complete_HTTPError(t *testing.T) {
 	server, provider := newMistralTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		fmt.Fprint(w, "Rate limited")
+		_, _ = fmt.Fprint(w, "Rate limited")
 	})
 	defer server.Close()
 
@@ -277,7 +277,7 @@ func TestMistralProvider_Complete_EmptyChoices(t *testing.T) {
 				"total_tokens":      5,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 

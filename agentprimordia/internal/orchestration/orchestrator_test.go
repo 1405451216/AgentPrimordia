@@ -32,7 +32,7 @@ func TestOrchestrator_SequentialMode(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "step1",
 		Name:      "分析数据",
 		Agent:     step1Agent,
@@ -40,7 +40,7 @@ func TestOrchestrator_SequentialMode(t *testing.T) {
 		OutputKey: "analysis_result",
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "step2",
 		Name:      "生成报告",
 		Agent:     step2Agent,
@@ -90,7 +90,7 @@ func TestOrchestrator_ParallelMode(t *testing.T) {
 			MaxTurns:     1,
 		})
 
-		orch.AddStep(&AgentStep{
+		_ = orch.AddStep(&AgentStep{
 			ID:        fmt.Sprintf("parallel_step_%d", idx),
 			Name:      fmt.Sprintf("并行任务 %d", idx+1),
 			Agent:     stepAgent,
@@ -163,10 +163,10 @@ func TestOrchestrator_DAGMode(t *testing.T) {
 	})
 
 	// 添加步骤
-	orch.AddStep(&AgentStep{ID: "collect", Name: "数据收集", Agent: dataAgent, Prompt: "收集原始数据"})
-	orch.AddStep(&AgentStep{ID: "process_a", Name: "处理A", Agent: processA_Agent, InputFrom: []string{"collect"}, Prompt: "使用方法A处理"})
-	orch.AddStep(&AgentStep{ID: "process_b", Name: "处理B", Agent: processB_Agent, InputFrom: []string{"collect"}, Prompt: "使用方法B处理"})
-	orch.AddStep(&AgentStep{ID: "merge", Name: "合并结果", Agent: mergeAgent, InputFrom: []string{"process_a", "process_b"}, Prompt: "合并两种处理结果"})
+	_ = orch.AddStep(&AgentStep{ID: "collect", Name: "数据收集", Agent: dataAgent, Prompt: "收集原始数据"})
+	_ = orch.AddStep(&AgentStep{ID: "process_a", Name: "处理A", Agent: processA_Agent, InputFrom: []string{"collect"}, Prompt: "使用方法A处理"})
+	_ = orch.AddStep(&AgentStep{ID: "process_b", Name: "处理B", Agent: processB_Agent, InputFrom: []string{"collect"}, Prompt: "使用方法B处理"})
+	_ = orch.AddStep(&AgentStep{ID: "merge", Name: "合并结果", Agent: mergeAgent, InputFrom: []string{"process_a", "process_b"}, Prompt: "合并两种处理结果"})
 
 	// 添加边
 	_ = orch.AddEdge("collect", "process_a")
@@ -224,7 +224,7 @@ func TestOrchestrator_RetryMechanism(t *testing.T) {
 		MaxRetries: 3,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:          "flaky_step",
 		Name:        "不稳定步骤",
 		Agent:       retryAgent,
@@ -257,7 +257,7 @@ func TestOrchestrator_ConditionalExecution(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:        "conditional_step",
 		Name:      "条件步骤",
 		Agent:     simpleAgent,
@@ -296,7 +296,7 @@ func TestOrchestrator_TimeoutHandling(t *testing.T) {
 		Timeout: 100 * time.Millisecond,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:      "slow_step",
 		Name:    "超时步骤",
 		Agent:   slowAgent,
@@ -332,7 +332,7 @@ func TestOrchestrator_EventEmission(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:     "event_step",
 		Name:   "事件步骤",
 		Agent:  testAgent,
@@ -399,7 +399,7 @@ func TestOrchestrator_MetricsCalculation(t *testing.T) {
 			MaxTurns:     1,
 		})
 
-		orch.AddStep(&AgentStep{
+		_ = orch.AddStep(&AgentStep{
 			ID:       fmt.Sprintf("metric_step_%d", idx),
 			Name:     fmt.Sprintf("指标步骤 %d", idx+1),
 			Agent:    agent,
@@ -442,7 +442,7 @@ func TestOrchestrator_ExportImport(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	orch.AddStep(&AgentStep{
+	_ = orch.AddStep(&AgentStep{
 		ID:    "export_step",
 		Name:  "导出步骤",
 		Agent: testAgent,
@@ -457,7 +457,7 @@ func TestOrchestrator_ExportImport(t *testing.T) {
 		Config OrchestratorConfig `json:"config"`
 		Steps  []*AgentStep       `json:"steps"`
 	}
-	json.Unmarshal(data, &exported)
+	_ = json.Unmarshal(data, &exported)
 
 	if exported.Config.Name != "test-export" {
 		t.Errorf("export name mismatch")
@@ -489,7 +489,7 @@ func BenchmarkOrchestrator_Sequential(b *testing.B) {
 			MaxTurns:     1,
 		})
 
-		orch.AddStep(&AgentStep{
+		_ = orch.AddStep(&AgentStep{
 			ID:    fmt.Sprintf("bench_step_%d", idx),
 			Name:  "基准步骤",
 			Agent: benchAgent,
@@ -499,7 +499,7 @@ func BenchmarkOrchestrator_Sequential(b *testing.B) {
 	b.ResetTimer()
 	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		orch.Execute(ctx, map[string]any{"i": i})
+		_, _ = orch.Execute(ctx, map[string]any{"i": i})
 	}
 }
 
@@ -524,12 +524,12 @@ func BenchmarkOrchestrator_Parallel(b *testing.B) {
 			Agent:    benchAgent,
 			Priority: idx,
 		}
-		orch.AddStep(steps[idx])
+		_ = orch.AddStep(steps[idx])
 	}
 
 	b.ResetTimer()
 	ctx := context.Background()
 	for i := 0; i < b.N; i++ {
-		orch.Execute(ctx, map[string]any{"batch": i})
+		_, _ = orch.Execute(ctx, map[string]any{"batch": i})
 	}
 }

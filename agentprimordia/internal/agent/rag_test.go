@@ -118,7 +118,7 @@ func TestReActAgent_RAG_FirstMode(t *testing.T) {
 		WithResponse("Final answer after RAG")
 
 	registry := tools.NewRegistry()
-	registry.Register(&mockEchoTool{name: "echo_tool"})
+	_ = registry.Register(&mockEchoTool{name: "echo_tool"})
 
 	agent := NewReActAgent(ReActConfig{
 		Name:    "rag-first-agent",

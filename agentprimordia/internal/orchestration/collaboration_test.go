@@ -33,7 +33,7 @@ func TestCollaboration_DebateMode(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:          "pro",
 		Name:        "支持者",
 		Role:        "debater",
@@ -42,7 +42,7 @@ func TestCollaboration_DebateMode(t *testing.T) {
 		Weight:      1.0,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:          "con",
 		Name:        "反对者",
 		Role:        "debater",
@@ -99,14 +99,14 @@ func TestCollaboration_ReviewMode(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:    "rev1",
 		Name:  "代码审查员",
 		Role:  "reviewer",
 		Agent: reviewer1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:    "rev2",
 		Name:  "安全专家",
 		Role:  "reviewer",
@@ -164,7 +164,7 @@ func TestCollaboration_ConsensusMode(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:     "lead",
 		Name:   "技术负责人",
 		Role:   "voter",
@@ -172,7 +172,7 @@ func TestCollaboration_ConsensusMode(t *testing.T) {
 		Weight: 1.5,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:     "arch",
 		Name:   "架构师",
 		Role:   "voter",
@@ -180,7 +180,7 @@ func TestCollaboration_ConsensusMode(t *testing.T) {
 		Weight: 1.2,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:     "ops",
 		Name:   "运维",
 		Role:   "voter",
@@ -231,7 +231,7 @@ func TestCollaboration_BrainstormMode(t *testing.T) {
 		MaxTurns:     1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:          "creative1",
 		Name:        "创意总监",
 		Role:        "ideator",
@@ -239,7 +239,7 @@ func TestCollaboration_BrainstormMode(t *testing.T) {
 		Perspective: "创新导向",
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:          "creative2",
 		Name:        "UX设计师",
 		Role:        "ideator",
@@ -279,7 +279,7 @@ func TestCollaboration_Events(t *testing.T) {
 		MaxTurns: 1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:    "tester",
 		Name:  "测试者",
 		Agent: testAgent,
@@ -335,7 +335,7 @@ func TestCollaboration_Export(t *testing.T) {
 		MaxTurns: 1,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:    "exp",
 		Name:  "Export",
 		Agent: testAgent,
@@ -349,7 +349,7 @@ func TestCollaboration_Export(t *testing.T) {
 	}
 
 	var exported map[string]any
-	json.Unmarshal(data, &exported)
+	_ = json.Unmarshal(data, &exported)
 
 	if exported["config"] == nil {
 		t.Error("missing config in export")
@@ -381,7 +381,7 @@ func TestCollaboration_Metrics(t *testing.T) {
 			Model:    demo.NewDemoLLM(fmt.Sprintf("response-%d", idx)),
 			MaxTurns: 1,
 		})
-		session.AddCollaborator(&Collaborator{
+		_ = session.AddCollaborator(&Collaborator{
 			ID:    fmt.Sprintf("m%d", idx),
 			Name:  fmt.Sprintf("Agent-%d", idx),
 			Agent: a,
@@ -414,7 +414,7 @@ func TestCollaboration_Timeout(t *testing.T) {
 		MaxTurns: 5,
 	})
 
-	session.AddCollaborator(&Collaborator{
+	_ = session.AddCollaborator(&Collaborator{
 		ID:    "slow",
 		Name:  "慢速",
 		Agent: slowAgent,
@@ -449,12 +449,12 @@ func BenchmarkCollaboration_Debate(b *testing.B) {
 				MaxTurns: 1,
 			})
 
-			session.AddCollaborator(&Collaborator{
+			_ = session.AddCollaborator(&Collaborator{
 				ID:    fmt.Sprintf("b%d", i),
 				Agent: a,
 			})
 
-			session.Execute(context.Background(), "benchmark topic")
+			_, _ = session.Execute(context.Background(), "benchmark topic")
 		}
 	})
 }

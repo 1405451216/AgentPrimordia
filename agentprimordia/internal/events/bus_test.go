@@ -42,7 +42,7 @@ func TestBus_MultipleSubscribers(t *testing.T) {
 	ch1, _ := bus.Subscribe(EventToolCall)
 	ch2, _ := bus.Subscribe(EventToolCall)
 
-	bus.Publish(context.Background(), Event{
+	_ = bus.Publish(context.Background(), Event{
 		Type:   EventToolCall,
 		Source: "agent-1",
 	})
@@ -66,8 +66,8 @@ func TestBus_SubscribeAll(t *testing.T) {
 
 	ch, _ := bus.SubscribeAll()
 
-	bus.Publish(context.Background(), Event{Type: EventAgentStart, Source: "a"})
-	bus.Publish(context.Background(), Event{Type: EventToolResult, Source: "b"})
+	_ = bus.Publish(context.Background(), Event{Type: EventAgentStart, Source: "a"})
+	_ = bus.Publish(context.Background(), Event{Type: EventToolResult, Source: "b"})
 
 	count := 0
 	timeout := time.After(time.Second)
@@ -105,7 +105,7 @@ func TestBus_PublishAsync(t *testing.T) {
 
 	ch, _ := bus.Subscribe(EventLLMCall)
 
-	bus.PublishAsync(Event{
+	_ = bus.PublishAsync(Event{
 		Type:    EventLLMCall,
 		Source:  "agent-1",
 		Payload: "prompt",
@@ -153,8 +153,8 @@ func TestBus_WildcardReceivesAll(t *testing.T) {
 	specificCh, _ := bus.Subscribe(EventAgentStart)
 	wildcardCh, _ := bus.SubscribeAll()
 
-	bus.Publish(context.Background(), Event{Type: EventAgentStart, Source: "agent"})
-	bus.Publish(context.Background(), Event{Type: EventToolCall, Source: "tool"})
+	_ = bus.Publish(context.Background(), Event{Type: EventAgentStart, Source: "agent"})
+	_ = bus.Publish(context.Background(), Event{Type: EventToolCall, Source: "tool"})
 
 	specificCount := 0
 	timeout := time.After(time.Second)
@@ -191,7 +191,7 @@ func TestBus_ConcurrentPublish(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			bus.PublishAsync(Event{Type: EventAgentStart, Source: "concurrent"})
+			_ = bus.PublishAsync(Event{Type: EventAgentStart, Source: "concurrent"})
 		}()
 	}
 	wg.Wait()
@@ -216,7 +216,7 @@ func TestBus_TimestampAutoSet(t *testing.T) {
 	ch, _ := bus.Subscribe(EventAgentStart)
 
 	before := time.Now()
-	bus.Publish(context.Background(), Event{Type: EventAgentStart, Source: "ts"})
+	_ = bus.Publish(context.Background(), Event{Type: EventAgentStart, Source: "ts"})
 	after := time.Now()
 
 	select {
@@ -237,7 +237,7 @@ func TestBus_BufferOverflow(t *testing.T) {
 	ch, _ := bus.Subscribe(EventAgentStart)
 
 	for i := 0; i < 10; i++ {
-		bus.PublishAsync(Event{Type: EventAgentStart, Source: "overflow"})
+		_ = bus.PublishAsync(Event{Type: EventAgentStart, Source: "overflow"})
 	}
 
 	received := 0

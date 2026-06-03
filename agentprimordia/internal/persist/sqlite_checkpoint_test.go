@@ -17,7 +17,7 @@ func newTestCheckpointStore(t *testing.T) *SQLiteCheckpointStore {
 
 func TestCheckpoint_SaveAndLoad(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 	state := &AgentState{
@@ -69,7 +69,7 @@ func TestCheckpoint_SaveAndLoad(t *testing.T) {
 
 func TestCheckpoint_LoadNotFound(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	_, err := store.Load(context.Background(), "nonexistent")
 	if err == nil {
@@ -79,7 +79,7 @@ func TestCheckpoint_LoadNotFound(t *testing.T) {
 
 func TestCheckpoint_SaveOverwrite(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 
@@ -91,7 +91,7 @@ func TestCheckpoint_SaveOverwrite(t *testing.T) {
 		TurnCount: 1,
 		SavedAt:   time.Now(),
 	}
-	store.Save(ctx, state1)
+	_ = store.Save(ctx, state1)
 
 	state2 := &AgentState{
 		AgentID:   "agent-1",
@@ -101,7 +101,7 @@ func TestCheckpoint_SaveOverwrite(t *testing.T) {
 		TurnCount: 2,
 		SavedAt:   time.Now(),
 	}
-	store.Save(ctx, state2)
+	_ = store.Save(ctx, state2)
 
 	loaded, err := store.Load(ctx, "agent-1")
 	if err != nil {
@@ -117,13 +117,13 @@ func TestCheckpoint_SaveOverwrite(t *testing.T) {
 
 func TestCheckpoint_List(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 
-	store.Save(ctx, &AgentState{AgentID: "agent-1", SessionID: "session-1", Status: "running", SavedAt: time.Now()})
-	store.Save(ctx, &AgentState{AgentID: "agent-2", SessionID: "session-1", Status: "running", SavedAt: time.Now()})
-	store.Save(ctx, &AgentState{AgentID: "agent-3", SessionID: "session-2", Status: "idle", SavedAt: time.Now()})
+	_ = store.Save(ctx, &AgentState{AgentID: "agent-1", SessionID: "session-1", Status: "running", SavedAt: time.Now()})
+	_ = store.Save(ctx, &AgentState{AgentID: "agent-2", SessionID: "session-1", Status: "running", SavedAt: time.Now()})
+	_ = store.Save(ctx, &AgentState{AgentID: "agent-3", SessionID: "session-2", Status: "idle", SavedAt: time.Now()})
 
 	results, err := store.List(ctx, "session-1")
 	if err != nil {
@@ -144,7 +144,7 @@ func TestCheckpoint_List(t *testing.T) {
 
 func TestCheckpoint_ListEmpty(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	results, err := store.List(context.Background(), "nonexistent")
 	if err != nil {
@@ -157,10 +157,10 @@ func TestCheckpoint_ListEmpty(t *testing.T) {
 
 func TestCheckpoint_Delete(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
-	store.Save(ctx, &AgentState{AgentID: "agent-1", SessionID: "session-1", Status: "running", SavedAt: time.Now()})
+	_ = store.Save(ctx, &AgentState{AgentID: "agent-1", SessionID: "session-1", Status: "running", SavedAt: time.Now()})
 
 	err := store.Delete(ctx, "agent-1")
 	if err != nil {
@@ -175,7 +175,7 @@ func TestCheckpoint_Delete(t *testing.T) {
 
 func TestCheckpoint_DeleteNotFound(t *testing.T) {
 	store := newTestCheckpointStore(t)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	err := store.Delete(context.Background(), "nonexistent")
 	if err == nil {

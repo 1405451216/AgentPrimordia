@@ -119,7 +119,7 @@ func TestLocalMessageBus_Subscribe(t *testing.T) {
 	bus.Register("agent-1", handler)
 
 	go func() {
-		bus.Send(context.Background(), &BusMessage{
+		_, _ = bus.Send(context.Background(), &BusMessage{
 			From:    "agent-2",
 			To:      "agent-1",
 			Type:    BusMsgTaskRequest,
@@ -162,28 +162,4 @@ func TestLocalMessageBus_ConcurrentAccess(t *testing.T) {
 
 	<-done
 	<-done
-}
-
-type mockAgentForBus struct {
-	name string
-}
-
-func (m *mockAgentForBus) Run(ctx context.Context, input Message) (*Response, error) {
-	return &Response{Content: "mock"}, nil
-}
-
-func (m *mockAgentForBus) StreamRun(ctx context.Context, input Message) (<-chan StreamEvent, error) {
-	ch := make(chan StreamEvent, 1)
-	close(ch)
-	return ch, nil
-}
-
-func (m *mockAgentForBus) Stop() {}
-
-func (m *mockAgentForBus) Stats() AgentStats {
-	return AgentStats{}
-}
-
-func (m *mockAgentForBus) Name() string {
-	return m.name
 }

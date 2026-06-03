@@ -100,8 +100,8 @@ func TestSQLiteStore_ClearAll_Entire(t *testing.T) {
 
 	ep1 := MustEpisode("sess1", "user", "hello")
 	ep2 := MustEpisode("sess2", "assistant", "world")
-	store.Add(ctx, ep1)
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
 
 	err = store.ClearAll(ctx, "")
 	if err != nil {
@@ -126,9 +126,9 @@ func TestSQLiteStore_ClearAll_BySession(t *testing.T) {
 	ep1 := MustEpisode("sess1", "user", "hello")
 	ep2 := MustEpisode("sess2", "assistant", "world")
 	ep3 := MustEpisode("sess1", "assistant", "hi")
-	store.Add(ctx, ep1)
-	store.Add(ctx, ep2)
-	store.Add(ctx, ep3)
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep3)
 
 	err = store.ClearAll(ctx, "sess1")
 	if err != nil {
@@ -157,7 +157,7 @@ func TestSQLiteStore_ExportMemories_JSON(t *testing.T) {
 	ep1 := MustEpisode("sess1", "user", "hello")
 	ep1.Summary = "打招呼"
 	ep1.Topics = "greeting"
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	data, err := store.ExportMemories(ctx, "", "json")
 	if err != nil {
@@ -191,7 +191,7 @@ func TestSQLiteStore_ExportMemories_Markdown(t *testing.T) {
 	ep1 := MustEpisode("sess1", "user", "hello world")
 	ep1.Summary = "打招呼"
 	ep1.Topics = "greeting"
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	data, err := store.ExportMemories(ctx, "", "markdown")
 	if err != nil {
@@ -224,8 +224,8 @@ func TestSQLiteStore_ExportMemories_BySession(t *testing.T) {
 
 	ep1 := MustEpisode("sess1", "user", "hello")
 	ep2 := MustEpisode("sess2", "assistant", "world")
-	store.Add(ctx, ep1)
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
 
 	data, err := store.ExportMemories(ctx, "sess1", "json")
 	if err != nil {
@@ -294,11 +294,11 @@ func TestSQLiteStore_ImportMemories_RoundTrip(t *testing.T) {
 	ep1.Topics = "roundtrip"
 	ep1.Importance = 0.7
 	ep1.Metadata = map[string]string{"key": "value"}
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("sess1", "assistant", "response")
 	ep2.Summary = "响应"
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	exportData, err := store.ExportMemories(ctx, "", "json")
 	if err != nil {

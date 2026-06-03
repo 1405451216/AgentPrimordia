@@ -18,7 +18,7 @@ func TestCSVTool_Read(t *testing.T) {
 	tmpDir := t.TempDir()
 	csvPath := filepath.Join(tmpDir, "test.csv")
 	csvContent := "name,age,city\nAlice,30,New York\nBob,25,San Francisco\nCharlie,35,Chicago\n"
-	os.WriteFile(csvPath, []byte(csvContent), 0644)
+	_ = os.WriteFile(csvPath, []byte(csvContent), 0644)
 
 	input := map[string]any{"action": "read", "file_path": csvPath}
 	inputBytes, _ := json.Marshal(input)
@@ -29,7 +29,7 @@ func TestCSVTool_Read(t *testing.T) {
 	}
 
 	var data []map[string]any
-	json.Unmarshal([]byte(result.Content), &data)
+	_ = json.Unmarshal([]byte(result.Content), &data)
 
 	if len(data) != 3 {
 		t.Errorf("expected 3 rows, got %d", len(data))
@@ -46,7 +46,7 @@ func TestCSVTool_Filter(t *testing.T) {
 	tmpDir := t.TempDir()
 	csvPath := filepath.Join(tmpDir, "filter.csv")
 	csvContent := "product,category,price\nLaptop,Electronics,999\nBook,Education,29\nPhone,Electronics,699\nPen,Stationery,2\n"
-	os.WriteFile(csvPath, []byte(csvContent), 0644)
+	_ = os.WriteFile(csvPath, []byte(csvContent), 0644)
 
 	input := map[string]any{"action": "filter", "file_path": csvPath, "filter_column": "category", "filter_value": "Electronics"}
 	inputBytes, _ := json.Marshal(input)
@@ -57,7 +57,7 @@ func TestCSVTool_Filter(t *testing.T) {
 	}
 
 	var filteredData []map[string]any
-	json.Unmarshal([]byte(result.Content), &filteredData)
+	_ = json.Unmarshal([]byte(result.Content), &filteredData)
 
 	if len(filteredData) != 2 {
 		t.Errorf("expected 2 Electronics items, got %d", len(filteredData))
@@ -71,7 +71,7 @@ func TestCSVTool_Aggregate(t *testing.T) {
 	tmpDir := t.TempDir()
 	csvPath := filepath.Join(tmpDir, "agg.csv")
 	csvContent := "item,quantity,price\nA,10,100\nB,20,200\nC,15,150\n"
-	os.WriteFile(csvPath, []byte(csvContent), 0644)
+	_ = os.WriteFile(csvPath, []byte(csvContent), 0644)
 
 	input := map[string]any{"action": "aggregate", "file_path": csvPath, "aggregate_column": "price", "aggregate_func": "sum"}
 	inputBytes, _ := json.Marshal(input)
@@ -82,7 +82,7 @@ func TestCSVTool_Aggregate(t *testing.T) {
 	}
 
 	var aggResult map[string]any
-	json.Unmarshal([]byte(result.Content), &aggResult)
+	_ = json.Unmarshal([]byte(result.Content), &aggResult)
 
 	sum := aggResult["value"].(float64)
 	if sum != 450 {
@@ -131,7 +131,7 @@ func TestJSONTool_Parse(t *testing.T) {
 	}
 
 	var parsed any
-	json.Unmarshal([]byte(result.Content), &parsed)
+	_ = json.Unmarshal([]byte(result.Content), &parsed)
 	if parsed == nil {
 		t.Error("expected parsed JSON object")
 	}
@@ -184,7 +184,7 @@ func TestSQLiteTool_BasicOperations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteTool error: %v", err)
 	}
-	defer sqliteTool.Close()
+	defer func() { _ = sqliteTool.Close() }()
 
 	_, err = sqliteTool.db.Exec("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT)")
 	if err != nil {
@@ -204,7 +204,7 @@ func TestSQLiteTool_BasicOperations(t *testing.T) {
 	}
 
 	var users []map[string]any
-	json.Unmarshal([]byte(queryResult.Content), &users)
+	_ = json.Unmarshal([]byte(queryResult.Content), &users)
 
 	if len(users) != 2 {
 		t.Errorf("expected 2 users, got %d", len(users))
@@ -225,7 +225,7 @@ func TestSQLiteTool_SQLSafetyCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewSQLiteTool error: %v", err)
 	}
-	defer sqliteTool.Close()
+	defer func() { _ = sqliteTool.Close() }()
 
 	dangerousSQL := []struct {
 		name string
@@ -295,12 +295,12 @@ func BenchmarkCSVTool_Read(b *testing.B) {
 
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
-	writer.Write([]string{"col1", "col2", "col3"})
+	_ = writer.Write([]string{"col1", "col2", "col3"})
 	for i := 0; i < 10000; i++ {
-		writer.Write([]string{fmt.Sprintf("val%d_1", i), fmt.Sprintf("val%d_2", i), fmt.Sprintf("val%d_3", i)})
+		_ = writer.Write([]string{fmt.Sprintf("val%d_1", i), fmt.Sprintf("val%d_2", i), fmt.Sprintf("val%d_3", i)})
 	}
 	writer.Flush()
-	os.WriteFile(csvPath, buf.Bytes(), 0644)
+	_ = os.WriteFile(csvPath, buf.Bytes(), 0644)
 
 	input := map[string]any{"action": "read", "file_path": csvPath}
 	inputBytes, _ := json.Marshal(input)

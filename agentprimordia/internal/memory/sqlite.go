@@ -525,7 +525,7 @@ func (s *SQLiteStore) Close() error {
 		// 对文件数据库执行 WAL checkpoint，确保 -wal/-shm 文件释放
 		// 避免在 Windows 上因文件锁导致临时目录清理失败
 		if s.path != ":memory:" {
-			s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
+			_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 		}
 		err := s.db.Close()
 		s.db = nil

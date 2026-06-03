@@ -85,12 +85,12 @@ func TestServer_TaskCreate(t *testing.T) {
 	}
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Result == nil {
 		t.Fatal("应有 Result 字段")
 	}
 	var task Task
-	json.Unmarshal(resp.Result, &task)
+	_ = json.Unmarshal(resp.Result, &task)
 	if task.State != TaskSubmitted {
 		t.Errorf("初始状态应为 submitted, got %s", task.State)
 	}
@@ -115,9 +115,9 @@ func TestServer_TaskCreateWithCustomID(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	var task Task
-	json.Unmarshal(resp.Result, &task)
+	_ = json.Unmarshal(resp.Result, &task)
 	if task.ID != "custom-001" {
 		t.Errorf("自定义 ID 应为 custom-001, got %s", task.ID)
 	}
@@ -139,7 +139,7 @@ func TestServer_TaskCreateMissingMessage(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeInvalidParams {
 		t.Errorf("应返回 InvalidParams 错误, got: %+v", resp.Error)
 	}
@@ -149,7 +149,7 @@ func TestServer_TaskGet(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "get-test-001", State: TaskCompleted, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "get-test-001", State: TaskCompleted, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	params, _ := json.Marshal(map[string]string{"id": "get-test-001"})
@@ -162,12 +162,12 @@ func TestServer_TaskGet(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Result == nil {
 		t.Fatal("应有 Result")
 	}
 	var task Task
-	json.Unmarshal(resp.Result, &task)
+	_ = json.Unmarshal(resp.Result, &task)
 	if task.ID != "get-test-001" {
 		t.Errorf("Task ID 不匹配: got %s", task.ID)
 	}
@@ -188,7 +188,7 @@ func TestServer_TaskGetNotFound(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeTaskNotFound {
 		t.Errorf("应返回 TaskNotFound 错误")
 	}
@@ -198,7 +198,7 @@ func TestServer_TaskCancel(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "cancel-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "cancel-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	params, _ := json.Marshal(map[string]string{"id": "cancel-001"})
@@ -211,7 +211,7 @@ func TestServer_TaskCancel(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error != nil {
 		t.Fatalf("取消不应出错: %v", resp.Error)
 	}
@@ -236,7 +236,7 @@ func TestServer_UnknownMethod(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeMethodNotFound {
 		t.Errorf("应返回 MethodNotFound 错误")
 	}
@@ -254,7 +254,7 @@ func TestServer_InvalidJSON(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeParseError {
 		t.Errorf("应返回 ParseError 错误")
 	}
@@ -264,7 +264,7 @@ func TestServer_SSEEventsEndpoint(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()
 
-	tm.Create(&Task{ID: "sse-task-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
+	_, _ = tm.Create(&Task{ID: "sse-task-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
 	req := httptest.NewRequest("GET", "/tasks/sse-task-001/events", nil)
@@ -277,7 +277,7 @@ func TestServer_SSEEventsEndpoint(t *testing.T) {
 	}()
 
 	time.Sleep(10 * time.Millisecond)
-	tm.Update("sse-task-001", TaskCompleted, nil)
+	_ = tm.Update("sse-task-001", TaskCompleted, nil)
 
 	select {
 	case <-done:
@@ -308,7 +308,7 @@ func TestServer_AuthFailure(t *testing.T) {
 	server.Handler().ServeHTTP(rec, req)
 
 	var resp JSONRPCResponse
-	json.Unmarshal(rec.Body.Bytes(), &resp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeAuthFailed {
 		t.Errorf("无认证时应返回 AuthFailed 错误, got: %+v", resp.Error)
 	}
@@ -353,7 +353,7 @@ func TestServer_NotifyRequest(t *testing.T) {
 
 	bodyBytes, _ := io.ReadAll(rec.Body)
 	var resp JSONRPCResponse
-	json.Unmarshal(bodyBytes, &resp)
+	_ = json.Unmarshal(bodyBytes, &resp)
 	if resp.Result == nil {
 		t.Fatal("通知请求也应有 Result")
 	}
@@ -385,7 +385,7 @@ func TestServer_DuplicateTaskCreate(t *testing.T) {
 
 	second := createReq()
 	var resp JSONRPCResponse
-	json.Unmarshal(second.Body.Bytes(), &resp)
+	_ = json.Unmarshal(second.Body.Bytes(), &resp)
 	if resp.Error == nil || resp.Error.Code != ErrCodeTaskConflict {
 		t.Errorf("重复创建应返回冲突错误")
 	}
@@ -413,9 +413,9 @@ func TestServer_IntegrationFlow(t *testing.T) {
 	server.Handler().ServeHTTP(createRec, createReq)
 
 	var createResp JSONRPCResponse
-	json.Unmarshal(createRec.Body.Bytes(), &createResp)
+	_ = json.Unmarshal(createRec.Body.Bytes(), &createResp)
 	var created Task
-	json.Unmarshal(createResp.Result, &created)
+	_ = json.Unmarshal(createResp.Result, &created)
 
 	getParams, _ := json.Marshal(map[string]string{"id": created.ID})
 	getBody, _ := json.Marshal(JSONRPCRequest{JSONRPC: "2.0", ID: 11, Method: "task/get", Params: getParams})
@@ -426,9 +426,9 @@ func TestServer_IntegrationFlow(t *testing.T) {
 	server.Handler().ServeHTTP(getRec, getReq)
 
 	var getResp JSONRPCResponse
-	json.Unmarshal(getRec.Body.Bytes(), &getResp)
+	_ = json.Unmarshal(getRec.Body.Bytes(), &getResp)
 	var fetched Task
-	json.Unmarshal(getResp.Result, &fetched)
+	_ = json.Unmarshal(getResp.Result, &fetched)
 
 	if fetched.ID != created.ID {
 		t.Errorf("获取的 Task ID 不匹配: got %s, want %s", fetched.ID, created.ID)

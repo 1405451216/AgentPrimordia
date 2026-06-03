@@ -12,7 +12,7 @@ func TestSQLiteStore_GetMemoriesByTag_EmptyTag(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
 	ep.Topics = "go,programming"
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	results, err := store.GetMemoriesByTag(ctx, "", 10)
 	if err != nil {

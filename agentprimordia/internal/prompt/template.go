@@ -72,7 +72,7 @@ func (t *Template) Render() (string, error) {
 			"indent":    indentJSON,
 			"upper":     strings.ToUpper,
 			"lower":     strings.ToLower,
-			"title":     strings.Title,
+			"title":     titleString,
 			"join":      strings.Join,
 			"contains":  strings.Contains,
 			"hasPrefix": strings.HasPrefix,
@@ -149,6 +149,13 @@ func coalesce(values ...any) any {
 		}
 	}
 	return nil
+}
+
+func titleString(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }
 
 // ===== 预定义验证器 =====

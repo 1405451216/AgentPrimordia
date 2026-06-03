@@ -128,7 +128,7 @@ func TestResilient_CircuitBreakerOpens(t *testing.T) {
 	provider, _ := NewResilientProvider(mock, config)
 
 	for i := 0; i < 3; i++ {
-		provider.Complete(context.Background(), &CompletionRequest{})
+		_, _ = provider.Complete(context.Background(), &CompletionRequest{})
 	}
 
 	_, err := provider.Complete(context.Background(), &CompletionRequest{})
@@ -148,7 +148,7 @@ func TestResilient_CircuitHalfOpenRecovers(t *testing.T) {
 	provider, _ := NewResilientProvider(mock, config)
 
 	for i := 0; i < 2; i++ {
-		provider.Complete(context.Background(), &CompletionRequest{})
+		_, _ = provider.Complete(context.Background(), &CompletionRequest{})
 	}
 
 	_, err := provider.Complete(context.Background(), &CompletionRequest{})
@@ -179,7 +179,7 @@ func TestResilient_CircuitRejectsWhenOpen(t *testing.T) {
 
 	provider, _ := NewResilientProvider(mock, config)
 
-	provider.Complete(context.Background(), &CompletionRequest{})
+	_, _ = provider.Complete(context.Background(), &CompletionRequest{})
 
 	for i := 0; i < 5; i++ {
 		_, err := provider.Complete(context.Background(), &CompletionRequest{})
@@ -437,7 +437,7 @@ func TestResilientProvider_Stream_CircuitOpen(t *testing.T) {
 
 	provider, _ := NewResilientProvider(mock, config)
 
-	provider.Stream(context.Background(), &CompletionRequest{})
+	_, _ = provider.Stream(context.Background(), &CompletionRequest{})
 
 	_, err := provider.Stream(context.Background(), &CompletionRequest{})
 	if err != ErrCircuitOpen {
@@ -454,7 +454,7 @@ func TestResilientProvider_CallTools_CircuitOpen(t *testing.T) {
 
 	provider, _ := NewResilientProvider(mock, config)
 
-	provider.CallTools(context.Background(), &ToolCallRequest{})
+	_, _ = provider.CallTools(context.Background(), &ToolCallRequest{})
 
 	_, err := provider.CallTools(context.Background(), &ToolCallRequest{})
 	if err != ErrCircuitOpen {
@@ -517,7 +517,7 @@ func TestResilient_CircuitHalfOpen_AllowsOnlyOneProbe(t *testing.T) {
 
 	// 触发熔断
 	for i := 0; i < 2; i++ {
-		provider.Complete(context.Background(), &CompletionRequest{})
+		_, _ = provider.Complete(context.Background(), &CompletionRequest{})
 	}
 
 	// 确认熔断器打开

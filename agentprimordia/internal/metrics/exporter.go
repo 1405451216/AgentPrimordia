@@ -72,7 +72,7 @@ func (h *PrometheusHandler) handleMetrics(w http.ResponseWriter, r *http.Request
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-	fmt.Fprint(w, h.metrics.String())
+	_, _ = fmt.Fprint(w, h.metrics.String())
 }
 
 func (h *PrometheusHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +81,7 @@ func (h *PrometheusHandler) handleHealth(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"status":"ok"}`))
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 // ===== OpenTelemetry 导出适配器 =====

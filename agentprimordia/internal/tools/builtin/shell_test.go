@@ -179,7 +179,7 @@ func TestWorkingDirectory(t *testing.T) {
 		t.Fatalf("error: %v, result: %v", err, result)
 	}
 	var output map[string]any
-	json.Unmarshal([]byte(result.Content), &output)
+	_ = json.Unmarshal([]byte(result.Content), &output)
 	stdout, _ := output["stdout"].(string)
 	if stdout == "" {
 		t.Fatal("stdout should not be empty")
@@ -223,7 +223,7 @@ func TestExitCode_Failure(t *testing.T) {
 	})
 	result, _ := sh.Execute(context.Background(), args)
 	var output map[string]any
-	json.Unmarshal([]byte(result.Content), &output)
+	_ = json.Unmarshal([]byte(result.Content), &output)
 	code, _ := output["exit_code"].(float64)
 	if code == 0 {
 		t.Errorf("expected non-zero exit_code for failing command, got %v", code)

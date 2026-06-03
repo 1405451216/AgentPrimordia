@@ -62,9 +62,9 @@ func TestPluginLoader_Unload(t *testing.T) {
 		tools:   []Tool{&pluginMockTool{name: "tool_a", desc: "Tool A"}},
 	}
 
-	loader.Load(plugin)
+	_ = loader.Load(plugin)
 
-	err := loader.Unload("test-plugin")
+		err := loader.Unload("test-plugin")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,8 +88,8 @@ func TestPluginLoader_List(t *testing.T) {
 	registry := NewRegistry()
 	loader := NewPluginLoader(registry)
 
-	loader.Load(&mockPlugin{name: "plugin-a", version: "1.0.0", tools: nil})
-	loader.Load(&mockPlugin{name: "plugin-b", version: "2.0.0", tools: nil})
+	_ = loader.Load(&mockPlugin{name: "plugin-a", version: "1.0.0", tools: nil})
+	_ = loader.Load(&mockPlugin{name: "plugin-b", version: "2.0.0", tools: nil})
 
 	list := loader.List()
 	if len(list) != 2 {
@@ -121,7 +121,7 @@ func TestBuiltinPlugin_Init(t *testing.T) {
 
 func TestBuiltinPlugin_Tools(t *testing.T) {
 	plugin := &BuiltinPlugin{}
-	plugin.Init(map[string]any{
+	_ = plugin.Init(map[string]any{
 		"root_dir":     t.TempDir(),
 		"enable_fs":    true,
 		"enable_shell": true,
@@ -174,9 +174,9 @@ func TestRegistry_RegisterPlugin(t *testing.T) {
 func TestRegistry_ToolsByCategory(t *testing.T) {
 	registry := NewRegistry()
 
-	registry.Register(&categorizedTool{name: "fs_read", desc: "Read file", category: "filesystem"})
-	registry.Register(&categorizedTool{name: "fs_write", desc: "Write file", category: "filesystem"})
-	registry.Register(&categorizedTool{name: "calc", desc: "Calculator", category: "utility"})
+	_ = registry.Register(&categorizedTool{name: "fs_read", desc: "Read file", category: "filesystem"})
+	_ = registry.Register(&categorizedTool{name: "fs_write", desc: "Write file", category: "filesystem"})
+	_ = registry.Register(&categorizedTool{name: "calc", desc: "Calculator", category: "utility"})
 
 	categories := registry.ToolsByCategory()
 	if len(categories["filesystem"]) != 2 {
@@ -190,8 +190,8 @@ func TestRegistry_ToolsByCategory(t *testing.T) {
 func TestRegistry_ToolCategories(t *testing.T) {
 	registry := NewRegistry()
 
-	registry.Register(&categorizedTool{name: "fs_read", desc: "Read file", category: "filesystem"})
-	registry.Register(&categorizedTool{name: "calc", desc: "Calculator", category: "utility"})
+	_ = registry.Register(&categorizedTool{name: "fs_read", desc: "Read file", category: "filesystem"})
+	_ = registry.Register(&categorizedTool{name: "calc", desc: "Calculator", category: "utility"})
 
 	cats := registry.ToolCategories()
 	if len(cats) != 2 {
@@ -233,11 +233,11 @@ func TestPluginLoader_Close(t *testing.T) {
 		tools:   []Tool{&pluginMockTool{name: "tool_a", desc: "Tool A"}},
 	}
 
-	loader.Load(plugin)
+	_ = loader.Load(plugin)
 	closed := false
 	plugin.closeFunc = func() { closed = true }
 
-	loader.Unload("test-plugin")
+	_ = loader.Unload("test-plugin")
 	if !closed {
 		t.Error("plugin Close() should have been called during Unload")
 	}

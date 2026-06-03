@@ -74,7 +74,7 @@ func TestIntegration_GuardrailWithHooksAndTelemetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("telemetry provider error: %v", err)
 	}
-	defer tp.Shutdown()
+	defer func() { _ = tp.Shutdown() }()
 
 	engine := NewEngine()
 	engine.AddRule(NewPIIRule(DefaultPIIRuleConfig()))

@@ -38,7 +38,7 @@ func TestJSONRPCRequest_MarshalNoID(t *testing.T) {
 	req := &JSONRPCRequest{JSONRPC: "2.0", Method: "tasks/send"}
 	data, _ := req.MarshalJSON()
 	var m map[string]any
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 	if _, hasID := m["id"]; hasID {
 		t.Error("通知请求不应包含 id 字段")
 	}
@@ -84,7 +84,7 @@ func TestJSONRPCResponse_Error(t *testing.T) {
 	data, _ := json.Marshal(resp)
 
 	var raw map[string]any
-	json.Unmarshal(data, &raw)
+	_ = json.Unmarshal(data, &raw)
 
 	if raw["error"] == nil {
 		t.Fatal("error 字段不应为空")
@@ -107,7 +107,7 @@ func TestJSONRPCResponse_Success(t *testing.T) {
 	data, _ := json.Marshal(resp)
 
 	var raw map[string]any
-	json.Unmarshal(data, &raw)
+	_ = json.Unmarshal(data, &raw)
 
 	if strings.Contains(string(data), `"error"`) {
 		t.Error("成功响应不应包含 error 字段")

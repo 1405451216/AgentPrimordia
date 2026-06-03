@@ -39,7 +39,7 @@ func mcpDoRequest(server *MCPServer, method string, body string, headers map[str
 // mcpDecodeResponse 辅助函数：解码 MCPResponse
 func mcpDecodeResponse(rec *httptest.ResponseRecorder) MCPResponse {
 	var resp MCPResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	return resp
 }
 
@@ -114,7 +114,7 @@ func TestMCPServer_APIKey_正确Bearer令牌(t *testing.T) {
 
 func TestMCPServer_APIKey_完整认证流程(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", description: "Echo tool", response: "hello"})
+	_ = reg.Register(&mockTool{name: "echo", description: "Echo tool", response: "hello"})
 	server := NewMCPServer(MCPServerConfig{
 		Name:    "auth-server",
 		Version: "1.0.0",
@@ -379,7 +379,7 @@ func TestMCPServer_PromptsGet_非字符串参数过滤(t *testing.T) {
 
 func TestMCPServer_并发安全(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "echo", description: "Echo tool", response: "pong"})
+	_ = reg.Register(&mockTool{name: "echo", description: "Echo tool", response: "pong"})
 	server := NewMCPServer(MCPServerConfig{
 		Name:    "test-server",
 		Version: "1.0.0",
@@ -497,7 +497,7 @@ func TestMCPServer_请求体大小限制(t *testing.T) {
 
 func TestMCPServer_完整MCP流程(t *testing.T) {
 	reg := NewRegistry()
-	reg.Register(&mockTool{name: "calculator", description: "Calculator tool", response: "42"})
+	_ = reg.Register(&mockTool{name: "calculator", description: "Calculator tool", response: "42"})
 	server := NewMCPServer(MCPServerConfig{
 		Name:    "flow-server",
 		Version: "2.0.0",

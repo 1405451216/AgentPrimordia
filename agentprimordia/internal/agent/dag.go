@@ -494,7 +494,7 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 				}
 
 				if hooks != nil {
-					hooks.Fire(ctx, &HookContext{
+_ = hooks.Fire(ctx, &HookContext{
 						Point:    HookBeforeDAGNode,
 						AgentID:  nid,
 						Metadata: map[string]any{"node_id": nid},
@@ -505,7 +505,7 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 				resp, retries, execErr := d.executeWithRetry(ctx, node, nodeInput)
 
 				if hooks != nil {
-					hooks.Fire(ctx, &HookContext{
+_ = hooks.Fire(ctx, &HookContext{
 						Point:    HookAfterDAGNode,
 						AgentID:  nid,
 						Error:    execErr,

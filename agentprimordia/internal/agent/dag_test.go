@@ -73,15 +73,15 @@ func TestDAGWorkflow_ParallelBranches(t *testing.T) {
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 	d := &mockAgentForOrch{name: "D", output: "outD"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
-	dag.AddNode(&DAGNode{ID: "d", Agent: d})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "d", Agent: d})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{From: "a", To: "c"})
-	dag.AddEdge(DAGEdge{From: "b", To: "d"})
-	dag.AddEdge(DAGEdge{From: "c", To: "d"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "b", To: "d"})
+	_ = dag.AddEdge(DAGEdge{From: "c", To: "d"})
 
 	result, err := dag.Run(context.Background(), "input")
 	if err != nil {
@@ -128,12 +128,12 @@ func TestDAGWorkflow_ConditionalEdge(t *testing.T) {
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{
 		From: "a",
 		To:   "c",
 		Condition: func(_ context.Context, _ *DAGNodeResult) bool {
@@ -166,13 +166,13 @@ func TestDAGWorkflow_CycleDetection(t *testing.T) {
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{From: "b", To: "c"})
-	dag.AddEdge(DAGEdge{From: "c", To: "a"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{From: "b", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "c", To: "a"})
 
 	_, err := dag.Run(context.Background(), "input")
 	if err == nil {
@@ -184,7 +184,7 @@ func TestDAGWorkflow_Validate_DuplicateNode(t *testing.T) {
 	dag := NewDAGWorkflow()
 
 	a := &mockAgentForOrch{name: "A", output: "outA"}
-	dag.AddNode(&DAGNode{ID: "x", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "x", Agent: a})
 
 	err := dag.AddNode(&DAGNode{ID: "x", Agent: a})
 	if err == nil {
@@ -196,7 +196,7 @@ func TestDAGWorkflow_Validate_MissingNode(t *testing.T) {
 	dag := NewDAGWorkflow()
 
 	a := &mockAgentForOrch{name: "A", output: "outA"}
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
 
 	err := dag.AddEdge(DAGEdge{From: "a", To: "nonexistent"})
 	if err == nil {
@@ -210,8 +210,8 @@ func TestDAGWorkflow_IsolatedNode(t *testing.T) {
 	a := &mockAgentForOrch{name: "A", output: "outA"}
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
 
 	result, err := dag.Run(context.Background(), "input")
 	if err != nil {
@@ -238,9 +238,9 @@ func TestDAGWorkflow_Hooks_Fired(t *testing.T) {
 	a := &mockAgentForOrch{name: "A", output: "outA"}
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
 
 	hm := NewHookManager()
 	var fired []HookPoint
@@ -294,18 +294,18 @@ func TestDAGWorkflow_ConditionalEdge_PartialSkip(t *testing.T) {
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
 
-	dag.AddEdge(DAGEdge{
+	_ = dag.AddEdge(DAGEdge{
 		From: "a",
 		To:   "b",
 		Condition: func(_ context.Context, _ *DAGNodeResult) bool {
 			return false
 		},
 	})
-	dag.AddEdge(DAGEdge{
+	_ = dag.AddEdge(DAGEdge{
 		From: "a",
 		To:   "c",
 		Condition: func(_ context.Context, _ *DAGNodeResult) bool {
@@ -352,7 +352,7 @@ func TestDAGWorkflow_NodeInput(t *testing.T) {
 
 	agentWithInputCheck := &dagInputCheckAgent{output: "outA", receivedInput: &receivedInput}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: agentWithInputCheck, Input: "custom-input"})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: agentWithInputCheck, Input: "custom-input"})
 
 	result, err := dag.Run(context.Background(), "default-input")
 	if err != nil {
@@ -393,9 +393,9 @@ func TestDAGWorkflow_Validate_Explicit(t *testing.T) {
 	a := &mockAgentForOrch{name: "A", output: "outA"}
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
 
 	if err := dag.Validate(); err != nil {
 		t.Errorf("valid DAG should pass validation: %v", err)
@@ -409,18 +409,18 @@ func TestDAGWorkflow_ConditionalEdge_ReachableViaOtherEdge(t *testing.T) {
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
 
-	dag.AddEdge(DAGEdge{
+	_ = dag.AddEdge(DAGEdge{
 		From: "a",
 		To:   "c",
 		Condition: func(_ context.Context, _ *DAGNodeResult) bool {
 			return false
 		},
 	})
-	dag.AddEdge(DAGEdge{From: "b", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "b", To: "c"})
 
 	result, err := dag.Run(context.Background(), "input")
 	if err != nil {
@@ -451,12 +451,12 @@ func TestDAGWorkflow_ParallelExecution(t *testing.T) {
 		}
 	}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: makeAgent("A")})
-	dag.AddNode(&DAGNode{ID: "b", Agent: makeAgent("B")})
-	dag.AddNode(&DAGNode{ID: "c", Agent: makeAgent("C")})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: makeAgent("A")})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: makeAgent("B")})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: makeAgent("C")})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{From: "a", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "c"})
 
 	result, err := dag.Run(context.Background(), "input")
 	if err != nil {
@@ -500,12 +500,12 @@ func TestDAGWorkflow_TopologicalSort(t *testing.T) {
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{From: "b", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{From: "b", To: "c"})
 
 	order, err := dag.TopologicalSort()
 	if err != nil {
@@ -535,13 +535,13 @@ func TestDAGWorkflow_TopologicalSort_Cycle(t *testing.T) {
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 	c := &mockAgentForOrch{name: "C", output: "outC"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddNode(&DAGNode{ID: "c", Agent: c})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: c})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{From: "b", To: "c"})
-	dag.AddEdge(DAGEdge{From: "c", To: "a"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{From: "b", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "c", To: "a"})
 
 	_, err := dag.TopologicalSort()
 	if err == nil {
@@ -551,12 +551,12 @@ func TestDAGWorkflow_TopologicalSort_Cycle(t *testing.T) {
 
 func TestDAGWorkflow_GetDependencies(t *testing.T) {
 	dag := NewDAGWorkflow()
-	dag.AddNode(&DAGNode{ID: "a", Agent: &mockAgentForOrch{name: "A"}})
-	dag.AddNode(&DAGNode{ID: "b", Agent: &mockAgentForOrch{name: "B"}})
-	dag.AddNode(&DAGNode{ID: "c", Agent: &mockAgentForOrch{name: "C"}})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: &mockAgentForOrch{name: "A"}})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: &mockAgentForOrch{name: "B"}})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: &mockAgentForOrch{name: "C"}})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "c"})
-	dag.AddEdge(DAGEdge{From: "b", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "b", To: "c"})
 
 	deps := dag.GetDependencies("c")
 	if len(deps) != 2 {
@@ -566,12 +566,12 @@ func TestDAGWorkflow_GetDependencies(t *testing.T) {
 
 func TestDAGWorkflow_GetDependents(t *testing.T) {
 	dag := NewDAGWorkflow()
-	dag.AddNode(&DAGNode{ID: "a", Agent: &mockAgentForOrch{name: "A"}})
-	dag.AddNode(&DAGNode{ID: "b", Agent: &mockAgentForOrch{name: "B"}})
-	dag.AddNode(&DAGNode{ID: "c", Agent: &mockAgentForOrch{name: "C"}})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: &mockAgentForOrch{name: "A"}})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: &mockAgentForOrch{name: "B"}})
+	_ = dag.AddNode(&DAGNode{ID: "c", Agent: &mockAgentForOrch{name: "C"}})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
-	dag.AddEdge(DAGEdge{From: "a", To: "c"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "c"})
 
 	deps := dag.GetDependents("a")
 	if len(deps) != 2 {
@@ -582,24 +582,24 @@ func TestDAGWorkflow_GetDependents(t *testing.T) {
 func TestDAGWorkflow_ToMermaid(t *testing.T) {
 	dag := NewDAGWorkflow().WithName("test-dag")
 
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "start",
 		Agent:    &mockAgentForOrch{name: "Start"},
 		Metadata: map[string]string{"label": "开始"},
 	})
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "process",
 		Agent:    &mockAgentForOrch{name: "Process"},
 		Metadata: map[string]string{"label": "处理"},
 	})
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "end",
 		Agent:    &mockAgentForOrch{name: "End"},
 		Metadata: map[string]string{"label": "结束"},
 	})
 
-	dag.AddEdge(DAGEdge{From: "start", To: "process", Label: "触发"})
-	dag.AddEdge(DAGEdge{
+	_ = dag.AddEdge(DAGEdge{From: "start", To: "process", Label: "触发"})
+	_ = dag.AddEdge(DAGEdge{
 		From:      "process",
 		To:        "end",
 		Label:     "完成",
@@ -621,18 +621,18 @@ func TestDAGWorkflow_ToMermaid(t *testing.T) {
 func TestDAGWorkflow_ToPlantUML(t *testing.T) {
 	dag := NewDAGWorkflow().WithName("pipeline")
 
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "n1",
 		Agent:    &mockAgentForOrch{name: "N1"},
 		Metadata: map[string]string{"label": "步骤1"},
 	})
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "n2",
 		Agent:    &mockAgentForOrch{name: "N2"},
 		Metadata: map[string]string{"label": "步骤2"},
 	})
 
-	dag.AddEdge(DAGEdge{From: "n1", To: "n2"})
+	_ = dag.AddEdge(DAGEdge{From: "n1", To: "n2"})
 
 	output := dag.ToPlantUML()
 	if !strings.Contains(output, "@startuml") {
@@ -649,18 +649,18 @@ func TestDAGWorkflow_ToPlantUML(t *testing.T) {
 func TestDAGWorkflow_ToDot(t *testing.T) {
 	dag := NewDAGWorkflow().WithName("my-dag")
 
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "node1",
 		Agent:    &mockAgentForOrch{name: "N1"},
 		Metadata: map[string]string{"label": "节点1"},
 	})
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "node2",
 		Agent:    &mockAgentForOrch{name: "N2"},
 		Metadata: map[string]string{"label": "节点2"},
 	})
 
-	dag.AddEdge(DAGEdge{From: "node1", To: "node2", Label: "flow"})
+	_ = dag.AddEdge(DAGEdge{From: "node1", To: "node2", Label: "flow"})
 
 	output := dag.ToDot()
 	if !strings.Contains(output, "digraph G") {
@@ -677,18 +677,18 @@ func TestDAGWorkflow_ToDot(t *testing.T) {
 func TestDAGWorkflow_ToJSON(t *testing.T) {
 	dag := NewDAGWorkflow().WithName("json-test")
 
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "x",
 		Agent:    &mockAgentForOrch{name: "X"},
 		Metadata: map[string]string{"label": "X节点"},
 	})
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:       "y",
 		Agent:    &mockAgentForOrch{name: "Y"},
 		Metadata: map[string]string{"label": "Y节点"},
 	})
 
-	dag.AddEdge(DAGEdge{From: "x", To: "y", Label: "edge-label"})
+	_ = dag.AddEdge(DAGEdge{From: "x", To: "y", Label: "edge-label"})
 
 	data := dag.ToJSON()
 	if data["name"] != "json-test" {
@@ -712,9 +712,9 @@ func TestDAGWorkflow_Metrics(t *testing.T) {
 	a := &mockAgentForOrch{name: "A", output: "outA"}
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
 
 	result, err := dag.Run(context.Background(), "input")
 	if err != nil {
@@ -745,9 +745,9 @@ func TestDAGWorkflow_NodeCountAndEdgeCount(t *testing.T) {
 	a := &mockAgentForOrch{name: "A", output: "outA"}
 	b := &mockAgentForOrch{name: "B", output: "outB"}
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: a})
-	dag.AddNode(&DAGNode{ID: "b", Agent: b})
-	dag.AddEdge(DAGEdge{From: "a", To: "b"})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: a})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: b})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b"})
 
 	if dag.NodeCount() != 2 {
 		t.Errorf("NodeCount 应为 2，实际 %d", dag.NodeCount())
@@ -764,7 +764,7 @@ func TestDAGWorkflow_WithRetryPolicy(t *testing.T) {
 	}
 
 	dag := NewDAGWorkflow()
-	dag.AddNode(&DAGNode{
+	_ = dag.AddNode(&DAGNode{
 		ID:          "retry-node",
 		Agent:       retryableAgent,
 		RetryPolicy: &RetryPolicy{MaxRetries: 3, Delay: time.Millisecond, Backoff: 1.5},
@@ -817,10 +817,10 @@ func (a *retryableTestAgent) Name() string      { return "retryable" }
 func TestDAGWorkflow_EdgeLabel(t *testing.T) {
 	dag := NewDAGWorkflow()
 
-	dag.AddNode(&DAGNode{ID: "a", Agent: &mockAgentForOrch{name: "A"}})
-	dag.AddNode(&DAGNode{ID: "b", Agent: &mockAgentForOrch{name: "B"}})
+	_ = dag.AddNode(&DAGNode{ID: "a", Agent: &mockAgentForOrch{name: "A"}})
+	_ = dag.AddNode(&DAGNode{ID: "b", Agent: &mockAgentForOrch{name: "B"}})
 
-	dag.AddEdge(DAGEdge{From: "a", To: "b", Label: "数据流"})
+	_ = dag.AddEdge(DAGEdge{From: "a", To: "b", Label: "数据流"})
 
 	mermaid := dag.ToMermaid()
 	if !strings.Contains(mermaid, "数据流") {
