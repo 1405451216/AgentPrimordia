@@ -250,3 +250,13 @@ var (
 	NewUserTextMessage       = llm.NewUserTextMessage
 	NewUserMultimodalMessage = llm.NewUserMultimodalMessage
 )
+
+// ModelPricing defines per-model pricing for cost estimation
+type ModelPricing = llm.ModelPricing
+
+var (
+	// DefaultPricingTable returns the default pricing table for mainstream models
+	DefaultPricingTable = llm.DefaultPricingTable
+	// EstimateCost estimates the cost of a single LLM call
+	EstimateCost = llm.EstimateCost
+)

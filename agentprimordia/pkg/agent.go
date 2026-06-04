@@ -199,6 +199,56 @@ var (
 	NewHTTPTransport = agent.NewHTTPTransport
 )
 
+// ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
+
+// CapabilityAgent 是可组合能力的 Agent 包装器，通过链式 API 按需注入能力
+//
+// 使用方式：
+//
+//	agent := ap.NewReActAgent(ap.ReActConfig{
+//	    Name: "my-agent", Model: provider, MaxTurns: 10,
+//	}).WithMemory(mem).WithRAG(ap.RAGConfig{...}).WithHooks(hooks)
+type CapabilityAgent = agent.CapabilityAgent
+
+// MemoryCapable 标识 Agent 具备记忆存储能力，引擎自动保存对话
+type MemoryCapable = agent.MemoryCapable
+
+// RAGCapable 标识 Agent 具备 RAG 检索能力，引擎自动注入知识库上下文
+type RAGCapable = agent.RAGCapable
+
+// HITLCapable 标识 Agent 具备人机协作能力，工具执行前自动检查人类确认
+type HITLCapable = agent.HITLCapable
+
+// HookCapable 标识 Agent 具备 Hook 能力，引擎自动触发注册的 Hook 函数
+type HookCapable = agent.HookCapable
+
+// TraceCapable 标识 Agent 具备分布式追踪能力，引擎自动创建 Span
+type TraceCapable = agent.TraceCapable
+
+// CostCapable 标识 Agent 具备成本追踪能力，引擎自动记录 LLM Usage
+type CostCapable = agent.CostCapable
+
+// ContextWindowCapable 标识 Agent 具备上下文窗口裁剪能力
+type ContextWindowCapable = agent.ContextWindowCapable
+
+// EventCapable 标识 Agent 具备事件发布能力
+type EventCapable = agent.EventCapable
+
+// MetricsCapable 标识 Agent 具备指标记录能力
+type MetricsCapable = agent.MetricsCapable
+
+// CheckpointCapable 标识 Agent 具备检查点持久化能力
+type CheckpointCapable = agent.CheckpointCapable
+
+// SummarizerCapable 标识 Agent 具备摘要提取能力
+type SummarizerCapable = agent.SummarizerCapable
+
+// FileScopeCapable 标识 Agent 具备文件作用域限制能力
+type FileScopeCapable = agent.FileScopeCapable
+
+// CacheCapable 标识 Agent 具备 LLM 缓存能力
+type CacheCapable = agent.CacheCapable
+
 // ===== DAG 工作流引擎 =====
 
 // DAGWorkflow 是 DAG 工作流引擎，支持拓扑排序、并行执行、条件分支和重试
@@ -252,4 +302,26 @@ var (
 	ConditionOnOutput    = agent.ConditionOnOutput
 	ConditionOnError     = agent.ConditionOnError
 	ConditionOnSuccess   = agent.ConditionOnSuccess
+)
+
+// ===== CostTracker 成本追踪 =====
+
+// CostTracker is the LLM cost tracking engine
+type CostTracker = agent.CostTracker
+
+// CostRecord is a single cost record for an LLM call
+type CostRecord = agent.CostRecord
+
+// BudgetConfig configures cost budget limits and callback
+type BudgetConfig = agent.BudgetConfig
+
+// CostSummary is the aggregated cost summary
+type CostSummary = agent.CostSummary
+
+// ModelCost is the per-model cost breakdown
+type ModelCost = agent.ModelCost
+
+var (
+	// NewCostTracker creates a cost tracker with pricing table and optional budget config
+	NewCostTracker = agent.NewCostTracker
 )
