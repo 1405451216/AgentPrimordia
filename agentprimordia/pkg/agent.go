@@ -325,3 +325,21 @@ var (
 	// NewCostTracker creates a cost tracker with pricing table and optional budget config
 	NewCostTracker = agent.NewCostTracker
 )
+
+// ===== SummaryEngine 会话摘要 =====
+
+// SummaryEngine orchestrates summarization with a strategy, summarizer, and memory store
+type SummaryEngine = memory.SummaryEngine
+
+// SummaryStrategy is the interface for summarization strategies
+type SummaryStrategy = memory.SummaryStrategy
+
+// WindowSummaryStrategy triggers summarization when episode count exceeds window size
+type WindowSummaryStrategy = memory.WindowSummaryStrategy
+
+var (
+	// NewSummaryEngine creates a summary engine with strategy, summarizer, and memory store
+	NewSummaryEngine = memory.NewSummaryEngine
+	// NewWindowSummaryStrategy creates a window-based summary strategy
+	NewWindowSummaryStrategy = memory.NewWindowSummaryStrategy
+)
