@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-//go:embed scaffold/*
+//go:embed scaffold/basic scaffold/with-tools scaffold/multi-agent
 var scaffoldFS embed.FS
 
 func runInit(args []string) {
@@ -136,16 +136,17 @@ agent:
 	}
 
 	// 生成 go.mod
-	// 用相对路径 replace 指向仓库内的 agentprimordia 子目录，
-	// 这样 `ap init` 必须在仓库根或子目录内运行才能解析依赖。
-	// 若需独立 go module，可后续手动 `go mod edit -module=<name>` 调整。
+	// 假定 ap init 在仓库根的 agentprimordia/ 子目录内运行（这是
+	// 脚手架的标准使用方式：用户 cd 到仓库根 → ap init my-agent，
+	// 生成 agentprimordia/my-agent/，replace 路径只需 ..）。
+	// 若是独立 go module，用户可手动 `go mod edit -module=<name>` 调整。
 	goMod := fmt.Sprintf(`module %s
 
 go 1.22
 
 require agentprimordia v0.0.0
 
-replace agentprimordia => ../agentprimordia
+replace agentprimordia => ..
 `, name)
 
 	if err := os.WriteFile(filepath.Join(targetDir, "go.mod"), []byte(goMod), 0o644); err != nil {
