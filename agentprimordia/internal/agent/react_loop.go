@@ -63,58 +63,81 @@ type MetricsRecorder interface {
 
 // ReActConfig holds configuration for a ReAct-based agent
 type ReActConfig struct {
+	// ===== 核心配置（必填） =====
 	Name           string
 	SystemPrompt   string
 	PromptTemplate *PromptTemplate
 	Model          llm.Provider
-	Toolkit        *tools.Registry
+	MaxTurns       int
+	Temperature    float64
+	SessionID      string
+
+	// ===== 可选能力（推荐使用链式 API 注入） =====
+	// 使用 WithXxx 链式方法替代直接设置这些字段：
+	//   agent := NewReActAgent(ReActConfig{...}).WithMemory(mem).WithRAG(ragCfg)
+	//
+	// 直接设置字段仍然有效（向后兼容），但链式 API 提供更好的类型安全和接口发现。
+
+	// Toolkit 工具注册表
+	// Deprecated: 使用 .WithToolkit(registry) 链式方法注入
+	Toolkit *tools.Registry
 
 	// Memory 存储对话和记忆片段
+	// Deprecated: 使用 .WithMemory(store) 链式方法注入
 	Memory MemoryStore
 
 	// EventPublisher 发布 Agent 生命周期事件
+	// Deprecated: 使用 .WithEvents(publisher) 链式方法注入
 	EventPublisher EventPublisher
 
 	// Metrics 指标收集器
+	// Deprecated: 使用 .WithMetrics(recorder) 链式方法注入
 	Metrics MetricsRecorder
 
 	// ContextWindow 上下文窗口裁剪策略
+	// Deprecated: 使用 .WithContextWindow(strategy) 链式方法注入
 	ContextWindow ContextWindowStrategy
 
 	// CheckpointStore 状态持久化
+	// Deprecated: 使用 .WithCheckpointStore(store) 链式方法注入
 	CheckpointStore persist.CheckpointStore
 
-	// SessionID 会话标识，用于 Memory 和 Checkpoint 关联
-	SessionID string
-
 	// RAG 知识库检索配置，启用后 Agent 在推理前自动查询知识库
+	// Deprecated: 使用 .WithRAG(config) 链式方法注入
 	RAG *RAGConfig
 
-	MaxTurns    int
-	Temperature float64
+	// Hooks Hook 管理器
+	// Deprecated: 使用 .WithHooks(hooks) 链式方法注入
+	Hooks Hooks
 
-	Hooks     Hooks
+	// Lifecycle 生命周期管理器（默认自动创建）
 	Lifecycle *Lifecycle
 
 	// Logger 结构化日志，默认使用 slog.Default()
 	Logger *slog.Logger
 
 	// Summarizer 记忆摘要生成器
+	// Deprecated: 使用 .WithSummarizer(summarizer) 链式方法注入
 	Summarizer memory.SummaryExtractor
 
 	// FileScope 文件范围限制，指定 Agent 可操作的文件或目录列表
+	// Deprecated: 使用 .WithFileScope(scopes) 链式方法注入
 	FileScope []string
 
 	// HITL 人机协作配置，启用后 Agent 在指定中断点暂停等待人类确认
+	// Deprecated: 使用 .WithHITL(config) 链式方法注入
 	HITL *HITLConfig
 
 	// CostTracker 成本追踪器，启用后自动记录每轮 LLM Usage 并追踪成本
+	// Deprecated: 使用 .WithCostTracker(tracker) 链式方法注入
 	CostTracker *CostTracker
 
 	// Tracer 分布式追踪器，启用后自动在 ReAct Loop 关键点创建 Span
+	// Deprecated: 使用 .WithTracer(tracer) 链式方法注入
 	Tracer Tracer
 
 	// Cache LLM 响应缓存，启用后自动缓存 Complete 调用结果以减少重复请求
+	// Deprecated: 使用 .WithCache(cache) 链式方法注入
 	Cache llm.LLMCache
 }
 
@@ -129,6 +152,11 @@ type ReActAgent struct {
 	statsMu   sync.RWMutex
 	runMu     sync.Mutex
 	hitlMgr   *HITLManager
+
+	// self 自引用，指向最外层的 Agent 包装器
+	// 用于协议式微内核的接口发现：引擎通过 a.self.(XxxCapable) 检测能力
+	// 默认指向自身；WithXxx 链式调用时更新为 CapabilityAgent
+	self Agent
 }
 
 // NewReActAgent creates a new ReAct-based agent
@@ -150,7 +178,7 @@ func NewReActAgent(cfg ReActConfig) *ReActAgent {
 		}
 	}
 
-	return &ReActAgent{
+	a := &ReActAgent{
 		config:    cfg,
 		lifecycle: cfg.Lifecycle,
 		hooks:     cfg.Hooks,
@@ -166,6 +194,98 @@ func NewReActAgent(cfg ReActConfig) *ReActAgent {
 			return nil
 		}(),
 	}
+	a.initSelf()
+	return a
+}
+
+// initSelf 初始化自引用，必须在构造后调用（因为需要返回值赋值后再设置）
+func (a *ReActAgent) initSelf() {
+	if a.self == nil {
+		a.self = a
+	}
+}
+
+// ===== 协议式微内核：接口发现辅助方法 =====
+// 引擎通过 a.self.(XxxCapable) 检测能力，优先使用接口发现，回退到 config 字段
+
+// getMemoryStore 获取记忆存储，优先通过 MemoryCapable 接口发现
+func (a *ReActAgent) getMemoryStore() MemoryStore {
+	if c, ok := a.self.(MemoryCapable); ok && c.GetMemoryStore() != nil {
+		return c.GetMemoryStore()
+	}
+	return a.config.Memory
+}
+
+// getRAGConfig 获取 RAG 配置，优先通过 RAGCapable 接口发现
+func (a *ReActAgent) getRAGConfig() *RAGConfig {
+	if c, ok := a.self.(RAGCapable); ok && c.GetRAGConfig() != nil {
+		return c.GetRAGConfig()
+	}
+	return a.config.RAG
+}
+
+// getEventPublisher 获取事件发布器，优先通过 EventCapable 接口发现
+func (a *ReActAgent) getEventPublisher() EventPublisher {
+	if c, ok := a.self.(EventCapable); ok && c.GetEventPublisher() != nil {
+		return c.GetEventPublisher()
+	}
+	return a.config.EventPublisher
+}
+
+// getMetricsRecorder 获取指标记录器，优先通过 MetricsCapable 接口发现
+func (a *ReActAgent) getMetricsRecorder() MetricsRecorder {
+	if c, ok := a.self.(MetricsCapable); ok && c.GetMetricsRecorder() != nil {
+		return c.GetMetricsRecorder()
+	}
+	return a.config.Metrics
+}
+
+// getTracer 获取追踪器，优先通过 TraceCapable 接口发现
+func (a *ReActAgent) getTracer() Tracer {
+	if c, ok := a.self.(TraceCapable); ok && c.GetTracer() != nil {
+		return c.GetTracer()
+	}
+	return a.config.Tracer
+}
+
+// getCostTracker 获取成本追踪器，优先通过 CostCapable 接口发现
+func (a *ReActAgent) getCostTracker() *CostTracker {
+	if c, ok := a.self.(CostCapable); ok && c.GetCostTracker() != nil {
+		return c.GetCostTracker()
+	}
+	return a.config.CostTracker
+}
+
+// getCheckpointStore 获取检查点存储，优先通过 CheckpointCapable 接口发现
+func (a *ReActAgent) getCheckpointStore() persist.CheckpointStore {
+	if c, ok := a.self.(CheckpointCapable); ok && c.GetCheckpointStore() != nil {
+		return c.GetCheckpointStore()
+	}
+	return a.config.CheckpointStore
+}
+
+// getContextWindowStrategy 获取上下文窗口策略，优先通过 ContextWindowCapable 接口发现
+func (a *ReActAgent) getContextWindowStrategy() ContextWindowStrategy {
+	if c, ok := a.self.(ContextWindowCapable); ok && c.GetContextWindowStrategy() != nil {
+		return c.GetContextWindowStrategy()
+	}
+	return a.config.ContextWindow
+}
+
+// getSummarizer 获取摘要提取器，优先通过 SummarizerCapable 接口发现
+func (a *ReActAgent) getSummarizer() memory.SummaryExtractor {
+	if c, ok := a.self.(SummarizerCapable); ok && c.GetSummarizer() != nil {
+		return c.GetSummarizer()
+	}
+	return a.config.Summarizer
+}
+
+// getFileScope 获取文件作用域，优先通过 FileScopeCapable 接口发现
+func (a *ReActAgent) getFileScope() []string {
+	if c, ok := a.self.(FileScopeCapable); ok && c.GetFileScope() != nil {
+		return c.GetFileScope()
+	}
+	return a.config.FileScope
 }
 
 func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
@@ -180,8 +300,8 @@ func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 
 // publishEvent 向 EventPublisher 发布事件
 func (a *ReActAgent) publishEvent(eventType string, payload any) {
-	if a.config.EventPublisher != nil {
-		if err := a.config.EventPublisher.PublishAsync(eventType, a.config.Name, payload); err != nil {
+	if ep := a.getEventPublisher(); ep != nil {
+		if err := ep.PublishAsync(eventType, a.config.Name, payload); err != nil {
 			a.logger.Warn("发布事件失败", "error", err, "type", eventType)
 		}
 	}
@@ -189,7 +309,8 @@ func (a *ReActAgent) publishEvent(eventType string, payload any) {
 
 // saveMemory 将消息保存到 Memory
 func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
-	if a.config.Memory == nil {
+	mem := a.getMemoryStore()
+	if mem == nil {
 		return
 	}
 	ep := &MemoryEpisode{
@@ -202,13 +323,13 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 	if ep.SessionID == "" {
 		ep.SessionID = a.config.Name
 	}
-	if err := a.config.Memory.Add(ctx, ep); err != nil {
+	if err := mem.Add(ctx, ep); err != nil {
 		a.logger.Warn("保存记忆失败", "error", err, "role", msg.Role)
 	}
 
 	// 异步提取摘要
-	if a.config.Summarizer != nil && ep.ID != "" {
-		summarizer := a.config.Summarizer
+	summarizer := a.getSummarizer()
+	if summarizer != nil && ep.ID != "" {
 		epID := ep.ID
 		epContent := ep.Content
 		go func() {
@@ -232,7 +353,8 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 
 // saveCheckpoint 保存 Agent 状态
 func (a *ReActAgent) saveCheckpoint(ctx context.Context, history []Message, turnCount int, m Metrics) {
-	if a.config.CheckpointStore == nil {
+	cs := a.getCheckpointStore()
+	if cs == nil {
 		return
 	}
 
@@ -261,25 +383,26 @@ func (a *ReActAgent) saveCheckpoint(ctx context.Context, history []Message, turn
 		SavedAt: time.Now().UTC(),
 	}
 
-	if err := a.config.CheckpointStore.Save(ctx, state); err != nil {
+	if err := cs.Save(ctx, state); err != nil {
 		a.logger.Warn("保存检查点失败", "error", err)
 	}
 }
 
 // trimContext 应用上下文窗口策略裁剪历史
 func (a *ReActAgent) trimContext(history []Message, maxMessages int) []Message {
-	if a.config.ContextWindow == nil {
-		return history
+	if cw := a.getContextWindowStrategy(); cw != nil {
+		return cw.Trim(history, maxMessages)
 	}
-	return a.config.ContextWindow.Trim(history, maxMessages)
+	return history
 }
 
 // shouldRAG 判断当前轮次是否需要执行 RAG 检索
 func (a *ReActAgent) shouldRAG(turn int) bool {
-	if a.config.RAG == nil || a.config.RAG.Provider == nil {
+	rag := a.getRAGConfig()
+	if rag == nil || rag.Provider == nil {
 		return false
 	}
-	switch a.config.RAG.Mode {
+	switch rag.Mode {
 	case RAGModeFirst:
 		return turn == 0
 	case RAGModeOnDemand:
@@ -293,16 +416,16 @@ func (a *ReActAgent) shouldRAG(turn int) bool {
 
 // ragTopK 返回 RAG 检索的 TopK 值
 func (a *ReActAgent) ragTopK() int {
-	if a.config.RAG != nil && a.config.RAG.TopK > 0 {
-		return a.config.RAG.TopK
+	if rag := a.getRAGConfig(); rag != nil && rag.TopK > 0 {
+		return rag.TopK
 	}
 	return 5
 }
 
 // ragMinScore 返回 RAG 检索的最低相关度阈值
 func (a *ReActAgent) ragMinScore() float32 {
-	if a.config.RAG != nil && a.config.RAG.MinScore > 0 {
-		return a.config.RAG.MinScore
+	if rag := a.getRAGConfig(); rag != nil && rag.MinScore > 0 {
+		return rag.MinScore
 	}
 	return 0.3
 }
@@ -311,7 +434,8 @@ func (a *ReActAgent) ragMinScore() float32 {
 func (a *ReActAgent) searchRAG(ctx context.Context, query string) (string, []*RAGDocument) {
 	_ = a.fireHook(HookBeforeRAG, &HookContext{Metadata: map[string]any{"query": query}})
 
-	docs, err := a.config.RAG.Provider.Search(ctx, query, a.ragTopK())
+	rag := a.getRAGConfig()
+	docs, err := rag.Provider.Search(ctx, query, a.ragTopK())
 	if err != nil {
 		a.logger.Warn("RAG 检索失败", "error", err, "query", query)
 		_ = a.fireHook(HookOnError, &HookContext{Error: err})
@@ -442,15 +566,15 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		a.publishEvent("turn.start", map[string]int{"turn": turn})
 
 		var turnSpan Span = &NoopSpan{}
-		if a.config.Tracer != nil {
-			turnSpan = a.config.Tracer.Start(
+		if tracer := a.getTracer(); tracer != nil {
+			turnSpan = tracer.Start(
 				fmt.Sprintf("turn.%d", turn),
 				SpanKindInternal,
 				WithAttributes(map[string]any{"agent": a.config.Name, "turn": turn}),
 			)
 		}
 
-		if a.config.CostTracker != nil && a.config.CostTracker.CheckBudget() {
+		if ct := a.getCostTracker(); ct != nil && ct.CheckBudget() {
 			a.logger.Warn("Agent 超出预算", "name", a.config.Name)
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			return &Response{Error: ErrBudgetExceeded}, ErrBudgetExceeded
@@ -489,8 +613,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		a.publishEvent("llm.call", map[string]int{"turn": turn})
 
 		var llmSpan Span = &NoopSpan{}
-		if a.config.Tracer != nil {
-			llmSpan = a.config.Tracer.Start(
+		if tracer := a.getTracer(); tracer != nil {
+			llmSpan = tracer.Start(
 				"llm.call",
 				SpanKindClient,
 				WithParent(turnSpan.SpanContext()),
@@ -552,8 +676,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			_ = a.fireHook(HookOnComplete, &HookContext{Response: response})
 			turnSpan.End()
 			_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
-			if a.config.Metrics != nil {
-				a.config.Metrics.RecordTurn(time.Since(turnStart))
+			if m := a.getMetricsRecorder(); m != nil {
+				m.RecordTurn(time.Since(turnStart))
 			}
 			a.publishEvent("turn.end", map[string]int{"turn": turn})
 
@@ -619,8 +743,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			toolStart := time.Now()
 
 			var toolSpan Span = &NoopSpan{}
-			if a.config.Tracer != nil {
-				toolSpan = a.config.Tracer.Start(
+			if tracer := a.getTracer(); tracer != nil {
+				toolSpan = tracer.Start(
 					fmt.Sprintf("tool.%s", tc.Name),
 					SpanKindClient,
 					WithParent(turnSpan.SpanContext()),
@@ -637,8 +761,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 				toolSpan.SetStatus(SpanStatusError, err.Error())
 			}
 			toolSpan.End()
-			if a.config.Metrics != nil {
-				a.config.Metrics.RecordToolCall(toolLatency, err)
+			if m := a.getMetricsRecorder(); m != nil {
+				m.RecordToolCall(toolLatency, err)
 			}
 
 			if err != nil {
@@ -669,8 +793,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		turnSpan.End()
 		_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
-		if a.config.Metrics != nil {
-			a.config.Metrics.RecordTurn(time.Since(turnStart))
+		if m := a.getMetricsRecorder(); m != nil {
+			m.RecordTurn(time.Since(turnStart))
 		}
 		a.publishEvent("turn.end", map[string]int{"turn": turn})
 
@@ -746,9 +870,9 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	a.publishEvent("agent.start", map[string]string{"name": a.config.Name})
 	_ = a.fireHook(HookBeforeRun, &HookContext{})
 
-	if a.config.Metrics != nil {
-		a.config.Metrics.IncActiveAgents()
-		defer a.config.Metrics.DecActiveAgents()
+	if m := a.getMetricsRecorder(); m != nil {
+		m.IncActiveAgents()
+		defer m.DecActiveAgents()
 	}
 
 	defer func() {
@@ -777,8 +901,8 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 
 	// 使用 PromptTemplate 构建系统提示词
 	if systemPrompt == "" && a.config.SystemPrompt != "" {
-		if len(a.config.FileScope) > 0 {
-			tmpl := CodeAssistantTemplate(a.config.SystemPrompt, a.config.FileScope)
+		if fs := a.getFileScope(); len(fs) > 0 {
+			tmpl := CodeAssistantTemplate(a.config.SystemPrompt, fs)
 			var err error
 			systemPrompt, err = tmpl.Render()
 			if err != nil {
@@ -790,8 +914,8 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 		}
 	} else if systemPrompt == "" {
 		tmpl := DefaultSystemPrompt().WithVar("AgentName", a.config.Name)
-		if len(a.config.FileScope) > 0 {
-			tmpl.WithScopeRules(a.config.FileScope)
+		if fs := a.getFileScope(); len(fs) > 0 {
+			tmpl.WithScopeRules(fs)
 		}
 		var err error
 		systemPrompt, err = tmpl.Render()
@@ -817,16 +941,16 @@ func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMe
 	if len(toolDefs) > 0 {
 		resp, err := a.callToolsWithRetry(ctx, llmMessages, toolDefs)
 		if err != nil {
-			if a.config.Metrics != nil {
-				a.config.Metrics.RecordLLMCall(time.Since(llmStart), err)
+			if m := a.getMetricsRecorder(); m != nil {
+				m.RecordLLMCall(time.Since(llmStart), err)
 			}
 			return Thought{}, err
 		}
 		if len(resp.ToolCalls) == 0 && resp.Content == "" {
 			completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
 			if completeErr != nil {
-				if a.config.Metrics != nil {
-					a.config.Metrics.RecordLLMCall(time.Since(llmStart), completeErr)
+				if m := a.getMetricsRecorder(); m != nil {
+					m.RecordLLMCall(time.Since(llmStart), completeErr)
 				}
 				return Thought{}, completeErr
 			}
@@ -838,20 +962,20 @@ func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMe
 				Usage:     resp.Usage,
 			}
 		}
-		if a.config.Metrics != nil {
-			a.config.Metrics.RecordLLMCall(time.Since(llmStart), nil)
+		if m := a.getMetricsRecorder(); m != nil {
+			m.RecordLLMCall(time.Since(llmStart), nil)
 		}
 	} else {
 		resp, err := a.completeWithRetry(ctx, llmMessages)
 		if err != nil {
-			if a.config.Metrics != nil {
-				a.config.Metrics.RecordLLMCall(time.Since(llmStart), err)
+			if m := a.getMetricsRecorder(); m != nil {
+				m.RecordLLMCall(time.Since(llmStart), err)
 			}
 			return Thought{}, err
 		}
 		thought = Thought{Content: resp.Content, Usage: resp.Usage}
-		if a.config.Metrics != nil {
-			a.config.Metrics.RecordLLMCall(time.Since(llmStart), nil)
+		if m := a.getMetricsRecorder(); m != nil {
+			m.RecordLLMCall(time.Since(llmStart), nil)
 		}
 	}
 
@@ -897,8 +1021,8 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 			}
 		}
 
-		if a.config.Metrics != nil {
-			a.config.Metrics.RecordLLMCall(time.Since(llmStart), nil)
+		if m := a.getMetricsRecorder(); m != nil {
+			m.RecordLLMCall(time.Since(llmStart), nil)
 		}
 		return thought
 	}
@@ -907,8 +1031,8 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 	if len(toolDefs) > 0 {
 		resp, err := a.callToolsWithRetry(ctx, llmMessages, toolDefs)
 		if err != nil {
-			if a.config.Metrics != nil {
-				a.config.Metrics.RecordLLMCall(time.Since(llmStart), err)
+			if m := a.getMetricsRecorder(); m != nil {
+				m.RecordLLMCall(time.Since(llmStart), err)
 			}
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
@@ -917,22 +1041,22 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 		if len(resp.ToolCalls) == 0 && resp.Content == "" {
 			completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
 			if completeErr != nil {
-				if a.config.Metrics != nil {
-					a.config.Metrics.RecordLLMCall(time.Since(llmStart), completeErr)
+				if m := a.getMetricsRecorder(); m != nil {
+					m.RecordLLMCall(time.Since(llmStart), completeErr)
 				}
 				_ = a.lifecycle.SetStatus(StatusFailed)
 				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: completeErr.Error()})
 				return Thought{}
 			}
 			a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: completeResp.Content})
-			if a.config.Metrics != nil {
-				a.config.Metrics.RecordLLMCall(time.Since(llmStart), nil)
+			if m := a.getMetricsRecorder(); m != nil {
+				m.RecordLLMCall(time.Since(llmStart), nil)
 			}
 			return Thought{Content: completeResp.Content}
 		}
 		a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
-		if a.config.Metrics != nil {
-			a.config.Metrics.RecordLLMCall(time.Since(llmStart), nil)
+		if m := a.getMetricsRecorder(); m != nil {
+			m.RecordLLMCall(time.Since(llmStart), nil)
 		}
 		return Thought{
 			Content:   resp.Content,
@@ -942,16 +1066,16 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 
 	resp, err := a.completeWithRetry(ctx, llmMessages)
 	if err != nil {
-		if a.config.Metrics != nil {
-			a.config.Metrics.RecordLLMCall(time.Since(llmStart), err)
+		if m := a.getMetricsRecorder(); m != nil {
+			m.RecordLLMCall(time.Since(llmStart), err)
 		}
 		_ = a.lifecycle.SetStatus(StatusFailed)
 		a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
 		return Thought{}
 	}
 	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
-	if a.config.Metrics != nil {
-		a.config.Metrics.RecordLLMCall(time.Since(llmStart), nil)
+	if m := a.getMetricsRecorder(); m != nil {
+		m.RecordLLMCall(time.Since(llmStart), nil)
 	}
 	return Thought{Content: resp.Content}
 }
@@ -1066,20 +1190,20 @@ func (a *ReActAgent) recordUsage(usage llm.Usage) {
 		return
 	}
 
-	if a.config.CostTracker != nil {
+	if ct := a.getCostTracker(); ct != nil {
 		modelName := ""
 		if info := a.config.Model.Info(); info.Name != "" {
 			modelName = info.Name
 		}
-		_ = a.config.CostTracker.Record(modelName, a.config.SessionID, a.config.Name, usage)
+		_ = ct.Record(modelName, a.config.SessionID, a.config.Name, usage)
 	}
 
-	if a.config.Metrics != nil {
+	if m := a.getMetricsRecorder(); m != nil {
 		modelName := ""
 		if info := a.config.Model.Info(); info.Name != "" {
 			modelName = info.Name
 		}
-		a.config.Metrics.RecordTokenUsage(modelName, usage.PromptTokens, usage.CompletionTokens)
+		m.RecordTokenUsage(modelName, usage.PromptTokens, usage.CompletionTokens)
 	}
 }
 
@@ -1120,11 +1244,12 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	a.runMu.Lock()
 	defer a.runMu.Unlock()
 
-	if a.config.CheckpointStore == nil {
+	cs := a.getCheckpointStore()
+	if cs == nil {
 		return nil, fmt.Errorf("checkpoint store not configured")
 	}
 
-	state, err := a.config.CheckpointStore.Load(ctx, a.config.Name)
+	state, err := cs.Load(ctx, a.config.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -1152,9 +1277,9 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	a.statsMu.Unlock()
 	_ = a.lifecycle.SetStatus(StatusRunning)
 
-	if a.config.Metrics != nil {
-		a.config.Metrics.IncActiveAgents()
-		defer a.config.Metrics.DecActiveAgents()
+	if m := a.getMetricsRecorder(); m != nil {
+		m.IncActiveAgents()
+		defer m.DecActiveAgents()
 	}
 
 	defer func() {
