@@ -135,9 +135,27 @@ agent:
 		fmt.Fprintf(os.Stderr, "警告: 写入 .ap.yaml 失败: %v\n", err)
 	}
 
+	// 生成 go.mod
+	// 用相对路径 replace 指向仓库内的 agentprimordia 子目录，
+	// 这样 `ap init` 必须在仓库根或子目录内运行才能解析依赖。
+	// 若需独立 go module，可后续手动 `go mod edit -module=<name>` 调整。
+	goMod := fmt.Sprintf(`module %s
+
+go 1.22
+
+require agentprimordia v0.0.0
+
+replace agentprimordia => ../agentprimordia
+`, name)
+
+	if err := os.WriteFile(filepath.Join(targetDir, "go.mod"), []byte(goMod), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "警告: 写入 go.mod 失败: %v\n", err)
+	}
+
 	fmt.Printf("✓ 项目 %q 已创建 (模板: %s)\n\n", name, template)
 	fmt.Printf("下一步:\n")
 	fmt.Printf("  cd %s\n", name)
+	fmt.Printf("  go mod tidy\n")
 	fmt.Printf("  # 设置 API Key: set OPENAI_API_KEY=sk-xxx\n")
 	fmt.Printf("  ap run\n")
 }

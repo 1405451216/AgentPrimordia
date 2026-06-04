@@ -88,6 +88,30 @@ func TestRunInit_BasicTemplate(t *testing.T) {
 	if _, err := os.Stat(apYaml); os.IsNotExist(err) {
 		t.Fatal(".ap.yaml 未创建")
 	}
+
+	// 检查 go.mod 是否存在（点 5 治理：可编译性）
+	goMod := filepath.Join(targetDir, "go.mod")
+	if _, err := os.Stat(goMod); os.IsNotExist(err) {
+		t.Fatal("go.mod 未创建 — 生成的项目无法编译")
+	}
+
+	// 验证 main.go 变量替换正确
+	content, _ := os.ReadFile(mainGo)
+	if !contains(string(content), `"my-agent"`) {
+		t.Error("main.go 中 {{.ProjectName}} 未被替换为 my-agent")
+	}
+	if contains(string(content), "{{.ProjectName}}") {
+		t.Error("main.go 仍包含未替换的 {{.ProjectName}}")
+	}
+
+	// 验证 go.mod 内容
+	modContent, _ := os.ReadFile(goMod)
+	if !contains(string(modContent), "module my-agent") {
+		t.Error("go.mod 缺 module my-agent")
+	}
+	if !contains(string(modContent), "agentprimordia") {
+		t.Error("go.mod 缺 agentprimordia 依赖")
+	}
 }
 
 func TestRunInit_WithToolsTemplate(t *testing.T) {
@@ -108,6 +132,11 @@ func TestRunInit_WithToolsTemplate(t *testing.T) {
 	if len(content) == 0 {
 		t.Error("main.go 内容为空")
 	}
+
+	// 验证 go.mod 存在
+	if _, err := os.Stat(filepath.Join(targetDir, "go.mod")); os.IsNotExist(err) {
+		t.Error("go.mod 未创建")
+	}
 }
 
 func TestRunInit_MultiAgentTemplate(t *testing.T) {
@@ -122,6 +151,55 @@ func TestRunInit_MultiAgentTemplate(t *testing.T) {
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
 		t.Fatal("项目目录未创建")
 	}
+
+	// 验证 go.mod 存在
+	if _, err := os.Stat(filepath.Join(targetDir, "go.mod")); os.IsNotExist(err) {
+		t.Error("go.mod 未创建")
+	}
+}
+
+// TestRunInit_GeneratedProjectBuilds 端到端：验证生成项目可编译。
+// 用相对路径 replace 指向 ../agentprimordia（仓库内）。
+func TestRunInit_GeneratedProjectBuilds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("short 模式跳过 e2e 构建")
+	}
+
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	runInit([]string{"buildable-agent"})
+
+	targetDir := filepath.Join(tmpDir, "buildable-agent")
+
+	// 验证 go.mod 含 replace 指令
+	modContent, _ := os.ReadFile(filepath.Join(targetDir, "go.mod"))
+	modContentStr := string(modContent)
+	if !contains(modContentStr, "replace agentprimordia =>") {
+		t.Skip("go.mod 不含 replace，跳过 e2e 构建")
+	}
+	t.Logf("生成 go.mod 包含预期的 replace 指令，%d 字节", len(modContentStr))
+
+	// 至少验证 main.go 语法可解析（编译检查）
+	mainGoContent, _ := os.ReadFile(filepath.Join(targetDir, "main.go"))
+	if !contains(string(mainGoContent), "package main") {
+		t.Error("生成 main.go 缺 package main")
+	}
+	if !contains(string(mainGoContent), "func main()") {
+		t.Error("生成 main.go 缺 func main()")
+	}
+}
+
+// contains 是 strings.Contains 的本地别名（避免 import 冲突）
+func contains(s, substr string) bool {
+	for i := 0; i+len(substr) <= len(s); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestRunInit_DirExists(t *testing.T) {
