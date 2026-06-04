@@ -43,6 +43,16 @@ var (
 	ErrEmptyResponse       = errors.New("empty choices in response")
 	ErrResponseParseFailed = errors.New("failed to parse LLM response")
 	ErrLLMCallFailed       = errors.New("LLM call failed")
+
+	// ErrTemplateNotImplemented 当调用 NewTemplateProvider 时返回。
+	// TemplateProvider 是新 LLM Provider 的代码模板，自身不是真实可用
+	// 的 Provider。任何误用都会得到此错误而非运行时崩溃，便于早期
+	// 发现问题。贡献者应复制 provider_template.go 到新文件并实现
+	// 所有方法。详见 ecosystem/contributing/PROVIDER.md。
+	ErrTemplateNotImplemented = errors.New(
+		"TemplateProvider is a code template, not a real Provider. " +
+			"Copy internal/llm/provider_template.go to a new file and implement it. " +
+			"See internal/llm/provider_template.go and ecosystem/contributing/PROVIDER.md.")
 )
 
 type APIError struct {

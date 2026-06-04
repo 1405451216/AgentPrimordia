@@ -1,3 +1,28 @@
+// Package llm 包含 LLM Provider 抽象层。
+//
+// ⚠️ DO NOT USE — TEMPLATE ONLY ⚠️
+//
+// 本文件中定义的 TemplateProvider 是新 LLM Provider 的实现模板，
+// 用于生态贡献者复制后改写。它本身不是真实可用的 Provider ——
+// 任何调用 NewTemplateProvider 都会立即返回错误，Complete/Stream/
+// CallTools/Info 全部返回 "TODO: 未实现"。
+//
+// 使用流程：
+//  1. cp provider_template.go {your_provider}_provider.go
+//  2. 全局替换 "template" / "Template" 为你的 provider 名称
+//  3. 实现 Complete() 方法
+//  4. 实现 Stream() 方法
+//  5. 实现 CallTools() 方法
+//  6. 实现 Info() 方法
+//  7. 删除本注释块 + 把文件名改为你的 provider
+//  8. 运行测试：go test -run TestTemplate ./internal/llm/
+//
+// 为什么 NewTemplateProvider 返回错误:
+// 防止任何生态代码或示例误把模板当真 Provider 用 —— 运行时才
+// 暴露 "TODO: 未实现" 太晚，启动期拒绝能更早发现问题。
+//
+// 误用防护设计参考 docs/plans/2026-06-04-phase6-implementation.md
+// §风险与债务 §3。
 package llm
 
 // ProviderTemplate 是新 Provider 的模板代码
@@ -20,7 +45,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -42,30 +66,18 @@ type TemplateProvider struct {
 	client *http.Client // 使用包内已定义的 http.Client（来自 net/http）
 }
 
-// NewTemplateProvider 创建模板 Provider
-// TODO: 重命名为 NewXxxProvider
+// NewTemplateProvider 拒绝创建 — 这是模板不是真 Provider。
+//
+// 任何调用都会返回 ErrTemplateNotImplemented 错误，避免生态代码
+// 误把 TemplateProvider 当真实 Provider 使用。贡献者应复制本文件
+// 到新文件并实现所有方法。
+//
+// 错误信息指引：
+//   "TemplateProvider is a code template, not a real Provider. "
+//   "Copy internal/llm/provider_template.go to a new file and implement it. "
+//   "See internal/llm/provider_template.go and ecosystem/contributing/PROVIDER.md."
 func NewTemplateProvider(cfg Config) (*TemplateProvider, error) {
-	// 校验 API Key
-	if cfg.APIKey == "" {
-		return nil, ErrAPIKeyRequired
-	}
-
-	// 设置默认 BaseURL
-	baseURL := cfg.BaseURL
-	if baseURL == "" {
-		baseURL = templateDefaultBaseURL
-	}
-	cfg.BaseURL = strings.TrimRight(baseURL, "/")
-
-	// 设置默认模型
-	if cfg.Model == "" {
-		cfg.Model = "template-default-model" // TODO: 替换为实际的默认模型名称
-	}
-
-	return &TemplateProvider{
-		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
-	}, nil
+	return nil, ErrTemplateNotImplemented
 }
 
 // Complete 执行非流式补全

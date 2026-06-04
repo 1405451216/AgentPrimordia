@@ -3,90 +3,82 @@ package llm
 // ===== 复制此文件并重命名为 {provider}_provider_test.go =====
 // 然后全局替换 "Template" 为你的 Provider 名称
 
+// 本文件是 TemplateProvider 误用防护的测试。
+// 由于 NewTemplateProvider 现在直接返回 ErrTemplateNotImplemented，
+// 模板行为测试改为：断言调用即失败、错误信息含指引。
+// 真实 Provider 的测试在 copy 此文件后重写。
+//
+// 实现新 Provider 时，删除以下"误用防护"测试 + 添加真实测试。
+
 import (
-	"context"
+	"strings"
 	"testing"
 )
 
-func TestNewTemplateProvider_Success(t *testing.T) {
+// TestNewTemplateProvider_Refused 验证 NewTemplateProvider 启动期拒绝。
+// 防止任何代码误把 TemplateProvider 当真 Provider 使用。
+func TestNewTemplateProvider_Refused(t *testing.T) {
 	provider, err := NewTemplateProvider(Config{
 		APIKey: "test-key",
 		Model:  "test-model",
 	})
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if provider == nil {
-		t.Fatal("expected non-nil provider")
-	}
-}
-
-func TestNewTemplateProvider_MissingAPIKey(t *testing.T) {
-	_, err := NewTemplateProvider(Config{})
-	if err != ErrAPIKeyRequired {
-		t.Errorf("expected ErrAPIKeyRequired, got: %v", err)
-	}
-}
-
-func TestTemplateProvider_Info(t *testing.T) {
-	provider, _ := NewTemplateProvider(Config{
-		APIKey: "test-key",
-		Model:  "test-model",
-	})
-
-	info := provider.Info()
-	if info.Provider != "template" {
-		t.Errorf("Provider 应为 template，实际为 %s", info.Provider)
-	}
-	if info.Name != "test-model" {
-		t.Errorf("Model 应为 test-model，实际为 %s", info.Name)
-	}
-	if info.MaxContext != defaultTemplateMaxContext {
-		t.Errorf("MaxContext 应为 %d，实际为 %d", defaultTemplateMaxContext, info.MaxContext)
-	}
-}
-
-func TestTemplateProvider_Complete_NotImplemented(t *testing.T) {
-	provider, _ := NewTemplateProvider(Config{
-		APIKey: "test-key",
-		Model:  "test-model",
-	})
-
-	_, err := provider.Complete(context.Background(), &CompletionRequest{
-		Messages: []ChatMessage{{Role: "user", Content: "hello"}},
-	})
 	if err == nil {
-		t.Error("未实现的 Complete 应返回错误")
+		t.Fatal("NewTemplateProvider 应返回错误而非成功")
+	}
+	if provider != nil {
+		t.Errorf("期望 nil provider, got %v", provider)
+	}
+	if err != ErrTemplateNotImplemented {
+		t.Errorf("期望 ErrTemplateNotImplemented, got: %v", err)
 	}
 }
 
-func TestTemplateProvider_Stream_NotImplemented(t *testing.T) {
-	provider, _ := NewTemplateProvider(Config{
-		APIKey: "test-key",
-		Model:  "test-model",
-	})
+// TestNewTemplateProvider_RefusedNoAPIKey 即便无 API Key 也应拒绝
+// (拒绝优先于 API Key 校验，避免"先校验后拒绝"反模式)。
+func TestNewTemplateProvider_RefusedNoAPIKey(t *testing.T) {
+	provider, err := NewTemplateProvider(Config{})
 
-	_, err := provider.Stream(context.Background(), &CompletionRequest{
-		Messages: []ChatMessage{{Role: "user", Content: "hello"}},
-	})
-	if err == nil {
-		t.Error("未实现的 Stream 应返回错误")
+	if err != ErrTemplateNotImplemented {
+		t.Errorf("无 API Key 也应返回 ErrTemplateNotImplemented, got: %v", err)
+	}
+	if provider != nil {
+		t.Errorf("期望 nil provider, got %v", provider)
 	}
 }
 
-func TestTemplateProvider_CallTools_NotImplemented(t *testing.T) {
-	provider, _ := NewTemplateProvider(Config{
-		APIKey: "test-key",
-		Model:  "test-model",
-	})
-
-	_, err := provider.CallTools(context.Background(), &ToolCallRequest{
-		Messages: []ChatMessage{{Role: "user", Content: "hello"}},
-		Tools:    []ToolDefinition{},
-	})
+// TestTemplateNotImplemented_ErrorMessage 验证错误信息包含可操作指引。
+// 防止"错误信息被简化、丢失指引"导致用户误用。
+func TestTemplateNotImplemented_ErrorMessage(t *testing.T) {
+	_, err := NewTemplateProvider(Config{APIKey: "test"})
 	if err == nil {
-		t.Error("未实现的 CallTools 应返回错误")
+		t.Fatal("expected error")
+	}
+
+	msg := err.Error()
+	wantParts := []string{
+		"code template",
+		"Copy internal/llm/provider_template.go",
+		"ecosystem/contributing/PROVIDER.md",
+	}
+	for _, want := range wantParts {
+		if !strings.Contains(msg, want) {
+			t.Errorf("错误信息应包含 %q, 实际: %q", want, msg)
+		}
+	}
+}
+
+// TestTemplateProvider_DefaultConstants 验证模板默认常量已设置。
+// 贡献者复制模板时应使用这些值（可改）作为占位符。
+func TestTemplateProvider_DefaultConstants(t *testing.T) {
+	if templateDefaultBaseURL == "" {
+		t.Error("templateDefaultBaseURL 应有默认值")
+	}
+	if defaultTemplateMaxContext <= 0 {
+		t.Errorf("defaultTemplateMaxContext 应 > 0, got %d", defaultTemplateMaxContext)
+	}
+	if defaultTemplateMaxTokens <= 0 {
+		t.Errorf("defaultTemplateMaxTokens 应 > 0, got %d", defaultTemplateMaxTokens)
 	}
 }
 
