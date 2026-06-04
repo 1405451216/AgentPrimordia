@@ -308,6 +308,64 @@ var (
 	ConditionOnSuccess   = agent.ConditionOnSuccess
 )
 
+// ===== 工作流执行引擎 (Phase 6) =====
+//
+// WorkflowExecution supports 5 workflow types (linear/conditional/loop/
+// parallel-fork-join/state-machine) with conditional branching, looping,
+// error recovery (retry/skip/fail/fallback), sub-workflow composition,
+// pause/resume/cancel lifecycle, persistent snapshots, and event streaming.
+
+type (
+	WorkflowExecution     = agent.WorkflowExecution
+	WorkflowConfig        = agent.WorkflowConfig
+	WorkflowType          = agent.WorkflowType
+	WorkflowStatus        = agent.WorkflowStatus
+	WorkflowNode          = agent.WorkflowNode
+	WorkflowEvent         = agent.WorkflowEvent
+	WorkflowResult        = agent.WorkflowResult
+	WorkflowMetrics       = agent.WorkflowMetrics
+	ExecutionRecord       = agent.ExecutionRecord
+	NodeType              = agent.NodeType
+	NodeCondition         = agent.NodeCondition
+	NodeConfig            = agent.NodeConfig
+	NodeExecutionStatus   = agent.NodeExecutionStatus
+	Transition            = agent.Transition
+	TransitionCondition   = agent.TransitionCondition
+	ErrorHandling         = agent.ErrorHandling
+	WfRetryPolicy         = agent.WfRetryPolicy
+)
+
+const (
+	LinearWorkflow    = agent.LinearWorkflow
+	ConditionalWorkflow = agent.ConditionalWorkflow
+	LoopWorkflow      = agent.LoopWorkflow
+	ParallelForkJoinWf = agent.ParallelForkJoin
+	StateMachineWf    = agent.StateMachine
+
+	WfStatusPending   = agent.WfStatusPending
+	WfStatusRunning   = agent.WfStatusRunning
+	WfStatusPaused    = agent.WfStatusPaused
+	WfStatusCompleted  = agent.WfStatusCompleted
+	WfStatusFailed     = agent.WfStatusFailed
+	WfStatusCancelled  = agent.WfStatusCancelled
+
+	TaskNode         = agent.TaskNode
+	ConditionNode    = agent.ConditionNode
+	ParallelNode     = agent.ParallelNode
+	LoopStartNode    = agent.LoopStartNode
+	LoopEndNode      = agent.LoopEndNode
+	FallbackNode     = agent.FallbackNode
+	SubWfNode        = agent.SubWfNode
+
+	NodePending      = agent.NodePending
+	NodeRunning      = agent.NodeRunning
+	NodeCompleted    = agent.NodeCompleted
+	NodeSkipped      = agent.NodeSkipped
+	NodeFailed       = agent.NodeFailed
+)
+
+var NewWorkflowExecution = agent.NewWorkflowExecution
+
 // ===== CostTracker 成本追踪 =====
 
 // CostTracker is the LLM cost tracking engine

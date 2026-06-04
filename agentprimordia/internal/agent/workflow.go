@@ -1,4 +1,4 @@
-package orchestration
+package agent
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"agentprimordia/internal/agent"
 )
 
 const (
@@ -47,22 +45,30 @@ const (
 	WfStatusCancelled WorkflowStatus = "cancelled"
 )
 
+// WfRetryPolicy is the workflow-level retry policy referenced by WorkflowConfig.
+// It is distinct from DAG RetryPolicy in dag.go; workflow retries are governed
+// at execution time by ErrorHandling.MaxRetries.
+type WfRetryPolicy struct {
+	MaxAttempts     int           `json:"max_attempts"`
+	BackoffInterval time.Duration `json:"backoff_interval"`
+}
+
 // WorkflowConfig 工作流配置
 type WorkflowConfig struct {
 	Type          WorkflowType  `json:"type"`
 	Name          string        `json:"name"`
 	Description   string        `json:"description,omitempty"`
-	MaxIterations int           `json:"max_iterations"` // 循环最大迭代次数
-	Timeout       time.Duration `json:"timeout"`        // 总超时
-	RetryPolicy   *RetryPolicy  `json:"retry_policy,omitempty"`
-	ErrorHandling ErrorHandling `json:"error_handling"` // 错误处理策略
-	EnableLogging bool          `json:"enable_logging"` // 启用日志
-	SaveSnapshot  bool          `json:"save_snapshot"`  // 保存快照
+	MaxIterations int           `json:"max_iterations"`
+	Timeout       time.Duration `json:"timeout"`
+	RetryPolicy   *WfRetryPolicy `json:"retry_policy,omitempty"`
+	ErrorHandling ErrorHandling `json:"error_handling"`
+	EnableLogging bool          `json:"enable_logging"`
+	SaveSnapshot  bool          `json:"save_snapshot"`
 }
 
 // ErrorHandling 错误处理策略
 type ErrorHandling struct {
-	OnError         string `json:"on_error"` // retry, skip, fail, fallback
+	OnError         string `json:"on_error"`
 	MaxRetries      int    `json:"max_retries"`
 	FallbackStep    string `json:"fallback_step,omitempty"`
 	ContinueOnError bool   `json:"continue_on_error"`
@@ -73,12 +79,12 @@ type WorkflowNode struct {
 	ID            string            `json:"id"`
 	Name          string            `json:"name"`
 	Type          NodeType          `json:"type"`
-	Agent         agent.Agent       `json:"-"`
+	Agent         Agent             `json:"-"`
 	Config        *NodeConfig       `json:"config,omitempty"`
 	Condition     *NodeCondition    `json:"condition,omitempty"`
 	Transitions   []*Transition     `json:"transitions,omitempty"`
-	InputMapping  map[string]string `json:"input_mapping,omitempty"`  // 输入映射
-	OutputMapping map[string]string `json:"output_mapping,omitempty"` // 输出映射
+	InputMapping  map[string]string `json:"input_mapping,omitempty"`
+	OutputMapping map[string]string `json:"output_mapping,omitempty"`
 	Metadata      map[string]any    `json:"metadata,omitempty"`
 }
 
@@ -86,34 +92,27 @@ type WorkflowNode struct {
 type NodeType string
 
 const (
-	// TaskNode 任务节点（执行Agent）
-	TaskNode NodeType = "task"
-	// ConditionNode 条件节点（判断）
-	ConditionNode NodeType = "condition"
-	// ParallelNode 并行节点（分发到多个子节点）
-	ParallelNode NodeType = "parallel"
-	// LoopStartNode 循环开始节点
-	LoopStartNode NodeType = "loop_start"
-	// LoopEndNode 循环结束节点
-	LoopEndNode NodeType = "loop_end"
-	// FallbackNode 回退节点
-	FallbackNode NodeType = "fallback"
-	// SubWorkflowNode 子工作流节点
-	SubWorkflowNode NodeType = "sub_workflow"
+	TaskNode       NodeType = "task"
+	ConditionNode  NodeType = "condition"
+	ParallelNode   NodeType = "parallel"
+	LoopStartNode  NodeType = "loop_start"
+	LoopEndNode    NodeType = "loop_end"
+	FallbackNode   NodeType = "fallback"
+	SubWfNode      NodeType = "sub_workflow"
 )
 
 // NodeConfig 节点配置
 type NodeConfig struct {
-	PromptTemplate string                                                                  `json:"prompt_template,omitempty"`
-	Parameters     map[string]any                                                          `json:"parameters,omitempty"`
-	Timeout        time.Duration                                                           `json:"timeout,omitempty"`
-	RetryCount     int                                                                     `json:"retry_count,omitempty"`
+	PromptTemplate string                                                          `json:"prompt_template,omitempty"`
+	Parameters     map[string]any                                                  `json:"parameters,omitempty"`
+	Timeout        time.Duration                                                   `json:"timeout,omitempty"`
+	RetryCount     int                                                             `json:"retry_count,omitempty"`
 	CustomLogic    func(ctx context.Context, input map[string]any) (map[string]any, error) `json:"-"`
 }
 
 // NodeCondition 节点执行条件
 type NodeCondition struct {
-	Type       string                    `json:"type"` // expression, custom
+	Type       string                    `json:"type"`
 	Expression string                    `json:"expression,omitempty"`
 	CustomFunc func(map[string]any) bool `json:"-"`
 	Field      string                    `json:"field,omitempty"`
@@ -127,14 +126,14 @@ type Transition struct {
 	From      string               `json:"from"`
 	To        string               `json:"to"`
 	Condition *TransitionCondition `json:"condition,omitempty"`
-	Weight    float64              `json:"weight"` // 权重（用于概率选择）
+	Weight    float64              `json:"weight"`
 }
 
 // TransitionCondition 转换条件
 type TransitionCondition struct {
-	Type        string  `json:"type"` // always, condition, probability
+	Type        string  `json:"type"`
 	Expression  string  `json:"expression,omitempty"`
-	Probability float64 `json:"probability,omitempty"` // 0-1
+	Probability float64 `json:"probability,omitempty"`
 	Field       string  `json:"field,omitempty"`
 	Operator    string  `json:"operator,omitempty"`
 	Value       any     `json:"value,omitempty"`
@@ -148,8 +147,8 @@ type WorkflowExecution struct {
 	transitions    map[string][]*Transition
 	startNodeID    string
 	endNodeIDs     []string
-	currentNode *WorkflowNode
-	variables   map[string]any
+	currentNode    *WorkflowNode
+	variables      map[string]any
 	history        []*ExecutionRecord
 	status         WorkflowStatus
 	result         *WorkflowResult
@@ -256,7 +255,7 @@ func (w *WorkflowExecution) AddNode(node *WorkflowNode) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if node.ID == "" || node.Agent == nil && node.Type == TaskNode {
+	if node.ID == "" || (node.Agent == nil && node.Type == TaskNode) {
 		return fmt.Errorf("invalid node")
 	}
 
@@ -372,7 +371,6 @@ func (w *WorkflowExecution) Execute(initialInput map[string]any) (*WorkflowResul
 	return w.result, err
 }
 
-// executeLinear 执行线性工作流
 func (w *WorkflowExecution) executeLinear(ctx context.Context, input map[string]any) error {
 	currentID := w.startNodeID
 	currentInput := input
@@ -396,13 +394,11 @@ func (w *WorkflowExecution) executeLinear(ctx context.Context, input map[string]
 
 		currentInput = output
 
-		// 查找下一个节点
 		transitions := w.transitions[currentID]
 		if len(transitions) == 0 {
-			break // 没有更多转换，结束
+			break
 		}
 
-		// 选择第一个满足条件的转换
 		nextID := ""
 		for _, trans := range transitions {
 			if w.evaluateTransitionCondition(trans, output) {
@@ -417,7 +413,6 @@ func (w *WorkflowExecution) executeLinear(ctx context.Context, input map[string]
 	return nil
 }
 
-// executeConditional 执行条件分支工作流
 func (w *WorkflowExecution) executeConditional(ctx context.Context, input map[string]any) error {
 	currentID := w.startNodeID
 	currentInput := input
@@ -434,7 +429,6 @@ func (w *WorkflowExecution) executeConditional(ctx context.Context, input map[st
 			return fmt.Errorf("node not found: %s", currentID)
 		}
 
-		// 检查节点条件
 		if node.Condition != nil && !w.evaluateNodeCondition(node.Condition, currentInput) {
 			w.recordExecution(node, currentInput, nil, NodeSkipped, 0)
 			w.emitEvent("node_skipped", node.ID, nil)
@@ -443,7 +437,7 @@ func (w *WorkflowExecution) executeConditional(ctx context.Context, input map[st
 			if err != nil {
 				if w.config.ErrorHandling.ContinueOnError {
 					w.emitEvent("node_error_continued", node.ID, map[string]any{"error": err.Error()})
-					output = currentInput // 使用输入作为输出继续
+					output = currentInput
 				} else {
 					return err
 				}
@@ -451,7 +445,6 @@ func (w *WorkflowExecution) executeConditional(ctx context.Context, input map[st
 			currentInput = output
 		}
 
-		// 根据条件选择下一个转换
 		transitions := w.transitions[currentID]
 		if len(transitions) == 0 {
 			break
@@ -473,7 +466,6 @@ func (w *WorkflowExecution) executeConditional(ctx context.Context, input map[st
 	return nil
 }
 
-// executeLoop 执行循环工作流
 func (w *WorkflowExecution) executeLoop(ctx context.Context, input map[string]any) error {
 	currentID := w.startNodeID
 	currentInput := input
@@ -494,11 +486,9 @@ func (w *WorkflowExecution) executeLoop(ctx context.Context, input map[string]an
 			return fmt.Errorf("node not found: %s", currentID)
 		}
 
-		// 检查是否是循环结束节点
 		if node.Type == LoopEndNode {
-			// 检查退出条件
 			if node.Condition != nil && !w.evaluateNodeCondition(node.Condition, currentInput) {
-				break // 退出循环
+				break
 			}
 		}
 
@@ -509,11 +499,9 @@ func (w *WorkflowExecution) executeLoop(ctx context.Context, input map[string]an
 
 		currentInput = output
 
-		// 更新循环变量
 		w.SetVariable("_iteration", loopCount)
 		w.SetVariable("_loop_input", currentInput)
 
-		// 查找下一个节点（通常是回到循环开始或前进到下一步）
 		transitions := w.transitions[currentID]
 		if len(transitions) == 0 {
 			break
@@ -534,7 +522,6 @@ func (w *WorkflowExecution) executeLoop(ctx context.Context, input map[string]an
 	return nil
 }
 
-// executeParallelForkJoin 执行并行分叉合并工作流
 func (w *WorkflowExecution) executeParallelForkJoin(ctx context.Context, input map[string]any) error {
 	currentID := w.startNodeID
 	currentInput := input
@@ -610,7 +597,6 @@ func (w *WorkflowExecution) executeParallelForkJoin(ctx context.Context, input m
 	return nil
 }
 
-// executeStateMachine 执行状态机工作流
 func (w *WorkflowExecution) executeStateMachine(ctx context.Context, input map[string]any) error {
 	currentState := w.startNodeID
 	currentInput := input
@@ -635,7 +621,6 @@ func (w *WorkflowExecution) executeStateMachine(ctx context.Context, input map[s
 		currentInput = output
 		w.SetVariable("_current_state", currentState)
 
-		// 基于转换条件选择下一个状态
 		transitions := w.transitions[currentState]
 		if len(transitions) == 0 {
 			break
@@ -659,7 +644,6 @@ func (w *WorkflowExecution) executeStateMachine(ctx context.Context, input map[s
 	return nil
 }
 
-// executeNode 执行单个节点
 func (w *WorkflowExecution) executeNode(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	startTime := time.Now()
 	w.currentNode = node
@@ -670,7 +654,6 @@ func (w *WorkflowExecution) executeNode(ctx context.Context, node *WorkflowNode,
 		"name": node.Name,
 	})
 
-	// 应用输入映射
 	mappedInput := w.applyInputMapping(input, node.InputMapping)
 
 	var output map[string]any
@@ -692,7 +675,6 @@ func (w *WorkflowExecution) executeNode(ctx context.Context, node *WorkflowNode,
 	if err != nil {
 		status = NodeFailed
 
-		// 错误处理
 		switch w.config.ErrorHandling.OnError {
 		case "retry":
 			output, err = w.retryNodeExecution(ctx, node, mappedInput)
@@ -750,14 +732,13 @@ func (w *WorkflowExecution) executeNode(ctx context.Context, node *WorkflowNode,
 	return finalOutput, err
 }
 
-// executeTaskNode 执行任务节点
 func (w *WorkflowExecution) executeTaskNode(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	if node.Config != nil && node.Config.CustomLogic != nil {
 		return node.Config.CustomLogic(ctx, input)
 	}
 
 	prompt := w.buildPrompt(node, input)
-	resp, err := node.Agent.Run(ctx, agent.UserMessage(prompt))
+	resp, err := node.Agent.Run(ctx, UserMessage(prompt))
 	if err != nil {
 		return nil, err
 	}
@@ -776,7 +757,6 @@ func (w *WorkflowExecution) executeTaskNode(ctx context.Context, node *WorkflowN
 	return output, nil
 }
 
-// executeConditionNode 执行条件节点
 func (w *WorkflowExecution) executeConditionNode(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	result := false
 
@@ -791,13 +771,11 @@ func (w *WorkflowExecution) executeConditionNode(ctx context.Context, node *Work
 	return output, nil
 }
 
-// executeFallbackNode 执行回退节点
 func (w *WorkflowExecution) executeFallbackNode(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	w.emitEvent("fallback_executed", node.ID, nil)
 	return w.executeTaskNode(ctx, node, input)
 }
 
-// executeParallelNode 执行并行节点
 func (w *WorkflowExecution) executeParallelNode(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	childTransitions := w.transitions[node.ID]
 	if len(childTransitions) == 0 {
@@ -850,7 +828,6 @@ type parallelResult struct {
 	error  error
 }
 
-// retryNodeExecution 重试节点执行
 func (w *WorkflowExecution) retryNodeExecution(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	maxRetries := w.config.ErrorHandling.MaxRetries
 	var lastErr error
@@ -865,15 +842,12 @@ func (w *WorkflowExecution) retryNodeExecution(ctx context.Context, node *Workfl
 		}
 		lastErr = err
 
-		// 简单退避
 		time.Sleep(time.Duration(i+1) * 100 * time.Millisecond)
 	}
 
 	w.result.Metrics.RetriesAttempted += maxRetries
 	return nil, lastErr
 }
-
-// ===== 辅助方法 =====
 
 func (w *WorkflowExecution) evaluateNodeCondition(condition *NodeCondition, input map[string]any) bool {
 	if condition.CustomFunc != nil {

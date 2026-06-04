@@ -1,4 +1,4 @@
-package orchestration
+package agent
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
 	"agentprimordia/internal/llm"
 )
 
@@ -19,14 +18,14 @@ func TestWorkflow_LinearExecution(t *testing.T) {
 		Description: "测试线性执行",
 	})
 
-	step1Agent := agent.NewReActAgent(agent.ReActConfig{
+	step1Agent := NewReActAgent(ReActConfig{
 		Name:         "Step1",
 		SystemPrompt: "你是步骤1，请返回'步骤1完成'",
 		Model:        demo.NewDemoLLM("步骤1完成"),
 		MaxTurns:     1,
 	})
 
-	step2Agent := agent.NewReActAgent(agent.ReActConfig{
+	step2Agent := NewReActAgent(ReActConfig{
 		Name:         "Step2",
 		SystemPrompt: "你是步骤2，请返回'步骤2完成'",
 		Model:        demo.NewDemoLLM("步骤2完成"),
@@ -82,21 +81,21 @@ func TestWorkflow_ConditionalBranching(t *testing.T) {
 		},
 	})
 
-	checkAgent := agent.NewReActAgent(agent.ReActConfig{
+	checkAgent := NewReActAgent(ReActConfig{
 		Name:         "CheckCondition",
 		SystemPrompt: "检查条件",
 		Model:        demo.NewDemoLLM(`{"condition_result": true}`),
 		MaxTurns:     1,
 	})
 
-	branchAAgent := agent.NewReActAgent(agent.ReActConfig{
+	branchAAgent := NewReActAgent(ReActConfig{
 		Name:         "BranchA",
 		SystemPrompt: "分支A逻辑",
 		Model:        demo.NewDemoLLM("执行分支A逻辑"),
 		MaxTurns:     1,
 	})
 
-	branchBAgent := agent.NewReActAgent(agent.ReActConfig{
+	branchBAgent := NewReActAgent(ReActConfig{
 		Name:         "BranchB",
 		SystemPrompt: "分支B逻辑",
 		Model:        demo.NewDemoLLM("执行分支B逻辑"),
@@ -163,7 +162,7 @@ func TestWorkflow_LoopExecution(t *testing.T) {
 		MaxIterations: 3,
 	})
 
-	loopAgent := agent.NewReActAgent(agent.ReActConfig{
+	loopAgent := NewReActAgent(ReActConfig{
 		Name:         "LoopTask",
 		SystemPrompt: "循环任务",
 		Model:        demo.NewDemoLLM("循环迭代 {{_iteration}} 完成"),
@@ -216,21 +215,21 @@ func TestWorkflow_ParallelForkJoin(t *testing.T) {
 		Description: "测试并行分叉合并",
 	})
 
-	task1Agent := agent.NewReActAgent(agent.ReActConfig{
+	task1Agent := NewReActAgent(ReActConfig{
 		Name:         "ParallelTask1",
 		SystemPrompt: "并行任务1",
 		Model:        demo.NewDemoLLM("任务1结果"),
 		MaxTurns:     1,
 	})
 
-	task2Agent := agent.NewReActAgent(agent.ReActConfig{
+	task2Agent := NewReActAgent(ReActConfig{
 		Name:         "ParallelTask2",
 		SystemPrompt: "并行任务2",
 		Model:        demo.NewDemoLLM("任务2结果"),
 		MaxTurns:     1,
 	})
 
-	mergeAgent := agent.NewReActAgent(agent.ReActConfig{
+	mergeAgent := NewReActAgent(ReActConfig{
 		Name:         "MergeResults",
 		SystemPrompt: "合并结果",
 		Model:        demo.NewDemoLLM("合并完成"),
@@ -320,7 +319,7 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 		ID:   "failing_step",
 		Name: "可能失败的步骤",
 		Type: TaskNode,
-		Agent: agent.NewReActAgent(agent.ReActConfig{
+		Agent: NewReActAgent(ReActConfig{
 			Name:         "FailingAgent",
 			SystemPrompt: "模拟失败后成功",
 			Model:        failingAgent,
@@ -346,14 +345,14 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 func TestWorkflow_ErrorHandling_Fallback(t *testing.T) {
 	failingAgent := &alwaysFailAgent{}
 
-	mainAgent := agent.NewReActAgent(agent.ReActConfig{
+	mainAgent := NewReActAgent(ReActConfig{
 		Name:         "MainAgent",
 		SystemPrompt: "主任务（会失败）",
 		Model:        failingAgent,
 		MaxTurns:     1,
 	})
 
-	fallbackAgent := agent.NewReActAgent(agent.ReActConfig{
+	fallbackAgent := NewReActAgent(ReActConfig{
 		Name:         "FallbackAgent",
 		SystemPrompt: "回退任务",
 		Model:        demo.NewDemoLLM("回退方案已执行"),
@@ -413,21 +412,21 @@ func TestWorkflow_StateMachine(t *testing.T) {
 		Description: "状态机工作流",
 	})
 
-	state1Agent := agent.NewReActAgent(agent.ReActConfig{
+	state1Agent := NewReActAgent(ReActConfig{
 		Name:         "State1",
 		SystemPrompt: "状态1：初始化",
 		Model:        demo.NewDemoLLM(`{"next_state": "processing"}`),
 		MaxTurns:     1,
 	})
 
-	state2Agent := agent.NewReActAgent(agent.ReActConfig{
+	state2Agent := NewReActAgent(ReActConfig{
 		Name:         "State2",
 		SystemPrompt: "状态2：处理中",
 		Model:        demo.NewDemoLLM(`{"next_state": "completed"}`),
 		MaxTurns:     1,
 	})
 
-	state3Agent := agent.NewReActAgent(agent.ReActConfig{
+	state3Agent := NewReActAgent(ReActConfig{
 		Name:         "State3",
 		SystemPrompt: "状态3：完成",
 		Model:        demo.NewDemoLLM("处理完成"),
@@ -492,7 +491,7 @@ func TestWorkflow_VariablesAndMapping(t *testing.T) {
 		Name: "test-variables",
 	})
 
-	processAgent := agent.NewReActAgent(agent.ReActConfig{
+	processAgent := NewReActAgent(ReActConfig{
 		Name:         "ProcessAgent",
 		SystemPrompt: "处理变量",
 		Model:        demo.NewDemoLLM(`{"processed_data": "processed_value", "score": 95}`),
@@ -541,7 +540,7 @@ func TestWorkflow_PauseResumeCancel(t *testing.T) {
 		Timeout: 10 * time.Second,
 	})
 
-	simpleAgent := agent.NewReActAgent(agent.ReActConfig{
+	simpleAgent := NewReActAgent(ReActConfig{
 		Name:         "SimpleAgent",
 		SystemPrompt: "简单任务",
 		Model:        demo.NewDemoLLM("done"),
@@ -597,7 +596,7 @@ func TestWorkflow_MetricsCollection(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		nodeID := fmt.Sprintf("node_%d", i)
-		nodeAgent := agent.NewReActAgent(agent.ReActConfig{
+		nodeAgent := NewReActAgent(ReActConfig{
 			Name:         fmt.Sprintf("Node%d", i),
 			SystemPrompt: fmt.Sprintf("节点%d", i),
 			Model:        demo.NewDemoLLM(fmt.Sprintf("node_%d_result", i)),
@@ -654,7 +653,7 @@ func TestWorkflow_ExportImport(t *testing.T) {
 		Description: "导出测试工作流",
 	})
 
-	exportAgent := agent.NewReActAgent(agent.ReActConfig{
+	exportAgent := NewReActAgent(ReActConfig{
 		Name:         "ExportAgent",
 		SystemPrompt: "导出测试",
 		Model:        demo.NewDemoLLM("exported data"),
@@ -706,7 +705,7 @@ func TestWorkflow_EventSystem(t *testing.T) {
 		EnableLogging: true,
 	})
 
-	eventAgent := agent.NewReActAgent(agent.ReActConfig{
+	eventAgent := NewReActAgent(ReActConfig{
 		Name:         "EventAgent",
 		SystemPrompt: "事件测试",
 		Model:        demo.NewDemoLLM("event test done"),
