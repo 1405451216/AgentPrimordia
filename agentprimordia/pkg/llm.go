@@ -237,6 +237,12 @@ const (
 	CapVision = llm.CapVision
 	CapAudio  = llm.CapAudio
 	CapVideo  = llm.CapVideo
+
+	ContentTypeText     = llm.ContentTypeText
+	ContentTypeImageURL = llm.ContentTypeImageURL
+	ContentTypeImageB64 = llm.ContentTypeImageB64
+	ContentTypeAudio    = llm.ContentTypeAudio
+	ContentTypeVideo    = llm.ContentTypeVideo
 )
 
 var (

@@ -40,6 +40,9 @@ type Message = agent.Message
 // Role 表示消息发送者的角色（system / user / assistant / tool）
 type Role = agent.Role
 
+// ContentPart 是多模态消息的内容片段（文本/图片URL/Base64图片/音频/视频）
+type ContentPart = agent.ContentPart
+
 // ToolCall 表示 LLM 发起的工具调用请求，包含调用 ID、工具名称和 JSON 参数
 type ToolCall = agent.ToolCall
 
@@ -187,6 +190,7 @@ var (
 	UserMessage = agent.UserMessage
 	// SystemMessage 创建系统角色的消息快捷函数
 	SystemMessage = agent.SystemMessage
+
 	// FormatRAGDocuments 将 RAG 文档列表格式化为可注入 Prompt 的上下文字符串
 	FormatRAGDocuments = agent.FormatRAGDocuments
 	// NewSummarizer 创建基于 LLM 的摘要提取器

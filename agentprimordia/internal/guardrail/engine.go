@@ -77,6 +77,13 @@ func (e *Engine) Rules() []string {
 	return names
 }
 
+// RuleCount returns the number of registered rules.
+func (e *Engine) RuleCount() int {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return len(e.rules)
+}
+
 func (e *Engine) Check(input string, point CheckPoint) (*Report, error) {
 	e.mu.RLock()
 	rulesCopy := make([]Rule, len(e.rules))
