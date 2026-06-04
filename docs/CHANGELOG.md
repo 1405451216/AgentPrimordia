@@ -2,6 +2,49 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- **公共 API 稳定性策略** (Phase 6.5.1, 7.1): pkg/ 顶部 4 级 `// Stability:` 标注
+  (Stable / Experimental / Deprecated / Internal); 详见 `docs/specs/2026-06-04-semver-policy.md`
+- **SemVer 策略 spec** (Phase 7.1): `docs/specs/2026-06-04-semver-policy.md`
+  定义 v0.x → v1.0 → v2.0 升级窗口、CHANGELOG 规范、godoc 标注模板
+- **协议式微内核** (Phase 6.5.4): 12 个 `*Capable` 接口 + `WithXxx` 链式 API;
+  取代 `ReActConfig` 中 14 个能力字段
+- **LLM Provider 模板** (Phase 6.5.3): `internal/llm/provider_template.go`
+  启动期拒绝构造,防误用
+- **`ap init` 脚手架可编译** (Phase 6.5.5, 6.5.9): 生成 go.mod + replace 指向 `..`
+- **`TemplateProvider` 误用防护** (Phase 6.5.3): `ErrTemplateNotImplemented` sentinel 错误
+- **生态 README** (Phase 6.5.8): `ecosystem/README.md` 显式核心/生态边界
+- **CONTRIBUTING 模块边界同步** (Phase 6.5.6): 把 AGENTS.md 关键规则纳入仓库
+
+### Changed
+
+- **ReActConfig 14 个能力字段**: 标 `// Deprecated:` + `// Removed in v2.0.`,
+  4 阶段废弃时间表 (v0.7 → v1.0 panic → v2.0 移除)
+- **pkg/agent.go ReActConfig**: export 级 Stability 标注 + 迁移指南指针
+- **pkg/llm.go**: 多模态 / LLM 缓存 / MCP / Plugin 区加 export 级 Experimental 标注
+- **pkg/tools.go**: MCP 客户端 / 插件加 export 级 Experimental 标注
+
+### Deprecated
+
+- `ReActConfig.Memory / Toolkit / RAG / Hooks / Tracer / Cache` 等 14 个字段
+  迁移到 `NewReActAgent(...).WithXxx()` 链式 API
+  详见 `ecosystem/docs/migration/v0-deprecations.md`
+
+### Fixed
+
+- `ap init` 生成的项目缺 `go.mod`, 此前无法编译 (Phase 6.5.5)
+- `ap init` 生成的 `go.mod` replace 路径错 (`../agentprimordia` → `..`) (Phase 6.5.9)
+- `cmd/ap/scaffold/main.go` 孤儿文件被 `//go:embed` 包含 (Phase 6.5.9)
+- 6 个生态插件补单元测试: git / http / json / sql (Phase 6.5.4)
+
+### Notes
+
+- Phase 3-6 (0.3.0 - 0.6.0) 期间工作未单独列条, 0.7.0 发布时合并汇总
+  (参见 `docs/specs/2026-06-04-semver-policy.md` §3.4)
+
 ## [0.2.0] - 2026-05-29
 
 ### Added

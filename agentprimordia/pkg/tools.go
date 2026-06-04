@@ -90,6 +90,7 @@ var (
 )
 
 // MCPClient 是 MCP 协议客户端，用于连接外部 MCP Server
+// Stability: Experimental — MCP 协议规范仍在演进。
 type MCPClient = tools.MCPClient
 
 // MCPRegistry 管理 MCP Server 的注册和生命周期
@@ -102,6 +103,7 @@ type MCPClientConfig = tools.MCPClientConfig
 type MCPToolDefinition = tools.MCPToolDefinition
 
 // ToolPlugin 是工具插件接口，支持批量注册工具
+// Stability: Experimental — 接口形状可能随插件生态需求调整。
 type ToolPlugin = tools.ToolPlugin
 
 // PluginLoader 管理插件的加载、卸载和查询

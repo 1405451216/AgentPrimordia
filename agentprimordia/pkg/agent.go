@@ -47,6 +47,10 @@ type Agent = agent.Agent
 type ReActAgent = agent.ReActAgent
 
 // ReActConfig 是 ReActAgent 的配置结构，包含模型、工具、记忆、钩子等全部依赖
+//
+// Stability: Stable — 但 14 个能力字段已标记 Deprecated，将在 v2.0.0 移除。
+// 推荐使用 NewReActAgent(...).WithXxx() 链式 API 替代直接字段赋值。
+// 迁移指南: ecosystem/docs/migration/v0-deprecations.md
 type ReActConfig = agent.ReActConfig
 
 // PromptTemplate 支持 {{.Variable}} 格式的系统提示词模板，可自动注入 Agent 名称、权限规则等变量

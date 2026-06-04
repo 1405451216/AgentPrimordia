@@ -102,6 +102,7 @@ var (
 )
 
 // LLMCache 是 LLM 响应缓存接口，支持 Get/Set/Stats/Clear/Invalidate
+// Stability: Experimental — 缓存策略与一致性语义在 v0.x 演进。
 type LLMCache = llm.LLMCache
 
 // CacheStats 是缓存统计信息
@@ -219,6 +220,7 @@ type SummaryOutput = llm.SummaryOutput
 type ExtractiveSummaryOutput = llm.ExtractiveSummaryOutput
 
 // ===== 多模态统一抽象 =====
+// Stability: Experimental — API 形状在 v0.x 仍可能调整。
 
 // MultimodalCapability 是多模态能力标记（CapText/CapVision/CapAudio/CapVideo）
 type MultimodalCapability = llm.MultimodalCapability
