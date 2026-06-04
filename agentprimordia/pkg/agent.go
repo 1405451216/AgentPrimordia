@@ -9,6 +9,30 @@
 //   - Pool 调度（并发任务分发、重试、会话管理）
 //
 // 所有类型通过类型别名从 internal 包导出，用户只需导入此包即可使用完整功能。
+//
+// # 公共 API 稳定性策略
+//
+// 自 v0.6.0 起，pkg/ 下的 export 按以下四个等级分类，承诺不同的
+// 向后兼容策略。每个文件顶部用 `// Stability:` 块标注该文件共享
+// 的等级；个别 export 顶部的 godoc 可能覆盖（更严格或不那么严格）。
+//
+//	Stable:       公共 API，向后兼容。破坏性变更需大版本（v2.0）。
+//	              适用：核心 Agent / LLM / Tool / Memory / Pool 类型与构造函数。
+//
+//	Experimental: 实验性 API，签名可能在 minor 版本内调整。
+//	              适用：缓存（CacheManager / CachedProvider）、多模态（Multimodal*）、
+//	              插件（ToolPlugin / PluginLoader）等近期新增或仍在快速迭代的能力。
+//	              用户应准备升级时调整调用方代码。
+//
+//	Deprecated:   已废弃，下个 minor 版本起将在编译期 warning，
+//	              v2.0 移除。ReActConfig 中 9 个字段已加 Deprecated 标记，
+//	              使用链式 API 替代。
+//
+//	Internal:     仅供 pkg/ 内部使用，不属于公共 API 承诺范围。
+//	              文件内未导出符号默认属于此等级。
+//
+// 用户应使用 `go doc` 或 IDE 悬浮提示查看每个 export 的稳定性等级。
+// 详细治理策略见 docs/plans/2026-06-04-phase6-implementation.md §风险与债务。
 package ap
 
 import (

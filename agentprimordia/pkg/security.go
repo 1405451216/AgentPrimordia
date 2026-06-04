@@ -1,3 +1,4 @@
+// Stability: Stable — ACL 与沙箱安全防护。
 package ap
 
 import (

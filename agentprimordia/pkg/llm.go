@@ -1,3 +1,9 @@
+// Stability: 混合 —
+//   Provider / Config / 9 家 Provider 实现（OpenAI / Anthropic / Gemini / Ollama
+//   / Azure / Cohere / Mistral / Qwen / GLM）/ ResilientProvider: Stable。
+//   LLM 缓存（CachedProvider / CacheManager / HybridCache / InMemoryCache）: Experimental。
+//   多模态（MultimodalProvider / MultimodalAdapter / CompletionRequestExt）: Experimental。
+//   结构化输出（SchemaFromStruct / NewStructuredExtractor）: Stable。
 package ap
 
 import "agentprimordia/internal/llm"

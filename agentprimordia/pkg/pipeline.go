@@ -1,3 +1,4 @@
+// Stability: Stable — 编排模式（Pipeline / Handoff / Parallel）与文档处理。
 package ap
 
 import (

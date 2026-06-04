@@ -1,3 +1,4 @@
+// Stability: Stable — 记忆存储核心接口与实现（除 VectorStore 之外）。
 package ap
 
 import (

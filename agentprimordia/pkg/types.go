@@ -1,3 +1,4 @@
+// Stability: Stable — 通用类型别名。
 package ap
 
 import "agentprimordia/internal/agent"

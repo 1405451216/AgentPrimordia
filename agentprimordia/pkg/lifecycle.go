@@ -1,3 +1,4 @@
+// Stability: Stable — 生命周期与上下文窗口策略。
 package ap
 
 import (

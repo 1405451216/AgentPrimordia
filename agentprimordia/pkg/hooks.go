@@ -1,3 +1,4 @@
+// Stability: Stable — 生命周期钩子（20+ HookPoint）。
 package ap
 
 import (

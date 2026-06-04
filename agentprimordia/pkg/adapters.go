@@ -1,3 +1,7 @@
+// Stability: 混合 —
+//   适配器主接口（AgentAdapter / LLMAdapter / MemoryAdapter / ToolAdapter）: Stable。
+//   适配器实现（OpenAI / Anthropic / Gemini 等）: Stable。
+//   高阶组合（MultiAgentAdapter / PipelineAdapter）: Experimental。
 package ap
 
 import (

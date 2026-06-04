@@ -1,3 +1,4 @@
+// Stability: Stable — 文件锁与作用域校验。
 package ap
 
 import "agentprimordia/internal/concurrency"

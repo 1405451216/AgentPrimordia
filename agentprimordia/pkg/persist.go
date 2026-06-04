@@ -1,3 +1,4 @@
+// Stability: Stable — 状态检查点持久化。
 package ap
 
 import (

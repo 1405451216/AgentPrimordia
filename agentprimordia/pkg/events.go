@@ -1,3 +1,4 @@
+// Stability: Stable — 事件总线与订阅。
 package ap
 
 import (

@@ -1,3 +1,4 @@
+// Stability: Stable — 多 Agent 并发调度。
 package ap
 
 import (

@@ -1,3 +1,8 @@
+// Stability: 混合 —
+//   内置工具（Tool / ToolRegistry / FileSystem / Shell / Web / KnowledgeSearch）
+//   与 ScopePolicy: Stable。
+//   MCP 客户端（MCPClient / MCPRegistry）: Experimental（协议仍在演进）。
+//   插件（ToolPlugin / PluginLoader / PluginInfo）: Experimental。
 package ap
 
 import (

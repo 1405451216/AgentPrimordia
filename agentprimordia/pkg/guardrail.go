@@ -1,3 +1,4 @@
+// Stability: Stable — Guardrail 引擎、规则、报告。
 package ap
 
 import (

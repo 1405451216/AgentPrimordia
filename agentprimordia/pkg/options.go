@@ -1,3 +1,4 @@
+// Stability: Stable — 函数式选项（WithXxx / ApplyOptions）。
 package ap
 
 import (

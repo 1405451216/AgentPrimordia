@@ -1,3 +1,4 @@
+// Stability: Stable — Prometheus 指标收集与导出。
 package ap
 
 import (

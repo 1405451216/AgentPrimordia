@@ -1,3 +1,4 @@
+// Stability: Stable — 错误码与 sentinel 错误在 v1.0 前冻结，向后兼容。
 package ap
 
 import (
