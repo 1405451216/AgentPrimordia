@@ -1,0 +1,16 @@
+// AgentPrimordia Go workspace (Phase 7.3)
+//
+// 引入 workspace 模式，让 examples / plugins / templates 等
+// 子目录更明确地走 monorepo 依赖图，跨目录 go test 体验更一致。
+//
+// 跑法（必须在 monorepo 根运行，go.work 自动激活）：
+//   go test ./...                                // 跑全部测试
+//   go test ./ecosystem/plugins/...              // 仅插件
+//   go run ./ecosystem/examples/chain-api/       // 跑单个 example
+//
+// 注意：ecosystem/plugins 与 ecosystem/templates 仍为 monorepo
+// 内部子包（共享 go.mod），不独立拆分。Phase 7.3 范围内我们
+// 只确保 examples 的可发现性 + 跑法清晰，不强拆独立 go.mod。
+go 1.26
+
+use ./agentprimordia
