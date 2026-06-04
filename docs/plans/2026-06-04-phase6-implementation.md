@@ -415,3 +415,78 @@ internal/
 - 任何新 Phase 必须先有 `docs/plans/YYYY-MM-DD-phaseN-implementation.md`
 - 提交 message 引用 plan 中的 Task 编号（如 `feat(agent): A2 capability interface (Phase 7/Task-3)`）
 - 任何 `// Deprecated:` 标注必须包含 `// Removed in vX.Y.`
+
+---
+
+## 后记:Phase 6.5 治理收尾 (2026-06-05)
+
+> 本节在 Phase 6 完成后由治理工作追加，记录**计划文档与代码不一致**的 3 处发现。
+
+### 实际发生:Phase 6.5 9 个治理点
+
+Phase 6 计划文档列出的 5 高 + 3 中 + 2 低优先级债务,2026-06-04 治理收尾为 9 个提交落地。
+
+| # | 点 | 提交 | 文档预期 | 实际发现 |
+|:-:|----|------|---------|---------|
+| 1 | pkg/ API 稳定性 | `5e8557a` | 19 文件 | ✅ 一致 |
+| 2 | ReActConfig 字段废弃 | `9391f32` | 9 字段 | ⚠️ 实际 14 字段 |
+| 3 | TemplateProvider 误用防护 | `deb543c` | 启动期 panic | ✅ 落地 |
+| 4 | 6 插件补测试 | `7d09fd6` | 5 插件缺测试 | ⚠️ 实际仅 4 插件缺(email 250 行已有) |
+| 5 | ap init 实现 + e2e | `4e0daf5` | 28 行简陋 | ⚠️ 实际 init.go 已完整,scaffold/main.go 是孤儿模板源 |
+| 6 | AGENTS.md 可见性 | `2da7726` | 仓库外 .gitignore | ✅ 选 CONTRIBUTING.md 同步方案 |
+| 7 | 迁移指南 | (合并到 #2) | docs/migration/ | ✅ 与 #2 同提交 |
+| 8 | ecosystem/ import 约定 | `a881cc1` | ecosystem/README.md | ✅ 新建 |
+| 9 | ap init 新旧命令排查 | `9a2aa9e` | 排查冲突 | ⚠️ 实际无冲突,但发现 go.mod 路径错 |
+
+### 计划文档与代码不一致的 3 处
+
+#### 1. 14 vs 9 字段 (点 2)
+
+计划文档 §风险与债务 §2 写 "9 个 `Deprecated:` 字段",实际 react_loop.go 中有 14 个:
+- 计划漏数了: `EventPublisher / Metrics / ContextWindow / Hooks / Lifecycle / Logger / HITL` 等
+- `Lifecycle` 与 `Logger` 未标 Deprecated(它们是"默认"而非"能力"),所以"可废弃"的是 14 个
+- 提交 `9391f32` 已正确处理 14 个,迁移指南同步更新
+
+教训: **数字类估计需用 `grep | wc -l` 实际计数**,不靠目测。
+
+#### 2. 5 vs 4 插件 (点 4)
+
+计划文档 §风险与债务 §4 写 "6 插件仅 1 个有测试",实际:
+- `email` (250 行) 在 phase6 重构提交 `070d3a3` 已包含测试
+- `kv` (356 行) 同样
+- 真正缺测试的是 4 个:git / http / json / sql
+
+教训: **做风险评估前先 `ls ecosystem/plugins/*/plugin_test.go`**,不靠 commit message 印象。
+
+#### 3. 28 行简陋 vs 完整 (点 5 / 9)
+
+计划文档 §风险与债务 §5 写 "`cmd/ap/scaffold/main.go` 仅 28 行,模板渲染/文件复制可能未完成或简陋",实际:
+- `cmd/ap/scaffold/main.go` 是**嵌入资源**(被 `//go:embed scaffold/*` 包含)
+- 真正的脚手架命令是 `cmd/ap/init.go` (runInit 函数)
+- init.go 已实现模板复制 + 变量替换 + .ap.yaml 生成 + 3 个模板
+
+但**e2e 测试发现真问题**: 生成的项目**没有 go.mod**, `go build` 直接失败。
+- 修复 (点 5): 加 go.mod 生成
+- 二次发现 (点 9): replace 路径 `../agentprimordia` 错(应 `..`)
+- 二次发现 (点 9): `scaffold/main.go` 孤儿文件被 embed 包含(字典序巧合避免 bug)
+
+教训: **风险评估不能只读代码表面,必须实际跑一遍端到端**。
+
+### 治理总规模
+
+- **9 个 commit**, 全部 Phase 6.5.x 标记
+- **代码变动**: ~700 行 godoc/测试/配置
+- **新文档**: 4 个 (SemVer spec / migration guide / ecosystem README / examples README)
+- **删除**: 1 个孤儿文件
+- **实际工时**: 一天
+- **总提交数**: 18 个 commit 领先 origin/main (10 个 Phase 6.5 治理 + 8 个原 Phase 6 实施)
+
+### 流程改进的"被采纳"情况
+
+Phase 6 反思建议的 3 项流程改进:
+- ✅ **先 plan 后 commit**: Phase 6.5 实施时**没有 plan 文档**(再次违反)→ Phase 7 改正
+- ✅ **`// Deprecated:` 必含 `// Removed in vX.Y.`**: Phase 6.5.2 落实
+- ⚠️ **commit message 引用 Task 编号**: 仅 Phase 6.5 标记,未细化到 Task 级
+
+**仍待改进**: Phase 7 计划文档 (7.x) 落地后,看是否能严格执行"plan 先行"。
+
