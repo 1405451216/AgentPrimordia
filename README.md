@@ -317,13 +317,16 @@ golangci-lint run
 
 ## 文档
 
-- [API 完整参考](docs/api-reference.md)
-- [最佳实践](docs/best-practices.md)
-- [入门指南](docs/getting-started.md)
-- [Vector DB 选型指南](docs/vector-db-guide.md)
-- [Cookbook: 客服机器人](docs/cookbook/customer-support-bot.md)
-- [Cookbook: 代码审查 Agent](docs/cookbook/code-review-agent.md)
-- [Cookbook: 数据分析 Agent](docs/cookbook/data-analysis-agent.md)
+- [API 完整参考](ecosystem/docs/api-reference.md)
+- [最佳实践](ecosystem/docs/best-practices.md)
+- [入门指南](ecosystem/docs/getting-started.md)
+- [Vector DB 选型指南](ecosystem/docs/vector-db-guide.md)
+- [Cookbook: 客服机器人](ecosystem/docs/cookbook/customer-support-bot.md)
+- [Cookbook: 代码审查 Agent](ecosystem/docs/cookbook/code-review-agent.md)
+- [Cookbook: 数据分析 Agent](ecosystem/docs/cookbook/data-analysis-agent.md)
+- [Go 生态概览](ecosystem/docs/go-ecosystem.md)
+- [贡献 Provider](ecosystem/contributing/PROVIDER.md)
+- [贡献 Plugin](ecosystem/contributing/PLUGIN.md)
 
 ## License
 
