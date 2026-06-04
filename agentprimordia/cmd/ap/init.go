@@ -10,6 +10,7 @@ import (
 )
 
 //go:embed scaffold/basic scaffold/with-tools scaffold/multi-agent
+//go:embed scaffold/agent-with-cache scaffold/agent-with-rag scaffold/agent-with-metrics
 var scaffoldFS embed.FS
 
 func runInit(args []string) {
@@ -32,16 +33,23 @@ func runInit(args []string) {
 			fmt.Print(`ap init — 创建新的 Agent 项目
 
 用法:
-  ap init <项目名> [--template basic|with-tools|multi-agent]
+  ap init <项目名> [--template NAME]
 
-模板:
-  basic        最小 Agent（默认）
-  with-tools   含工具 Agent（文件系统 + Shell + Web）
-  multi-agent  多 Agent 协作
+模板 (Phase 8.2 扩展):
+  basic              最小 Agent（默认）
+  with-tools         含工具 Agent（文件系统 + Shell + Web）
+  multi-agent        多 Agent 协作
+  agent-with-cache   Agent + LLM 响应缓存
+  agent-with-rag     Agent + 知识库检索
+  agent-with-metrics Agent + Prometheus 指标
+
+模板版本: 见 ecosystem/templates/template-lock.json
+EOF 模板列表: ecosystem/templates/
 
 示例:
   ap init my-agent
   ap init my-agent --template with-tools
+  ap init my-agent --template agent-with-rag
 `)
 			return
 		default:
@@ -60,8 +68,16 @@ func runInit(args []string) {
 		template = "basic"
 	}
 
-	// 验证模板
-	validTemplates := map[string]bool{"basic": true, "with-tools": true, "multi-agent": true}
+	// 验证模板 (Phase 8.2 扩展: 6 个模板)
+	// 模板源在 ecosystem/templates/<name>/,通过 //go:embed 嵌入
+	validTemplates := map[string]bool{
+		"basic":              true,
+		"with-tools":         true,
+		"multi-agent":        true,
+		"agent-with-cache":   true,
+		"agent-with-rag":     true,
+		"agent-with-metrics": true,
+	}
 	if !validTemplates[template] {
 		fmt.Fprintf(os.Stderr, "错误: 未知模板 %q，可选: basic, with-tools, multi-agent\n", template)
 		os.Exit(1)

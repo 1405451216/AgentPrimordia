@@ -1,0 +1,54 @@
+{
+  "$schema": "https://agentprimordia.dev/schemas/template-lock.schema.json",
+  "lockfileVersion": 1,
+  "templates": [
+    {
+      "name": "basic",
+      "version": "0.6.0",
+      "description": "最小可用 Agent,适合学习 ReAct 循环",
+      "tags": ["starter", "minimal", "react"],
+      "introduced": "v0.1.0",
+      "lastUpdated": "2026-06-04"
+    },
+    {
+      "name": "with-tools",
+      "version": "0.6.0",
+      "description": "含工具的 Agent (FileSystem / Shell / Web)",
+      "tags": ["tools", "filesystem", "shell", "web"],
+      "introduced": "v0.1.0",
+      "lastUpdated": "2026-06-04"
+    },
+    {
+      "name": "multi-agent",
+      "version": "0.6.0",
+      "description": "多 Agent 协作 (Pipeline / Handoff)",
+      "tags": ["orchestration", "pipeline", "handoff"],
+      "introduced": "v0.2.0",
+      "lastUpdated": "2026-06-04"
+    },
+    {
+      "name": "agent-with-cache",
+      "version": "0.6.0",
+      "description": "Agent + LLM 响应缓存,适合重复查询场景",
+      "tags": ["cache", "performance", "experimental"],
+      "introduced": "v0.6.0",
+      "lastUpdated": "2026-06-05"
+    },
+    {
+      "name": "agent-with-rag",
+      "version": "0.6.0",
+      "description": "Agent + 知识库检索,基于本地文本文件构建 RAG",
+      "tags": ["rag", "knowledge", "search"],
+      "introduced": "v0.6.0",
+      "lastUpdated": "2026-06-05"
+    },
+    {
+      "name": "agent-with-metrics",
+      "version": "0.6.0",
+      "description": "Agent + Prometheus 指标,暴露 /metrics 端点",
+      "tags": ["metrics", "prometheus", "observability"],
+      "introduced": "v0.6.0",
+      "lastUpdated": "2026-06-05"
+    }
+  ]
+}

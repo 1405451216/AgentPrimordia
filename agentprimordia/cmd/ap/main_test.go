@@ -258,3 +258,66 @@ func TestAPConfig_LoadSave(t *testing.T) {
 		t.Errorf("插件数量不匹配: got %d", len(loaded.Plugins))
 	}
 }
+
+// ===== Phase 8.2: 新模板 e2e 测试 =====
+
+func TestRunInit_AgentWithCacheTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	runInit([]string{"cache-agent", "--template", "agent-with-cache"})
+
+	targetDir := filepath.Join(tmpDir, "cache-agent")
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		t.Fatal("项目目录未创建")
+	}
+	mainGo := filepath.Join(targetDir, "main.go")
+	content, _ := os.ReadFile(mainGo)
+	if !contains(string(content), "WithCache") {
+		t.Error("agent-with-cache 模板应包含 WithCache 链式调用")
+	}
+}
+
+func TestRunInit_AgentWithRAGTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	runInit([]string{"rag-agent", "--template", "agent-with-rag"})
+
+	targetDir := filepath.Join(tmpDir, "rag-agent")
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		t.Fatal("项目目录未创建")
+	}
+	mainGo := filepath.Join(targetDir, "main.go")
+	content, _ := os.ReadFile(mainGo)
+	if !contains(string(content), "WithRAG") {
+		t.Error("agent-with-rag 模板应包含 WithRAG 链式调用")
+	}
+}
+
+func TestRunInit_AgentWithMetricsTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	runInit([]string{"metrics-agent", "--template", "agent-with-metrics"})
+
+	targetDir := filepath.Join(tmpDir, "metrics-agent")
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		t.Fatal("项目目录未创建")
+	}
+	mainGo := filepath.Join(targetDir, "main.go")
+	content, _ := os.ReadFile(mainGo)
+	if !contains(string(content), "WithMetrics") {
+		t.Error("agent-with-metrics 模板应包含 WithMetrics 链式调用")
+	}
+	if !contains(string(content), "/metrics") {
+		t.Error("agent-with-metrics 模板应暴露 /metrics 端点")
+	}
+}
+
