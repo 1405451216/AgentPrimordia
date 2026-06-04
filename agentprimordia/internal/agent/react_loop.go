@@ -77,37 +77,52 @@ type ReActConfig struct {
 	//   agent := NewReActAgent(ReActConfig{...}).WithMemory(mem).WithRAG(ragCfg)
 	//
 	// 直接设置字段仍然有效（向后兼容），但链式 API 提供更好的类型安全和接口发现。
+	//
+	// 废弃时间表：
+	//   v0.6.0（当前）— Deprecated 标注生效，编译期 warning
+	//   v0.7.0         — 升级为编译期 warning + 文档强提示
+	//   v1.0.0         — panic if non-nil，强制迁移
+	//   v2.0.0         — 字段移除（见 // Removed in v2.0.）
+	// 详细迁移指南：docs/migration/v0-deprecations.md
 
 	// Toolkit 工具注册表
 	// Deprecated: 使用 .WithToolkit(registry) 链式方法注入
+	// Removed in v2.0.
 	Toolkit *tools.Registry
 
 	// Memory 存储对话和记忆片段
 	// Deprecated: 使用 .WithMemory(store) 链式方法注入
+	// Removed in v2.0.
 	Memory MemoryStore
 
 	// EventPublisher 发布 Agent 生命周期事件
 	// Deprecated: 使用 .WithEvents(publisher) 链式方法注入
+	// Removed in v2.0.
 	EventPublisher EventPublisher
 
 	// Metrics 指标收集器
 	// Deprecated: 使用 .WithMetrics(recorder) 链式方法注入
+	// Removed in v2.0.
 	Metrics MetricsRecorder
 
 	// ContextWindow 上下文窗口裁剪策略
 	// Deprecated: 使用 .WithContextWindow(strategy) 链式方法注入
+	// Removed in v2.0.
 	ContextWindow ContextWindowStrategy
 
 	// CheckpointStore 状态持久化
 	// Deprecated: 使用 .WithCheckpointStore(store) 链式方法注入
+	// Removed in v2.0.
 	CheckpointStore persist.CheckpointStore
 
 	// RAG 知识库检索配置，启用后 Agent 在推理前自动查询知识库
 	// Deprecated: 使用 .WithRAG(config) 链式方法注入
+	// Removed in v2.0.
 	RAG *RAGConfig
 
 	// Hooks Hook 管理器
 	// Deprecated: 使用 .WithHooks(hooks) 链式方法注入
+	// Removed in v2.0.
 	Hooks Hooks
 
 	// Lifecycle 生命周期管理器（默认自动创建）
@@ -118,26 +133,32 @@ type ReActConfig struct {
 
 	// Summarizer 记忆摘要生成器
 	// Deprecated: 使用 .WithSummarizer(summarizer) 链式方法注入
+	// Removed in v2.0.
 	Summarizer memory.SummaryExtractor
 
 	// FileScope 文件范围限制，指定 Agent 可操作的文件或目录列表
 	// Deprecated: 使用 .WithFileScope(scopes) 链式方法注入
+	// Removed in v2.0.
 	FileScope []string
 
 	// HITL 人机协作配置，启用后 Agent 在指定中断点暂停等待人类确认
 	// Deprecated: 使用 .WithHITL(config) 链式方法注入
+	// Removed in v2.0.
 	HITL *HITLConfig
 
 	// CostTracker 成本追踪器，启用后自动记录每轮 LLM Usage 并追踪成本
 	// Deprecated: 使用 .WithCostTracker(tracker) 链式方法注入
+	// Removed in v2.0.
 	CostTracker *CostTracker
 
 	// Tracer 分布式追踪器，启用后自动在 ReAct Loop 关键点创建 Span
 	// Deprecated: 使用 .WithTracer(tracer) 链式方法注入
+	// Removed in v2.0.
 	Tracer Tracer
 
 	// Cache LLM 响应缓存，启用后自动缓存 Complete 调用结果以减少重复请求
 	// Deprecated: 使用 .WithCache(cache) 链式方法注入
+	// Removed in v2.0.
 	Cache llm.LLMCache
 }
 
