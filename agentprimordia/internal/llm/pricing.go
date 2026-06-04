@@ -21,73 +21,73 @@ type ModelPricing struct {
 func DefaultPricingTable() map[string]ModelPricing {
 	defaultPricingTableOnce.Do(func() {
 		defaultPricingTable = map[string]ModelPricing{
-		"gpt-4o": {
-			Model:                "gpt-4o",
-			Provider:             "openai",
-			PromptPricePer1M:     2.5,
-			CompletionPricePer1M: 10.0,
-		},
-		"gpt-4o-mini": {
-			Model:                "gpt-4o-mini",
-			Provider:             "openai",
-			PromptPricePer1M:     0.15,
-			CompletionPricePer1M: 0.6,
-		},
-		"gpt-4-turbo": {
-			Model:                "gpt-4-turbo",
-			Provider:             "openai",
-			PromptPricePer1M:     10.0,
-			CompletionPricePer1M: 30.0,
-		},
-		"gpt-3.5-turbo": {
-			Model:                "gpt-3.5-turbo",
-			Provider:             "openai",
-			PromptPricePer1M:     0.5,
-			CompletionPricePer1M: 1.5,
-		},
-		"claude-3-5-sonnet-20241022": {
-			Model:                "claude-3-5-sonnet-20241022",
-			Provider:             "anthropic",
-			PromptPricePer1M:     3.0,
-			CompletionPricePer1M: 15.0,
-		},
-		"claude-3-haiku-20240307": {
-			Model:                "claude-3-haiku-20240307",
-			Provider:             "anthropic",
-			PromptPricePer1M:     0.25,
-			CompletionPricePer1M: 1.25,
-		},
-		"claude-3-opus-20240229": {
-			Model:                "claude-3-opus-20240229",
-			Provider:             "anthropic",
-			PromptPricePer1M:     15.0,
-			CompletionPricePer1M: 75.0,
-		},
-		"gemini-2.0-flash": {
-			Model:                "gemini-2.0-flash",
-			Provider:             "google",
-			PromptPricePer1M:     0.1,
-			CompletionPricePer1M: 0.4,
-		},
-		"gemini-1.5-pro": {
-			Model:                "gemini-1.5-pro",
-			Provider:             "google",
-			PromptPricePer1M:     1.25,
-			CompletionPricePer1M: 5.0,
-		},
-		"deepseek-chat": {
-			Model:                "deepseek-chat",
-			Provider:             "deepseek",
-			PromptPricePer1M:     0.14,
-			CompletionPricePer1M: 0.28,
-		},
-		"qwen-turbo": {
-			Model:                "qwen-turbo",
-			Provider:             "alibaba",
-			PromptPricePer1M:     0.3,
-			CompletionPricePer1M: 0.6,
-		},
-	}
+			"gpt-4o": {
+				Model:                "gpt-4o",
+				Provider:             "openai",
+				PromptPricePer1M:     2.5,
+				CompletionPricePer1M: 10.0,
+			},
+			"gpt-4o-mini": {
+				Model:                "gpt-4o-mini",
+				Provider:             "openai",
+				PromptPricePer1M:     0.15,
+				CompletionPricePer1M: 0.6,
+			},
+			"gpt-4-turbo": {
+				Model:                "gpt-4-turbo",
+				Provider:             "openai",
+				PromptPricePer1M:     10.0,
+				CompletionPricePer1M: 30.0,
+			},
+			"gpt-3.5-turbo": {
+				Model:                "gpt-3.5-turbo",
+				Provider:             "openai",
+				PromptPricePer1M:     0.5,
+				CompletionPricePer1M: 1.5,
+			},
+			"claude-3-5-sonnet-20241022": {
+				Model:                "claude-3-5-sonnet-20241022",
+				Provider:             "anthropic",
+				PromptPricePer1M:     3.0,
+				CompletionPricePer1M: 15.0,
+			},
+			"claude-3-haiku-20240307": {
+				Model:                "claude-3-haiku-20240307",
+				Provider:             "anthropic",
+				PromptPricePer1M:     0.25,
+				CompletionPricePer1M: 1.25,
+			},
+			"claude-3-opus-20240229": {
+				Model:                "claude-3-opus-20240229",
+				Provider:             "anthropic",
+				PromptPricePer1M:     15.0,
+				CompletionPricePer1M: 75.0,
+			},
+			"gemini-2.0-flash": {
+				Model:                "gemini-2.0-flash",
+				Provider:             "google",
+				PromptPricePer1M:     0.1,
+				CompletionPricePer1M: 0.4,
+			},
+			"gemini-1.5-pro": {
+				Model:                "gemini-1.5-pro",
+				Provider:             "google",
+				PromptPricePer1M:     1.25,
+				CompletionPricePer1M: 5.0,
+			},
+			"deepseek-chat": {
+				Model:                "deepseek-chat",
+				Provider:             "deepseek",
+				PromptPricePer1M:     0.14,
+				CompletionPricePer1M: 0.28,
+			},
+			"qwen-turbo": {
+				Model:                "qwen-turbo",
+				Provider:             "alibaba",
+				PromptPricePer1M:     0.3,
+				CompletionPricePer1M: 0.6,
+			},
+		}
 	})
 	return defaultPricingTable
 }

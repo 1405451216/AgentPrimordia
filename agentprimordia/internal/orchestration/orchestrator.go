@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	defaultMaxRetries    = 3
-	defaultOrchTimeout   = 5 * time.Minute
-	orchEventBufferSize  = 100
-	defaultBackoff       = time.Second
+	defaultMaxRetries   = 3
+	defaultOrchTimeout  = 5 * time.Minute
+	orchEventBufferSize = 100
+	defaultBackoff      = time.Second
 )
 
 // OrchestratorMode 编排模式

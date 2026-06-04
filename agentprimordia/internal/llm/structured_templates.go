@@ -5,15 +5,15 @@ package llm
 
 // SentimentOutput 情感分析输出
 type SentimentOutput struct {
-	Sentiment string  `json:"sentiment" jsonschema:"description=整体情感倾向,enum=positive,enum=negative,enum=neutral,enum=mixed"`
-	Score     float64 `json:"score" jsonschema:"description=情感分数 0-1,minimum=0,maximum=1"`
+	Sentiment  string  `json:"sentiment" jsonschema:"description=整体情感倾向,enum=positive,enum=negative,enum=neutral,enum=mixed"`
+	Score      float64 `json:"score" jsonschema:"description=情感分数 0-1,minimum=0,maximum=1"`
 	Confidence float64 `json:"confidence" jsonschema:"description=置信度 0-1,minimum=0,maximum=1"`
 }
 
 // SentimentDetailOutput 带细节的情感分析输出
 type SentimentDetailOutput struct {
-	Sentiment string  `json:"sentiment" jsonschema:"description=整体情感倾向,enum=positive,enum=negative,enum=neutral,enum=mixed"`
-	Score     float64 `json:"score" jsonschema:"description=情感分数 0-1,minimum=0,maximum=1"`
+	Sentiment string            `json:"sentiment" jsonschema:"description=整体情感倾向,enum=positive,enum=negative,enum=neutral,enum=mixed"`
+	Score     float64           `json:"score" jsonschema:"description=情感分数 0-1,minimum=0,maximum=1"`
 	Aspects   []AspectSentiment `json:"aspects" jsonschema:"description=各维度的情感分析"`
 }
 
@@ -31,8 +31,8 @@ type NEROutput struct {
 
 // Entity 命名实体
 type Entity struct {
-	Text string `json:"text" jsonschema:"description=实体文本"`
-	Type string `json:"type" jsonschema:"description=实体类型,enum=PERSON,enum=ORGANIZATION,enum=LOCATION,enum=DATE,enum=TIME,enum=MONEY,enum=PERCENT,enum=PRODUCT,enum=EVENT,enum=MISC"`
+	Text  string `json:"text" jsonschema:"description=实体文本"`
+	Type  string `json:"type" jsonschema:"description=实体类型,enum=PERSON,enum=ORGANIZATION,enum=LOCATION,enum=DATE,enum=TIME,enum=MONEY,enum=PERCENT,enum=PRODUCT,enum=EVENT,enum=MISC"`
 	Start int    `json:"start" jsonschema:"description=起始位置(字符偏移),minimum=0"`
 	End   int    `json:"end" jsonschema:"description=结束位置(字符偏移),minimum=0"`
 }
@@ -58,16 +58,16 @@ type LabelScore struct {
 
 // SummaryOutput 摘要输出
 type SummaryOutput struct {
-	Summary     string   `json:"summary" jsonschema:"description=摘要内容"`
-	KeyPoints   []string `json:"key_points" jsonschema:"description=关键要点列表"`
-	WordCount   int      `json:"word_count" jsonschema:"description=摘要字数,minimum=0"`
+	Summary   string   `json:"summary" jsonschema:"description=摘要内容"`
+	KeyPoints []string `json:"key_points" jsonschema:"description=关键要点列表"`
+	WordCount int      `json:"word_count" jsonschema:"description=摘要字数,minimum=0"`
 }
 
 // ExtractiveSummaryOutput 抽取式摘要输出
 type ExtractiveSummaryOutput struct {
-	Summary       string  `json:"summary" jsonschema:"description=摘要内容"`
-	KeySentences  []string `json:"key_sentences" jsonschema:"description=关键句子列表"`
-	CompressionRatio float64 `json:"compression_ratio" jsonschema:"description=压缩比,minimum=0,maximum=1"`
+	Summary          string   `json:"summary" jsonschema:"description=摘要内容"`
+	KeySentences     []string `json:"key_sentences" jsonschema:"description=关键句子列表"`
+	CompressionRatio float64  `json:"compression_ratio" jsonschema:"description=压缩比,minimum=0,maximum=1"`
 }
 
 // 预定义 Schema 模板函数

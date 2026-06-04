@@ -3,13 +3,15 @@
 // 自动查询相关文档并注入上下文。
 //
 // 前置条件：
-//   export OPENAI_API_KEY=sk-xxx
-//   准备 ./knowledge/*.txt 知识库文件
+//
+//	export OPENAI_API_KEY=sk-xxx
+//	准备 ./knowledge/*.txt 知识库文件
 //
 // 跑法：
-//   cd {{.ProjectName}}
-//   go mod tidy
-//   go run .
+//
+//	cd {{.ProjectName}}
+//	go mod tidy
+//	go run .
 package main
 
 import (
@@ -23,10 +25,13 @@ import (
 )
 
 func main() {
-	provider := ap.NewOpenAIProvider(ap.Config{
+	provider, err := ap.NewOpenAIProvider(ap.Config{
 		APIKey: os.Getenv("OPENAI_API_KEY"),
 		Model:  "gpt-4o",
 	})
+	if err != nil {
+		log.Fatalf("创建 Provider 失败: %v", err)
+	}
 
 	// 加载本地知识库
 	knowledgeDir := "./knowledge"
@@ -38,10 +43,10 @@ func main() {
 
 	// 构造 RAG 配置
 	ragConfig := ap.RAGConfig{
-		Provider:  newSimpleRAG(docs),
-		Mode:      ap.RAGModeEvery, // 每一轮都检索
-		TopK:      3,
-		MinScore:  0.3,
+		Provider: newSimpleRAG(docs),
+		Mode:     ap.RAGModeAuto, // 每一轮都检索
+		TopK:     3,
+		MinScore: 0.3,
 	}
 
 	agent := ap.NewReActAgent(ap.ReActConfig{
@@ -96,11 +101,11 @@ func newSimpleRAG(docs []string) *simpleRAG {
 	return &simpleRAG{docs: docs}
 }
 
-func (r *simpleRAG) Search(ctx context.Context, query string, topK int) ([]ap.RAGDocument, error) {
-	var results []ap.RAGDocument
+func (r *simpleRAG) Search(ctx context.Context, query string, topK int) ([]*ap.RAGDocument, error) {
+	var results []*ap.RAGDocument
 	for i, doc := range r.docs {
 		// 简化版：文档 ID 用索引
-		results = append(results, ap.RAGDocument{
+		results = append(results, &ap.RAGDocument{
 			ID:      fmt.Sprintf("doc-%d", i),
 			Content: doc,
 			Score:   1.0,

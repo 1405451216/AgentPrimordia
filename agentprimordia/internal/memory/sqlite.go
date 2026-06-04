@@ -353,11 +353,11 @@ func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptio
 			return nil, fmt.Errorf("scan candidate row: %w", err)
 		}
 		if metadataJSON.Valid && metadataJSON.String != "" {
-		if err := json.Unmarshal([]byte(metadataJSON.String), &ep.Metadata); err != nil {
-			s.logger.Warn("元数据反序列化失败", "error", err, "id", ep.ID)
+			if err := json.Unmarshal([]byte(metadataJSON.String), &ep.Metadata); err != nil {
+				s.logger.Warn("元数据反序列化失败", "error", err, "id", ep.ID)
+			}
 		}
-	}
-	rank := 0.0
+		rank := 0.0
 		if rawRank.Valid {
 			rank = rawRank.Float64
 		}

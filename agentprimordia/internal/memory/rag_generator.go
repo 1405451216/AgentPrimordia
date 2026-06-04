@@ -20,21 +20,21 @@ type LLMGenerator interface {
 // 将检索增强生成流程封装为单一组件：
 // 用户查询 → 检索相关文档 → 组装上下文 → LLM 生成答案
 type RetrievalAugmentedGenerator struct {
-	store      *RAGStore
-	generator  LLMGenerator
+	store        *RAGStore
+	generator    LLMGenerator
 	systemPrompt string
-	topK       int
-	minScore   float32
-	useHybrid bool
-	logger     *slog.Logger
+	topK         int
+	minScore     float32
+	useHybrid    bool
+	logger       *slog.Logger
 }
 
 // RAGConfig RAG 生成器配置
 type RAGConfig struct {
 	Store        *RAGStore
 	Generator    LLMGenerator
-	SystemPrompt string // 系统提示词模板（可使用 {context} 占位符）
-	TopK         int    // 检索返回数量（默认 5）
+	SystemPrompt string  // 系统提示词模板（可使用 {context} 占位符）
+	TopK         int     // 检索返回数量（默认 5）
 	MinScore     float32 // 最低相关度阈值（默认 0）
 	UseHybrid    bool    // 是否使用混合检索（FTS + 向量）
 }
@@ -79,11 +79,11 @@ func NewRetrievalAugmentedGenerator(cfg RAGConfig) (*RetrievalAugmentedGenerator
 
 // QueryResult RAG 查询结果
 type QueryResult struct {
-	Answer   string       `json:"answer"`             // 生成的答案
-	Sources  []*RAGResult `json:"sources"`            // 检索到的来源
-	Query    string       `json:"query"`              // 原始查询
-	Context  string       `json:"context,omitempty"`  // 注入的上下文
-	DurationMs int64      `json:"duration_ms"`        // 耗时（毫秒）
+	Answer     string       `json:"answer"`            // 生成的答案
+	Sources    []*RAGResult `json:"sources"`           // 检索到的来源
+	Query      string       `json:"query"`             // 原始查询
+	Context    string       `json:"context,omitempty"` // 注入的上下文
+	DurationMs int64        `json:"duration_ms"`       // 耗时（毫秒）
 }
 
 func (g *RetrievalAugmentedGenerator) buildPrompt(query string, contextText string) string {

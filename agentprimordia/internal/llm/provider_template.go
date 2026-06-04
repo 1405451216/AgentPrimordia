@@ -73,9 +73,10 @@ type TemplateProvider struct {
 // 到新文件并实现所有方法。
 //
 // 错误信息指引：
-//   "TemplateProvider is a code template, not a real Provider. "
-//   "Copy internal/llm/provider_template.go to a new file and implement it. "
-//   "See internal/llm/provider_template.go and ecosystem/contributing/PROVIDER.md."
+//
+//	"TemplateProvider is a code template, not a real Provider. "
+//	"Copy internal/llm/provider_template.go to a new file and implement it. "
+//	"See internal/llm/provider_template.go and ecosystem/contributing/PROVIDER.md."
 func NewTemplateProvider(cfg Config) (*TemplateProvider, error) {
 	return nil, ErrTemplateNotImplemented
 }
@@ -132,8 +133,8 @@ func (p *TemplateProvider) Info() ModelInfo {
 		Name:              p.config.Model,
 		Provider:          "template", // TODO: 替换为 provider 标识（小写英文）
 		MaxContext:        defaultTemplateMaxContext,
-		SupportsTools:     true,  // TODO: 根据实际情况设置
-		SupportsStreaming: true,  // TODO: 根据实际情况设置
+		SupportsTools:     true, // TODO: 根据实际情况设置
+		SupportsStreaming: true, // TODO: 根据实际情况设置
 	}
 }
 

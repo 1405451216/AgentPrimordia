@@ -79,8 +79,8 @@ func (p *GeminiMultimodalProvider) CompleteMultimodal(ctx context.Context, req *
 	}
 
 	return &CompletionResponse{
-		ID:    fmt.Sprintf("gemini-%d", resp.UsageMetadata.TotalTokenCount),
-		Model: model,
+		ID:      fmt.Sprintf("gemini-%d", resp.UsageMetadata.TotalTokenCount),
+		Model:   model,
 		Content: content,
 		Role:    "assistant",
 		Usage: Usage{

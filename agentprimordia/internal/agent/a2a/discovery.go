@@ -25,9 +25,9 @@ type Discovery interface {
 
 // DiscoveryEvent 发现事件
 type DiscoveryEvent struct {
-	Type     DiscoveryEventType `json:"type"`
-	AgentID  string             `json:"agent_id"`
-	Card     *AgentCard         `json:"card,omitempty"`
+	Type    DiscoveryEventType `json:"type"`
+	AgentID string             `json:"agent_id"`
+	Card    *AgentCard         `json:"card,omitempty"`
 }
 
 // DiscoveryEventType 发现事件类型
@@ -41,10 +41,10 @@ const (
 
 // LocalDiscovery 本地内存发现服务
 type LocalDiscovery struct {
-	agents  map[string]*AgentRegistry
+	agents   map[string]*AgentRegistry
 	watchers []chan DiscoveryEvent
-	mu      sync.RWMutex
-	logger  *slog.Logger
+	mu       sync.RWMutex
+	logger   *slog.Logger
 }
 
 func NewLocalDiscovery() *LocalDiscovery {

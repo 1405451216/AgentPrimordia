@@ -16,9 +16,9 @@ func TestVersion(t *testing.T) {
 
 func TestErrorSentinels(t *testing.T) {
 	sentinelTests := []struct {
-		name  string
-		err   error
-		msg   string
+		name string
+		err  error
+		msg  string
 	}{
 		{"ErrAgentStopped", ap.ErrAgentStopped, "agent is stopped"},
 		{"ErrMaxTurnsExceeded", ap.ErrMaxTurnsExceeded, "max turns exceeded"},

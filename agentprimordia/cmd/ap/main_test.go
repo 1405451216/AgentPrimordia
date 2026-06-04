@@ -320,4 +320,3 @@ func TestRunInit_AgentWithMetricsTemplate(t *testing.T) {
 		t.Error("agent-with-metrics 模板应暴露 /metrics 端点")
 	}
 }
-

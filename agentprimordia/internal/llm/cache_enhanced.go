@@ -159,9 +159,9 @@ type NoopCache struct{}
 
 func (NoopCache) Get(context.Context, string, float32) (*CompletionResponse, bool) { return nil, false }
 func (NoopCache) Set(context.Context, string, *CompletionResponse) error           { return nil }
-func (NoopCache) Stats(_ context.Context) CacheStats                              { return CacheStats{} }
-func (NoopCache) Clear(_ context.Context) error                                   { return nil }
-func (NoopCache) Invalidate(_ context.Context, _ string) error                    { return nil }
+func (NoopCache) Stats(_ context.Context) CacheStats                               { return CacheStats{} }
+func (NoopCache) Clear(_ context.Context) error                                    { return nil }
+func (NoopCache) Invalidate(_ context.Context, _ string) error                     { return nil }
 
 type HybridCache struct {
 	fingerprint LLMCache
@@ -202,7 +202,9 @@ func (h *HybridCache) Clear(ctx context.Context) error {
 	return nil
 }
 func (h *HybridCache) Invalidate(ctx context.Context, key string) error {
-	if ic, ok := h.fingerprint.(interface{ Invalidate(context.Context, string) error }); ok {
+	if ic, ok := h.fingerprint.(interface {
+		Invalidate(context.Context, string) error
+	}); ok {
 		_ = ic.Invalidate(ctx, key)
 	}
 	if h.semantic != nil {
@@ -382,7 +384,9 @@ func (m *CacheManager) Invalidate(ctx context.Context, key string) error {
 	m.mu.RLock()
 	cache := m.cache
 	m.mu.RUnlock()
-	if inv, ok := cache.(interface{ Invalidate(context.Context, string) error }); ok {
+	if inv, ok := cache.(interface {
+		Invalidate(context.Context, string) error
+	}); ok {
 		return inv.Invalidate(ctx, key)
 	}
 	return nil

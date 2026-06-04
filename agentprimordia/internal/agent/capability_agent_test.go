@@ -41,12 +41,12 @@ type capTestMetricsRecorder struct {
 	turns     int
 }
 
-func (m *capTestMetricsRecorder) RecordLLMCall(duration time.Duration, err error)   { m.llmCalls++ }
-func (m *capTestMetricsRecorder) RecordToolCall(duration time.Duration, err error)   { m.toolCalls++ }
-func (m *capTestMetricsRecorder) RecordTurn(duration time.Duration)                  { m.turns++ }
+func (m *capTestMetricsRecorder) RecordLLMCall(duration time.Duration, err error)                   { m.llmCalls++ }
+func (m *capTestMetricsRecorder) RecordToolCall(duration time.Duration, err error)                  { m.toolCalls++ }
+func (m *capTestMetricsRecorder) RecordTurn(duration time.Duration)                                 { m.turns++ }
 func (m *capTestMetricsRecorder) RecordTokenUsage(model string, promptTokens, completionTokens int) {}
-func (m *capTestMetricsRecorder) IncActiveAgents()                                   {}
-func (m *capTestMetricsRecorder) DecActiveAgents()                                   {}
+func (m *capTestMetricsRecorder) IncActiveAgents()                                                  {}
+func (m *capTestMetricsRecorder) DecActiveAgents()                                                  {}
 
 // ===== 测试：Capable 接口类型断言 =====
 
@@ -55,8 +55,8 @@ func TestCapabilityAgent_ImplementsMemoryCapable(t *testing.T) {
 	mockLLM.WithResponse("test response")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "test-agent",
-		Model:   mockLLM,
+		Name:     "test-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -79,8 +79,8 @@ func TestCapabilityAgent_ImplementsRAGCapable(t *testing.T) {
 	mockLLM.WithResponse("test response")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "test-agent",
-		Model:   mockLLM,
+		Name:     "test-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -101,8 +101,8 @@ func TestCapabilityAgent_ImplementsEventCapable(t *testing.T) {
 	mockLLM.WithResponse("test response")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "test-agent",
-		Model:   mockLLM,
+		Name:     "test-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -123,8 +123,8 @@ func TestCapabilityAgent_ImplementsMetricsCapable(t *testing.T) {
 	mockLLM.WithResponse("test response")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "test-agent",
-		Model:   mockLLM,
+		Name:     "test-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -151,8 +151,8 @@ func TestChainAPI_MultipleCapabilities(t *testing.T) {
 	mr := &capTestMetricsRecorder{}
 
 	capAgent := NewReActAgent(ReActConfig{
-		Name:    "chain-agent",
-		Model:   mockLLM,
+		Name:     "chain-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	}).WithMemory(mem).WithEvents(ep).WithMetrics(mr)
 
@@ -195,8 +195,8 @@ func TestChainAPI_SyncsToInnerConfig(t *testing.T) {
 	mr := &capTestMetricsRecorder{}
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "sync-agent",
-		Model:   mockLLM,
+		Name:     "sync-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -226,8 +226,8 @@ func TestCapabilityAgent_DelegatesAgentInterface(t *testing.T) {
 	mockLLM.WithResponse("delegated response")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "delegate-agent",
-		Model:   mockLLM,
+		Name:     "delegate-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -262,8 +262,8 @@ func TestCapabilityAgent_InnerMethod(t *testing.T) {
 	mockLLM.WithResponse("test")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "inner-agent",
-		Model:   mockLLM,
+		Name:     "inner-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -281,8 +281,8 @@ func TestReActAgent_DoesNotImplementCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "bare-agent",
-		Model:   mockLLM,
+		Name:     "bare-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -307,8 +307,8 @@ func TestChainAPI_ContinueOnCapabilityAgent(t *testing.T) {
 
 	// 先用 ReActAgent.WithMemory 创建 CapabilityAgent
 	capAgent := NewReActAgent(ReActConfig{
-		Name:    "continue-agent",
-		Model:   mockLLM,
+		Name:     "continue-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	}).WithMemory(mem)
 
@@ -331,8 +331,8 @@ func TestCapabilityAgent_ImplementsContextWindowCapable(t *testing.T) {
 	mockLLM.WithResponse("test")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "ctx-agent",
-		Model:   mockLLM,
+		Name:     "ctx-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -355,8 +355,8 @@ func TestCapabilityAgent_ImplementsHookCapable(t *testing.T) {
 	mockLLM.WithResponse("test")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "hook-agent",
-		Model:   mockLLM,
+		Name:     "hook-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 
@@ -379,8 +379,8 @@ func TestCapabilityAgent_ImplementsFileScopeCapable(t *testing.T) {
 	mockLLM.WithResponse("test")
 
 	a := NewReActAgent(ReActConfig{
-		Name:    "scope-agent",
-		Model:   mockLLM,
+		Name:     "scope-agent",
+		Model:    mockLLM,
 		MaxTurns: 5,
 	})
 

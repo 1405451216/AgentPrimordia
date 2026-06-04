@@ -273,6 +273,33 @@ Fixes #123
    - 审计日志
    - 敏感数据加密
 
+## 🛠️ Pre-commit Hook (Phase 8.4)
+
+为强制流程改进（gofmt、Deprecated 标注完整性、CHANGELOG [Unreleased]
+节内容），仓库提供 pre-commit hook：
+
+```bash
+# 方式 1：单仓库使用
+cp scripts/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+
+# 方式 2：设为 core.hooksPath（推荐，多 hook 时统一管理）
+git config core.hooksPath .githooks
+```
+
+Hook 检查 5 项：
+1. `gofmt -l` 通过
+2. `// Deprecated:` 标注必含 `// Removed in vX.Y.`
+3. `pkg/` 文件 `// Stability:` 块覆盖
+4. 改动 internal/pkg 时建议同步 plan 文档
+5. CHANGELOG `[Unreleased]` 节有内容
+
+跳过方式（紧急情况）：`git commit --no-verify`
+
+CI 镜像（Linux）跑同样检查，确保 PR 合入前流程合规。
+Windows Git Bash 有 `grep -r` 静默丢结果的 bug，hook 在 Windows
+上仅跑 gofmt/CHANGELOG 检查，完整 Deprecated 检查依赖 CI。
+
 ## 💡 贡献建议
 
 ### 初学者友好任务

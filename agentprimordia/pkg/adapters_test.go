@@ -300,11 +300,11 @@ func TestAgentIntegration_WithContextWindow(t *testing.T) {
 	strategy := ap.NewDefaultStrategy(3) // 只保留最后3条
 
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:           "ContextWindowAgent",
-		Model:          mockLLM,
-		Toolkit:        ap.NewToolRegistry(),
-		ContextWindow:  strategy,
-		MaxTurns:       10,
+		Name:          "ContextWindowAgent",
+		Model:         mockLLM,
+		Toolkit:       ap.NewToolRegistry(),
+		ContextWindow: strategy,
+		MaxTurns:      10,
 	})
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Test"))
@@ -320,9 +320,9 @@ func TestAgentIntegration_Stop(t *testing.T) {
 	mockLLM := &integrationMockLLM{response: "Running..."}
 
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:    "StopAgent",
-		Model:   mockLLM,
-		Toolkit: ap.NewToolRegistry(),
+		Name:     "StopAgent",
+		Model:    mockLLM,
+		Toolkit:  ap.NewToolRegistry(),
 		MaxTurns: 10,
 	})
 

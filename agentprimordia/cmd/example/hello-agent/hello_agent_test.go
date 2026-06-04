@@ -13,8 +13,8 @@ import (
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/pool"
 	"agentprimordia/internal/tools"
-	ap "agentprimordia/pkg"
 	"agentprimordia/internal/tools/builtin"
+	ap "agentprimordia/pkg"
 )
 
 func TestHelloAgent_BasicRun(t *testing.T) {

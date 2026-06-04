@@ -49,7 +49,7 @@ func (n *NoopAuthenticator) Authenticate(_ *http.Request) (*Principal, error) {
 // APIKeyAuthenticator API Key 认证
 type APIKeyAuthenticator struct {
 	keys   map[string]string // key → principalID
-	header string           // Header 名称
+	header string            // Header 名称
 }
 
 func NewAPIKeyAuthenticator(keys map[string]string, headerName string) *APIKeyAuthenticator {

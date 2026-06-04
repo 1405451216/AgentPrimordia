@@ -35,8 +35,8 @@ func main() {
 
 	// 第 1 步：创建最简 Agent（4 个必填字段）
 	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:    "capable-agent",
-		Model:   &MockLLM{},
+		Name:     "capable-agent",
+		Model:    &MockLLM{},
 		MaxTurns: 5,
 	})
 

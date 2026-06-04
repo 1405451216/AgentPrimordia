@@ -159,7 +159,7 @@ func TestConvertToQwenFormat_ImageURL(t *testing.T) {
 		URL:  "https://example.com/image.jpg",
 	})
 
- imageURL := part["image_url"].(map[string]string)["url"]
+	imageURL := part["image_url"].(map[string]string)["url"]
 	if imageURL != "https://example.com/image.jpg" {
 		t.Errorf("image URL = %v, want https://example.com/image.jpg", imageURL)
 	}
@@ -205,7 +205,7 @@ func TestCompleteMultimodal_Qwen_WithMockServer(t *testing.T) {
 	provider, _ := NewQwenProvider(Config{
 		APIKey:  "test-key",
 		BaseURL: server.URL,
-		Model:  "qwen-vl-max-latest",
+		Model:   "qwen-vl-max-latest",
 	})
 	provider.client = server.Client()
 

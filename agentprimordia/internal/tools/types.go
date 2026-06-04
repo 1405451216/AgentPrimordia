@@ -15,8 +15,8 @@ type Tool interface {
 
 // Result represents the outcome of a tool execution
 type Result struct {
-	Content  string                 `json:"content"`
-	IsError  bool                   `json:"is_error"`
+	Content  string         `json:"content"`
+	IsError  bool           `json:"is_error"`
 	Metadata map[string]any `json:"metadata,omitempty"`
 }
 

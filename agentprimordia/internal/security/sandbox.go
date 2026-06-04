@@ -20,11 +20,11 @@ var dangerousChars = []string{";", "|", "&", "$", "`", ">", "<", "\n"}
 type AccessLevel int
 
 const (
-	AccessNone   AccessLevel = 0
-	AccessRead   AccessLevel = 1
-	AccessWrite  AccessLevel = 2
+	AccessNone    AccessLevel = 0
+	AccessRead    AccessLevel = 1
+	AccessWrite   AccessLevel = 2
 	AccessExecute AccessLevel = 4
-	AccessAll    AccessLevel = 7
+	AccessAll     AccessLevel = 7
 )
 
 type ACLRule struct {
@@ -100,10 +100,10 @@ func matchRule(rule ACLRule, agentID, resource string) bool {
 }
 
 type Sandbox struct {
-	acl       *ACL
+	acl         *ACL
 	allowedCmds map[string]bool
 	blockedCmds map[string]bool
-	mu        sync.RWMutex
+	mu          sync.RWMutex
 }
 
 func NewSandbox(acl *ACL) *Sandbox {

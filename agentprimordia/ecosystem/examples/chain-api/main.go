@@ -35,8 +35,8 @@ func main() {
 
 	// 只需 4 个必填字段即可创建 Agent
 	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:    "hello-agent",
-		Model:   &MockLLM{},
+		Name:     "hello-agent",
+		Model:    &MockLLM{},
 		MaxTurns: 3,
 	})
 

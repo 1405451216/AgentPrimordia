@@ -64,7 +64,7 @@ func TestPluginLoader_Unload(t *testing.T) {
 
 	_ = loader.Load(plugin)
 
-		err := loader.Unload("test-plugin")
+	err := loader.Unload("test-plugin")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

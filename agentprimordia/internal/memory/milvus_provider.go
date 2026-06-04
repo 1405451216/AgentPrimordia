@@ -24,7 +24,7 @@ type MilvusConfig struct {
 	Host     string        `json:"host"`     // 主机地址（默认 localhost）
 	Port     int           `json:"port"`     // 端口（默认 19530）
 	Username string        `json:"username"` // 用户名
-	Password string        `json:"-"` // 密码（不序列化）
+	Password string        `json:"-"`        // 密码（不序列化）
 	Database string        `json:"database"` // 数据库名称（默认 default）
 	Timeout  time.Duration `json:"timeout"`  // 超时时间（默认 30s）
 }

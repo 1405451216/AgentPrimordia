@@ -75,8 +75,8 @@ func (p *AnthropicVisionProvider) CompleteMultimodal(ctx context.Context, req *C
 	}
 
 	return &CompletionResponse{
-		ID:    resp.ID,
-		Model: model,
+		ID:      resp.ID,
+		Model:   model,
 		Content: content,
 		Role:    "assistant",
 		Usage: Usage{

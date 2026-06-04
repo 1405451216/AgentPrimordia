@@ -14,7 +14,7 @@ var (
 )
 
 type fileLockEntry struct {
-	mu     *sync.Mutex
+	mu       *sync.Mutex
 	refCount int
 }
 

@@ -194,7 +194,7 @@ func main() {
 	})
 
 	ragAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:  "RAGKnowledgeAssistant",
+		Name: "RAGKnowledgeAssistant",
 		SystemPrompt: `你是一个专业的知识助手。在回答问题前，请先检索知识库获取相关信息。
 如果知识库中没有相关信息，请诚实说明，不要编造内容。
 回答时要引用知识来源，保持准确性和专业性。`,

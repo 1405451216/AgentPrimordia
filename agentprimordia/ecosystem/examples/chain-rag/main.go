@@ -51,12 +51,14 @@ func (m *mockEventPublisher) PublishAsync(eventType string, source string, paylo
 // mockMetricsRecorder 是示例用的模拟指标记录器
 type mockMetricsRecorder struct{}
 
-func (m *mockMetricsRecorder) RecordLLMCall(d time.Duration, err error)    { fmt.Printf("[Metrics] LLM 调用: %v\n", d) }
-func (m *mockMetricsRecorder) RecordToolCall(d time.Duration, err error)   {}
-func (m *mockMetricsRecorder) RecordTurn(d time.Duration)                  {}
-func (m *mockMetricsRecorder) RecordTokenUsage(model string, pt, ct int)   {}
-func (m *mockMetricsRecorder) IncActiveAgents()                            {}
-func (m *mockMetricsRecorder) DecActiveAgents()                            {}
+func (m *mockMetricsRecorder) RecordLLMCall(d time.Duration, err error) {
+	fmt.Printf("[Metrics] LLM 调用: %v\n", d)
+}
+func (m *mockMetricsRecorder) RecordToolCall(d time.Duration, err error) {}
+func (m *mockMetricsRecorder) RecordTurn(d time.Duration)                {}
+func (m *mockMetricsRecorder) RecordTokenUsage(model string, pt, ct int) {}
+func (m *mockMetricsRecorder) IncActiveAgents()                          {}
+func (m *mockMetricsRecorder) DecActiveAgents()                          {}
 
 func main() {
 	fmt.Println("=== 链式 API：RAG + 事件 + 指标 ===")

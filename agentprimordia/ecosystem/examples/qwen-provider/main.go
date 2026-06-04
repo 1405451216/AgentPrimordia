@@ -37,7 +37,7 @@ func runQwenProvider(apiKey string) {
 	provider, err := llm.NewQwenProvider(llm.Config{
 		APIKey:  apiKey,
 		BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-		Model:  "qwen-plus",
+		Model:   "qwen-plus",
 	})
 	if err != nil {
 		log.Fatalf("❌ 创建 Qwen Provider 失败: %v", err)

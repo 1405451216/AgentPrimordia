@@ -43,9 +43,9 @@ type noopSpanBridge struct {
 }
 
 type spanEvent struct {
-	name   string
-	attrs  map[string]any
-	time   time.Time
+	name  string
+	attrs map[string]any
+	time  time.Time
 }
 
 func (s *noopSpanBridge) SetAttribute(key string, value any) {

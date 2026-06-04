@@ -1,11 +1,11 @@
 package agent
 
 import (
-	"context"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
+	"context"
 )
 
 // CapabilityAgent 是可组合能力的 Agent 包装器。

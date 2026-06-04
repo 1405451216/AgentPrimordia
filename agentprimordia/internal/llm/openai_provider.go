@@ -25,20 +25,20 @@ const (
 
 var (
 	openaiContextSizes = map[string]int{
-		"gpt-4o":         128000,
-		"gpt-4o-mini":    128000,
-		"gpt-4-turbo":    128000,
-		"gpt-4":          8192,
-		"gpt-4-32k":      32768,
-		"gpt-3.5-turbo":  16385,
-		"o1":             200000,
-		"o1-mini":        128000,
-		"o3-mini":        200000,
+		"gpt-4o":        128000,
+		"gpt-4o-mini":   128000,
+		"gpt-4-turbo":   128000,
+		"gpt-4":         8192,
+		"gpt-4-32k":     32768,
+		"gpt-3.5-turbo": 16385,
+		"o1":            200000,
+		"o1-mini":       128000,
+		"o3-mini":       200000,
 	}
 )
 
 var (
-	ErrNotSupported = errors.New("not supported")
+	ErrNotSupported        = errors.New("not supported")
 	ErrAPIKeyRequired      = errors.New("API key is required")
 	ErrEmptyResponse       = errors.New("empty choices in response")
 	ErrResponseParseFailed = errors.New("failed to parse LLM response")

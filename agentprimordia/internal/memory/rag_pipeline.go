@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	defaultChunkSize          = 1000
-	defaultChunkOverlap       = 200
-	defaultMarkdownChunkSize  = 1500
+	defaultChunkSize           = 1000
+	defaultChunkOverlap        = 200
+	defaultMarkdownChunkSize   = 1500
 	defaultTokenCountMaxTokens = 512
-	charTokenRatio            = 3.5
-	cjkTokenRatio             = 1.3
+	charTokenRatio             = 3.5
+	cjkTokenRatio              = 1.3
 )
 
 // ===== 切分策略注册表 =====

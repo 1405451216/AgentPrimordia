@@ -22,9 +22,9 @@ type MockLLM struct {
 
 func NewMockLLM(t *testing.T) *MockLLM {
 	return &MockLLM{
-		t:        t,
+		t:         t,
 		responses: make([]*CompletionResponse, 0),
-		delay:    0,
+		delay:     0,
 	}
 }
 
@@ -44,9 +44,9 @@ func (m *MockLLM) WithToolResponse(calls []FunctionCall) *MockLLM {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.toolResponses = append(m.toolResponses, &ToolCallResponse{
-		Content: "",
+		Content:   "",
 		ToolCalls: calls,
-		Usage:   Usage{PromptTokens: 20, CompletionTokens: 30, TotalTokens: 50},
+		Usage:     Usage{PromptTokens: 20, CompletionTokens: 30, TotalTokens: 50},
 	})
 	return m
 }

@@ -134,13 +134,13 @@ func TestSentimentDetailSchema(t *testing.T) {
 
 func TestTemplateSchemasAreValid(t *testing.T) {
 	templates := map[string]*SchemaDef{
-		"sentiment":                SentimentSchema(),
-		"sentiment_detail":         SentimentDetailSchema(),
-		"ner":                      NERSchema(),
-		"classification":           ClassificationSchema(),
+		"sentiment":                  SentimentSchema(),
+		"sentiment_detail":           SentimentDetailSchema(),
+		"ner":                        NERSchema(),
+		"classification":             ClassificationSchema(),
 		"multi_label_classification": MultiLabelClassificationSchema(),
-		"summary":                  SummarySchema(),
-		"extractive_summary":       ExtractiveSummarySchema(),
+		"summary":                    SummarySchema(),
+		"extractive_summary":         ExtractiveSummarySchema(),
 	}
 
 	for name, schema := range templates {

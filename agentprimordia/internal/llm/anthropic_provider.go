@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	anthropicDefaultBaseURL   = "https://api.anthropic.com"
-	anthropicAPIVersion       = "2023-06-01"
+	anthropicDefaultBaseURL    = "https://api.anthropic.com"
+	anthropicAPIVersion        = "2023-06-01"
 	defaultAnthropicMaxContext = 200000
 	defaultAnthropicMaxTokens  = 4096
 )
@@ -84,8 +84,8 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *CompletionRequest
 	}
 
 	return &CompletionResponse{
-		ID:    resp.ID,
-		Model: model,
+		ID:      resp.ID,
+		Model:   model,
 		Content: content,
 		Role:    "assistant",
 		Usage: Usage{

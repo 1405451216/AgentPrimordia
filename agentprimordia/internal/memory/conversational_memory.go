@@ -17,23 +17,23 @@ const (
 
 // ConversationalMemory 是对话记忆系统，支持窗口管理和摘要压缩
 type ConversationalMemory struct {
-	mu              sync.RWMutex
-	messages        []*Message
-	summary         string
-	maxMessages     int
-	summaryTrigger  int // 触发摘要的消息数量
-	compressor      SummaryCompressor
-	metadata        map[string]string
-	lastUpdated     time.Time
-	totalMessages   int // 总消息数（包括被压缩的）
+	mu             sync.RWMutex
+	messages       []*Message
+	summary        string
+	maxMessages    int
+	summaryTrigger int // 触发摘要的消息数量
+	compressor     SummaryCompressor
+	metadata       map[string]string
+	lastUpdated    time.Time
+	totalMessages  int // 总消息数（包括被压缩的）
 }
 
 // Message 表示一条对话消息
 type Message struct {
-	Role       string            `json:"role"`       // user, assistant, system, tool
-	Content    string            `json:"content"`    // 消息内容
-	Timestamp  time.Time         `json:"timestamp"`  // 时间戳
-	Metadata   map[string]string `json:"metadata,omitempty"` // 元数据
+	Role       string            `json:"role"`                  // user, assistant, system, tool
+	Content    string            `json:"content"`               // 消息内容
+	Timestamp  time.Time         `json:"timestamp"`             // 时间戳
+	Metadata   map[string]string `json:"metadata,omitempty"`    // 元数据
 	TokenCount int               `json:"token_count,omitempty"` // token 数量估算
 }
 
@@ -44,11 +44,11 @@ type SummaryCompressor interface {
 
 // ConversationalMemoryConfig 是配置
 type ConversationalMemoryConfig struct {
-	MaxMessages    int              `json:"max_messages"`    // 窗口最大消息数（默认 50）
-	SummaryTrigger int             `json:"summary_trigger"` // 触发摘要的消息数（默认 40）
-	Compressor     SummaryCompressor `json:"-"`              // 自定义压缩器
-	InitialSummary string           `json:"initial_summary"` // 初始摘要
-	Metadata       map[string]string `json:"metadata"`      // 元数据
+	MaxMessages    int               `json:"max_messages"`    // 窗口最大消息数（默认 50）
+	SummaryTrigger int               `json:"summary_trigger"` // 触发摘要的消息数（默认 40）
+	Compressor     SummaryCompressor `json:"-"`               // 自定义压缩器
+	InitialSummary string            `json:"initial_summary"` // 初始摘要
+	Metadata       map[string]string `json:"metadata"`        // 元数据
 }
 
 // NewConversationalMemory 创建新的对话记忆
@@ -80,10 +80,10 @@ func (m *ConversationalMemory) AddMessage(ctx context.Context, role, content str
 	defer m.mu.Unlock()
 
 	msg := &Message{
-		Role:      role,
-		Content:   content,
-		Timestamp: time.Now(),
-		Metadata:  metadata,
+		Role:       role,
+		Content:    content,
+		Timestamp:  time.Now(),
+		Metadata:   metadata,
 		TokenCount: estimateTokens(content),
 	}
 
@@ -231,11 +231,11 @@ func (m *ConversationalMemory) Export() ([]byte, error) {
 	defer m.mu.RUnlock()
 
 	data := map[string]any{
-		"messages":      m.messages,
-		"summary":       m.summary,
+		"messages":       m.messages,
+		"summary":        m.summary,
 		"total_messages": m.totalMessages,
-		"stats":         m.getStatsLocked(),
-		"exported_at":   time.Now().Format(time.RFC3339),
+		"stats":          m.getStatsLocked(),
+		"exported_at":    time.Now().Format(time.RFC3339),
 	}
 
 	return json.MarshalIndent(data, "", "  ")

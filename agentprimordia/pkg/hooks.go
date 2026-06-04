@@ -65,9 +65,9 @@ const (
 type HookPhase = agent.HookPhase
 
 const (
-	PhaseValidation   = agent.PhaseValidation
-	PhasePreProcessing = agent.PhasePreProcessing
-	PhaseExecution    = agent.PhaseExecution
+	PhaseValidation     = agent.PhaseValidation
+	PhasePreProcessing  = agent.PhasePreProcessing
+	PhaseExecution      = agent.PhaseExecution
 	PhasePostProcessing = agent.PhasePostProcessing
 )
 

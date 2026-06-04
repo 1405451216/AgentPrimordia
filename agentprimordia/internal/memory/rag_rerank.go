@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	defaultHalfLifeHours     = 720
-	minRerankScore           = 0.01
+	defaultHalfLifeHours      = 720
+	minRerankScore            = 0.01
 	defaultDiversityThreshold = 0.85
-	defaultMaxDuplicates     = 2
+	defaultMaxDuplicates      = 2
 )
 
 // ===== 重排序接口 =====

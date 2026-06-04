@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	ftsBaseWeight       float32 = 0.7
-	ftsDecayFactor      float32 = 0.05
-	ftsMinScore         float32 = 0.3
+	ftsBaseWeight        float32 = 0.7
+	ftsDecayFactor       float32 = 0.05
+	ftsMinScore          float32 = 0.3
 	hybridExistingWeight float32 = 0.4
-	hybridNewWeight     float32 = 0.6
-	ragContextHeader    = "=== 相关记忆 ===\n"
-	ragContextFooter    = "=== 记忆结束 ===\n"
+	hybridNewWeight      float32 = 0.6
+	ragContextHeader             = "=== 相关记忆 ===\n"
+	ragContextFooter             = "=== 记忆结束 ===\n"
 )
 
 // EmbeddingProvider 是向量化接口，由 LLM Provider 实现
@@ -25,10 +25,10 @@ type EmbeddingProvider interface {
 
 // RAGStore 封装了 Memory + VectorStore + EmbeddingProvider，提供 RAG 检索能力
 type RAGStore struct {
-	memory    Memory
-	vectors   *VectorStore
-	embedder  EmbeddingProvider
-	logger    *slog.Logger
+	memory   Memory
+	vectors  *VectorStore
+	embedder EmbeddingProvider
+	logger   *slog.Logger
 }
 
 // NewRAGStore 创建 RAG 存储实例
@@ -194,9 +194,9 @@ func (r *RAGStore) GetVectors() *VectorStore {
 
 // RAGResult 是 RAG 查询的结果
 type RAGResult struct {
-	Episode *Episode  `json:"episode"`
-	Score   float32   `json:"score"`
-	Sources []string  `json:"sources,omitempty"` // "fts" 和/或 "vector"
+	Episode *Episode `json:"episode"`
+	Score   float32  `json:"score"`
+	Sources []string `json:"sources,omitempty"` // "fts" 和/或 "vector"
 }
 
 // ContextForPrompt 将 RAG 结果格式化为可注入 Prompt 的上下文文本

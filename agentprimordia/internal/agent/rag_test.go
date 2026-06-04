@@ -48,9 +48,9 @@ func TestReActAgent_RAG_AutoMode(t *testing.T) {
 	registry := tools.NewRegistry()
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "rag-agent",
-		Model:   mockLLM,
-		Toolkit: registry,
+		Name:     "rag-agent",
+		Model:    mockLLM,
+		Toolkit:  registry,
 		MaxTurns: 10,
 		RAG: &RAGConfig{
 			Provider: ragProvider,
@@ -121,9 +121,9 @@ func TestReActAgent_RAG_FirstMode(t *testing.T) {
 	_ = registry.Register(&mockEchoTool{name: "echo_tool"})
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "rag-first-agent",
-		Model:   mockLLM,
-		Toolkit: registry,
+		Name:     "rag-first-agent",
+		Model:    mockLLM,
+		Toolkit:  registry,
 		MaxTurns: 10,
 		RAG: &RAGConfig{
 			Provider: ragProvider,
@@ -156,9 +156,9 @@ func TestReActAgent_RAG_OnDemandMode(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t).WithResponse("No auto RAG")
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "rag-ondemand-agent",
-		Model:   mockLLM,
-		Toolkit: tools.NewRegistry(),
+		Name:     "rag-ondemand-agent",
+		Model:    mockLLM,
+		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
 		RAG: &RAGConfig{
 			Provider: ragProvider,
@@ -184,11 +184,11 @@ func TestReActAgent_RAG_NoProvider(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t).WithResponse("Normal response")
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "no-rag-agent",
-		Model:   mockLLM,
-		Toolkit: tools.NewRegistry(),
+		Name:     "no-rag-agent",
+		Model:    mockLLM,
+		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		RAG:     nil,
+		RAG:      nil,
 	})
 
 	resp, err := agent.Run(context.Background(), UserMessage("Hello"))
@@ -209,9 +209,9 @@ func TestReActAgent_RAG_ErrorHandling(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t).WithResponse("Fallback without RAG")
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "rag-error-agent",
-		Model:   mockLLM,
-		Toolkit: tools.NewRegistry(),
+		Name:     "rag-error-agent",
+		Model:    mockLLM,
+		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
 		RAG: &RAGConfig{
 			Provider: ragProvider,
@@ -240,9 +240,9 @@ func TestReActAgent_RAG_MinScore(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t).WithResponse("Filtered response")
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "rag-minscore-agent",
-		Model:   mockLLM,
-		Toolkit: tools.NewRegistry(),
+		Name:     "rag-minscore-agent",
+		Model:    mockLLM,
+		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
 		RAG: &RAGConfig{
 			Provider: ragProvider,
@@ -294,9 +294,9 @@ func TestReActAgent_RAG_HooksFired(t *testing.T) {
 	})
 
 	agent := NewReActAgent(ReActConfig{
-		Name:    "rag-hooks-agent",
-		Model:   mockLLM,
-		Toolkit: tools.NewRegistry(),
+		Name:     "rag-hooks-agent",
+		Model:    mockLLM,
+		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
 		RAG: &RAGConfig{
 			Provider: ragProvider,

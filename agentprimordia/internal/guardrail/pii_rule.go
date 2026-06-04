@@ -22,25 +22,25 @@ type piiPattern struct {
 
 // PIIRuleConfig PII 规则配置
 type PIIRuleConfig struct {
-	Action           Action
-	Severity         Severity
-	DetectPhone      bool
-	DetectIDCard     bool
-	DetectEmail      bool
-	DetectBankCard   bool
-	DetectIPv4       bool
+	Action         Action
+	Severity       Severity
+	DetectPhone    bool
+	DetectIDCard   bool
+	DetectEmail    bool
+	DetectBankCard bool
+	DetectIPv4     bool
 }
 
 // DefaultPIIRuleConfig 默认 PII 配置：检测所有类型，脱敏处理
 func DefaultPIIRuleConfig() PIIRuleConfig {
 	return PIIRuleConfig{
-		Action:       ActionSanitize,
-		Severity:     SeverityHigh,
-		DetectPhone:  true,
-		DetectIDCard: true,
-		DetectEmail:  true,
+		Action:         ActionSanitize,
+		Severity:       SeverityHigh,
+		DetectPhone:    true,
+		DetectIDCard:   true,
+		DetectEmail:    true,
 		DetectBankCard: true,
-		DetectIPv4:   true,
+		DetectIPv4:     true,
 	}
 }
 
@@ -113,11 +113,11 @@ func (r *PIIRule) Check(input string, _ CheckPoint) (*Result, error) {
 	}
 
 	result := &Result{
-		RuleName:  r.Name(),
-		Action:    r.action,
-		Severity:  r.severity,
-		Message:   "PII detected: " + strings.Join(findings, ", "),
-		Metadata:  map[string]any{"types": findings},
+		RuleName: r.Name(),
+		Action:   r.action,
+		Severity: r.severity,
+		Message:  "PII detected: " + strings.Join(findings, ", "),
+		Metadata: map[string]any{"types": findings},
 	}
 	if r.action == ActionSanitize {
 		result.Sanitized = sanitized

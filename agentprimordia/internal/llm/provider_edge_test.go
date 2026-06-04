@@ -625,7 +625,7 @@ func TestGeminiProvider_Complete_WithSystem(t *testing.T) {
 				{
 					"content": map[string]any{
 						"parts": []map[string]any{{"text": "ok"}},
-						"role":   "model",
+						"role":  "model",
 					},
 				},
 			},
@@ -899,9 +899,9 @@ func TestOllamaProvider_Complete_Success(t *testing.T) {
 		}
 
 		resp := map[string]any{
-			"model":     "llama3",
-			"message":   map[string]any{"role": "assistant", "content": "Hello from Ollama!"},
-			"done":      true,
+			"model":             "llama3",
+			"message":           map[string]any{"role": "assistant", "content": "Hello from Ollama!"},
+			"done":              true,
 			"prompt_eval_count": 10,
 			"eval_count":        5,
 		}
@@ -946,9 +946,9 @@ func TestOllamaProvider_Stream_Basic(t *testing.T) {
 			t.Error("expected stream=true for Stream")
 		}
 
-		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"Hello"},"done":false}` + "\n")
-		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":" Ollama"},"done":false}` + "\n")
-		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"!"},"done":true}` + "\n")
+		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"Hello"},"done":false}`+"\n")
+		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":" Ollama"},"done":false}`+"\n")
+		_, _ = fmt.Fprintf(w, `{"model":"llama3","message":{"role":"assistant","content":"!"},"done":true}`+"\n")
 	})
 	defer server.Close()
 
@@ -996,7 +996,7 @@ func TestOllamaProvider_Stream_Error(t *testing.T) {
 func TestOllamaProvider_CallTools_Success(t *testing.T) {
 	server, provider := newOllamaTestServer(func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
-			"model":   "llama3",
+			"model": "llama3",
 			"message": map[string]any{
 				"role":    "assistant",
 				"content": "",
@@ -1010,7 +1010,7 @@ func TestOllamaProvider_CallTools_Success(t *testing.T) {
 					},
 				},
 			},
-			"done":             true,
+			"done":              true,
 			"prompt_eval_count": 20,
 			"eval_count":        10,
 		}

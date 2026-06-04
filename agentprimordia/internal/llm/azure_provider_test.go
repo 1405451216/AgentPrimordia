@@ -410,8 +410,8 @@ func TestAzureOpenAIProvider_Embeddings_CustomDeployment(t *testing.T) {
 
 func TestAzureOpenAIProvider_Info(t *testing.T) {
 	tests := []struct {
-		deployment  string
-		maxContext  int
+		deployment string
+		maxContext int
 	}{
 		{"gpt-4o", 128000},
 		{"gpt-4-32k", 32768},

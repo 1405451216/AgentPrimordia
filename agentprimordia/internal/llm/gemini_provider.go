@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	geminiDefaultBaseURL    = "https://generativelanguage.googleapis.com"
-	defaultGeminiMaxContext = 1048576
-	defaultGeminiEmbedModel = "text-embedding-004"
+	geminiDefaultBaseURL        = "https://generativelanguage.googleapis.com"
+	defaultGeminiMaxContext     = 1048576
+	defaultGeminiEmbedModel     = "text-embedding-004"
 	geminiEmptyContentsFallback = "Hello"
 )
 
@@ -89,8 +89,8 @@ func (p *GeminiProvider) Complete(ctx context.Context, req *CompletionRequest) (
 	}
 
 	return &CompletionResponse{
-		ID:    fmt.Sprintf("gemini-%d", resp.UsageMetadata.TotalTokenCount),
-		Model: model,
+		ID:      fmt.Sprintf("gemini-%d", resp.UsageMetadata.TotalTokenCount),
+		Model:   model,
 		Content: content,
 		Role:    "assistant",
 		Usage: Usage{
@@ -477,4 +477,3 @@ func (p *GeminiProvider) injectResponseFormat(config map[string]any, rf *Respons
 		}
 	}
 }
-

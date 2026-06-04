@@ -107,30 +107,30 @@ type ErrorCode string
 
 const (
 	// Agent 错误 (AGENT_xxx)
-	ErrCodeAgentStopped      ErrorCode = "AGENT_001"
-	ErrCodeAgentRunning      ErrorCode = "AGENT_002"
-	ErrCodeMaxTurnsExceeded  ErrorCode = "AGENT_003"
-	ErrCodeNoToolkit         ErrorCode = "AGENT_004"
+	ErrCodeAgentStopped     ErrorCode = "AGENT_001"
+	ErrCodeAgentRunning     ErrorCode = "AGENT_002"
+	ErrCodeMaxTurnsExceeded ErrorCode = "AGENT_003"
+	ErrCodeNoToolkit        ErrorCode = "AGENT_004"
 
 	// Tool 错误 (TOOL_xxx)
-	ErrCodeToolNotFound    ErrorCode = "TOOL_001"
-	ErrCodeToolExecution   ErrorCode = "TOOL_002"
-	ErrCodeInvalidConfig   ErrorCode = "TOOL_003"
-	ErrCodeConfirmDenied   ErrorCode = "TOOL_004"
+	ErrCodeToolNotFound  ErrorCode = "TOOL_001"
+	ErrCodeToolExecution ErrorCode = "TOOL_002"
+	ErrCodeInvalidConfig ErrorCode = "TOOL_003"
+	ErrCodeConfirmDenied ErrorCode = "TOOL_004"
 
 	// LLM 错误 (LLM_xxx)
-	ErrCodeNotSupported       ErrorCode = "LLM_002"
+	ErrCodeNotSupported        ErrorCode = "LLM_002"
 	ErrCodeCircuitOpen         ErrorCode = "LLM_003"
 	ErrCodeAPIKeyRequired      ErrorCode = "LLM_004"
 	ErrCodeEmptyResponse       ErrorCode = "LLM_005"
 	ErrCodeResponseParseFailed ErrorCode = "LLM_006"
-	ErrCodeRetriesExhausted   ErrorCode = "LLM_007"
-	ErrCodeFallbackFailed     ErrorCode = "LLM_008"
+	ErrCodeRetriesExhausted    ErrorCode = "LLM_007"
+	ErrCodeFallbackFailed      ErrorCode = "LLM_008"
 
 	// Pool 错误 (POOL_xxx)
-	ErrCodePoolFull       ErrorCode = "POOL_001"
-	ErrCodeTaskNotFound   ErrorCode = "POOL_002"
-	ErrCodeTimeout        ErrorCode = "POOL_003"
+	ErrCodePoolFull     ErrorCode = "POOL_001"
+	ErrCodeTaskNotFound ErrorCode = "POOL_002"
+	ErrCodeTimeout      ErrorCode = "POOL_003"
 
 	// Context 错误 (CTX_xxx)
 	ErrCodeContextCanceled ErrorCode = "CTX_001"
@@ -146,10 +146,10 @@ const (
 	ErrCodeVectorNotFound    ErrorCode = "MEM_008"
 
 	// Security 错误 (SEC_xxx)
-	ErrCodeCommandBlocked   ErrorCode = "SEC_001"
+	ErrCodeCommandBlocked    ErrorCode = "SEC_001"
 	ErrCodeCommandNotAllowed ErrorCode = "SEC_002"
-	ErrCodeAccessDenied     ErrorCode = "SEC_003"
-	ErrCodePathTraversal    ErrorCode = "SEC_004"
+	ErrCodeAccessDenied      ErrorCode = "SEC_003"
+	ErrCodePathTraversal     ErrorCode = "SEC_004"
 
 	// Event 错误 (EVT_xxx)
 	ErrCodeBusClosed ErrorCode = "EVT_001"

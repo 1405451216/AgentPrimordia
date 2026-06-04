@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultMetricsAddr  = ":9090"
+	defaultMetricsAddr   = ":9090"
 	defaultExportBufSize = 1024
 )
 
@@ -212,7 +212,7 @@ func (j *JSONExporter) ExportMetrics(snapshot MetricsSnapshot) {
 		ToolCalls    int64  `json:"tool_calls"`
 		ToolErrors   int64  `json:"tool_errors"`
 		Turns        int64  `json:"turns"`
-		ActiveAgents int64   `json:"active_agents"`
+		ActiveAgents int64  `json:"active_agents"`
 	}
 	ml := metricLine{
 		Timestamp:    time.Now().UTC().Format(time.RFC3339),
@@ -267,11 +267,11 @@ func (j *JSONExporter) Close() error {
 
 // MetricsExporter 是一个后台 goroutine，定期导出指标
 type MetricsExporter struct {
-	metrics   *AgentMetrics
-	exporter  TelemetryExporter
-	interval  time.Duration
-	cancel    context.CancelFunc
-	logger    *slog.Logger
+	metrics  *AgentMetrics
+	exporter TelemetryExporter
+	interval time.Duration
+	cancel   context.CancelFunc
+	logger   *slog.Logger
 }
 
 // NewMetricsExporter 创建周期性指标导出器

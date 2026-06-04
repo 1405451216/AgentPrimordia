@@ -91,6 +91,26 @@ jobs:
           name: coverage-report
           path: coverage.out
 
+      # Phase 8.4 流程强制
+      - name: Check Deprecated annotations (Phase 8.4)
+        run: |
+          # 验证每个 // Deprecated: 都有 // Removed in vX.Y.
+          deprecated_count=$(grep -r "Deprecated:" --include="*.go" . | wc -l)
+          removed_in_count=$(grep -r "Removed in v" --include="*.go" . | wc -l)
+          echo "Deprecated: ${deprecated_count}, Removed in: ${removed_in_count}"
+          if [ "$deprecated_count" -gt 0 ] && [ "$removed_in_count" -lt "$deprecated_count" ]; then
+            echo "::error::每个 // Deprecated: 必须配 // Removed in vX.Y. 标注"
+            echo "::error::当前: $deprecated_count Deprecated, 仅 $removed_in_count Removed in"
+            exit 1
+          fi
+          echo "OK: Deprecated 标注完整"
+
+      - name: Check CHANGELOG [Unreleased] (Phase 8.4)
+        run: |
+          if ! grep -q "^## \[Unreleased\]" ../docs/CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md 缺 [Unreleased] 节"
+          fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

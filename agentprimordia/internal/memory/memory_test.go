@@ -759,7 +759,7 @@ func TestSearchAdvanced(t *testing.T) {
 	_ = store.Add(ctx, MustEpisode("s1", "assistant", "Python data science"))
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
-		Query:    "Go",
+		Query:      "Go",
 		MaxResults: 10,
 	})
 	if err != nil {

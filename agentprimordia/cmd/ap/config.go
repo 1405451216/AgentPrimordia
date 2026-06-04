@@ -9,13 +9,13 @@ import (
 
 // apConfig 是 .ap.yaml 的简化 JSON 表示（实际项目可用 YAML 库）
 type apConfig struct {
-	Name     string            `json:"name"`
-	Template string            `json:"template"`
-	LLM      *llmConfig        `json:"llm,omitempty"`
-	Memory   *memoryConfig     `json:"memory,omitempty"`
-	Agent    *agentConfig      `json:"agent,omitempty"`
-	MCP      *mcpConfig        `json:"mcp,omitempty"`
-	Plugins  []string          `json:"plugins,omitempty"`
+	Name     string        `json:"name"`
+	Template string        `json:"template"`
+	LLM      *llmConfig    `json:"llm,omitempty"`
+	Memory   *memoryConfig `json:"memory,omitempty"`
+	Agent    *agentConfig  `json:"agent,omitempty"`
+	MCP      *mcpConfig    `json:"mcp,omitempty"`
+	Plugins  []string      `json:"plugins,omitempty"`
 }
 
 type llmConfig struct {

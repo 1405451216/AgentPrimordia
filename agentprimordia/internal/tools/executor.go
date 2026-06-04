@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultToolTimeout     = 30 * time.Second
+	defaultToolTimeout      = 30 * time.Second
 	defaultBatchConcurrency = 10
 )
 

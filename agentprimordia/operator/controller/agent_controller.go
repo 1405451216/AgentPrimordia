@@ -118,7 +118,7 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 	// 构建环境变量
 	envVars := []corev1.EnvVar{
 		{
-			Name: "AP_CONFIG_PATH",
+			Name:  "AP_CONFIG_PATH",
 			Value: "/etc/ap/ap.yaml",
 		},
 	}
@@ -152,8 +152,8 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 				*metav1.NewControllerRef(agentDeploy, agentv1.SchemeGroupVersion.WithKind("AgentDeployment")),
 			},
 			Labels: map[string]string{
-				"app":           "agentprimordia",
-				"agent-deploy":  agentDeploy.Name,
+				"app":          "agentprimordia",
+				"agent-deploy": agentDeploy.Name,
 			},
 		},
 		Spec: appsv1.DeploymentSpec{
@@ -174,10 +174,10 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "agent",
-							Image: "ghcr.io/agentprimordia/agentprimordia:latest",
+							Name:    "agent",
+							Image:   "ghcr.io/agentprimordia/agentprimordia:latest",
 							Command: []string{"./ap", "run"},
-							Env:   envVars,
+							Env:     envVars,
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "config",
@@ -189,8 +189,8 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 						},
 						// Metrics sidecar
 						{
-							Name:  "metrics",
-							Image: "ghcr.io/agentprimordia/agentprimordia:latest",
+							Name:    "metrics",
+							Image:   "ghcr.io/agentprimordia/agentprimordia:latest",
 							Command: []string{"./ap", "debug", "--port", "9090"},
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 9090, Name: "metrics"},

@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"agentprimordia/internal/agent"
 	"agentprimordia/cmd/example/demo"
+	"agentprimordia/internal/agent"
 )
 
 func main() {

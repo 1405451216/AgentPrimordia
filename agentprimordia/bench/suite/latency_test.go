@@ -38,9 +38,9 @@ func BenchmarkConcurrent(b *testing.B) {
 	tasks := make([]ap.TaskConfig, 10)
 	for i := range tasks {
 		tasks[i] = ap.TaskConfig{
-			ID:      fmt.Sprintf("bench-%d", i),
-			Title:   "基准测试",
-			Prompt:  "处理任务",
+			ID:     fmt.Sprintf("bench-%d", i),
+			Title:  "基准测试",
+			Prompt: "处理任务",
 		}
 	}
 

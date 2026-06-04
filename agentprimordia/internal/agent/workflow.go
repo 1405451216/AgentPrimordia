@@ -55,15 +55,15 @@ type WfRetryPolicy struct {
 
 // WorkflowConfig 工作流配置
 type WorkflowConfig struct {
-	Type          WorkflowType  `json:"type"`
-	Name          string        `json:"name"`
-	Description   string        `json:"description,omitempty"`
-	MaxIterations int           `json:"max_iterations"`
-	Timeout       time.Duration `json:"timeout"`
+	Type          WorkflowType   `json:"type"`
+	Name          string         `json:"name"`
+	Description   string         `json:"description,omitempty"`
+	MaxIterations int            `json:"max_iterations"`
+	Timeout       time.Duration  `json:"timeout"`
 	RetryPolicy   *WfRetryPolicy `json:"retry_policy,omitempty"`
-	ErrorHandling ErrorHandling `json:"error_handling"`
-	EnableLogging bool          `json:"enable_logging"`
-	SaveSnapshot  bool          `json:"save_snapshot"`
+	ErrorHandling ErrorHandling  `json:"error_handling"`
+	EnableLogging bool           `json:"enable_logging"`
+	SaveSnapshot  bool           `json:"save_snapshot"`
 }
 
 // ErrorHandling 错误处理策略
@@ -92,21 +92,21 @@ type WorkflowNode struct {
 type NodeType string
 
 const (
-	TaskNode       NodeType = "task"
-	ConditionNode  NodeType = "condition"
-	ParallelNode   NodeType = "parallel"
-	LoopStartNode  NodeType = "loop_start"
-	LoopEndNode    NodeType = "loop_end"
-	FallbackNode   NodeType = "fallback"
-	SubWfNode      NodeType = "sub_workflow"
+	TaskNode      NodeType = "task"
+	ConditionNode NodeType = "condition"
+	ParallelNode  NodeType = "parallel"
+	LoopStartNode NodeType = "loop_start"
+	LoopEndNode   NodeType = "loop_end"
+	FallbackNode  NodeType = "fallback"
+	SubWfNode     NodeType = "sub_workflow"
 )
 
 // NodeConfig 节点配置
 type NodeConfig struct {
-	PromptTemplate string                                                          `json:"prompt_template,omitempty"`
-	Parameters     map[string]any                                                  `json:"parameters,omitempty"`
-	Timeout        time.Duration                                                   `json:"timeout,omitempty"`
-	RetryCount     int                                                             `json:"retry_count,omitempty"`
+	PromptTemplate string                                                                  `json:"prompt_template,omitempty"`
+	Parameters     map[string]any                                                          `json:"parameters,omitempty"`
+	Timeout        time.Duration                                                           `json:"timeout,omitempty"`
+	RetryCount     int                                                                     `json:"retry_count,omitempty"`
 	CustomLogic    func(ctx context.Context, input map[string]any) (map[string]any, error) `json:"-"`
 }
 

@@ -33,12 +33,12 @@ const (
 
 // HandoffProtocol 交接协议
 type HandoffProtocol struct {
-	mu           sync.RWMutex
-	handoffs     map[string]*HandoffRecord // key=handoffID
-	handoffCh    chan *HandoffEvent
-	config       HandoffConfig
-	history      []*HandoffRecord
-	stats        HandoffStats
+	mu        sync.RWMutex
+	handoffs  map[string]*HandoffRecord // key=handoffID
+	handoffCh chan *HandoffEvent
+	config    HandoffConfig
+	history   []*HandoffRecord
+	stats     HandoffStats
 }
 
 // HandoffConfig 配置
@@ -52,60 +52,60 @@ type HandoffConfig struct {
 
 // HandoffRecord 交接记录
 type HandoffRecord struct {
-	ID              string            `json:"id"`
-	Type            HandoffType       `json:"type"`
-	SourceAgent     string            `json:"source_agent"`
-	TargetAgent     string            `json:"target_agent"`
-	Status          HandoffStatus     `json:"status"`
-	Context         *HandoffContext   `json:"context"`
-	Metadata        map[string]string `json:"metadata,omitempty"`
-	CreatedAt       time.Time         `json:"created_at"`
-	CompletedAt     time.Time         `json:"completed_at,omitempty"`
-	Duration        time.Duration     `json:"duration"`
-	RetryCount      int               `json:"retry_count"`
-	Error           error             `json:"error,omitempty"`
-	Acknowledged    bool              `json:"acknowledged"`
-	AcknowledgedBy  string            `json:"acknowledged_by,omitempty"`
+	ID             string            `json:"id"`
+	Type           HandoffType       `json:"type"`
+	SourceAgent    string            `json:"source_agent"`
+	TargetAgent    string            `json:"target_agent"`
+	Status         HandoffStatus     `json:"status"`
+	Context        *HandoffContext   `json:"context"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+	CompletedAt    time.Time         `json:"completed_at,omitempty"`
+	Duration       time.Duration     `json:"duration"`
+	RetryCount     int               `json:"retry_count"`
+	Error          error             `json:"error,omitempty"`
+	Acknowledged   bool              `json:"acknowledged"`
+	AcknowledgedBy string            `json:"acknowledged_by,omitempty"`
 }
 
 // HandoffContext 交接上下文（核心数据结构）
 type HandoffContext struct {
-	Message         string                 `json:"message"`                   // 交接消息/说明
-	State           map[string]any          `json:"state"`                     // 状态数据
+	Message             string              `json:"message"`                        // 交接消息/说明
+	State               map[string]any      `json:"state"`                          // 状态数据
 	ConversationHistory []map[string]string `json:"conversation_history,omitempty"` // 对话历史摘要
-	Variables       map[string]any          `json:"variables,omitempty"`        // 共享变量
-	TasksRemaining []string                `json:"tasks_remaining,omitempty"`  // 待完成任务列表
-	Priority        int                    `json:"priority"`                   // 优先级（0-10）
-	Urgency         string                 `json:"urgency"`                    // 紧急程度: low, medium, high, critical
-	Attachments     []HandoffAttachment    `json:"attachments,omitempty"`      // 附件
-	CustomFields    map[string]any          `json:"custom_fields,omitempty"`    // 自定义字段
+	Variables           map[string]any      `json:"variables,omitempty"`            // 共享变量
+	TasksRemaining      []string            `json:"tasks_remaining,omitempty"`      // 待完成任务列表
+	Priority            int                 `json:"priority"`                       // 优先级（0-10）
+	Urgency             string              `json:"urgency"`                        // 紧急程度: low, medium, high, critical
+	Attachments         []HandoffAttachment `json:"attachments,omitempty"`          // 附件
+	CustomFields        map[string]any      `json:"custom_fields,omitempty"`        // 自定义字段
 }
 
 // HandoffAttachment 附件
 type HandoffAttachment struct {
-	Name        string            `json:"name"`
-	Type        string            `json:"type"` // text, json, file, reference
-	Content     any               `json:"content"`
-	Size        int64             `json:"size,omitempty"`
-	Metadata    map[string]string  `json:"metadata,omitempty"`
+	Name     string            `json:"name"`
+	Type     string            `json:"type"` // text, json, file, reference
+	Content  any               `json:"content"`
+	Size     int64             `json:"size,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // HandoffStatus 交接状态
 type HandoffStatus string
 
 const (
-	HandoffPending    HandoffStatus = "pending"    // 待处理
-	HandoffAccepted   HandoffStatus = "accepted"   // 已接受
-	HandoffRejected   HandoffStatus = "rejected"   // 已拒绝
-	HandoffCompleted  HandoffStatus = "completed"  // 已完成
-	HandoffFailed     HandoffStatus = "failed"     // 失败
-	HandoffTimeout    HandoffStatus = "timeout"    // 超时
-	HandoffCancelled  HandoffStatus = "cancelled"  // 已取消
+	HandoffPending   HandoffStatus = "pending"   // 待处理
+	HandoffAccepted  HandoffStatus = "accepted"  // 已接受
+	HandoffRejected  HandoffStatus = "rejected"  // 已拒绝
+	HandoffCompleted HandoffStatus = "completed" // 已完成
+	HandoffFailed    HandoffStatus = "failed"    // 失败
+	HandoffTimeout   HandoffStatus = "timeout"   // 超时
+	HandoffCancelled HandoffStatus = "cancelled" // 已取消
 )
 
 // HandoffEvent 交接事件
 type HandoffEvent struct {
-	Type      string    `json:"type"`      // initiated, accepted, rejected, completed, failed
+	Type      string    `json:"type"` // initiated, accepted, rejected, completed, failed
 	Timestamp time.Time `json:"timestamp"`
 	HandoffID string    `json:"handoff_id"`
 	Data      any       `json:"data,omitempty"`
@@ -113,13 +113,13 @@ type HandoffEvent struct {
 
 // HandoffStats 统计信息
 type HandoffStats struct {
-	TotalHandoffs    int `json:"total_handoffs"`
-	Successful       int `json:"successful"`
-	Failed           int `json:"failed"`
-	Rejected         int `json:"rejected"`
-	Pending          int `json:"pending"`
-	AvgDuration      time.Duration `json:"avg_duration"`
-	TotalDuration    time.Duration `json:"total_duration"`
+	TotalHandoffs int           `json:"total_handoffs"`
+	Successful    int           `json:"successful"`
+	Failed        int           `json:"failed"`
+	Rejected      int           `json:"rejected"`
+	Pending       int           `json:"pending"`
+	AvgDuration   time.Duration `json:"avg_duration"`
+	TotalDuration time.Duration `json:"total_duration"`
 }
 
 // NewHandoffProtocol 创建新的交接协议实例
@@ -371,7 +371,7 @@ func (p *HandoffProtocol) validateHandoff(record *HandoffRecord) error {
 
 	validTypes := map[HandoffType]bool{
 		HandoffDirect:       true,
-		HandoffConditional: true,
+		HandoffConditional:  true,
 		HandoffConsultation: true,
 	}
 	if !validTypes[record.Type] {
@@ -415,11 +415,11 @@ func CreateStandardContext(message string, state map[string]any, priority int) *
 	}
 
 	return &HandoffContext{
-		Message:  message,
-		State:    state,
+		Message:   message,
+		State:     state,
 		Variables: make(map[string]any),
-		Priority: priority,
-		Urgency:  defaultHandoffUrgency,
+		Priority:  priority,
+		Urgency:   defaultHandoffUrgency,
 	}
 }
 
@@ -470,11 +470,11 @@ type HandoffManager struct {
 
 // HandoffRule 交接规则
 type HandoffRule struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
+	Name        string                     `json:"name"`
+	Description string                     `json:"description"`
 	Condition   func(*HandoffContext) bool `json:"-"`
-	Action      string                 `json:"action"` // allow, deny, modify
-	Priority    int                    `json:"priority"`
+	Action      string                     `json:"action"` // allow, deny, modify
+	Priority    int                        `json:"priority"`
 }
 
 // NewHandoffManager 创建交接管理器

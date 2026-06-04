@@ -125,10 +125,10 @@ var errorCodeMapping = map[error]string{
 	ErrNoToolkit:        "AGENT_004",
 
 	// --- Tool 错误 ---
-	ErrToolNotFound:    "TOOL_001",
-	ErrToolExecution:   "TOOL_002",
-	ErrInvalidConfig:   "TOOL_003",
-	ErrConfirmDenied:   "TOOL_004",
+	ErrToolNotFound:  "TOOL_001",
+	ErrToolExecution: "TOOL_002",
+	ErrInvalidConfig: "TOOL_003",
+	ErrConfirmDenied: "TOOL_004",
 
 	// --- LLM 错误 ---
 	ErrLLMCallFailed:       "LLM_001",

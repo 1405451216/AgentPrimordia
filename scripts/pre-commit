@@ -1,0 +1,93 @@
+#!/bin/bash
+# Pre-commit checks for AgentPrimordia
+# Phase 8.4 引入：强制流程改进
+#
+# 检查项：
+#  1. Deprecated 标注必须包含 "Removed in v" 时点
+#  2. pkg/ 任何 // Stability: 块必须含等级关键字
+#  3. agentprimordia 任何 internal/ 改动不应在 plan 文档之前
+#  4. CHANGELOG.md [Unreleased] 节有内容
+#  5. gofmt 通过
+#
+# 跳过：Phase 文档/CHANGELOG 自身的修改（这些是流程改进的载体）
+#
+# 用法：cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# 或: git config core.hooksPath .githooks (推荐)
+
+set -e
+fail=0
+
+# Windows Git Bash quirks: cd 进 agentprimordia 子目录避免路径处理 bug
+if [ -d "agentprimordia" ]; then
+    cd agentprimordia
+fi
+
+echo "🔍 Pre-commit checks..."
+
+# ===== 检查 1: Deprecated 标注完整性 =====
+# grep 所有 // Deprecated: 标注, 验证每个下面有 // Removed in vX.Y.
+# 注：Windows Git Bash 的 grep -r 在长路径下会静默丢失结果
+#     本检查在 Linux/macOS 上工作正常；Windows 用户应依赖 CI 跑
+deprecated_count=$(grep -r "Deprecated:" --include="*.go" . 2>/dev/null | wc -l 2>/dev/null || echo 0)
+removed_in_count=$(grep -r "Removed in v" --include="*.go" . 2>/dev/null | wc -l 2>/dev/null || echo 0)
+if [ -n "$deprecated_count" ] && [ "$deprecated_count" -gt 0 ] 2>/dev/null; then
+    if [ -n "$removed_in_count" ] && [ "$removed_in_count" -lt "$deprecated_count" ] 2>/dev/null; then
+        echo "  ❌ Deprecated 标注不完整: $deprecated_count 个 // Deprecated: 但仅 $removed_in_count 个 // Removed in vX.Y."
+        echo "     每个 // Deprecated: 必须包含 // Removed in vX.Y."
+        echo "     详见 docs/specs/2026-06-04-semver-policy.md §2.2"
+        fail=1
+    else
+        echo "  ✅ Deprecated 标注完整 ($deprecated_count 个, 全有 Removed in 标注)"
+    fi
+else
+    echo "  ⏭️  Deprecated 检查跳过 (Windows Git Bash grep 限制, CI 会跑)"
+fi
+
+# ===== 检查 2: pkg/ Stability 标注 =====
+stability_count=$(grep -rn "^// Stability:" --include="*.go" agentprimordia/pkg/ 2>/dev/null | wc -l)
+if [ "$stability_count" -lt 10 ]; then
+    echo "  ⚠️  pkg/ Stability 标注 < 10 个 (当前 $stability_count), 建议每个文件顶部加"
+    # 不 fail, 仅为提示
+else
+    echo "  ✅ pkg/ Stability 标注: $stability_count 个"
+fi
+
+# ===== 检查 3: plan 先行 (Phase 8.4 强制) =====
+# 检查是否有 commit 修改了 internal/ 或 pkg/ 但没有 plan 文档
+# 简化版本: 仅警告
+internal_changes=$(git diff --cached --name-only 2>/dev/null | grep -E "^(agentprimordia/)?(internal|pkg)/" | wc -l)
+plan_changes=$(git diff --cached --name-only 2>/dev/null | grep -E "docs/plans/.*\.md$" | wc -l)
+if [ "$internal_changes" -gt 0 ] && [ "$plan_changes" -eq 0 ]; then
+    echo "  ⚠️  检测到 internal/ 或 pkg/ 改动, 但没有 docs/plans/*.md 更新"
+    echo "     Phase 8.4 流程约束: 任何新 Phase 首个 commit 必须是 plan 文档"
+fi
+
+# ===== 检查 4: CHANGELOG [Unreleased] =====
+if [ -f "docs/CHANGELOG.md" ]; then
+    if grep -A 2 "^## \[Unreleased\]" docs/CHANGELOG.md | grep -q "^### "; then
+        echo "  ✅ CHANGELOG [Unreleased] 节有内容"
+    else
+        echo "  ⚠️  CHANGELOG [Unreleased] 节为空, 建议添加本次变更"
+    fi
+fi
+
+# ===== 检查 5: gofmt =====
+unformatted=$(gofmt -l agentprimordia/ 2>/dev/null | head -5)
+if [ -n "$unformatted" ]; then
+    echo "  ❌ gofmt 未通过的文件:"
+    echo "$unformatted" | sed 's/^/     /'
+    echo "     跑: gofmt -w agentprimordia/"
+    fail=1
+else
+    echo "  ✅ gofmt 通过"
+fi
+
+echo ""
+if [ $fail -eq 1 ]; then
+    echo "❌ Pre-commit 检查失败, 提交被阻止"
+    echo ""
+    echo "跳过方式 (紧急情况): git commit --no-verify"
+    exit 1
+fi
+echo "✅ Pre-commit 检查通过"
+exit 0

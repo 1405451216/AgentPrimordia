@@ -179,9 +179,9 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 
 	limitedReader := io.LimitReader(resp.Body, w.maxBodySize+1)
 	bodyData, err := io.ReadAll(limitedReader)
-		if err != nil {
-			return tools.NewErrorResult(fmt.Sprintf("read response body error: %v", err)), fmt.Errorf("read body: %w", err)
-		}
+	if err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("read response body error: %v", err)), fmt.Errorf("read body: %w", err)
+	}
 
 	truncated := false
 	if int64(len(bodyData)) > w.maxBodySize {

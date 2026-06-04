@@ -79,12 +79,12 @@ type Episode struct {
 type SearchOptions struct {
 	Query          string
 	SessionID      string
-	Limit          int     // 分页限制：与 Offset 配合实现分页查询
+	Limit          int // 分页限制：与 Offset 配合实现分页查询
 	Offset         int
 	RoleFilter     string
 	Tags           []string
 	MinScore       float64
-	MaxResults     int     // 最大结果数：限制搜索返回的总结果数（不受分页影响）
+	MaxResults     int // 最大结果数：限制搜索返回的总结果数（不受分页影响）
 	UseSemantic    bool
 	SemanticWeight float64
 }

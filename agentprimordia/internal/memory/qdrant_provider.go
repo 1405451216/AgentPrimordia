@@ -16,11 +16,11 @@ import (
 type QdrantConfig struct {
 	Host       string        `json:"host"`        // 默认 "localhost"
 	Port       int           `json:"port"`        // 默认 6333
-	APIKey     string        `json:"-"` // API 密钥（不序列化）
-	Timeout    time.Duration `json:"timeout"`      // 默认 30s
-	Collection string        `json:"collection"`   // 默认集合名称
-	VectorSize int           `json:"vector_size"`  // 向量维度
-	Distance   string        `json:"distance"`     // 距离度量: cosine, euclidean, dot
+	APIKey     string        `json:"-"`           // API 密钥（不序列化）
+	Timeout    time.Duration `json:"timeout"`     // 默认 30s
+	Collection string        `json:"collection"`  // 默认集合名称
+	VectorSize int           `json:"vector_size"` // 向量维度
+	Distance   string        `json:"distance"`    // 距离度量: cosine, euclidean, dot
 }
 
 // QdrantClient 是 Qdrant 向量数据库客户端
@@ -81,10 +81,10 @@ func (c *QdrantClient) SearchPoints(ctx context.Context, query []float32, topK i
 	}
 
 	payload := map[string]any{
-		"vector":        query,
-		"limit":         topK,
-		"with_payload":  true,
-		"with_vector":   false,
+		"vector":       query,
+		"limit":        topK,
+		"with_payload": true,
+		"with_vector":  false,
 	}
 
 	if minScore > 0 {
@@ -107,9 +107,9 @@ func (c *QdrantClient) SearchPoints(ctx context.Context, query []float32, topK i
 			score = 0
 		}
 		r := &QdrantSearchResult{
-			ID:      fmt.Sprintf("%v", item["id"]),
-			Score:   float32(score),
-			TimeMs:  duration,
+			ID:     fmt.Sprintf("%v", item["id"]),
+			Score:  float32(score),
+			TimeMs: duration,
 		}
 		if payload, ok := item["payload"].(map[string]any); ok {
 			r.Payload = payload

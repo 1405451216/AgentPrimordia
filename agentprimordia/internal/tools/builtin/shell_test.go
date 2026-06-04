@@ -16,7 +16,7 @@ type mockScopePolicy struct {
 	allow bool
 }
 
-func (m *mockScopePolicy) Allow(_, _ string) bool { return m.allow }
+func (m *mockScopePolicy) Allow(_, _ string) bool               { return m.allow }
 func (m *mockScopePolicy) Validate(_ map[string][]string) error { return nil }
 
 func NewMockScopePolicy(allow bool) tools.ScopePolicy {
@@ -90,9 +90,9 @@ func TestExecuteSimpleCommand_Pwd(t *testing.T) {
 func TestExecuteWithTimeout(t *testing.T) {
 	sh := NewShell().WithWhitelist([]string{"echo", "ping"}).WithTimeout(1 * time.Second)
 	args, _ := json.Marshal(map[string]any{
-		"action":   "execute",
-		"command":  "ping -n 10 127.0.0.1",
-		"timeout":  float64(1),
+		"action":  "execute",
+		"command": "ping -n 10 127.0.0.1",
+		"timeout": float64(1),
 	})
 	result, err := sh.Execute(context.Background(), args)
 	if err != nil {

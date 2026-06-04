@@ -8,8 +8,8 @@ import (
 
 // CheckpointMessage 是检查点中的消息表示（独立于 agent.Message 避免循环依赖）
 type CheckpointMessage struct {
-	Role      string `json:"role"`
-	Content   string `json:"content"`
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
 // CheckpointMetrics 是检查点中的指标表示
@@ -22,13 +22,13 @@ type CheckpointMetrics struct {
 }
 
 type AgentState struct {
-	AgentID   string             `json:"agent_id"`
-	SessionID string             `json:"session_id"`
-	Status    string             `json:"status"`
+	AgentID   string              `json:"agent_id"`
+	SessionID string              `json:"session_id"`
+	Status    string              `json:"status"`
 	Messages  []CheckpointMessage `json:"messages"`
-	TurnCount int                `json:"turn_count"`
-	Metrics   CheckpointMetrics  `json:"metrics"`
-	SavedAt   time.Time          `json:"saved_at"`
+	TurnCount int                 `json:"turn_count"`
+	Metrics   CheckpointMetrics   `json:"metrics"`
+	SavedAt   time.Time           `json:"saved_at"`
 }
 
 func (s *AgentState) Marshal() ([]byte, error) {

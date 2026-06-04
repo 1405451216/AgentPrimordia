@@ -1,6 +1,7 @@
 // Stability: 混合 —
-//   Tracer 接口与 Noop 实现: Stable。
-//   OTLP / Telemetry Provider: Experimental（OTel 协议规范仍在 1.x 演进）。
+//
+//	Tracer 接口与 Noop 实现: Stable。
+//	OTLP / Telemetry Provider: Experimental（OTel 协议规范仍在 1.x 演进）。
 package ap
 
 import (

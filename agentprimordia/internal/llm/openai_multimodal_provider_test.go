@@ -244,7 +244,7 @@ func TestCompleteMultimodal_WithMockServer(t *testing.T) {
 	provider, _ := NewOpenAIMultimodalProvider(Config{
 		APIKey:  "test-key",
 		BaseURL: server.URL,
-		Model:  "gpt-4o",
+		Model:   "gpt-4o",
 	})
 	provider.client = server.Client()
 
@@ -312,7 +312,7 @@ func TestComplete_BackwardCompatible(t *testing.T) {
 		}
 
 		resp := map[string]any{
-			"id":      "chatcmpl-test",
+			"id": "chatcmpl-test",
 			"choices": []map[string]any{
 				{
 					"message": map[string]any{

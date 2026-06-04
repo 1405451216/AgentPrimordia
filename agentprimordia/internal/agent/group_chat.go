@@ -24,8 +24,8 @@ type GroupChatConfig struct {
 
 // GroupChat 多 Agent 对话管理器
 type GroupChat struct {
-	agents    []Agent
-	maxRounds int
+	agents        []Agent
+	maxRounds     int
 	selectSpeaker SpeakerSelector
 	bus           MessageBus
 	mu            sync.RWMutex
@@ -94,10 +94,10 @@ func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChat
 
 		if g.bus != nil {
 			busMsg := &BusMessage{
-				ID:      fmt.Sprintf("groupchat-%d-%s", round, speaker.Name()),
-				From:    speaker.Name(),
-				Type:    BusMsgBroadcast,
-				Content: resp.Content,
+				ID:        fmt.Sprintf("groupchat-%d-%s", round, speaker.Name()),
+				From:      speaker.Name(),
+				Type:      BusMsgBroadcast,
+				Content:   resp.Content,
 				Timestamp: time.Now(),
 			}
 			g.bus.Broadcast(ctx, busMsg)
@@ -185,9 +185,9 @@ type AgentRole struct {
 
 // RoleBasedConfig 基于角色的配置
 type RoleBasedConfig struct {
-	Roles         map[string]AgentRole
-	DefaultRole   string
-	FallbackMode  string // "round_robin" | "random"
+	Roles        map[string]AgentRole
+	DefaultRole  string
+	FallbackMode string // "round_robin" | "random"
 }
 
 // RoleBasedSelector 基于角色/关键词的发言者选择器
@@ -238,10 +238,10 @@ func RoleBasedSelector(cfg RoleBasedConfig) SpeakerSelector {
 
 // ConsensusResult 共识结果
 type ConsensusResult struct {
-	Decision  string   `json:"decision"`
-	Votes     map[string]string `json:"votes"`     // agent_name -> decision
-	Winner    string   `json:"winner"`             // winning agent name
-	Unanimous bool     `json:"unanimous"`
+	Decision  string            `json:"decision"`
+	Votes     map[string]string `json:"votes"`  // agent_name -> decision
+	Winner    string            `json:"winner"` // winning agent name
+	Unanimous bool              `json:"unanimous"`
 }
 
 // RunConsensus 运行共识决策：所有 Agent 对同一问题给出意见，返回投票结果

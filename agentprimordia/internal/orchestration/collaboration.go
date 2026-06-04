@@ -13,18 +13,18 @@ import (
 )
 
 const (
-	defaultCollabMaxRounds      = 3
-	defaultVotingThreshold      = 0.6
-	defaultCollabTimeout        = 5 * time.Minute
-	collabEventBufferSize       = 100
-	defaultCollaboratorWeight   = 1.0
+	defaultCollabMaxRounds    = 3
+	defaultVotingThreshold    = 0.6
+	defaultCollabTimeout      = 5 * time.Minute
+	collabEventBufferSize     = 100
+	defaultCollaboratorWeight = 1.0
 
-	reviewAgreementLevel       = 0.7
-	brainstormAgreementLevel   = 0.3
-	agreementBaseScore         = 0.2
-	agreementParticipationWeight = 0.8
-	defaultVoteConfidence      = 0.8
-	unanimityScoreThreshold    = 99.0
+	reviewAgreementLevel          = 0.7
+	brainstormAgreementLevel      = 0.3
+	agreementBaseScore            = 0.2
+	agreementParticipationWeight  = 0.8
+	defaultVoteConfidence         = 0.8
+	unanimityScoreThreshold       = 99.0
 	suggestionSimilarityThreshold = 0.7
 )
 
