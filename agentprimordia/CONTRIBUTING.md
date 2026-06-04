@@ -68,6 +68,48 @@ func NewFeature() *Feature {
 // 步骤3: 重构优化（Refactor）
 ```
 
+#### 模块边界
+
+> **2026-06 更新**: Phase 6 起 `agent/` 实际处于依赖顶层（依赖 llm/memory/persist/tools），
+> 旧的"不依赖 pool/memory"描述已不准。详见 `docs/plans/2026-06-04-phase6-implementation.md` §模块边界更新。
+
+```
+internal/
+├── agent/      — ReActLoop 引擎 + 协议式微内核（顶层，依赖 llm/memory/persist/tools）
+├── pool/       — 多 Agent 调度（依赖 agent, tools）
+├── tools/      — 工具系统（独立模块，被 agent/pool 依赖）
+├── memory/     — 记忆存储（独立模块，被 agent 依赖）
+├── llm/        — LLM 抽象层（最底层，被 agent 依赖）
+└── persist/    — 状态持久化（独立模块，被 agent 依赖）
+```
+
+实际依赖图：
+
+```
+        ┌────────────────────────────────────────┐
+        │           agent/  (顶层)               │
+        │   引用 llm, memory, persist, tools    │
+        └────┬───────┬───────┬───────────┬──────┘
+             │       │       │           │
+        ┌────▼─┐ ┌───▼──┐ ┌──▼───┐ ┌────▼────┐
+        │ llm  │ │memory│ │persist│ │  tools  │
+        └──────┘ └──────┘ └───────┘ └────┬────┘
+                                          │
+                                     ┌────▼────┐
+                                     │  pool   │
+                                     └─────────┘
+```
+
+- `internal/*` 之间：`agent/` 处于顶层，可引用下层；下层（llm/memory/persist/tools）不能反向引用 `agent/`
+- `pkg/` 只做类型导出和 re-export，不含业务逻辑
+- `ecosystem/` 与 `internal/` 互不依赖：`ecosystem/plugins/*` 等通过 `tools.Plugin` 协议与核心解耦
+
+#### 流程约束（2026-06 强化）
+
+任何新 Phase 必须先有 `docs/plans/YYYY-MM-DD-phaseN-implementation.md` 才有 commit。Phase 6 是反例（代码先行、文档后补），后续严禁重蹈。
+
+`// Deprecated:` 标注必须包含 `// Removed in vX.Y.`。
+
 #### 提交信息规范
 
 使用 Conventional Commits 格式：
