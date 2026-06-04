@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "plugins": [
+    {
+      "name": "http",
+      "version": "0.1.0",
+      "description": "增强型 HTTP 客户端，支持 REST API 调用、认证、重试和响应处理",
+      "category": "network",
+      "import_path": "agentprimordia/ecosystem/plugins/http",
+      "tools": ["http_client"],
+      "tags": ["http", "rest", "api", "network"]
+    },
+    {
+      "name": "sql",
+      "version": "0.1.0",
+      "description": "SQLite 数据库查询工具，支持 SQL 查询、表管理和数据操作",
+      "category": "database",
+      "import_path": "agentprimordia/ecosystem/plugins/sql",
+      "tools": ["sqlite_processor"],
+      "tags": ["sql", "sqlite", "database", "query"]
+    },
+    {
+      "name": "git",
+      "version": "0.1.0",
+      "description": "Git 版本控制操作工具，支持 clone/status/log/diff/commit/branch 等操作",
+      "category": "vcs",
+      "import_path": "agentprimordia/ecosystem/plugins/git",
+      "tools": ["git_tool"],
+      "tags": ["git", "vcs", "version-control"]
+    },
+    {
+      "name": "json",
+      "version": "0.1.0",
+      "description": "JSON 数据处理工具，支持解析、路径查询、数据转换和验证",
+      "category": "data",
+      "import_path": "agentprimordia/ecosystem/plugins/json",
+      "tools": ["json_processor"],
+      "tags": ["json", "data", "transform"]
+    },
+    {
+      "name": "email",
+      "version": "0.1.0",
+      "description": "邮件发送工具，支持 SMTP 协议发送邮件",
+      "category": "communication",
+      "import_path": "agentprimordia/ecosystem/plugins/email",
+      "tools": ["email_sender"],
+      "tags": ["email", "smtp", "communication"]
+    },
+    {
+      "name": "kv",
+      "version": "0.1.0",
+      "description": "键值存储工具，基于 SQLite 的持久化 KV 存储",
+      "category": "database",
+      "import_path": "agentprimordia/ecosystem/plugins/kv",
+      "tools": ["kv_store"],
+      "tags": ["kv", "key-value", "storage", "database"]
+    }
+  ]
+}

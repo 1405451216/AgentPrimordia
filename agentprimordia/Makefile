@@ -14,13 +14,13 @@ clean:
 	rm -rf coverage.out coverage.html dist/
 
 run-hello:
-	go run ./cmd/example/hello-agent/
+	go run ./ecosystem/examples/chain-api/
 
 run-multi:
-	go run ./cmd/example/multi-agent/
+	go run ./ecosystem/examples/multi-agent/
 
 run-production:
-	go run ./cmd/example/production/
+	go run ./ecosystem/examples/chain-production/
 
 docker-build:
 	docker compose build
