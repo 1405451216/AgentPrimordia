@@ -37,14 +37,36 @@ jobs:
       - name: Test with race detector
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Check coverage
+      - name: Check coverage (Phase 7.2: tiered gate)
         run: |
+          # 总覆盖率（参考指标）
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          # 覆盖率阈值检查（低于 70% 时警告）
-          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
-            echo "::warning::Coverage is below 70%: ${COVERAGE}%"
+
+          # 阶梯门槛检查（Phase 7.2 引入）
+          # Tier 1: internal/agent (核心 ReAct 引擎) ≥ 80%
+          # Tier 2: internal/llm + pkg (LLM 抽象 + 公共 API) ≥ 65%
+          # Tier 3: 其他 internal/ 包 ≥ 50% (基线)
+          fail=0
+          for tier in "internal/agent:80" "internal/llm:65" "pkg:65"; do
+            path=${tier%:*}
+            threshold=${tier#*:}
+            cov=$(go test -cover ./$path 2>&1 | grep -oE '[0-9.]+%' | head -1 | tr -d '%')
+            if [ -z "$cov" ]; then
+              echo "  $path: SKIP (no test)"
+              continue
+            fi
+            echo "  $path: ${cov}% (threshold ${threshold}%)"
+            if (( $(echo "$cov < $threshold" | bc -l) )); then
+              echo "::error::$path coverage ${cov}% < ${threshold}%"
+              fail=1
+            fi
+          done
+          if [ $fail -eq 1 ]; then
+            echo "::error::Coverage gate failed. See tiered thresholds above."
+            exit 1
           fi
+          echo "OK: tiered coverage gates passed"
 
       - name: Upload coverage
         if: matrix.go-version == '1.23'
