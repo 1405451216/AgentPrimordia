@@ -80,6 +80,8 @@ var (
 	NewMCPClient = tools.NewMCPClient
 	// NewMCPRegistry 创建 MCP Server 注册中心
 	NewMCPRegistry = tools.NewMCPRegistry
+	// NewPluginLoader 创建插件加载器
+	NewPluginLoader = tools.NewPluginLoader
 )
 
 // MCPClient 是 MCP 协议客户端，用于连接外部 MCP Server
@@ -93,3 +95,12 @@ type MCPClientConfig = tools.MCPClientConfig
 
 // MCPToolDefinition 描述 MCP 服务端提供的工具
 type MCPToolDefinition = tools.MCPToolDefinition
+
+// ToolPlugin 是工具插件接口，支持批量注册工具
+type ToolPlugin = tools.ToolPlugin
+
+// PluginLoader 管理插件的加载、卸载和查询
+type PluginLoader = tools.PluginLoader
+
+// PluginInfo 描述已加载插件的信息
+type PluginInfo = tools.PluginInfo
