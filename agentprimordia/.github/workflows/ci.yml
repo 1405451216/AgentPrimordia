@@ -37,17 +37,18 @@ jobs:
       - name: Test with race detector
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Check coverage (Phase 7.2: tiered gate)
+      - name: Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 软门)
         run: |
           # 总覆盖率（参考指标）
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's '%//')
           echo "Total coverage: ${COVERAGE}%"
 
-          # 阶梯门槛检查（Phase 7.2 引入）
+          # 阶梯门槛检查
           # Tier 1: internal/agent (核心 ReAct 引擎) ≥ 80%
           # Tier 2: internal/llm + pkg (LLM 抽象 + 公共 API) ≥ 65%
-          # Tier 3: 其他 internal/ 包 ≥ 50% (基线)
+          # Tier 3 (Phase 8.1 新增): 其他核心包软门 ≥ 50% (warn, 不 fail)
           fail=0
+          warn=0
           for tier in "internal/agent:80" "internal/llm:65" "pkg:65"; do
             path=${tier%:*}
             threshold=${tier#*:}
@@ -56,15 +57,30 @@ jobs:
               echo "  $path: SKIP (no test)"
               continue
             fi
-            echo "  $path: ${cov}% (threshold ${threshold}%)"
+            echo "  $path: ${cov}% (tier 1/2, threshold ${threshold}%)"
             if (( $(echo "$cov < $threshold" | bc -l) )); then
               echo "::error::$path coverage ${cov}% < ${threshold}%"
               fail=1
             fi
           done
+
+          # Tier 3 软门: 其他核心包 ≥ 50% (仅 warning, 不 fail)
+          for pkg in internal/memory internal/tools internal/orchestration internal/persist; do
+            cov=$(go test -cover ./$pkg 2>&1 | grep -oE '[0-9.]+%' | head -1 | tr -d '%')
+            if [ -z "$cov" ]; then continue; fi
+            echo "  $pkg: ${cov}% (tier 3 soft, target 50%)"
+            if (( $(echo "$cov < 50" | bc -l) )); then
+              echo "::warning::$pkg coverage ${cov}% < 50% (tier 3 soft gate)"
+              warn=1
+            fi
+          done
+
           if [ $fail -eq 1 ]; then
-            echo "::error::Coverage gate failed. See tiered thresholds above."
+            echo "::error::Tier 1/2 coverage gate failed."
             exit 1
+          fi
+          if [ $warn -eq 1 ]; then
+            echo "::warning::Tier 3 soft gate has warnings (non-blocking)."
           fi
           echo "OK: tiered coverage gates passed"
 
