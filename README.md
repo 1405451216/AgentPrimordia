@@ -11,14 +11,21 @@
 - **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
 - **工具系统** — FileSystem / Shell / Web / Knowledge 内置，MCP 协议集成，插件扩展
 - **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索
-- **9 家 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere
+- **13 家 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek
 - **Resilient Provider** — 自动重试 / 降级 / 熔断
 - **并发调度** — Pool 信号量调度，会话隔离，重试策略
-- **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护
+- **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
 - **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard
 - **K8s Operator** — AgentDeployment CRD 声明式部署
 - **CLI 工具** — `ap init / run / debug / test / mcp / plugin`
-- **零外部依赖** — 纯 Go 标准库（仅 modernc.org/sqlite）
+- **零外部依赖** — 纯 Go 标准库（仅 modernc.org/sqlite + gopkg.in/yaml.v3）
+
+## v0.7.0 Highlights
+
+- **安全加固** — symlink 逃逸修复、熔断器修复、YAML 注入防护
+- **Operator** — Service 暴露、HPA 自动扩缩容、真实 Pod 指标
+- **TypeScript SDK** — Pipeline/Handoff 编排、A2A 总线、MCP 类型、SQLite 持久化
+- **CI/CD** — 安全扫描、多平台测试、Release 签名 + SBOM
 
 ## 快速开始
 
@@ -201,7 +208,7 @@ agentprimordia/
 │   ├── pool/                 # 多 Agent 并发调度
 │   ├── tools/                # 工具系统 (Registry/MCP/Plugin/Builtin)
 │   ├── memory/               # 记忆存储 (SQLite/Vector/RAG/Milvus/Qdrant/pgvector)
-│   ├── llm/                  # LLM 抽象层 (9 Provider + Resilient)
+│   ├── llm/                  # LLM 抽象层 (13 Provider + Resilient)
 │   ├── guardrail/            # 安全防护 (PII/Topic/Injection/Trie)
 │   ├── metrics/              # Prometheus 指标
 │   ├── otel/                 # OpenTelemetry 桥接
@@ -279,16 +286,23 @@ spec:
           commandWhitelist: "go,git"
     memory:
       backend: sqlite
+  service:
+    type: ClusterIP
+    port: 8080
   autoscaling:
     minReplicas: 1
     maxReplicas: 10
     targetConcurrentTasks: 5
 ```
 
+Operator 自动创建 Service 暴露 Agent 并配置 HPA 基于 Pod 指标自动扩缩容。
+
 ```bash
 kubectl apply -f operator/manifest/crd.yaml
 kubectl apply -f operator/manifest/examples/basic-agent.yaml
 kubectl get ad
+kubectl get hpa   # 查看 HPA 状态
+kubectl get svc   # 查看 Service
 ```
 
 ## 运行测试
@@ -299,6 +313,9 @@ go test ./internal/... ./pkg/... -race
 
 # CLI 测试
 go test ./cmd/ap/
+
+# 集成测试（需要 OPENAI_API_KEY）
+make test-integration
 
 # 基准测试
 go test -bench=. -benchmem ./bench/suite/
@@ -312,7 +329,7 @@ golangci-lint run
 1. **来自生产，服务生产** — 核心模式从 CodeCast 生产环境提炼
 2. **接口优先** — LLM / Tools / Memory 全部接口解耦，自由替换
 3. **并发原生** — Goroutine + Channel 是一等公民
-4. **零外部依赖** — 纯 Go 标准库（仅 modernc.org/sqlite）
+4. **零外部依赖** — 纯 Go 标准库（仅 modernc.org/sqlite + gopkg.in/yaml.v3）
 5. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
 
 ## 文档

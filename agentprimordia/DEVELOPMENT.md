@@ -19,6 +19,7 @@
   - [Metrics（指标采集）](#metrics指标采集)
   - [Persist（检查点持久化）](#persist检查点持久化)
   - [Concurrency（并发控制）](#concurrency并发控制)
+  - [K8s Operator（Kubernetes 运维）](#k8s-operatorkubernetes-运维)
 - [公共 API 层（pkg）](#公共-api-层pkg)
 - [自定义扩展指南](#自定义扩展指南)
   - [实现自定义 LLM Provider](#实现自定义-llm-provider)
@@ -89,6 +90,10 @@ pkg (公共 API 重导出)
  │     │     └── events (事件总线)
  │     │
  │     └── tools
+ │
+ ├── operator (K8s Operator: CRD + Controller)
+ │     ├── agentdeployment (CRD 定义)
+ │     └── controller (调谐循环)
  │
  ├── security (ACL + Sandbox)
  └── concurrency (FileLock)
@@ -201,6 +206,11 @@ type Provider interface {
 | `GeminiProvider` | `gemini_provider.go` | Google Gemini API |
 | `OllamaProvider` | `ollama_provider.go` | Ollama 本地模型 |
 | `AzureProvider` | `azure_provider.go` | Azure OpenAI |
+| `QwenProvider` | `qwen_provider.go` | 通义千问 (OpenAI 兼容) |
+| `GLMProvider` | `glm_provider.go` | 智谱 GLM (OpenAI 兼容) |
+| `MistralProvider` | `mistral_provider.go` | Mistral AI (OpenAI 兼容) |
+| `CohereProvider` | `cohere_provider.go` | Cohere v2 API |
+| `DeepSeekProvider` | `deepseek_provider.go` | DeepSeek (OpenAI 兼容) |
 | `ResilientProvider` | `resilient.go` | 弹性包装器：重试 + 降级 + 熔断 |
 | `MockLLM` | `mock_llm.go` | 测试用模拟 Provider |
 
@@ -619,6 +629,110 @@ flm.Unlock("scope-path")
 // 验证作用域不重叠
 concurrency.ValidateScopes([]string{"/path1", "/path2"})
 ```
+
+---
+
+### K8s Operator（Kubernetes 运维）
+
+**包路径**：`internal/operator`
+
+K8s Operator 提供 Agent 的 Kubernetes 原生部署与管理能力，通过自定义资源（CRD）声明式定义 Agent 部署。
+
+#### AgentDeployment CRD
+
+`AgentDeployment` 是核心 CRD，定义了一个 Agent 的完整部署规格：
+
+```yaml
+apiVersion: agent.agentprimordia.io/v1alpha1
+kind: AgentDeployment
+metadata:
+  name: my-agent
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: agent
+          image: agentprimordia/agent:latest
+          env:
+            - name: AP_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-secret
+                  key: api-key
+  metrics:
+    port: 9090
+    path: /metrics
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+    targetConcurrentTasks: 5
+```
+
+#### Controller 调谐流程
+
+Controller 遵循 Kubernetes 声明式调谐模式，处理 `AgentDeployment` 资源变更：
+
+```
+AgentDeployment 变更
+    │
+    ▼
+┌──────────────────────────────────────────┐
+│          Controller Reconcile            │
+│                                          │
+│  1. ConfigMap — 渲染 Agent 配置模板      │
+│  2. Deployment — 管理 Agent Pod 生命周期  │
+│  3. Service — 暴露 Metrics 端口          │
+│  4. HPA — 基于并发任务数自动扩缩容        │
+│  5. Status — 聚合真实 Pod 指标更新状态    │
+└──────────────────────────────────────────┘
+```
+
+#### Metrics Service
+
+Controller 自动创建 `{name}-metrics` Service，暴露端口 9090 供 Prometheus 抓取：
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-agent-metrics
+spec:
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: metrics
+```
+
+#### HPA 自动扩缩容
+
+基于 `concurrent_tasks_per_pod` Pods 指标实现自动扩缩容：
+
+```go
+type AutoscalingSpec struct {
+    MinReplicas           *int32 `json:"minReplicas,omitempty"`
+    MaxReplicas           int32  `json:"maxReplicas"`
+    TargetConcurrentTasks int32  `json:"targetConcurrentTasks"` // 每个 Pod 目标并发任务数
+}
+```
+
+HPA 通过自定义 Pods 指标 `concurrent_tasks_per_pod` 监控每个 Pod 的实时并发任务数，当超过 `TargetConcurrentTasks` 时自动扩容，低于阈值时缩容。
+
+#### Status 状态聚合
+
+Controller 实时聚合 Pod 指标到 `AgentDeployment` 的 Status 字段：
+
+```go
+type AgentDeploymentStatus struct {
+    Replicas           int32   `json:"replicas"`
+    ReadyReplicas      int32   `json:"readyReplicas"`
+    ActiveTasks        int32   `json:"activeTasks"`
+    AvgConcurrentTasks float64 `json:"avgConcurrentTasks"`
+    Conditions         []Condition `json:"conditions,omitempty"`
+}
+```
+
+状态数据来源于 Pod `/metrics` 端点的真实运行时指标，确保 Status 反映实际负载情况。
 
 ---
 
@@ -1047,7 +1161,46 @@ go test -v ./internal/memory/
 go test -v ./internal/tools/
 
 # 集成测试（需要 API Key）
+make test-integration
+
+# 手动运行集成测试（需要设置 OPENAI_API_KEY）
 OPENAI_API_KEY=sk-xxx go test -tags=integration ./internal/llm/
+```
+
+> **注意**：集成测试需要真实的 API Key 才能运行。`make test-integration` 会自动检测 `OPENAI_API_KEY` 环境变量，未设置时跳过集成测试并输出警告。
+
+### Agent 集成测试示例
+
+```go
+//go:build integration
+
+func TestAgentIntegration(t *testing.T) {
+    provider, err := llm.NewOpenAIProvider(llm.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o-mini",
+    })
+    if err != nil {
+        t.Skip("OPENAI_API_KEY not set, skipping integration test")
+    }
+
+    registry := tools.NewRegistry()
+    registry.Register(&WeatherTool{})
+
+    agent := agent.NewReActAgent(agent.ReActConfig{
+        Name:    "integration-test-agent",
+        Model:   provider,
+        Toolkit: registry,
+        MaxTurns: 3,
+    })
+
+    resp, err := agent.Run(context.Background(), agent.UserMessage("What's the weather?"))
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+    if resp.Content == "" {
+        t.Error("expected non-empty response")
+    }
+}
 ```
 
 ### 使用 MockLLM
@@ -1120,6 +1273,28 @@ make docker-clean   # 清理容器和镜像
 ```
 
 Dockerfile 位于项目根目录，支持多阶段构建，最终镜像基于 scratch。
+
+### K8s 部署
+
+通过 Kubernetes Operator 部署 Agent，使用 `kubectl apply` 声明式管理：
+
+```bash
+# 安装 CRD 和 Operator
+kubectl apply -f config/crd/bases/agent.agentprimordia.io_agentdeployments.yaml
+kubectl apply -f config/manager/manager.yaml
+
+# 部署 Agent
+kubectl apply -f examples/agent-deployment.yaml
+
+# 查看部署状态
+kubectl get agentdeployment
+kubectl describe agentdeployment my-agent
+
+# 查看自动扩缩容状态
+kubectl get hpa
+```
+
+Operator 会自动创建 ConfigMap、Deployment、Service 和 HPA 资源，详见 [K8s Operator](#k8s-operatorkubernetes-运维) 章节。
 
 ### 环境变量配置
 

@@ -24,9 +24,9 @@
 
 | 痛点 | AgentPrimordia 的答案 |
 |------|----------------------|
-| 🧩 LLM Provider 耦合，换个模型就要改代码 | **统一 Provider 接口**，5+ 内置 Provider，一行代码切换 |
+| 🧩 LLM Provider 耦合，换个模型就要改代码 | **统一 Provider 接口**，13 内置 Provider，一行代码切换 |
 | 💥 API 调用不稳定，偶尔超时或限流 | **ResilientProvider**：自动重试 + 降级链 + 熔断器 |
-| 🔧 工具系统从零搭建，每个工具都要写胶水代码 | **Plugin Tool 接口**，3 个内置工具 + 权限确认机制 |
+| 🔧 工具系统从零搭建，每个工具都要写胶水代码 | **Plugin Tool 接口**，4 个内置工具 + 权限确认机制 |
 | 🧠 Agent 没有记忆，每次对话从零开始 | **Episodic Memory**：SQLite + FTS5 + 向量检索 + RAG |
 | 🔄 多任务编排复杂，手动管理 goroutine | **Pool 调度器**：并发控制 + 超时 + 重试 + 事件通知 |
 | 🔒 Agent 执行危险操作没有防线 | **Sandbox + ACL**：命令白名单 + 路径穿越检测 + 访问控制 |
@@ -82,7 +82,7 @@ resilient.AddFallback(fallback)  // 主模型挂了自动切备用
 
 ### 🔧 工具系统
 
-3 个开箱即用的内置工具：
+4 个开箱即用的内置工具：
 
 | 工具 | 能力 |
 |------|------|
@@ -186,6 +186,16 @@ if err != nil {
     }
 }
 ```
+
+---
+
+## 🆕 v0.7.0 亮点
+
+- 🔒 **安全加固**: symlink 逃逸修复、熔断器逻辑修复、YAML 注入防护、License 统一
+- ☸️ **Operator 完善**: Service 暴露、HPA 自动扩缩、真实 Pod 指标采集
+- 📦 **TypeScript SDK 扩展**: Pipeline/Handoff/ParallelRun 编排、A2A 消息总线、MCP 类型、SQLite 持久化
+- 🔄 **CI/CD**: 安全扫描(govulncheck/Trivy)、多平台测试、Release 签名+SBOM
+- 📚 **文档更新**: 架构图重写、CHANGELOG 回填 v0.3-v0.6、开发文档同步
 
 ---
 
@@ -416,6 +426,12 @@ import {
     ACL,
     Sandbox,
     Bus,
+    Pipeline,
+    ParallelRun,
+    Handoff,
+    A2ABus,
+    MCPClient,
+    SqliteStore,
     VERSION,
 } from '@agentprimordia/sdk';
 
@@ -456,6 +472,8 @@ agentprimordia/
 ├── internal/
 │   ├── agent/           # ReAct Loop 引擎 + Hook + 生命周期
 │   ├── llm/             # Provider 接口 + 5 个内置实现 + 熔断器
+│   ├── operator/        # Kubernetes Operator (Service 暴露 + HPA 自动扩缩)
+│   │   └── api/v1/      # CRD 定义 (AgentPrimordia / AgentPrimordiaList)
 │   ├── memory/          # SQLite + FTS5 + VectorStore + RAG
 │   ├── tools/           # 工具注册 + 执行 + 作用域策略
 │   │   └── builtin/     # FileSystem / Shell / Web / Knowledge
@@ -505,6 +523,7 @@ make run-production
 | **Prometheus** | ✅ 内建 | 需自行集成 | 需自行集成 |
 | **结构化错误码** | ✅ 35 个错误码 | ❌ | ❌ |
 | **TypeScript SDK** | ✅ 官方支持 | 社区 | ❌ |
+| **Operator HPA** | ✅ | ❌ | ❌ |
 | **单二进制部署** | ✅ | ❌ | ❌ |
 
 ---
