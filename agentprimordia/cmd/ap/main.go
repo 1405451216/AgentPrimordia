@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+var Version = "dev"
+
 const (
 	usage = `AgentPrimordia (ap) — Go Agent 开发框架命令行工具
 
@@ -47,7 +49,7 @@ func main() {
 	case "plugin":
 		runPlugin(args)
 	case "version", "-v", "--version":
-		fmt.Println("AgentPrimordia CLI v0.1.0")
+		fmt.Printf("AgentPrimordia CLI %s\n", Version)
 	default:
 		fmt.Fprintf(os.Stderr, "未知命令: %s\n\n", cmd)
 		fmt.Print(usage)

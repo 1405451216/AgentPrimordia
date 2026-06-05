@@ -201,4 +201,4 @@ export class Pool {
   close(): void {}
 }
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.7.0";

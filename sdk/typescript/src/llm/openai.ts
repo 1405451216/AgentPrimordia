@@ -4,12 +4,14 @@ import type { Provider } from './provider.js';
 export class APIError extends Error {
   code: string;
   type: string;
+  status: number;
 
-  constructor(message: string, code: string, type: string) {
+  constructor(message: string, code: string, type: string, status: number) {
     super(message);
     this.name = 'APIError';
     this.code = code;
     this.type = type;
+    this.status = status;
   }
 }
 
@@ -53,12 +55,20 @@ export class OpenAIProvider implements Provider {
       throw this.parseError(resp.status, text);
     }
 
-    const reader = resp.body!.getReader();
+    if (!resp.body) {
+      throw new Error('Response body is null');
+    }
+    const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    const STREAM_READ_TIMEOUT = 60_000;
 
     while (true) {
-      const { done, value } = await reader.read();
+      const readPromise = reader.read();
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Stream read timeout')), STREAM_READ_TIMEOUT)
+      );
+      const { done, value } = await Promise.race([readPromise, timeoutPromise]);
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
@@ -91,7 +101,8 @@ export class OpenAIProvider implements Provider {
             };
           }
           yield chunk;
-        } catch {
+        } catch (err) {
+          console.error(`[AgentPrimordia] Failed to parse stream chunk: ${data}`, err);
           continue;
         }
       }
@@ -108,7 +119,7 @@ export class OpenAIProvider implements Provider {
     const parsed = JSON.parse(raw);
 
     if (parsed.error) {
-      throw new APIError(parsed.error.message, parsed.error.code, parsed.error.type);
+      throw new APIError(parsed.error.message, parsed.error.code ?? '', parsed.error.type ?? '', 0);
     }
 
     const choice = parsed.choices?.[0];
@@ -116,10 +127,10 @@ export class OpenAIProvider implements Provider {
 
     const result: ToolCallResponse = {
       content: choice.message?.content ?? '',
-      toolCalls: (choice.message?.tool_calls ?? []).map((tc: any) => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: tc.function.arguments,
+      toolCalls: (choice.message?.tool_calls ?? []).map((tc: Record<string, unknown>) => ({
+        id: String(tc.id ?? ''),
+        name: String((tc.function as Record<string, unknown>)?.name ?? ''),
+        arguments: String((tc.function as Record<string, unknown>)?.arguments ?? ''),
       })),
       usage: {
         promptTokens: parsed.usage?.prompt_tokens ?? 0,
@@ -181,7 +192,7 @@ export class OpenAIProvider implements Provider {
   private parseResponse(raw: string): CompletionResponse {
     const parsed = JSON.parse(raw);
     if (parsed.error) {
-      throw new APIError(parsed.error.message, parsed.error.code, parsed.error.type);
+      throw new APIError(parsed.error.message, parsed.error.code ?? '', parsed.error.type ?? '', 0);
     }
     const choice = parsed.choices?.[0];
     if (!choice) throw new Error('empty choices in response');
@@ -202,9 +213,9 @@ export class OpenAIProvider implements Provider {
     try {
       const parsed = JSON.parse(body);
       if (parsed.error?.message) {
-        return new APIError(parsed.error.message, parsed.error.code ?? '', parsed.error.type ?? '');
+        return new APIError(parsed.error.message, parsed.error.code ?? '', parsed.error.type ?? '', status);
       }
     } catch {}
-    return new Error(`API returned HTTP ${status}: ${body}`);
+    return new APIError(`API returned HTTP ${status}: ${body}`, '', '', status);
   }
 }

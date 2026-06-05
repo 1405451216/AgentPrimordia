@@ -8,11 +8,13 @@ on:
 
 jobs:
   test:
-    name: Go Test
-    runs-on: ubuntu-latest
+    name: Go Test (${{ matrix.os }}, Go ${{ matrix.go-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        go-version: ['1.22', '1.23']
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: ['1.23', '1.24']
     steps:
       - uses: actions/checkout@v4
 
@@ -35,18 +37,21 @@ jobs:
         run: go build ./...
 
       - name: Test with race detector
+        if: runner.os != 'Windows'
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
-      - name: Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 软门)
+      - name: Test without race detector (Windows)
+        if: runner.os == 'Windows'
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: "Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 soft gate)"
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
         run: |
-          # 总覆盖率（参考指标）
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's '%//')
+          # Total coverage (reference metric)
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
 
-          # 阶梯门槛检查
-          # Tier 1: internal/agent (核心 ReAct 引擎) ≥ 80%
-          # Tier 2: internal/llm + pkg (LLM 抽象 + 公共 API) ≥ 65%
-          # Tier 3 (Phase 8.1 新增): 其他核心包软门 ≥ 50% (warn, 不 fail)
+          # Tiered gate checks
           fail=0
           warn=0
           for tier in "internal/agent:80" "internal/llm:65" "pkg:65"; do
@@ -64,7 +69,7 @@ jobs:
             fi
           done
 
-          # Tier 3 软门: 其他核心包 ≥ 50% (仅 warning, 不 fail)
+          # Tier 3 soft gate: core packages >= 50% (warn only, not fail)
           for pkg in internal/memory internal/tools internal/orchestration internal/persist; do
             cov=$(go test -cover ./$pkg 2>&1 | grep -oE '[0-9.]+%' | head -1 | tr -d '%')
             if [ -z "$cov" ]; then continue; fi
@@ -85,16 +90,15 @@ jobs:
           echo "OK: tiered coverage gates passed"
 
       - name: Upload coverage
-        if: matrix.go-version == '1.23'
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage.out
 
-      # Phase 8.4 流程强制
       - name: Check Deprecated annotations (Phase 8.4)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          # 验证每个 // Deprecated: 都有 // Removed in vX.Y.
           deprecated_count=$(grep -r "Deprecated:" --include="*.go" . | wc -l)
           removed_in_count=$(grep -r "Removed in v" --include="*.go" . | wc -l)
           echo "Deprecated: ${deprecated_count}, Removed in: ${removed_in_count}"
@@ -106,8 +110,9 @@ jobs:
           echo "OK: Deprecated 标注完整"
 
       - name: Check CHANGELOG [Unreleased] (Phase 8.4)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          if ! grep -q "^## \[Unreleased\]" ../docs/CHANGELOG.md; then
+          if ! grep -q "^## \[Unreleased\]" docs/CHANGELOG.md; then
             echo "::warning::CHANGELOG.md 缺 [Unreleased] 节"
           fi
 
@@ -127,9 +132,72 @@ jobs:
           version: latest
           args: --timeout=5m
 
-  ts-test:
-    name: TypeScript SDK Test
+  security:
+    name: Security Scan
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Run npm audit
+        working-directory: sdk/typescript
+        run: npm audit --audit-level=high || true
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+  api-diff:
+    name: API Compatibility Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Check Go API compatibility
+        run: |
+          go install golang.org/x/exp/cmd/apidiff@latest
+          # Compare public API against base branch
+          BASE_REF=${{ github.base_ref }}
+          git checkout "origin/$BASE_REF" -- pkg/
+          apidiff -w /tmp/base.api ./pkg/...
+          git checkout HEAD -- pkg/
+          apidiff -incompatible /tmp/base.api ./pkg/... || {
+            echo "::error::Incompatible API changes detected. Review before merging."
+            exit 1
+          }
+
+  ts-test:
+    name: TypeScript SDK Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -143,13 +211,24 @@ jobs:
         working-directory: sdk/typescript
         run: npm ci
 
+      - name: Type check
+        working-directory: sdk/typescript
+        run: npx tsc --noEmit
+
       - name: Build
         working-directory: sdk/typescript
         run: npm run build
 
-      - name: Test
+      - name: Test with coverage
         working-directory: sdk/typescript
-        run: npm test
+        run: npm test -- --coverage
+
+      - name: Upload TS coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts-coverage
+          path: sdk/typescript/coverage
 
   build-cli:
     name: Build CLI
@@ -163,7 +242,7 @@ jobs:
           go-version: '1.23'
 
       - name: Build ap CLI
-        run: go build -o ap ./cmd/ap/
+        run: go build -ldflags="-X main.Version=${{ github.ref_name }}" -o ap ./cmd/ap/
 
       - name: Verify CLI
         run: ./ap version

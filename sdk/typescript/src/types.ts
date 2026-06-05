@@ -147,7 +147,7 @@ export interface VectorSearchResult {
   metadata?: Record<string, string>;
 }
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.7.0';
 
 export const ErrorCodes = {
   AGENT_STOPPED: 'AGENT_001',

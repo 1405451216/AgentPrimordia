@@ -5,36 +5,37 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
-// apConfig 是 .ap.yaml 的简化 JSON 表示（实际项目可用 YAML 库）
 type apConfig struct {
-	Name     string        `json:"name"`
-	Template string        `json:"template"`
-	LLM      *llmConfig    `json:"llm,omitempty"`
-	Memory   *memoryConfig `json:"memory,omitempty"`
-	Agent    *agentConfig  `json:"agent,omitempty"`
-	MCP      *mcpConfig    `json:"mcp,omitempty"`
-	Plugins  []string      `json:"plugins,omitempty"`
+	Name     string        `json:"name" yaml:"name"`
+	Template string        `json:"template" yaml:"template"`
+	LLM      *llmConfig    `json:"llm,omitempty" yaml:"llm,omitempty"`
+	Memory   *memoryConfig `json:"memory,omitempty" yaml:"memory,omitempty"`
+	Agent    *agentConfig  `json:"agent,omitempty" yaml:"agent,omitempty"`
+	MCP      *mcpConfig    `json:"mcp,omitempty" yaml:"mcp,omitempty"`
+	Plugins  []string      `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 type llmConfig struct {
-	Provider string `json:"provider"`
-	Model    string `json:"model"`
-	APIKey   string `json:"apiKey,omitempty"`
+	Provider string `json:"provider" yaml:"provider"`
+	Model    string `json:"model" yaml:"model"`
+	APIKey   string `json:"apiKey,omitempty" yaml:"apiKey,omitempty"`
 }
 
 type memoryConfig struct {
-	Backend string `json:"backend"`
-	Path    string `json:"path,omitempty"`
+	Backend string `json:"backend" yaml:"backend"`
+	Path    string `json:"path,omitempty" yaml:"path,omitempty"`
 }
 
 type agentConfig struct {
-	MaxTurns     int    `json:"maxTurns,omitempty"`
-	SystemPrompt string `json:"systemPrompt,omitempty"`
+	MaxTurns     int    `json:"maxTurns,omitempty" yaml:"maxTurns,omitempty"`
+	SystemPrompt string `json:"systemPrompt,omitempty" yaml:"systemPrompt,omitempty"`
 }
 
-// loadAPConfig 从当前目录读取 .ap.yaml 配置
+// loadAPConfig 从当前目录读取 .ap.yaml 或 .ap.json 配置
 func loadAPConfig() *apConfig {
 	dir, err := findProjectDir()
 	if err != nil {
@@ -50,12 +51,13 @@ func loadAPConfig() *apConfig {
 		}
 	}
 
-	// 尝试读取 .ap.yaml（简化：只做基础解析）
+	// 尝试读取 .ap.yaml（YAML 格式配置）
 	yamlPath := filepath.Join(dir, ".ap.yaml")
-	if _, err := os.Stat(yamlPath); err == nil {
-		// 对于 YAML，返回默认配置
-		// 生产环境应使用 gopkg.in/yaml.v3
-		return &apConfig{}
+	if data, err := os.ReadFile(yamlPath); err == nil {
+		var cfg apConfig
+		if yaml.Unmarshal(data, &cfg) == nil {
+			return &cfg
+		}
 	}
 
 	return &apConfig{}

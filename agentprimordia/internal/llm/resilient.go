@@ -159,7 +159,7 @@ func (r *ResilientProvider) checkCircuit() error {
 	case circuitOpen:
 		if time.Since(r.lastFail) > r.config.CircuitRecoverAfter {
 			r.state = circuitHalfOpen
-			r.halfOpenProbe = true
+			r.halfOpenProbe = false // 允许第一个试探请求通过
 			return nil
 		}
 		return ErrCircuitOpen

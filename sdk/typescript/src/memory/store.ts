@@ -21,6 +21,8 @@ export class InMemoryStore implements Memory {
   private episodes: Map<string, MemoryEpisode> = new Map();
 
   async add(episode: MemoryEpisode): Promise<void> {
+    if (!episode.id?.trim()) throw new Error('Episode ID is required');
+    if (!episode.content?.trim()) throw new Error('Episode content is required');
     this.episodes.set(episode.id, episode);
   }
 
@@ -57,12 +59,16 @@ export class InMemoryStore implements Memory {
 
   async updateSummary(id: string, summary: string, topics: string): Promise<void> {
     const ep = this.episodes.get(id);
-    if (ep) { ep.summary = summary; ep.topics = topics; }
+    if (!ep) throw new Error(`Episode ${id} not found`);
+    ep.summary = summary;
+    ep.topics = topics;
   }
 
   async setImportance(id: string, importance: number): Promise<void> {
+    if (importance < 0 || importance > 1) throw new Error('Importance must be between 0 and 1');
     const ep = this.episodes.get(id);
-    if (ep) ep.importance = importance;
+    if (!ep) throw new Error(`Episode ${id} not found`);
+    ep.importance = importance;
   }
 
   async searchByTag(tag: string, opts?: SearchOptions): Promise<MemoryEpisode[]> {

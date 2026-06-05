@@ -6,6 +6,7 @@
 
 - Kubernetes 1.28+
 - kubectl 访问集群
+- Go 1.23+ (构建)
 
 ## 安装
 
@@ -35,13 +36,105 @@ kubectl scale ad code-reviewer --replicas=5
 
 ```bash
 cd operator
-go mod tidy
-go build -o ap-operator ./cmd/
+GOWORK=off go mod tidy
+GOWORK=off go build -o ap-operator ./cmd/
 ```
 
-## CRD 字段 (Phase 8.3 扩展)
+## 测试
 
-`AgentDeploymentSpec.Template` 新增两个能力字段:
+### 单元测试
+
+```bash
+cd operator
+GOWORK=off go test ./api/v1/ ./controller/ -count=1 -v
+```
+
+### 端到端测试 (envtest)
+
+envtest 使用真实的 kube-apiserver 和 etcd，无需完整集群：
+
+```bash
+# 安装 setup-envtest
+go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+# 下载 K8s 二进制
+setup-envtest use 1.28.x
+
+# 运行 e2e 测试
+cd operator
+KUBEBUILDER_ASSETS=$(setup-envtest use 1.28.x -p path) \
+  GOWORK=off go test -tags=envtest ./controller/ -count=1 -v
+```
+
+### Controller 代码生成
+
+```bash
+cd operator
+make codegen
+# 或手动: GOWORK=off controller-gen object paths=./api/v1/...
+```
+
+## CRD 字段
+
+### 基础字段
+
+```yaml
+apiVersion: agent.primordia.dev/v1
+kind: AgentDeployment
+metadata:
+  name: basic-agent
+spec:
+  replicas: 1
+  template:
+    provider: openai
+    model: gpt-4o
+    systemPrompt: "你是一个有用的 AI 助手"
+    maxTurns: 10
+    apiSecretRef: openai-api-key
+    tools:
+      - name: filesystem
+        config:
+          root: /data
+    memory:
+      backend: sqlite
+      sizeLimit: 1Gi
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "256Mi"
+      limits:
+        cpu: "2"
+        memory: "1Gi"
+```
+
+### 自动扩缩容
+
+```yaml
+spec:
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 10
+    targetConcurrentTasks: 5
+```
+
+### 健康检查
+
+```yaml
+spec:
+  healthCheck:
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+```
 
 ### 指标暴露 (Metrics)
 
@@ -50,16 +143,12 @@ spec:
   template:
     metrics:
       enabled: true
-      path: /metrics        # 默认 /metrics
-      port: 9090            # 默认 9090
-      serviceMonitor:       # 对接 Prometheus Operator
+      path: /metrics
+      port: 9090
+      serviceMonitor:
         name: agent-monitor
         interval: 30s
 ```
-
-启用后 Operator 会为 Agent Pod 注入:
-- 端口 9090 上的 `/metrics` HTTP 端点
-- 配套 Service + ServiceMonitor 资源(若 ServiceMonitor 字段设置)
 
 ### 分布式追踪 (Tracing)
 
@@ -69,13 +158,10 @@ spec:
     tracing:
       enabled: true
       otlpEndpoint: http://otel-collector:4317
-      samplingRate: 0.1   # 10% 采样
+      samplingRate: 0.1
 ```
 
-启用后 Operator 注入 OTEL_EXPORTER_OTLP_ENDPOINT 环境变量
-到 Agent Pod,框架内的 Tracer 会自动连接。
-
-### Status 字段 (观测)
+### Status 字段
 
 ```yaml
 status:
@@ -87,20 +173,36 @@ status:
   totalTokens: 50000
   estimatedCostUSD: 1.5
   conditions:
-    - type: Ready
+    - type: Available
       status: "True"
-      reason: AllReplicasReady
+      reason: MinimumReplicasAvailable
 ```
 
-Reconciler 每 30s 收集指标并更新 status (Phase 8.3 范围)。
+## RBAC
 
-## 已知债务
+Operator 需要以下权限：
 
-- `cmd/main.go` 用了 controller-runtime 0.20 已移除的 `MetricsBindAddress` 字段,
-  需在 Phase 9 适配(改用 `metricsserver.Options`)
-- `zz_generated_deepcopy.go` 是手写的,理想应改回 controller-gen codegen
-- controller 单元测试覆盖率低,Phase 9+ 补
+```yaml
+# AgentDeployment CRD 读写
+- apiGroups: ["agent.primordia.dev"]
+  resources: ["agentdeployments", "agentdeployments/status"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
 
+# Deployment 管理
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# ConfigMap 管理
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+# Secret 读取
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+```
 
 ## 独立依赖说明
 

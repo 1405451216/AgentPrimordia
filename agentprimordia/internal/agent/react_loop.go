@@ -456,6 +456,10 @@ func (a *ReActAgent) searchRAG(ctx context.Context, query string) (string, []*RA
 	_ = a.fireHook(HookBeforeRAG, &HookContext{Metadata: map[string]any{"query": query}})
 
 	rag := a.getRAGConfig()
+	if rag == nil || rag.Provider == nil {
+		a.logger.Debug("RAG 未配置，跳过检索", "query", query)
+		return "", nil
+	}
 	docs, err := rag.Provider.Search(ctx, query, a.ragTopK())
 	if err != nil {
 		a.logger.Warn("RAG 检索失败", "error", err, "query", query)
@@ -553,7 +557,12 @@ func (a *ReActAgent) StreamRun(ctx context.Context, input Message) (<-chan Strea
 	ch := make(chan StreamEvent, 32)
 	go func() {
 		defer close(ch)
-		_, _ = a.reactLoopEngine(ctx, input, loopConfig{stream: true, streamCh: ch, streamCtx: ctx})
+		if _, err := a.reactLoopEngine(ctx, input, loopConfig{stream: true, streamCh: ch, streamCtx: ctx}); err != nil {
+			select {
+			case ch <- StreamEvent{Type: StreamEventError, Content: err.Error()}:
+			case <-ctx.Done():
+			}
+		}
 	}()
 	return ch, nil
 }
@@ -1403,7 +1412,23 @@ func buildMultimodalContent(parts []ContentPart) string {
 		}
 	}
 
-	data, _ := json.Marshal(items)
+	data, err := json.Marshal(items)
+	if err != nil {
+		type textItem struct {
+			Type string `json:"type"`
+			Text string `json:"text,omitempty"`
+		}
+		var fallback []textItem
+		for _, p := range parts {
+			if p.Text != "" {
+				fallback = append(fallback, textItem{Type: "text", Text: p.Text})
+			}
+		}
+		if fb, fbErr := json.Marshal(fallback); fbErr == nil {
+			return string(fb)
+		}
+		return `[{"type":"text","text":""}]`
+	}
 	return string(data)
 }
 

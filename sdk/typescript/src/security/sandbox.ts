@@ -79,7 +79,17 @@ export class Sandbox {
   }
 
   validatePath(agentID: string, path: string, level: AccessLevel): Error | null {
-    if (path.includes('..')) return new Error(`path traversal detected: "${path}"`);
-    return this.canAccess(agentID, path, level);
+    let decoded = path;
+    for (let i = 0; i < 10; i++) {
+      try {
+        const prev = decoded;
+        decoded = decodeURIComponent(decoded);
+        if (decoded === prev) break;
+      } catch { break; }
+    }
+    if (decoded.includes('..') || decoded.includes('\0')) {
+      return new Error(`invalid path: "${path}"`);
+    }
+    return this.canAccess(agentID, decoded, level);
   }
 }

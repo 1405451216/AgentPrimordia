@@ -1,0 +1,9 @@
+src/
+tests/
+examples/
+docs/
+*.test.ts
+tsconfig.json
+vitest.config.ts
+coverage/
+.vitepress/

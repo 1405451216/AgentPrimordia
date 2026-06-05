@@ -12,12 +12,18 @@ export class VectorStore {
     if (vector.length !== this.dim) {
       throw new Error(`vector dimension mismatch: expected ${this.dim}, got ${vector.length}`);
     }
+    if (!vector.every(Number.isFinite)) {
+      throw new Error('vector contains non-finite values (NaN or Infinity)');
+    }
     this.entries.set(id, { vector, metadata });
   }
 
   search(query: number[], topK: number = 10): VectorSearchResult[] {
     if (query.length !== this.dim) {
       throw new Error(`query dimension mismatch: expected ${this.dim}, got ${query.length}`);
+    }
+    if (!query.every(Number.isFinite)) {
+      throw new Error('query contains non-finite values (NaN or Infinity)');
     }
 
     const results: VectorSearchResult[] = [];

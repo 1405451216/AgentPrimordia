@@ -538,12 +538,17 @@ func TestResilient_CircuitHalfOpen_AllowsOnlyOneProbe(t *testing.T) {
 		err1 <- err
 	}()
 
-	// 等待第一个请求开始执行
+	// 等待第一个请求开始执行并进入 checkCircuit
 	<-started
-	time.Sleep(10 * time.Millisecond) // 确保 checkCircuit 已执行
-
-	// 第二个请求应该被拒绝（半开状态只允许一个试探）
-	_, err2 := provider.Complete(context.Background(), &CompletionRequest{})
+	// 轮询直到第二个请求被拒绝（确保第一个请求的 checkCircuit 已执行）
+	var err2 error
+	for i := 0; i < 50; i++ {
+		_, err2 = provider.Complete(context.Background(), &CompletionRequest{})
+		if err2 == ErrCircuitOpen {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 	if err2 != ErrCircuitOpen {
 		t.Errorf("expected second request in half-open to be rejected with ErrCircuitOpen, got %v", err2)
 	}

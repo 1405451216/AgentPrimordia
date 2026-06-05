@@ -51,27 +51,98 @@ jobs:
           name: ap-${{ matrix.goos }}-${{ matrix.goarch }}
           path: ap-${{ matrix.goos }}-${{ matrix.goarch }}*
 
+  generate-sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Generate Go SBOM with syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: .
+          format: spdx-json
+          output-file: sbom-go.spdx.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Generate Node SBOM with syft
+        working-directory: sdk/typescript
+        run: |
+          npm ci
+        # syft will scan the directory for both Go and Node dependencies
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom-*.spdx.json
+
+  sign-binaries:
+    name: Sign Release Binaries
+    runs-on: ubuntu-latest
+    needs: [build-binaries, generate-sbom]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: binaries
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd binaries
+          find . -type f -name 'ap-*' | sort | xargs sha256sum > ../checksums-sha256.txt
+          cd ..
+
+      - name: Sign checksums with cosign
+        uses: sigstore/cosign-installer@v3
+
+      - run: cosign sign-blob --yes checksums-sha256.txt --output-signature checksums-sha256.txt.sig --output-certificate checksums-sha256.txt.pem
+
+      - name: Upload signatures
+        uses: actions/upload-artifact@v4
+        with:
+          name: signatures
+          path: |
+            checksums-sha256.txt
+            checksums-sha256.txt.sig
+            checksums-sha256.txt.pem
+
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: build-binaries
+    needs: [sign-binaries]
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
         with:
-          path: binaries
+          path: artifacts
+
+      - name: Organize release files
+        run: |
+          mkdir -p release-files
+          cp artifacts/binaries/**/* release-files/ || true
+          cp artifacts/signatures/* release-files/ || true
+          cp artifacts/sbom/* release-files/ || true
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: binaries/**/*
+          files: release-files/**/*
           generate_release_notes: true
 
   docker:
     name: Docker Build & Push
     runs-on: ubuntu-latest
-    needs: build-binaries
+    needs: [build-binaries]
     steps:
       - uses: actions/checkout@v4
 
@@ -104,6 +175,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Sign container image with cosign
+        uses: sigstore/cosign-installer@v3
+
+      - run: cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.meta.outputs.digest }}
 
   npm-publish:
     name: Publish TypeScript SDK

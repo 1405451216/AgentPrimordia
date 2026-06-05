@@ -1,5 +1,13 @@
 import type { Provider } from './provider.js';
 import type { ToolCallRequest, ToolCallResponse, CompletionRequest, CompletionResponse, Chunk, ModelInfo } from '../types.js';
+import { APIError } from './openai.js';
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof APIError) {
+    return err.status >= 500 || err.status === 429 || err.status === 408;
+  }
+  return true; // Network errors are retryable
+}
 
 export class ResilientProvider implements Provider {
   private primary: Provider;
@@ -29,7 +37,7 @@ export class ResilientProvider implements Provider {
   async complete(req: CompletionRequest): Promise<CompletionResponse> {
     this.checkCircuit();
     try {
-      const result = await this.executeWithRetry(() => this.primary.complete(req));
+      const result = await this.executeWithRetry(() => this.primary.complete(req), (p) => p.complete(req));
       this.recordSuccess();
       return result;
     } catch (err) {
@@ -41,7 +49,7 @@ export class ResilientProvider implements Provider {
   async callTools(req: ToolCallRequest): Promise<ToolCallResponse> {
     this.checkCircuit();
     try {
-      const result = await this.executeWithRetry(() => this.primary.callTools(req));
+      const result = await this.executeWithRetry(() => this.primary.callTools(req), (p) => p.callTools(req));
       this.recordSuccess();
       return result;
     } catch (err) {
@@ -76,7 +84,7 @@ export class ResilientProvider implements Provider {
     }
   }
 
-  private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
+  private async executeWithRetry<T>(fn: () => Promise<T>, fallbackFn: (p: Provider) => Promise<T>): Promise<T> {
     let lastErr: Error | null = null;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       if (attempt > 0) {
@@ -86,12 +94,13 @@ export class ResilientProvider implements Provider {
       try {
         return await fn();
       } catch (err: any) {
+        if (!isRetryable(err)) throw err;
         lastErr = err;
       }
     }
     for (const fallback of this.fallbacks) {
       try {
-        return await fn.call(null);
+        return await fallbackFn(fallback);
       } catch (err: any) {
         lastErr = err;
       }

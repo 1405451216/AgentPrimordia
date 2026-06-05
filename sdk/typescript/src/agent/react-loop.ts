@@ -122,9 +122,12 @@ export interface ReActConfig {
   model: Provider;
   toolkit: ToolRegistry;
   maxTurns?: number;
+  maxConsecutiveFailures?: number;
   systemPrompt?: string;
   hooks?: HookManager;
   lifecycle?: Lifecycle;
+  sessionId?: string;
+  maxMessages?: number;
 }
 
 export class ReActAgent {
@@ -132,17 +135,30 @@ export class ReActAgent {
   private model: Provider;
   private toolkit: ToolRegistry;
   private maxTurns: number;
+  private maxConsecutiveFailures: number;
+  private maxMessages: number;
+  private consecutiveFailures = 0;
   private systemPrompt: string;
+  private sessionId: string;
   private hooks: HookManager;
   private lifecycle: Lifecycle;
   private messages: Message[] = [];
 
   constructor(config: ReActConfig) {
+    if (!config.name?.trim()) throw new Error('Agent name is required');
+    if (!config.model) throw new Error('Model provider is required');
+    if (!config.toolkit) throw new Error('Toolkit is required');
+    if (config.maxTurns !== undefined && (config.maxTurns < 1 || config.maxTurns > 100)) {
+      throw new Error('maxTurns must be between 1 and 100');
+    }
     this.name = config.name;
     this.model = config.model;
     this.toolkit = config.toolkit;
     this.maxTurns = config.maxTurns ?? 10;
+    this.maxConsecutiveFailures = config.maxConsecutiveFailures ?? 3;
+    this.maxMessages = config.maxMessages ?? 80;
     this.systemPrompt = config.systemPrompt ?? '';
+    this.sessionId = config.sessionId ?? '';
     this.hooks = config.hooks ?? new HookManager();
     this.lifecycle = config.lifecycle ?? new Lifecycle();
   }
@@ -153,6 +169,7 @@ export class ReActAgent {
     let totalLLMLatency = 0;
     let totalToolLatency = 0;
     let toolCount = 0;
+    this.consecutiveFailures = 0;
 
     this.messages = [];
     if (this.systemPrompt) {
@@ -162,7 +179,7 @@ export class ReActAgent {
 
     await this.hooks.fire({
       agentID: this.name,
-      sessionID: '',
+      sessionID: this.sessionId,
       point: 'before_run',
       turn: 0,
     });
@@ -173,10 +190,12 @@ export class ReActAgent {
 
       await this.hooks.fire({
         agentID: this.name,
-        sessionID: '',
+        sessionID: this.sessionId,
         point: 'before_turn',
         turn,
       });
+
+      this.trimMessages();
 
       const llmStart = Date.now();
       const thought = await this.callLLM();
@@ -184,7 +203,7 @@ export class ReActAgent {
 
       await this.hooks.fire({
         agentID: this.name,
-        sessionID: '',
+        sessionID: this.sessionId,
         point: 'after_llm',
         turn,
       });
@@ -205,14 +224,14 @@ export class ReActAgent {
         this.lifecycle.setStatus('completed');
         await this.hooks.fire({
           agentID: this.name,
-          sessionID: '',
+          sessionID: this.sessionId,
           point: 'on_complete',
           turn,
           response,
         });
         await this.hooks.fire({
           agentID: this.name,
-          sessionID: '',
+          sessionID: this.sessionId,
           point: 'after_turn',
           turn,
         });
@@ -223,7 +242,7 @@ export class ReActAgent {
       for (const tc of thought.toolCalls) {
         await this.hooks.fire({
           agentID: this.name,
-          sessionID: '',
+          sessionID: this.sessionId,
           point: 'before_tool',
           turn,
           toolCall: tc,
@@ -234,6 +253,26 @@ export class ReActAgent {
         totalToolLatency += Date.now() - toolStart;
         toolCount++;
 
+        if (result.isError) {
+          this.consecutiveFailures++;
+          if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+            const response: Response = {
+              content: `Agent stopped: ${this.consecutiveFailures} consecutive tool failures`,
+              metrics: {
+                totalTurns: turn + 1,
+                totalTools: toolCount,
+                duration: Date.now() - startTime,
+                llmLatency: totalLLMLatency,
+                toolLatency: totalToolLatency,
+              },
+            };
+            this.lifecycle.setStatus('completed');
+            return response;
+          }
+        } else {
+          this.consecutiveFailures = 0;
+        }
+
         this.messages.push({
           role: 'tool',
           content: result.content,
@@ -243,7 +282,7 @@ export class ReActAgent {
 
         await this.hooks.fire({
           agentID: this.name,
-          sessionID: '',
+          sessionID: this.sessionId,
           point: 'after_tool',
           turn,
           toolResult: result,
@@ -252,7 +291,7 @@ export class ReActAgent {
 
       await this.hooks.fire({
         agentID: this.name,
-        sessionID: '',
+        sessionID: this.sessionId,
         point: 'after_turn',
         turn,
       });
@@ -311,5 +350,13 @@ export class ReActAgent {
     const resp = await this.model.complete({ messages: this.messages });
     this.messages.push({ role: 'assistant', content: resp.content });
     return { content: resp.content };
+  }
+
+  private trimMessages(): void {
+    if (this.messages.length <= this.maxMessages) return;
+    const system = this.messages.filter((m) => m.role === 'system');
+    const rest = this.messages.filter((m) => m.role !== 'system');
+    const keep = this.maxMessages - system.length;
+    this.messages = [...system, ...rest.slice(-keep)];
   }
 }

@@ -2,7 +2,7 @@
 
 > 包路径：`agentprimordia/pkg` → 导入别名 `ap`
 >
-> 版本：`ap.Version` = `"0.1.0"`
+> 版本：`ap.Version` = `"0.7.0"`
 
 ## 核心类型
 

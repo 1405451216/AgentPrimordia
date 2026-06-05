@@ -1,20 +1,19 @@
 # ============================================================
 # Stage 1: Go builder
 # ============================================================
-FROM golang:1.22-alpine AS go-builder
+FROM golang:1.23-alpine AS go-builder
 
 WORKDIR /build
 
 COPY go.mod go.sum ./
-RUN sed -i 's/^go .*/go 1.22/' go.mod && go mod download
+RUN go mod download
 
 COPY . .
-RUN sed -i 's/^go .*/go 1.22/' go.mod
 
 ENV CGO_ENABLED=0
-RUN go build -ldflags="-s -w" -o /bin/ap-basic      ./examples/go/basic/ \
- && go build -ldflags="-s -w" -o /bin/ap-with-tools  ./examples/go/with-tools/ \
- && go build -ldflags="-s -w" -o /bin/ap-multi-agent ./examples/go/multi-agent/
+RUN go build -ldflags="-s -w" -o /bin/ap-basic      ./ecosystem/examples/basic/ \
+ && go build -ldflags="-s -w" -o /bin/ap-with-tools  ./ecosystem/examples/with-tools/ \
+ && go build -ldflags="-s -w" -o /bin/ap-multi-agent ./ecosystem/examples/multi-agent/
 
 # ============================================================
 # Stage 2: Node builder
@@ -47,6 +46,13 @@ COPY --from=node-builder /build/node_modules /opt/ap-sdk/node_modules
 
 COPY demo/ /opt/ap-demo/
 RUN chmod +x /opt/ap-demo/run-go.sh /opt/ap-demo/run-ts.sh
+
+# Security hardening
+RUN addgroup -S ap && adduser -S ap -G ap
+USER ap
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD pgrep -f "ap-basic" > /dev/null || exit 1
 
 WORKDIR /opt/ap-demo
 

@@ -1,19 +1,14 @@
 // Package v1 定义 AgentDeployment CRD 的类型
 package v1
 
-// 本文件包含 AgentDeployment 相关类型定义。
-// DeepCopy 实现见 zz_generated_deepcopy.go (Phase 8.3 手写以
-// 替代 controller-gen 自动生成)。
-
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // AgentDeployment 是 Agent 部署的 CRD
-//
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:openapi-gen=true
 type AgentDeployment struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -23,6 +18,7 @@ type AgentDeployment struct {
 }
 
 // AgentDeploymentSpec 定义 Agent 部署的期望状态
+// +kubebuilder:object:generate=true
 type AgentDeploymentSpec struct {
 	// 副本数量
 	Replicas int32 `json:"replicas"`
@@ -30,7 +26,7 @@ type AgentDeploymentSpec struct {
 	// Agent 模板
 	Template AgentTemplateSpec `json:"template"`
 
-	// 自动扩缩容配置
+	// 自动扩缩容配置 (TODO: controller 未实现 HPA 创建)
 	// +optional
 	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
 
@@ -40,6 +36,7 @@ type AgentDeploymentSpec struct {
 }
 
 // AgentTemplateSpec 定义 Agent 的配置模板
+// +kubebuilder:object:generate=true
 type AgentTemplateSpec struct {
 	// LLM 提供者名称 (openai, anthropic, gemini, ollama, azure)
 	Provider string `json:"provider"`
@@ -57,6 +54,10 @@ type AgentTemplateSpec struct {
 	// API Key 引用的 Secret 名称
 	// +optional
 	APISecretRef string `json:"apiSecretRef,omitempty"`
+
+	// 容器镜像覆盖，不设置时使用 controller 默认值
+	// +optional
+	Image string `json:"image,omitempty"`
 
 	// 工具配置列表
 	// +optional
@@ -80,6 +81,7 @@ type AgentTemplateSpec struct {
 }
 
 // MetricsSpec 定义 Prometheus 指标暴露配置
+// +kubebuilder:object:generate=true
 type MetricsSpec struct {
 	// 是否启用指标端点
 	// +optional
@@ -99,6 +101,7 @@ type MetricsSpec struct {
 }
 
 // ServiceMonitorSpec 定义 Prometheus Operator 的 ServiceMonitor 引用
+// +kubebuilder:object:generate=true
 type ServiceMonitorSpec struct {
 	// ServiceMonitor 名称
 	Name string `json:"name,omitempty"`
@@ -109,6 +112,7 @@ type ServiceMonitorSpec struct {
 }
 
 // TracingSpec 定义 OpenTelemetry 追踪配置
+// +kubebuilder:object:generate=true
 type TracingSpec struct {
 	// 是否启用追踪
 	// +optional
@@ -124,6 +128,7 @@ type TracingSpec struct {
 }
 
 // ToolSpec 定义单个工具的配置
+// +kubebuilder:object:generate=true
 type ToolSpec struct {
 	// 工具名称 (filesystem, shell, web, knowledge)
 	Name string `json:"name"`
@@ -134,6 +139,7 @@ type ToolSpec struct {
 }
 
 // MemorySpec 定义记忆存储配置
+// +kubebuilder:object:generate=true
 type MemorySpec struct {
 	// 后端类型 (sqlite, memory)
 	Backend string `json:"backend"`
@@ -148,18 +154,21 @@ type MemorySpec struct {
 }
 
 // ResourceSpec 定义资源请求和限制
+// +kubebuilder:object:generate=true
 type ResourceSpec struct {
 	Requests ResourceQuantities `json:"requests,omitempty"`
 	Limits   ResourceQuantities `json:"limits,omitempty"`
 }
 
 // ResourceQuantities 定义 CPU 和内存数量
+// +kubebuilder:object:generate=true
 type ResourceQuantities struct {
 	CPU    string `json:"cpu,omitempty"`
 	Memory string `json:"memory,omitempty"`
 }
 
 // AutoscalingSpec 定义自动扩缩容配置
+// +kubebuilder:object:generate=true
 type AutoscalingSpec struct {
 	// 最小副本数
 	MinReplicas int32 `json:"minReplicas"`
@@ -172,6 +181,7 @@ type AutoscalingSpec struct {
 }
 
 // HealthCheckSpec 定义健康检查配置
+// +kubebuilder:object:generate=true
 type HealthCheckSpec struct {
 	// 存活探针
 	// +optional
@@ -183,6 +193,7 @@ type HealthCheckSpec struct {
 }
 
 // ProbeSpec 定义 HTTP 探针配置
+// +kubebuilder:object:generate=true
 type ProbeSpec struct {
 	HTTPGet             *HTTPGetAction `json:"httpGet,omitempty"`
 	InitialDelaySeconds int32          `json:"initialDelaySeconds,omitempty"`
@@ -193,12 +204,15 @@ type ProbeSpec struct {
 }
 
 // HTTPGetAction 定义 HTTP GET 探针
+// +kubebuilder:object:generate=true
 type HTTPGetAction struct {
 	Path string `json:"path"`
 	Port int32  `json:"port"`
 }
 
 // AgentDeploymentStatus 定义 Agent 部署的观测状态
+// TODO: AverageTurnLatencySeconds/TotalTokens/EstimatedCostUSD 字段尚未由 controller 填充
+// +kubebuilder:object:generate=true
 type AgentDeploymentStatus struct {
 	// 活跃副本数
 	ActiveReplicas int32 `json:"activeReplicas"`
@@ -229,6 +243,7 @@ type AgentDeploymentStatus struct {
 }
 
 // AgentDeploymentCondition 描述部署的一个条件状态
+// +kubebuilder:object:generate=true
 type AgentDeploymentCondition struct {
 	// 条件类型
 	Type string `json:"type"`
@@ -247,8 +262,7 @@ type AgentDeploymentCondition struct {
 }
 
 // AgentDeploymentList 是 AgentDeployment 的列表
-//
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 type AgentDeploymentList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

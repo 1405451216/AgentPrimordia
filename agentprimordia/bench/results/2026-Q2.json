@@ -1,6 +1,6 @@
 {
   "date": "2026-Q2",
-  "version": "0.1.0",
+  "version": "0.7.0",
   "environment": {
     "go": "1.26",
     "os": "linux/amd64",

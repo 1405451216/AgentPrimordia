@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	agentv1 "agentprimordia/operator/api/v1"
 	"agentprimordia/operator/controller"
@@ -38,10 +39,10 @@ func main() {
 	}
 
 	mgr, err := manager.New(cfg, manager.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: *metricsAddr,
-		LeaderElection:     *enableLeaderElection,
-		LeaderElectionID:   "agentprimordia-operator",
+		Scheme:           scheme,
+		Metrics:          server.Options{BindAddress: *metricsAddr},
+		LeaderElection:   *enableLeaderElection,
+		LeaderElectionID: "agentprimordia-operator",
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "创建 Manager 失败: %v\n", err)

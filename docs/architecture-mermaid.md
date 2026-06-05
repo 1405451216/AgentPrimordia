@@ -1,211 +1,257 @@
-# CodeCast Architecture Diagrams - Mermaid Format
+# AgentPrimordia Architecture Diagrams - Mermaid Format
 
 ## 1. System Architecture
 
 ```mermaid
 graph TB
-    subgraph Frontend["Frontend - React"]
-        ChatCard["Chat Inline Card"]
-        SidebarPanel["Sidebar Agents Panel"]
+    subgraph CLI["CLI - cmd/ap"]
+        Init["ap init"]
+        Run["ap run"]
+        Debug["ap debug"]
+        Test["ap test"]
+        MCP["ap mcp"]
     end
 
-    subgraph Backend["Backend - Go"]
-        subgraph AgentPool["AgentPool - Semaphore 10"]
-            SA1["SubAgent 1"]
-            SA2["SubAgent 2"]
-            SA3["SubAgent 3"]
-            SAN["... more"]
+    subgraph Core["Go Engine - internal/"]
+        subgraph AgentLayer["Agent Layer - internal/agent"]
+            RA["ReActAgent"]
+            RL["ReAct Loop"]
+            Hooks["Hook System"]
+            RAG["RAG Provider"]
         end
 
-        subgraph ToolLayer["Tool Executor Layer"]
-            TF["read_file"]
-            TW["write_file"]
-            TE["edit_file"]
-            TR["run_command"]
-            TS["search"]
-            WF["web_fetch"]
+        subgraph LLMLayer["LLM Layer - internal/llm"]
+            P["Provider Interface"]
+            OAI["OpenAI"]
+            ANT["Anthropic"]
+            AZ["Azure"]
+            GEM["Gemini"]
+            OLL["Ollama"]
+            RES["ResilientProvider"]
         end
 
-        subgraph Persistence["Persistence Layer"]
-            Store["agents/session/agent.json"]
+        subgraph MemoryLayer["Memory Layer - internal/memory"]
+            MI["Memory Interface"]
+            SQL["SQLite"]
+            MIL["Milvus"]
+            QDR["Qdrant"]
+        end
+
+        subgraph ToolLayer["Tool Layer - internal/tools"]
+            TI["Tool Interface"]
+            FS["Filesystem"]
+            API["API Call"]
+            CMD["Shell"]
+            MCP_T["MCP Tools"]
+        end
+
+        subgraph OrchLayer["Orchestration - internal/orchestration"]
+            ORC["Orchestrator"]
+            SEQ["Sequential"]
+            PAR["Parallel"]
+            DAG["DAG"]
         end
     end
 
-    subgraph API["DeepSeek API"]
-        LLM["LLM Service - deepseek-v4-flash"]
+    subgraph Operator["K8s Operator"]
+        CRD["AgentDeployment CRD"]
+        CTRL["Controller"]
+        CM["ConfigMap"]
+        DEP["Deployment"]
     end
 
-    ChatCard <-->|"Wails Events"| AgentPool
-    SidebarPanel <-->|"Wails Events"| AgentPool
+    subgraph SDK["TypeScript SDK"]
+        TSRA["ReActAgent"]
+        TSP["OpenAI / Resilient"]
+        TSM["InMemory / Vector / SQLite"]
+        TST["ToolRegistry"]
+        TSPool["AgentPool"]
+    end
 
-    SA1 --> ToolLayer
-    SA2 --> ToolLayer
-    SA3 --> ToolLayer
-    SAN --> ToolLayer
-
-    AgentPool --> Persistence
-    AgentPool --> LLM
+    CLI --> AgentLayer
+    AgentLayer --> LLMLayer
+    AgentLayer --> MemoryLayer
+    AgentLayer --> ToolLayer
+    OrchLayer --> AgentLayer
+    Operator --> Core
+    SDK --> TSP
+    SDK --> TSM
 ```
 
 ---
 
-## 2. Agent Loop Execution Flow
+## 2. ReAct Loop Execution Flow
 
 ```mermaid
 flowchart TD
-    Start([Initialize SubAgent]) --> LLMCall[Call LLM with tools]
-    LLMCall --> ParseResp[Parse Response]
+    Start([Initialize ReActAgent]) --> Think[Call LLM with tools + memory context]
+    Think --> Parse[Parse LLM Response]
 
-    ParseResp --> CheckTool{Has tool_calls?}
+    Parse --> CheckTool{Has tool_calls?}
 
-    CheckTool -- Yes --> ExecTool[Execute Tool]
-    ExecTool --> ObserveResult[Observe Result]
-    ObserveResult --> AppendMsg[Append Message]
-    AppendMsg --> LLMCall
+    CheckTool -- Yes --> SelectTool[Select Tool from Registry]
+    SelectTool --> CheckPerm{Permission granted?}
+    CheckPerm -- Yes --> ExecTool[Execute Tool in Sandbox]
+    CheckPerm -- No --> Deny[Return permission denied]
+    ExecTool --> Observe[Observe Result]
+    Deny --> Observe
+    Observe --> Record[Record Episode to Memory]
+    Record --> Hook[Fire afterTool Hook]
+    Hook --> CheckFail{Consecutive failures?}
+    CheckFail -- Below threshold --> Think
+    CheckFail -- At threshold --> ExitFail([Exit: too many failures])
 
-    CheckTool -- No --> TaskComplete([Task Complete])
-
-    ParseResp --> CheckError{MaxTurns or Error?}
-    CheckError -- Yes --> MarkFailed([Mark Failed])
+    CheckTool -- No --> CheckDone{Max turns reached?}
+    CheckDone -- No --> Think
+    CheckDone -- Yes --> Complete([Return final response])
 ```
 
 ---
 
-## 3. Data Structure Relationship
+## 3. Core Data Structures
 
 ```mermaid
 classDiagram
-    class SubAgent {
-        +string ID
-        +string SessionID
-        +string ParentMsgID
-        +string Title
-        +string Prompt
-        +FilesScope: list
-        +Status: AgentStatus
-        +Messages: AgentMessage list
-        +string Result
-        +string Error
-        +int TurnCount
-        +int MaxTurns
-        +CreatedAt: time.Time
-        +UpdatedAt: time.Time
-        +Mode: AgentMode
-        -ctx: context.Context
-        -cancel: CancelFunc
+    class ReActAgent {
+        +Provider provider
+        +MemoryStore memory
+        +ToolRegistry tools
+        +HookManager hooks
+        +int maxTurns
+        +int consecutiveFailures
+        +run(input) Response
+        +stream(input) Channel~StreamEvent~
     }
 
-    class AgentMessage {
-        +string Role
-        +string Content
-        +ToolCalls: ToolCall list
-        +ToolResult: ToolResult ptr
+    class Provider {
+        <<interface>>
+        +Complete(req) CompletionResponse
+        +Stream(req) Channel~Chunk~
+        +CallTools(req) ToolCallResponse
+        +Embeddings(texts) Embeddings
     }
 
-    class ToolCall {
-        +string ID
+    class MemoryStore {
+        <<interface>>
+        +Add(episode) void
+        +Get(id) Episode
+        +Search(query, opts) Episode list
+        +Delete(id) void
+    }
+
+    class Tool {
+        <<interface>>
+        +Name() string
+        +Description() string
+        +Parameters() Schema
+        +Execute(input) Result
+    }
+
+    class AgentDeployment {
         +string Name
-        +string Args
+        +AgentDeploymentSpec Spec
+        +AgentDeploymentStatus Status
     }
 
-    class ToolResult {
-        +string ToolCallID
-        +string Content
-        +bool IsError
+    class AgentDeploymentSpec {
+        +int32 Replicas
+        +AgentTemplateSpec Template
     }
 
-    class AgentPool {
-        -mu: sync.Mutex
-        -agents: SubAgent map
-        -semaphore: chan struct
-        -queue: SubAgent list
-        -ctx: context.Context
-        -cancel: CancelFunc
-        -app: App ptr
+    class AgentTemplateSpec {
+        +string Provider
+        +string Model
+        +string Image
+        +int32 MaxTurns
+        +string SystemPrompt
+        +ResourceSpec Resources
     }
 
-    class AgentEvent {
-        +string AgentID
-        +string Type
-        +Status: AgentStatus
-        +int Turn
-        +int MaxTurns
-        +string ToolName
-        +string Message
-    }
-
-    SubAgent "1" --> "*" AgentMessage : contains
-    SubAgent "1" --> "*" ToolCall : generates
-    SubAgent "1" --> "*" ToolResult : receives
-    AgentPool "1" --> "*" SubAgent : manages
-    AgentPool ..> AgentEvent : emits
+    ReActAgent --> Provider : uses
+    ReActAgent --> MemoryStore : uses
+    ReActAgent --> Tool : registers
+    AgentDeployment --> AgentDeploymentSpec : has
+    AgentDeploymentSpec --> AgentTemplateSpec : contains
 ```
 
 ---
 
-## 4. Component Interaction Sequence
+## 4. Kubernetes Operator Reconciliation
 
 ```mermaid
 sequenceDiagram
-    participant User as User
-    participant Main as MainAgent
-    participant Pool as AgentPool
-    participant SA as SubAgent
-    participant LLM as DeepSeek API
-    participant Tool as ToolExecutor
-    participant FE as Frontend React
+    participant K8s as Kubernetes API
+    participant CTRL as Controller
+    participant CM as ConfigMap
+    participant DEP as Deployment
+    participant CRD as AgentDeployment CRD
 
-    User->>Main: Send complex task
-    Main->>Main: Decompose task
-    Main->>Pool: dispatch_agents tasks
+    K8s->>CTRL: Watch AgentDeployment changes
+    CTRL->>CRD: Get current state
 
-    loop For each subtask
-        Pool->>SA: Create and start goroutine
-        Pool->>FE: Wails Event status running
-
-        loop Agent Loop maxTurns 50
-            SA->>LLM: Call LLM with tools
-            LLM-->>SA: Return response
-
-            alt Has tool_calls
-                SA->>Tool: Execute tool
-                Tool-->>SA: Return result
-                SA->>SA: Append to history
-                SA->>FE: Wails Event progress
-            else Pure text response
-                SA->>SA: Mark complete
-                SA->>FE: Wails Event result
-            end
-        end
-
-        Pool->>FE: Wails Event completed
+    alt Deletion timestamp set
+        CTRL->>CRD: Remove finalizer
+        CTRL->>K8s: Update CRD
+    else No finalizer
+        CTRL->>CRD: Add finalizer
+        CTRL->>K8s: Update CRD
+    else Normal reconciliation
+        CTRL->>CM: Ensure ConfigMap with ap.yaml
+        CTRL->>DEP: Ensure Deployment with agent + metrics containers
+        CTRL->>DEP: Get deployment status
+        CTRL->>CRD: Update status (ActiveReplicas, CompletedTasks, ErrorRate)
     end
-
-    Main-->>User: Summarize all results
 ```
 
 ---
 
-## 5. File System Structure
+## 5. Resilient Provider Pattern
+
+```mermaid
+stateDiagram-v2
+    [*] --> Closed
+    Closed --> Open : failures >= threshold
+    Open --> HalfOpen : recoverAfter elapsed
+    HalfOpen --> Closed : probe succeeds
+    HalfOpen --> Open : probe fails
+
+    state Closed {
+        [*] --> Execute
+        Execute --> Retry : error + retries left
+        Retry --> Execute : backoff elapsed
+        Execute --> Fallback : error + no retries
+        Execute --> Success : ok
+    }
+
+    state HalfOpen {
+        [*] --> Probe
+        Probe --> AllowFirst : halfOpenProbe=false
+        Probe --> Reject : halfOpenProbe=true
+    }
+```
+
+---
+
+## 6. Multi-Agent Orchestration Modes
 
 ```mermaid
 graph LR
-    Root["~/.codecast/"] --> Agents["agents/"]
-    Agents --> Session["session_id/"]
-    Session --> A1["agent_1.json"]
-    Session --> A2["agent_2.json"]
-    Session --> AN["..."]
-
-    subgraph JSONStructure ["JSON Structure Example"]
-        direction TB
-        JID["id: string"]
-        JStatus["status: enum"]
-        JMessages["messages: array"]
-        JResult["result: string"]
-        JMeta["metadata..."]
+    subgraph Sequential["Sequential Mode"]
+        S1["Step 1"] --> S2["Step 2"] --> S3["Step 3"]
     end
 
-    A1 -.-> JSONStructure
+    subgraph Parallel["Parallel Mode"]
+        P1["Step 1"]
+        P2["Step 2"]
+        P3["Step 3"]
+    end
+
+    subgraph DAGMode["DAG Mode"]
+        D1["Step 1"] --> D3["Step 3"]
+        D2["Step 2"] --> D3
+        D1 --> D4["Step 4"]
+        D2 --> D4
+    end
 ```
 
 ---
@@ -219,10 +265,6 @@ graph LR
 
 ### Export to Image
 ```bash
-# Using mmdc (Mermaid CLI)
 npm install -g @mermaid-js/mermaid-cli
 mmdc -i architecture-mermaid.md -o architecture.png -w 2400 -H 1800
 ```
-
-### Online Editor
-- [Mermaid Live Editor](https://mermaid.live/)

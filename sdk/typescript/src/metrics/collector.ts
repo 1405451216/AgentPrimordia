@@ -6,6 +6,7 @@ export class MetricsCollector {
   totalTurns = 0;
   activeAgents = 0;
 
+  private static readonly MAX_HISTORY = 10000;
   private llmLatencies: number[] = [];
   private toolLatencies: number[] = [];
 
@@ -13,12 +14,18 @@ export class MetricsCollector {
     this.llmTotalCalls++;
     if (error) this.llmTotalErrors++;
     this.llmLatencies.push(durationMs);
+    if (this.llmLatencies.length > MetricsCollector.MAX_HISTORY) {
+      this.llmLatencies = this.llmLatencies.slice(-MetricsCollector.MAX_HISTORY);
+    }
   }
 
   recordToolCall(durationMs: number, error?: Error): void {
     this.toolTotalCalls++;
     if (error) this.toolTotalErrors++;
     this.toolLatencies.push(durationMs);
+    if (this.toolLatencies.length > MetricsCollector.MAX_HISTORY) {
+      this.toolLatencies = this.toolLatencies.slice(-MetricsCollector.MAX_HISTORY);
+    }
   }
 
   recordTurn(): void {

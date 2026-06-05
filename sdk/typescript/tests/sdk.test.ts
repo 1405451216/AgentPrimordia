@@ -286,7 +286,7 @@ describe('Security', () => {
     const acl = new ACL();
     acl.allow('agent-1', '/workspace/', 'all');
     const sb = new Sandbox(acl);
-    expect(sb.validatePath('agent-1', '/workspace/../../../etc/passwd', 'read')?.message).toContain('traversal');
+    expect(sb.validatePath('agent-1', '/workspace/../../../etc/passwd', 'read')?.message).toContain('invalid path');
   });
 });
 

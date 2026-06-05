@@ -56,10 +56,10 @@ export class Bus {
 
     const subs = this.subscribers.get(event.type as EventType) ?? [];
     for (const sub of subs) {
-      try { sub.ch(event); } catch {}
+      try { sub.ch(event); } catch (err) { console.error(`[AgentPrimordia] Event subscriber ${sub.id} failed:`, err); }
     }
     for (const sub of this.wildcard) {
-      try { sub.ch(event); } catch {}
+      try { sub.ch(event); } catch (err) { console.error(`[AgentPrimordia] Wildcard subscriber ${sub.id} failed:`, err); }
     }
   }
 
