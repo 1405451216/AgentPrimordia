@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
@@ -37,6 +38,8 @@ type MCPClientEntry struct {
 	Client *MCPClient
 	Cmd    *exec.Cmd
 	Tools  []MCPToolDefinition
+	Stdin  io.WriteCloser // stdio 模式下的 stdin 管道
+	Stdout io.ReadCloser  // stdio 模式下的 stdout 管道
 }
 
 // MCPRegistry 管理多个 MCP Server 的注册、启动和工具发现
@@ -159,11 +162,10 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 		return ctx.Err()
 	}
 
-	_ = stdin
-	_ = stdout
-
 	r.mu.Lock()
 	entry.Cmd = cmd
+	entry.Stdin = stdin
+	entry.Stdout = stdout
 	entry.Status = MCPClientRunning
 	r.mu.Unlock()
 
@@ -207,6 +209,16 @@ func (r *MCPRegistry) Stop(name string) error {
 	if entry.Client != nil {
 		_ = entry.Client.Close()
 		entry.Client = nil
+	}
+
+	// 关闭 stdio 管道
+	if entry.Stdin != nil {
+		_ = entry.Stdin.Close()
+		entry.Stdin = nil
+	}
+	if entry.Stdout != nil {
+		_ = entry.Stdout.Close()
+		entry.Stdout = nil
 	}
 
 	if entry.Cmd != nil && entry.Cmd.Process != nil {

@@ -460,14 +460,31 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 				node := nodes[nid]
 				nr := result.NodeResults[nid]
 
+				// 统一在 defer 中完成 Order 追加与 remainingDeps 递减，
+				// 确保无论执行成功/失败/跳过/panic 都能正确传播
+				defer func() {
+					stateMu.Lock()
+					result.Order = append(result.Order, nid)
+					for _, edgeIdx := range outgoing[nid] {
+						dst := edges[edgeIdx].To
+						if remainingDeps[dst] > 0 {
+							remainingDeps[dst]--
+						}
+					}
+					stateMu.Unlock()
+				}()
+
+				// 评估条件边：仅统计"活跃"的入边
 				stateMu.Lock()
 				activeCount := 0
 				for _, edgeIdx := range incoming[nid] {
-					if edges[edgeIdx].Condition == nil {
+					edge := edges[edgeIdx]
+					if edge.Condition == nil {
 						activeCount++
 					} else {
-						srcResult := result.NodeResults[edges[edgeIdx].From]
-						if srcResult != nil && edges[edgeIdx].Condition(ctx, srcResult) {
+						srcResult := result.NodeResults[edge.From]
+						// 仅当源节点实际执行成功（非跳过）时才评估条件
+						if srcResult != nil && !srcResult.Skipped && srcResult.Error == nil && edge.Condition(ctx, srcResult) {
 							activeCount++
 						}
 					}
@@ -475,15 +492,12 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 				hasIncoming := len(incoming[nid]) > 0
 				stateMu.Unlock()
 
+				// 所有活跃条件均为 false → 跳过此节点
 				if hasIncoming && activeCount == 0 {
 					nr.Skipped = true
 					nr.Timestamp = time.Now()
 					stateMu.Lock()
 					result.Skipped++
-					result.Order = append(result.Order, nid)
-					for _, edgeIdx := range outgoing[nid] {
-						remainingDeps[edges[edgeIdx].To]--
-					}
 					stateMu.Unlock()
 					return
 				}
@@ -530,14 +544,6 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 					stateMu.Unlock()
 					d.metrics.record(nid, nr.Duration, true, retries)
 				}
-
-				stateMu.Lock()
-				result.Order = append(result.Order, nid)
-				for _, edgeIdx := range outgoing[nid] {
-					edge := edges[edgeIdx]
-					remainingDeps[edge.To]--
-				}
-				stateMu.Unlock()
 			}(nodeID)
 		}
 		wg.Wait()

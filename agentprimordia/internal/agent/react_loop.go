@@ -166,6 +166,10 @@ type ReActAgent struct {
 	runMu     sync.Mutex
 	hitlMgr   *HITLManager
 
+	// hookCtx 用于 fireHook 调用，绑定到当前运行的 context
+	// 确保 agent 取消时 hook 也能被取消
+	hookCtx context.Context
+
 	// self 自引用，指向最外层的 Agent 包装器
 	// 用于协议式微内核的接口发现：引擎通过 a.self.(XxxCapable) 检测能力
 	// 默认指向自身；WithXxx 链式调用时更新为 CapabilityAgent
@@ -304,8 +308,14 @@ func (a *ReActAgent) getFileScope() []string {
 func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	if a.hooks != nil {
 		hctx.Point = point
-		if err := a.hooks.Fire(context.Background(), hctx); err != nil {
+		// 使用 agent 的运行 context 而非 Background，确保取消能传播到 hook
+		ctx := a.hookCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		if err := a.hooks.Fire(ctx, hctx); err != nil {
 			a.logger.Warn("Hook 执行失败", "point", point, "error", err)
+			return err
 		}
 	}
 	return nil
@@ -340,19 +350,23 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 		a.logger.Warn("保存记忆失败", "error", err, "role", msg.Role)
 	}
 
-	// 异步提取摘要
+	// 异步提取摘要（绑定到 agent 的 hookCtx 防止泄漏）
 	summarizer := a.getSummarizer()
 	if summarizer != nil && ep.ID != "" {
 		epID := ep.ID
 		epContent := ep.Content
+		parentCtx := a.hookCtx
+		if parentCtx == nil {
+			parentCtx = context.Background()
+		}
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
 					a.logger.Warn("异步摘要提取 panic", "error", r)
 				}
 			}()
-			// 使用超时 context 防止摘要提取无限挂起
-			sumCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			// 使用父级 context + 超时，防止泄漏
+			sumCtx, cancel := context.WithTimeout(parentCtx, 30*time.Second)
 			defer cancel()
 			result, err := summarizer.ExtractSummary(sumCtx, epContent)
 			if err != nil {
@@ -867,7 +881,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 	return response, ErrMaxTurnsExceeded
 }
 
-func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loopConfig) (*Response, error) {
+func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loopConfig) (resp *Response, err error) {
 	a.runMu.Lock()
 	defer a.runMu.Unlock()
 
@@ -876,11 +890,14 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 			a.logger.Error("ReAct 循环 panic 恢复", "error", r)
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			a.publishEvent("agent.panic", map[string]string{"name": a.config.Name, "error": fmt.Sprintf("%v", r)})
+			err = fmt.Errorf("agent panic recovered: %v", r)
+			resp = &Response{Error: err}
 		}
 	}()
 
 	a.startTime = time.Now()
 	a.stats.StartTime = a.startTime
+	a.hookCtx = ctx
 	_ = a.lifecycle.SetStatus(StatusRunning)
 	a.stats.Status = StatusRunning
 
@@ -1143,7 +1160,7 @@ func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult,
 	}, nil
 }
 
-// callToolsWithRetry calls LLM with function calling support
+// callToolsWithRetry calls LLM with function calling support, with retry on transient errors
 func (a *ReActAgent) callToolsWithRetry(ctx context.Context, messages []llm.ChatMessage, toolDefs []map[string]any) (*llm.ToolCallResponse, error) {
 	definitions := make([]llm.ToolDefinition, 0, len(toolDefs))
 	for _, def := range toolDefs {
@@ -1173,17 +1190,53 @@ func (a *ReActAgent) callToolsWithRetry(ctx context.Context, messages []llm.Chat
 		Tools:    definitions,
 	}
 
-	return a.config.Model.CallTools(ctx, req)
+	const maxRetries = 2
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		resp, err := a.config.Model.CallTools(ctx, req)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		a.logger.Warn("CallTools 失败，将重试", "attempt", attempt+1, "error", err)
+	}
+	return nil, fmt.Errorf("callTools failed after %d retries: %w", maxRetries, lastErr)
 }
 
-// completeWithRetry calls LLM for simple completion
+// completeWithRetry calls LLM for simple completion, with retry on transient errors
 func (a *ReActAgent) completeWithRetry(ctx context.Context, messages []llm.ChatMessage) (*llm.CompletionResponse, error) {
 	req := &llm.CompletionRequest{
 		Messages:    messages,
 		Temperature: llm.Float64Ptr(a.config.Temperature),
 	}
 
-	return a.config.Model.Complete(ctx, req)
+	const maxRetries = 2
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		resp, err := a.config.Model.Complete(ctx, req)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		a.logger.Warn("Complete 失败，将重试", "attempt", attempt+1, "error", err)
+	}
+	return nil, fmt.Errorf("complete failed after %d retries: %w", maxRetries, lastErr)
 }
 
 // handleOnError triggers error hook
@@ -1291,7 +1344,12 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 		})
 	}
 
-	a.startTime = time.Now()
+	// 恢复 startTime 时减去已运行的时长，保持 Duration 累计一致
+	if prevDur, err := time.ParseDuration(state.Metrics.Duration); err == nil && prevDur > 0 {
+		a.startTime = time.Now().Add(-prevDur)
+	} else {
+		a.startTime = time.Now()
+	}
 	a.statsMu.Lock()
 	a.stats.StartTime = a.startTime
 	a.stats.CurrentTurn = state.TurnCount

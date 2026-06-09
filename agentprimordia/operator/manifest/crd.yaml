@@ -82,6 +82,33 @@ spec:
                               type: string
                             memory:
                               type: string
+                    metrics:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        path:
+                          type: string
+                        port:
+                          type: integer
+                          format: int32
+                        serviceMonitor:
+                          type: object
+                          properties:
+                            name:
+                              type: string
+                            interval:
+                              type: string
+                    tracing:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                        otlpEndpoint:
+                          type: string
+                        samplingRate:
+                          type: number
+                          format: double
                 autoscaling:
                   type: object
                   required: ["minReplicas", "maxReplicas", "targetConcurrentTasks"]
@@ -115,6 +142,10 @@ spec:
                           type: integer
                         periodSeconds:
                           type: integer
+                        successThreshold:
+                          type: integer
+                        failureThreshold:
+                          type: integer
                     readinessProbe:
                       type: object
                       properties:
@@ -132,6 +163,10 @@ spec:
                           type: integer
                         periodSeconds:
                           type: integer
+                        successThreshold:
+                          type: integer
+                        failureThreshold:
+                          type: integer
             status:
               type: object
               properties:
@@ -142,6 +177,13 @@ spec:
                 failedTasks:
                   type: integer
                 errorRate:
+                  type: number
+                averageTurnLatencySeconds:
+                  type: number
+                totalTokens:
+                  type: integer
+                  format: int64
+                estimatedCostUSD:
                   type: number
                 conditions:
                   type: array

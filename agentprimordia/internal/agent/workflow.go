@@ -155,6 +155,7 @@ type WorkflowExecution struct {
 	eventCh        chan *WorkflowEvent
 	executionCtx   context.Context
 	cancelFunc     context.CancelFunc
+	pauseCh        chan struct{} // 关闭时恢复执行
 	iterationCount int
 	nodeExecutions map[string]int
 }
@@ -246,6 +247,7 @@ func NewWorkflowExecution(config WorkflowConfig) *WorkflowExecution {
 		eventCh:        make(chan *WorkflowEvent, workflowEventBufferSize),
 		executionCtx:   ctx,
 		cancelFunc:     cancel,
+		pauseCh:        make(chan struct{}, 1),
 		nodeExecutions: make(map[string]int),
 	}
 }
@@ -393,6 +395,11 @@ func (w *WorkflowExecution) executeLinear(ctx context.Context, input map[string]
 		}
 
 		currentInput = output
+
+		// 检查暂停请求
+		if err := w.checkPause(ctx); err != nil {
+			return err
+		}
 
 		transitions := w.transitions[currentID]
 		if len(transitions) == 0 {
@@ -601,11 +608,22 @@ func (w *WorkflowExecution) executeStateMachine(ctx context.Context, input map[s
 	currentState := w.startNodeID
 	currentInput := input
 
+	maxIter := w.config.MaxIterations
+	if maxIter <= 0 {
+		maxIter = defaultMaxIterations
+	}
+	iterations := 0
+
 	for currentState != "" {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+		}
+
+		iterations++
+		if iterations > maxIter {
+			return fmt.Errorf("state machine exceeded max iterations (%d), possible infinite loop at state %q", maxIter, currentState)
 		}
 
 		node, exists := w.nodes[currentState]
@@ -620,6 +638,11 @@ func (w *WorkflowExecution) executeStateMachine(ctx context.Context, input map[s
 
 		currentInput = output
 		w.SetVariable("_current_state", currentState)
+
+		// 检查暂停请求
+		if err := w.checkPause(ctx); err != nil {
+			return err
+		}
 
 		transitions := w.transitions[currentState]
 		if len(transitions) == 0 {
@@ -646,7 +669,9 @@ func (w *WorkflowExecution) executeStateMachine(ctx context.Context, input map[s
 
 func (w *WorkflowExecution) executeNode(ctx context.Context, node *WorkflowNode, input map[string]any) (map[string]any, error) {
 	startTime := time.Now()
+	w.mu.Lock()
 	w.currentNode = node
+	w.mu.Unlock()
 	w.recordPath(node.ID)
 
 	w.emitEvent("node_started", node.ID, map[string]any{
@@ -1063,13 +1088,37 @@ func (w *WorkflowExecution) GetStatus() WorkflowStatus {
 	return w.status
 }
 
-// Pause 暂停执行
+// checkPause 检查是否暂停并等待恢复或取消
+func (w *WorkflowExecution) checkPause(ctx context.Context) error {
+	w.mu.RLock()
+	if w.status != WfStatusPaused {
+		w.mu.RUnlock()
+		return nil
+	}
+	pauseCh := w.pauseCh
+	w.mu.RUnlock()
+
+	select {
+	case <-pauseCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// Pause 暂停执行（使用 pauseCh 阻塞而非取消 context，确保可恢复）
 func (w *WorkflowExecution) Pause() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.status == WfStatusRunning {
 		w.status = WfStatusPaused
-		w.cancelFunc()
+		// 不取消 executionCtx，仅通过 pauseCh 通知执行循环暂停
+		if w.pauseCh != nil {
+			select {
+			case w.pauseCh <- struct{}{}:
+			default:
+			}
+		}
 		w.emitEvent("workflow_paused", "", nil)
 	}
 }
@@ -1082,9 +1131,11 @@ func (w *WorkflowExecution) Resume() error {
 		return fmt.Errorf("workflow is not paused")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	w.executionCtx = ctx
-	w.cancelFunc = cancel
+	// 关闭 pauseCh 解除执行循环的阻塞，然后重建以支持后续暂停
+	if w.pauseCh != nil {
+		close(w.pauseCh)
+	}
+	w.pauseCh = make(chan struct{}, 1)
 	w.status = WfStatusRunning
 	w.emitEvent("workflow_resumed", "", nil)
 	return nil

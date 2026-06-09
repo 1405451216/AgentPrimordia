@@ -64,7 +64,7 @@ func NewGroupChat(cfg GroupChatConfig) (*GroupChat, error) {
 // Run 运行多 Agent 对话
 func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChatResult, error) {
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	g.mu.Unlock() // 仅用于序列化初始化，不持有锁运行
 
 	result := &GroupChatResult{
 		Messages:   []Message{initialMessage},
@@ -72,6 +72,13 @@ func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChat
 	}
 
 	for round := 0; round < g.maxRounds; round++ {
+		// 每轮检查 context 是否取消
+		select {
+		case <-ctx.Done():
+			return result, ctx.Err()
+		default:
+		}
+
 		speaker, err := g.selectSpeaker(ctx, result.Messages, g.agents)
 		if err != nil {
 			return result, fmt.Errorf("select speaker failed at round %d: %w", round, err)
@@ -230,8 +237,8 @@ func RoleBasedSelector(cfg RoleBasedConfig) SpeakerSelector {
 		case "random":
 			return agents[rand.Intn(len(agents))], nil
 		default:
-			staticSelector := RoundRobinSelector()
-			return staticSelector(ctx, messages, agents)
+			// 使用消息数量作为轮询索引，避免每次创建新 RoundRobinSelector
+			return agents[len(messages)%len(agents)], nil
 		}
 	}
 }

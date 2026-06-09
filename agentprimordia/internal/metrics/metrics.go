@@ -29,6 +29,17 @@ type AgentMetrics struct {
 	MemorySizeBytes int64
 
 	TokenUsageByModel map[string]*TokenUsageStats
+
+	// 按标签维度追踪的计数器（用于 Grafana 多维查询）
+	LLMCallsByLabel  map[string]*labeledCounter // key: "provider|model"
+	ToolCallsByLabel map[string]*labeledCounter // key: "tool_name"
+	TurnsByAgent     map[string]*labeledCounter // key: "agent_name"
+}
+
+type labeledCounter struct {
+	mu     sync.Mutex
+	calls  int64
+	errors int64
 }
 
 type TokenUsageStats struct {
@@ -158,12 +169,97 @@ func (m *AgentMetrics) RecordLLMCall(duration time.Duration, err error) {
 	m.LLMLatencyMs.Record(duration.Milliseconds())
 }
 
+// RecordLLMCallWithLabels 记录带标签维度的 LLM 调用（供 Grafana 多维查询）
+func (m *AgentMetrics) RecordLLMCallWithLabels(duration time.Duration, err error, provider, model string) {
+	m.RecordLLMCall(duration, err)
+
+	key := provider + "|" + model
+	m.mu.RLock()
+	counter, ok := m.LLMCallsByLabel[key]
+	m.mu.RUnlock()
+
+	if !ok {
+		m.mu.Lock()
+		if m.LLMCallsByLabel == nil {
+			m.LLMCallsByLabel = make(map[string]*labeledCounter)
+		}
+		counter, ok = m.LLMCallsByLabel[key]
+		if !ok {
+			counter = &labeledCounter{}
+			m.LLMCallsByLabel[key] = counter
+		}
+		m.mu.Unlock()
+	}
+
+	counter.mu.Lock()
+	counter.calls++
+	if err != nil {
+		counter.errors++
+	}
+	counter.mu.Unlock()
+}
+
 func (m *AgentMetrics) RecordToolCall(duration time.Duration, err error) {
 	atomic.AddInt64(&m.ToolTotalCalls, 1)
 	if err != nil {
 		atomic.AddInt64(&m.ToolTotalErrors, 1)
 	}
 	m.ToolLatencyMs.Record(duration.Milliseconds())
+}
+
+// RecordToolCallWithLabels 记录带标签维度的工具调用
+func (m *AgentMetrics) RecordToolCallWithLabels(duration time.Duration, err error, toolName string) {
+	m.RecordToolCall(duration, err)
+
+	m.mu.RLock()
+	counter, ok := m.ToolCallsByLabel[toolName]
+	m.mu.RUnlock()
+
+	if !ok {
+		m.mu.Lock()
+		if m.ToolCallsByLabel == nil {
+			m.ToolCallsByLabel = make(map[string]*labeledCounter)
+		}
+		counter, ok = m.ToolCallsByLabel[toolName]
+		if !ok {
+			counter = &labeledCounter{}
+			m.ToolCallsByLabel[toolName] = counter
+		}
+		m.mu.Unlock()
+	}
+
+	counter.mu.Lock()
+	counter.calls++
+	if err != nil {
+		counter.errors++
+	}
+	counter.mu.Unlock()
+}
+
+// RecordTurnWithAgent 记录带 agent_name 标签的 Turn
+func (m *AgentMetrics) RecordTurnWithAgent(duration time.Duration, agentName string) {
+	m.RecordTurn(duration)
+
+	m.mu.RLock()
+	counter, ok := m.TurnsByAgent[agentName]
+	m.mu.RUnlock()
+
+	if !ok {
+		m.mu.Lock()
+		if m.TurnsByAgent == nil {
+			m.TurnsByAgent = make(map[string]*labeledCounter)
+		}
+		counter, ok = m.TurnsByAgent[agentName]
+		if !ok {
+			counter = &labeledCounter{}
+			m.TurnsByAgent[agentName] = counter
+		}
+		m.mu.Unlock()
+	}
+
+	counter.mu.Lock()
+	counter.calls++
+	counter.mu.Unlock()
 }
 
 func (m *AgentMetrics) RecordTurn(duration time.Duration) {
@@ -241,6 +337,9 @@ func (m *AgentMetrics) Reset() {
 
 	m.mu.Lock()
 	m.TokenUsageByModel = nil
+	m.LLMCallsByLabel = nil
+	m.ToolCallsByLabel = nil
+	m.TurnsByAgent = nil
 	m.mu.Unlock()
 }
 
@@ -253,6 +352,39 @@ func (m *AgentMetrics) String() string {
 	sb.WriteString("# TYPE ap_llm_total_calls counter\n")
 	sb.WriteString(fmt.Sprintf("ap_llm_total_calls %d\n", snap.LLMTotalCalls))
 
+	// 按 provider/model 维度输出
+	m.mu.RLock()
+	llmLabels := make(map[string]*labeledCounter, len(m.LLMCallsByLabel))
+	for k, v := range m.LLMCallsByLabel {
+		llmLabels[k] = v
+	}
+	toolLabels := make(map[string]*labeledCounter, len(m.ToolCallsByLabel))
+	for k, v := range m.ToolCallsByLabel {
+		toolLabels[k] = v
+	}
+	agentTurns := make(map[string]*labeledCounter, len(m.TurnsByAgent))
+	for k, v := range m.TurnsByAgent {
+		agentTurns[k] = v
+	}
+	m.mu.RUnlock()
+
+	if len(llmLabels) > 0 {
+		for key, counter := range llmLabels {
+			parts := strings.SplitN(key, "|", 2)
+			provider, model := parts[0], ""
+			if len(parts) > 1 {
+				model = parts[1]
+			}
+			counter.mu.Lock()
+			calls, errors := counter.calls, counter.errors
+			counter.mu.Unlock()
+			sb.WriteString(fmt.Sprintf("ap_llm_calls_by_provider{provider=\"%s\",model=\"%s\"} %d\n", provider, model, calls))
+			if errors > 0 {
+				sb.WriteString(fmt.Sprintf("ap_llm_errors_by_provider{provider=\"%s\",model=\"%s\"} %d\n", provider, model, errors))
+			}
+		}
+	}
+
 	sb.WriteString("# HELP ap_llm_total_errors Total LLM API errors\n")
 	sb.WriteString("# TYPE ap_llm_total_errors counter\n")
 	sb.WriteString(fmt.Sprintf("ap_llm_total_errors %d\n", snap.LLMTotalErrors))
@@ -261,6 +393,18 @@ func (m *AgentMetrics) String() string {
 	sb.WriteString("# TYPE ap_tool_total_calls counter\n")
 	sb.WriteString(fmt.Sprintf("ap_tool_total_calls %d\n", snap.ToolTotalCalls))
 
+	if len(toolLabels) > 0 {
+		for toolName, counter := range toolLabels {
+			counter.mu.Lock()
+			calls, errors := counter.calls, counter.errors
+			counter.mu.Unlock()
+			sb.WriteString(fmt.Sprintf("ap_tool_calls{tool_name=\"%s\"} %d\n", toolName, calls))
+			if errors > 0 {
+				sb.WriteString(fmt.Sprintf("ap_tool_errors{tool_name=\"%s\"} %d\n", toolName, errors))
+			}
+		}
+	}
+
 	sb.WriteString("# HELP ap_tool_total_errors Total tool errors\n")
 	sb.WriteString("# TYPE ap_tool_total_errors counter\n")
 	sb.WriteString(fmt.Sprintf("ap_tool_total_errors %d\n", snap.ToolTotalErrors))
@@ -268,6 +412,15 @@ func (m *AgentMetrics) String() string {
 	sb.WriteString("# HELP ap_total_turns Total agent turns\n")
 	sb.WriteString("# TYPE ap_total_turns counter\n")
 	sb.WriteString(fmt.Sprintf("ap_total_turns %d\n", snap.TotalTurns))
+
+	if len(agentTurns) > 0 {
+		for agentName, counter := range agentTurns {
+			counter.mu.Lock()
+			calls := counter.calls
+			counter.mu.Unlock()
+			sb.WriteString(fmt.Sprintf("ap_turns{agent_name=\"%s\"} %d\n", agentName, calls))
+		}
+	}
 
 	sb.WriteString("# HELP ap_active_agents Currently active agents\n")
 	sb.WriteString("# TYPE ap_active_agents gauge\n")

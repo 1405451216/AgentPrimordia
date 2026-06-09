@@ -65,6 +65,15 @@ func (p *Pipeline) Run(ctx context.Context, initialInput string) (*PipelineResul
 	var prevResult *StepResult
 
 	for i, step := range p.steps {
+		// 检查 context 是否取消
+		select {
+		case <-ctx.Done():
+			result.Duration = time.Since(start)
+			result.Error = ctx.Err()
+			return result, ctx.Err()
+		default:
+		}
+
 		stepStart := time.Now()
 
 		if step.Condition != nil && !step.Condition(ctx, prevResult) {
@@ -173,6 +182,13 @@ func (h *Handoff) Run(ctx context.Context, input string) (*HandoffResult, error)
 	currentInput := input
 
 	for i := 0; i < h.config.MaxHandoffs; i++ {
+		// 检查 context 是否取消
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
 		// 路由到合适的 Agent
 		agentIdx := h.config.Router(ctx, currentInput)
 		if agentIdx < 0 || agentIdx >= len(h.config.Agents) {
@@ -247,6 +263,10 @@ func ParallelRun(ctx context.Context, agents []Agent, input string, hooks Hooks)
 	var mu sync.Mutex
 
 	for i, a := range agents {
+		// 如果 context 已取消，不再启动新的并行任务
+		if ctx.Err() != nil {
+			break
+		}
 		wg.Add(1)
 		go func(idx int, agent Agent) {
 			defer wg.Done()

@@ -71,6 +71,14 @@ type Shell struct {
 	scopePolicy     tools.ScopePolicy
 	scopeAgent      string
 	maxOutputSize   int
+	sandbox         SandboxChecker // 可选：统一安全检查入口
+	sandboxAgentID  string
+}
+
+// SandboxChecker 沙箱安全检查接口（与 security.Sandbox 兼容）
+type SandboxChecker interface {
+	CanExecute(agentID, cmd string) error
+	ValidatePath(agentID, path string, level int) error
 }
 
 const defaultMaxOutputSize = 50000
@@ -115,6 +123,13 @@ func (s *Shell) WithAllowedWorkdirs(dirs []string) *Shell {
 func (s *Shell) WithScopePolicy(policy tools.ScopePolicy, agentID string) *Shell {
 	s.scopePolicy = policy
 	s.scopeAgent = agentID
+	return s
+}
+
+// WithSandbox 注入沙箱安全检查，命令执行前必须通过沙箱验证
+func (s *Shell) WithSandbox(sandbox SandboxChecker, agentID string) *Shell {
+	s.sandbox = sandbox
+	s.sandboxAgentID = agentID
 	return s
 }
 
@@ -187,6 +202,13 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 		}
 	}
 
+	// Sandbox 统一安全检查：如果注入了沙箱，必须通过验证
+	if s.sandbox != nil {
+		if err := s.sandbox.CanExecute(s.sandboxAgentID, command); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("sandbox denied execution: %v", err)), nil
+		}
+	}
+
 	timeoutSec := int(s.defaultTimeout.Seconds())
 	if raw, ok := params["timeout"]; ok && raw != nil {
 		var v float64
@@ -220,6 +242,13 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 		}
 		if !allowed {
 			return tools.NewErrorResult(fmt.Sprintf("workdir '%s' is not in the allowed directories", workdir)), nil
+		}
+	}
+
+	// Sandbox 路径验证
+	if s.sandbox != nil && workdir != "" {
+		if err := s.sandbox.ValidatePath(s.sandboxAgentID, workdir, 1); err != nil { // 1 = ReadWrite
+			return tools.NewErrorResult(fmt.Sprintf("sandbox denied workdir access: %v", err)), nil
 		}
 	}
 

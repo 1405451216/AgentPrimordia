@@ -117,8 +117,9 @@ func TestSandbox_CanAccess(t *testing.T) {
 func TestSandbox_CanAccess_NilACL(t *testing.T) {
 	sb := NewSandbox(nil)
 
-	if err := sb.CanAccess("agent-1", "/any/path", AccessAll); err != nil {
-		t.Errorf("nil ACL should allow all access: %v", err)
+	// nil ACL 默认拒绝所有访问（最小权限原则）
+	if err := sb.CanAccess("agent-1", "/any/path", AccessAll); err == nil {
+		t.Error("nil ACL should deny all access by default")
 	}
 }
 
@@ -137,7 +138,10 @@ func TestSandbox_ValidatePath(t *testing.T) {
 }
 
 func TestSandbox_ValidatePath_CleanPath(t *testing.T) {
-	sb := NewSandbox(nil)
+	// 使用配置了 ACL 的 Sandbox 而非 nil（nil ACL 默认拒绝）
+	acl := NewACL()
+	acl.Allow("agent-1", "/workspace/", AccessAll)
+	sb := NewSandbox(acl)
 
 	if err := sb.ValidatePath("agent-1", "/workspace/./file.go", AccessRead); err != nil {
 		t.Errorf("path with ./ should be cleaned and pass: %v", err)

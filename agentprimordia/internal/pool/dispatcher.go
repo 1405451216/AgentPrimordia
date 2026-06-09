@@ -40,6 +40,7 @@ type Pool struct {
 	model        llm.Provider
 	toolkit      *tools.Registry
 	agentFactory AgentFactory
+	closeOnce    sync.Once
 }
 
 type poolTask struct {
@@ -165,34 +166,36 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		}, fmt.Errorf("%w: %s", ErrTaskNotFound, task.ID)
 	}
 
-	for {
-		select {
-		case p.semaphore <- struct{}{}:
-			defer func() { <-p.semaphore }()
-		case <-ctx.Done():
-			p.mu.Lock()
-			pt.status = PoolTaskCancelled
-			p.mu.Unlock()
-			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
-			return &TaskResult{
-				TaskID: task.ID,
-				Task:   task,
-				Error:  ctx.Err(),
-				Status: PoolTaskCancelled,
-			}, ctx.Err()
-		case <-time.After(p.config.Timeout):
-			p.mu.Lock()
-			pt.status = PoolTaskFailed
-			p.mu.Unlock()
-			p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
-			return &TaskResult{
-				TaskID: task.ID,
-				Task:   task,
-				Error:  ErrTimeout,
-				Status: PoolTaskFailed,
-			}, ErrTimeout
-		}
+	// 获取 semaphore（仅获取一次，重试期间持有不释放）
+	select {
+	case p.semaphore <- struct{}{}:
+		defer func() { <-p.semaphore }()
+	case <-ctx.Done():
+		p.mu.Lock()
+		pt.status = PoolTaskCancelled
+		p.mu.Unlock()
+		p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
+		return &TaskResult{
+			TaskID: task.ID,
+			Task:   task,
+			Error:  ctx.Err(),
+			Status: PoolTaskCancelled,
+		}, ctx.Err()
+	case <-time.After(p.config.Timeout):
+		p.mu.Lock()
+		pt.status = PoolTaskFailed
+		p.mu.Unlock()
+		p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
+		return &TaskResult{
+			TaskID: task.ID,
+			Task:   task,
+			Error:  ErrTimeout,
+			Status: PoolTaskFailed,
+		}, ErrTimeout
+	}
 
+	// 重试循环（semaphore 已持有，不再重复获取）
+	for {
 		p.mu.Lock()
 		pt.status = PoolTaskRunning
 		p.mu.Unlock()
@@ -225,6 +228,8 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 
 				if p.isRetryable(err) && pt.retryCount < p.config.RetryPolicy.MaxRetries {
 					pt.retryCount++
+					p.mu.Lock()
+					p.mu.Unlock()
 					time.Sleep(p.config.RetryPolicy.Backoff)
 					continue
 				}
@@ -527,9 +532,11 @@ func (p *Pool) Cleanup() {
 }
 
 func (p *Pool) Close() {
-	p.cancel()
-	p.wg.Wait()
-	close(p.eventCh)
+	p.closeOnce.Do(func() {
+		p.cancel()
+		p.wg.Wait()
+		close(p.eventCh)
+	})
 }
 
 func generateTaskID(index int) string {

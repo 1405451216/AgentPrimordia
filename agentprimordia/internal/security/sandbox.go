@@ -160,9 +160,9 @@ func (s *Sandbox) CanExecute(agentID, cmd string) error {
 }
 
 func (s *Sandbox) CanAccess(agentID, resource string, level AccessLevel) error {
-	// nil ACL 等于无限制访问
+	// nil ACL 默认拒绝所有访问（最小权限原则）
 	if s.acl == nil {
-		return nil
+		return fmt.Errorf("%w: no ACL configured, access denied for agent %q on %q", ErrAccessDenied, agentID, resource)
 	}
 
 	if !s.acl.Check(agentID, resource, level) {

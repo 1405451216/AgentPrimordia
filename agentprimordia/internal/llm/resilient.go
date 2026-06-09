@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -100,15 +101,25 @@ func (r *ResilientProvider) Stream(ctx context.Context, req *CompletionRequest) 
 		return nil, err
 	}
 
-	// 尝试主 Provider
-	ch, err := r.primary.Stream(ctx, req)
-	if err == nil {
-		r.recordSuccess()
-		return ch, nil
+	// 尝试主 Provider（带一次重试）
+	for attempt := 0; attempt <= 1; attempt++ {
+		if attempt > 0 {
+			backoff := r.calculateBackoff(attempt)
+			select {
+			case <-time.After(backoff):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		}
+		ch, err := r.primary.Stream(ctx, req)
+		if err == nil {
+			r.recordSuccess()
+			return ch, nil
+		}
 	}
 
 	// 主 Provider 失败，尝试 Fallback
-	lastErr := err
+	var lastErr error
 	fallbacks := r.getFallbacks()
 	for _, fb := range fallbacks {
 		fbCh, fbErr := fb.Stream(ctx, req)
@@ -142,7 +153,13 @@ func (r *ResilientProvider) CallTools(ctx context.Context, req *ToolCallRequest)
 
 func (r *ResilientProvider) Embeddings(ctx context.Context, texts []string) ([][]float32, error) {
 	if embedder, ok := r.primary.(Embedder); ok {
-		return embedder.Embeddings(ctx, texts)
+		resp, err := embedder.Embeddings(ctx, texts)
+		if err != nil {
+			r.recordFailure()
+			return nil, err
+		}
+		r.recordSuccess()
+		return resp, nil
 	}
 	return nil, ErrNotSupported
 }
@@ -250,5 +267,11 @@ func (r *ResilientProvider) calculateBackoff(attempt int) time.Duration {
 	if backoff > float64(r.config.MaxBackoff) {
 		backoff = float64(r.config.MaxBackoff)
 	}
-	return time.Duration(backoff)
+	// 添加随机抖动 (jitter) 防止惊群效应，但不超过 MaxBackoff
+	jitter := rand.Float64() * float64(r.config.RetryBackoff) * 0.5
+	result := time.Duration(backoff + jitter)
+	if result > r.config.MaxBackoff {
+		result = r.config.MaxBackoff
+	}
+	return result
 }

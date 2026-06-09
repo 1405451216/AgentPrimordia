@@ -75,11 +75,13 @@ func (t *CostTracker) Record(model, sessionID, agentName string, usage llm.Usage
 		AgentName:        agentName,
 	}
 
+	// 在同一个锁保护下完成记录 + 预算检查，消除 TOCTOU 竞态
 	t.mu.Lock()
 	t.records = append(t.records, record)
+	exceeded := t.checkBudgetLocked()
 	t.mu.Unlock()
 
-	if t.budget != nil && t.budget.OnBudgetExceed != nil && t.CheckBudget() {
+	if exceeded && t.budget != nil && t.budget.OnBudgetExceed != nil {
 		t.budget.OnBudgetExceed(t.Summary())
 	}
 
@@ -123,6 +125,14 @@ func (t *CostTracker) CheckBudget() bool {
 
 	t.mu.RLock()
 	defer t.mu.RUnlock()
+	return t.checkBudgetLocked()
+}
+
+// checkBudgetLocked 在已持有锁的情况下检查预算（调用方必须持有 t.mu）
+func (t *CostTracker) checkBudgetLocked() bool {
+	if t.budget == nil {
+		return false
+	}
 
 	if t.budget.MaxTotalCostUSD > 0 {
 		var totalCost float64
@@ -140,6 +150,14 @@ func (t *CostTracker) CheckBudget() bool {
 			totalTokens += int64(r.TotalTokens)
 		}
 		if totalTokens > int64(t.budget.MaxTokensPerSession) {
+			return true
+		}
+	}
+
+	// 检查单次调用 Token 上限
+	if t.budget.MaxTokensPerCall > 0 && len(t.records) > 0 {
+		last := t.records[len(t.records)-1]
+		if last.TotalTokens > t.budget.MaxTokensPerCall {
 			return true
 		}
 	}

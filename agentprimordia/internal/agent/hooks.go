@@ -194,8 +194,8 @@ func (s *HookStats) Snapshot() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	result := map[string]interface{}{
-		"total_fired":  s.TotalFired,
-		"total_errors": s.TotalErrors,
+		"total_fired":  atomic.LoadInt64(&s.TotalFired),
+		"total_errors": atomic.LoadInt64(&s.TotalErrors),
 		"by_point":     make(map[string]int64),
 		"by_errors":    make(map[string]int64),
 	}

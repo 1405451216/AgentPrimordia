@@ -573,11 +573,28 @@ func (t *SQLiteTool) getTableSchema(ctx context.Context, params map[string]any) 
 	if !ok {
 		return nil, fmt.Errorf("parameter 'table_name' must be a string")
 	}
-	queryResult, err := t.executeQuery(ctx, map[string]any{"sql": fmt.Sprintf("PRAGMA table_info(%s)", tableName)})
+	// 验证表名防止 SQL 注入：仅允许字母、数字、下划线
+	if !isValidTableName(tableName) {
+		return nil, fmt.Errorf("invalid table name: %q", tableName)
+	}
+	queryResult, err := t.executeQuery(ctx, map[string]any{"sql": fmt.Sprintf("PRAGMA table_info(%q)", tableName)})
 	if err != nil {
 		return nil, err
 	}
 	return &Result{Content: queryResult.Content, Metadata: map[string]any{"table_name": tableName}}, nil
+}
+
+// isValidTableName 验证表名是否安全（仅允许字母、数字、下划线）
+func isValidTableName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, r := range name {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *SQLiteTool) Close() error {

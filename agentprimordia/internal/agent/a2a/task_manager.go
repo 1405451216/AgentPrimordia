@@ -143,7 +143,10 @@ func (tm *TaskManagerImpl) Unsubscribe(taskID string, ch chan *TaskEvent) {
 	defer tm.mu.Unlock()
 
 	if subs, ok := tm.subscribers[taskID]; ok {
-		delete(subs, ch)
+		if _, exists := subs[ch]; exists {
+			delete(subs, ch)
+			close(ch) // 关闭通道以通知消费者不再接收事件
+		}
 		if len(subs) == 0 {
 			delete(tm.subscribers, taskID)
 		}
@@ -184,6 +187,12 @@ func (tm *TaskManagerImpl) List(filter TaskFilter) []*Task {
 func (tm *TaskManagerImpl) Cleanup() {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
+	// 关闭所有订阅通道，防止消费者 goroutine 泄漏
+	for _, subs := range tm.subscribers {
+		for ch := range subs {
+			close(ch)
+		}
+	}
 	tm.tasks = make(map[string]*Task)
 	tm.subscribers = make(map[string]map[chan *TaskEvent]struct{})
 }
@@ -196,8 +205,9 @@ func (tm *TaskManagerImpl) publishEventLocked(taskID string, event *TaskEvent) {
 	for ch := range subs {
 		select {
 		case ch <- event:
-		default:
-			tm.logger.Warn("SSE 事件通道满，丢弃事件", "task_id", taskID, "event_type", event.Type)
+		case <-time.After(100 * time.Millisecond):
+			// 超时后丢弃事件，避免发布者被慢消费者阻塞
+			tm.logger.Warn("SSE 事件通道超时，丢弃事件", "task_id", taskID, "event_type", event.Type)
 		}
 	}
 }

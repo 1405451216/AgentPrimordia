@@ -286,16 +286,22 @@ func (l *Lifecycle) Reset() error {
 	l.status = StatusIdle
 	l.stateSince = now
 
+	// 在锁内复制 listeners 和 hooks，避免锁外竞态
+	listeners := make([]func(AgentStatus), len(l.listeners))
+	copy(listeners, l.listeners)
+	idleHooks := make([]StateHook, 0)
+	if hooks, ok := l.hooks[StatusIdle]; ok {
+		idleHooks = append(idleHooks, hooks...)
+	}
+
 	l.mu.Unlock()
 
-	// 在锁外通知监听器
-	for _, listener := range l.listeners {
+	// 使用复制的数据在锁外通知
+	for _, listener := range listeners {
 		listener(StatusIdle)
 	}
-	if hooks, ok := l.hooks[StatusIdle]; ok {
-		for _, hook := range hooks {
-			hook(l.status, StatusIdle)
-		}
+	for _, hook := range idleHooks {
+		hook(StatusIdle, StatusIdle)
 	}
 
 	return nil
@@ -348,36 +354,81 @@ func (l *Lifecycle) IsStopped() bool {
 
 // Pause pauses the agent execution
 func (l *Lifecycle) Pause() {
-	l.mu.RLock()
-	isRunning := l.status == StatusRunning
-	l.mu.RUnlock()
-
-	if !isRunning {
+	l.mu.Lock()
+	if l.status != StatusRunning {
+		l.mu.Unlock()
 		return
 	}
+	from := l.status
+	now := time.Now()
+	duration := now.Sub(l.stateSince)
+	l.totalRunning += duration
+	l.history = append(l.history, StateTransition{
+		From:      from,
+		To:        StatusPaused,
+		Timestamp: now,
+		Duration:  duration,
+		Reason:    "pause",
+	})
+	l.status = StatusPaused
+	l.stateSince = now
+	l.manageTimeoutTimer(StatusPaused)
 
-	if err := l.SetStatusWithReason(StatusPaused, "pause"); err == nil {
-		l.mu.Lock()
-		l.pauseCh <- struct{}{}
-		l.mu.Unlock()
+	// 在锁内复制 listeners 和 hooks
+	listeners := make([]func(AgentStatus), len(l.listeners))
+	copy(listeners, l.listeners)
+	pausedHooks := make([]StateHook, 0)
+	if hooks, ok := l.hooks[StatusPaused]; ok {
+		pausedHooks = append(pausedHooks, hooks...)
+	}
+
+	l.pauseCh <- struct{}{}
+	l.mu.Unlock()
+
+	for _, listener := range listeners {
+		listener(StatusPaused)
+	}
+	for _, hook := range pausedHooks {
+		hook(from, StatusPaused)
 	}
 }
 
 // Resume resumes a paused agent
 func (l *Lifecycle) Resume() {
-	l.mu.RLock()
-	isPaused := l.status == StatusPaused
-	l.mu.RUnlock()
-
-	if !isPaused {
+	l.mu.Lock()
+	if l.status != StatusPaused {
+		l.mu.Unlock()
 		return
 	}
+	from := l.status
+	now := time.Now()
+	l.history = append(l.history, StateTransition{
+		From:      from,
+		To:        StatusRunning,
+		Timestamp: now,
+		Reason:    "resume",
+	})
+	l.status = StatusRunning
+	l.stateSince = now
+	l.manageTimeoutTimer(StatusRunning)
 
-	if err := l.SetStatusWithReason(StatusRunning, "resume"); err == nil {
-		l.mu.Lock()
-		close(l.resumeCh)
-		l.resumeCh = make(chan struct{})
-		l.mu.Unlock()
+	// 在锁内复制 listeners 和 hooks
+	listeners := make([]func(AgentStatus), len(l.listeners))
+	copy(listeners, l.listeners)
+	runningHooks := make([]StateHook, 0)
+	if hooks, ok := l.hooks[StatusRunning]; ok {
+		runningHooks = append(runningHooks, hooks...)
+	}
+
+	close(l.resumeCh)
+	l.resumeCh = make(chan struct{})
+	l.mu.Unlock()
+
+	for _, listener := range listeners {
+		listener(StatusRunning)
+	}
+	for _, hook := range runningHooks {
+		hook(from, StatusRunning)
 	}
 }
 

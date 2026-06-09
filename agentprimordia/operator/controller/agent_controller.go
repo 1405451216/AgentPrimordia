@@ -288,6 +288,47 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 		},
 	}
 
+	// Inject health check probes from spec into the agent container
+	if agentDeploy.Spec.HealthCheck != nil {
+		agentContainer := &deploy.Spec.Template.Spec.Containers[0]
+		if agentDeploy.Spec.HealthCheck.LivenessProbe != nil {
+			lp := agentDeploy.Spec.HealthCheck.LivenessProbe
+			agentContainer.LivenessProbe = &corev1.Probe{
+				InitialDelaySeconds: lp.InitialDelaySeconds,
+				TimeoutSeconds:      lp.TimeoutSeconds,
+				PeriodSeconds:       lp.PeriodSeconds,
+				SuccessThreshold:    lp.SuccessThreshold,
+				FailureThreshold:    lp.FailureThreshold,
+			}
+			if lp.HTTPGet != nil {
+				agentContainer.LivenessProbe.ProbeHandler = corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: lp.HTTPGet.Path,
+						Port: intstr.FromInt32(lp.HTTPGet.Port),
+					},
+				}
+			}
+		}
+		if agentDeploy.Spec.HealthCheck.ReadinessProbe != nil {
+			rp := agentDeploy.Spec.HealthCheck.ReadinessProbe
+			agentContainer.ReadinessProbe = &corev1.Probe{
+				InitialDelaySeconds: rp.InitialDelaySeconds,
+				TimeoutSeconds:      rp.TimeoutSeconds,
+				PeriodSeconds:       rp.PeriodSeconds,
+				SuccessThreshold:    rp.SuccessThreshold,
+				FailureThreshold:    rp.FailureThreshold,
+			}
+			if rp.HTTPGet != nil {
+				agentContainer.ReadinessProbe.ProbeHandler = corev1.ProbeHandler{
+					HTTPGet: &corev1.HTTPGetAction{
+						Path: rp.HTTPGet.Path,
+						Port: intstr.FromInt32(rp.HTTPGet.Port),
+					},
+				}
+			}
+		}
+	}
+
 	return r.Create(ctx, deploy)
 }
 
@@ -487,6 +528,13 @@ func (r *AgentDeploymentReconciler) updateStatus(ctx context.Context, agentDeplo
 	} else {
 		agentDeploy.Status.ErrorRate = 0
 	}
+
+	// TODO: These metrics would be populated from the metrics sidecar endpoint
+	// in production. The sidecar aggregates LLM token usage, turn latency, and
+	// cost data which the controller would periodically scrape and reflect here.
+	agentDeploy.Status.AverageTurnLatencySeconds = 0
+	agentDeploy.Status.TotalTokens = 0
+	agentDeploy.Status.EstimatedCostUSD = 0
 
 	condition := agentv1.AgentDeploymentCondition{
 		Type:               "Available",

@@ -7,12 +7,22 @@
   "links": [],
   "panels": [
     {
-      "title": "总成本 (USD)",
+      "title": "Cost Dashboard - Notice",
+      "type": "text",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Cost Tracking Dashboard\n\nThis dashboard is a **placeholder**. The AgentPrimordia Prometheus metrics endpoint does not currently export cost metrics.\n\nCost data is available through the **CostTracker API** (not Prometheus). To populate this dashboard:\n\n1. Integrate the CostTracker service with your deployment.\n2. Configure a Prometheus exporter or recording rule to bridge CostTracker data into Prometheus.\n3. Once a metric such as `ap_cost_usd{provider, model, agent_name}` is available, the placeholder panels below will begin to display data.\n\nSee the AgentPrimordia documentation for details on the CostTracker integration."
+      }
+    },
+    {
+      "title": "总成本 (USD) [Placeholder]",
+      "description": "Requires ap_cost_usd metric from CostTracker integration",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 6 },
       "targets": [
         {
-          "expr": "sum(ap_cost_total_dollars)",
+          "expr": "sum(ap_cost_usd)",
           "legendFormat": "总计"
         }
       ],
@@ -31,23 +41,25 @@
       }
     },
     {
-      "title": "按 Provider 成本",
+      "title": "按 Provider 成本 [Placeholder]",
+      "description": "Requires ap_cost_usd metric from CostTracker integration",
       "type": "barchart",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 6 },
       "targets": [
         {
-          "expr": "sum(ap_cost_total_dollars) by (provider)",
+          "expr": "sum(ap_cost_usd) by (provider)",
           "legendFormat": "{{provider}}"
         }
       ]
     },
     {
-      "title": "成本趋势",
+      "title": "成本趋势 [Placeholder]",
+      "description": "Requires ap_cost_usd metric from CostTracker integration",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
       "targets": [
         {
-          "expr": "sum(increase(ap_cost_total_dollars[1h])) by (provider)",
+          "expr": "sum(increase(ap_cost_usd[1h])) by (provider)",
           "legendFormat": "{{provider}} 每小时"
         }
       ],
@@ -56,12 +68,13 @@
       }
     },
     {
-      "title": "按 Agent 成本",
+      "title": "按 Agent 成本 [Placeholder]",
+      "description": "Requires ap_cost_usd metric from CostTracker integration",
       "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
       "targets": [
         {
-          "expr": "sum(ap_cost_total_dollars) by (agent_name, provider, model)",
+          "expr": "sum(ap_cost_usd) by (agent_name, provider, model)",
           "format": "table",
           "instant": true
         }

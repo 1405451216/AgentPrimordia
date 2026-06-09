@@ -61,7 +61,7 @@
       "gridPos": { "h": 8, "w": 6, "x": 0, "y": 4 },
       "targets": [
         {
-          "expr": "sum(increase(ap_tool_total_calls_total[1h])) by (tool_name)",
+          "expr": "sum(increase(ap_tool_calls[1h])) by (tool_name)",
           "legendFormat": "{{tool_name}}"
         }
       ]
@@ -90,7 +90,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
       "targets": [
         {
-          "expr": "sum(rate(ap_llm_total_calls{status=\"error\"}[5m])) / sum(rate(ap_llm_total_calls[5m]))",
+          "expr": "sum(rate(ap_llm_total_errors[5m])) / sum(rate(ap_llm_total_calls[5m]))",
           "legendFormat": "错误率"
         }
       ],
@@ -127,7 +127,7 @@
       {
         "name": "provider",
         "type": "query",
-        "query": "label_values(ap_llm_total_calls, provider)",
+        "query": "label_values(ap_llm_calls_by_provider, provider)",
         "refresh": 2,
         "includeAll": true,
         "multi": true
@@ -135,7 +135,7 @@
       {
         "name": "model",
         "type": "query",
-        "query": "label_values(ap_llm_total_calls, model)",
+        "query": "label_values(ap_llm_calls_by_provider, model)",
         "refresh": 2,
         "includeAll": true,
         "multi": true

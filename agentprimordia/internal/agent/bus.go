@@ -122,38 +122,61 @@ func (b *LocalMessageBus) Send(ctx context.Context, msg *BusMessage) (*BusMessag
 }
 
 // Broadcast 广播消息到所有 Agent（排除发送方）
+// 快照 handlers/channels 后释放锁，异步调用 handler 避免阻塞写操作
 func (b *LocalMessageBus) Broadcast(ctx context.Context, msg *BusMessage) map[string]*BusMessage {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
 	if msg.Timestamp.IsZero() {
 		msg.Timestamp = time.Now()
 	}
 
-	results := make(map[string]*BusMessage)
+	// 快照 handlers 和 channels，避免在持有 RLock 期间执行 handler
+	b.mu.RLock()
+	type target struct {
+		agentID string
+		handler BusMessageHandler
+		chs     []chan *BusMessage
+	}
+	targets := make([]target, 0, len(b.handlers))
 	for agentID, handler := range b.handlers {
 		if agentID == msg.From {
 			continue
 		}
-
-		broadcastMsg := *msg
-		broadcastMsg.To = agentID
-
-		for _, ch := range b.channels[agentID] {
-			select {
-			case ch <- &broadcastMsg:
-			default:
-				b.logger.Warn("订阅通道已满，跳过广播消息", "agent", agentID)
-			}
-		}
-
-		resp, err := handler(ctx, &broadcastMsg)
-		if err != nil {
-			b.logger.Warn("广播消息处理失败", "agent", agentID, "error", err)
-			continue
-		}
-		results[agentID] = resp
+		chs := b.channels[agentID]
+		chsCopy := make([]chan *BusMessage, len(chs))
+		copy(chsCopy, chs)
+		targets = append(targets, target{agentID: agentID, handler: handler, chs: chsCopy})
 	}
+	b.mu.RUnlock()
+
+	results := make(map[string]*BusMessage)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for _, t := range targets {
+		wg.Add(1)
+		go func(t target) {
+			defer wg.Done()
+			broadcastMsg := *msg
+			broadcastMsg.To = t.agentID
+
+			for _, ch := range t.chs {
+				select {
+				case ch <- &broadcastMsg:
+				default:
+					b.logger.Warn("订阅通道已满，跳过广播消息", "agent", t.agentID)
+				}
+			}
+
+			resp, err := t.handler(ctx, &broadcastMsg)
+			if err != nil {
+				b.logger.Warn("广播消息处理失败", "agent", t.agentID, "error", err)
+				return
+			}
+			mu.Lock()
+			results[t.agentID] = resp
+			mu.Unlock()
+		}(t)
+	}
+	wg.Wait()
 
 	return results
 }
