@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"agentprimordia/internal/agent"
 	"agentprimordia/internal/events"
@@ -19,185 +18,22 @@ import (
 	"agentprimordia/internal/tools/builtin"
 )
 
-// ===== 可选接口定义 =====
+// ===== 兼容性适配器（Deprecated）=====
 
-// pkgMemorySearcher 可选搜索能力接口
-type pkgMemorySearcher interface {
-	SearchByTag(ctx context.Context, tag string, opts *memory.SearchOptions) ([]*memory.Episode, error)
-	GetImportant(ctx context.Context, threshold float64, limit int) ([]*memory.Episode, error)
-	GetTimeline(ctx context.Context, days int) (map[string][]*memory.Episode, error)
-}
-
-// pkgMemoryExporter 可选导入导出接口
-type pkgMemoryExporter interface {
-	ExportMemories(ctx context.Context, sessionID, format string) ([]byte, error)
-	ImportMemories(ctx context.Context, data []byte, format string) (int, error)
-}
-
-// pkgMemoryQuery 可选辅助查询接口
-type pkgMemoryQuery interface {
-	GetMemoriesByTag(ctx context.Context, tag string, limit int) ([]*memory.Episode, error)
-	GetMemoriesBySession(ctx context.Context, sessionID string) ([]*memory.Episode, error)
-	GetImportantMemories(ctx context.Context, threshold float64, limit int) ([]*memory.Episode, error)
-	GetMemoryTimeline(ctx context.Context, days int) ([]*memory.MemoryTimelineGroup, error)
-}
-
-// pkgMemoryLifecycle 可选生命周期接口
-type pkgMemoryLifecycle interface {
-	CleanupExpired(ctx context.Context, maxAgeDays int) (int64, error)
-	ClearAll(ctx context.Context, sessionID string) error
-}
-
-// pkgMemoryToolUse 可选工具使用记录接口
-type pkgMemoryToolUse interface {
-	RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error
-}
-
-// ===== MemoryStore 适配器 =====
-
-// memoryStoreAdapter 将 memory.Memory 适配为 agent.MemoryStore
-type memoryStoreAdapter struct {
-	store memory.Memory
-}
-
-// NewMemoryAdapter 将 memory.Memory 适配为 agent.MemoryStore，用于注入到 ReActConfig.Memory
+// NewMemoryAdapter 将 memory.Memory 适配为 agent.MemoryStore。
+//
+// Deprecated: memory.Memory 已直接满足 agent.MemoryStore 接口，无需适配器。
+// 直接传入 memory.Memory 即可，将在 v2.0.0 移除。
 func NewMemoryAdapter(store memory.Memory) agent.MemoryStore {
-	return &memoryStoreAdapter{store: store}
+	return store
 }
 
-func (a *memoryStoreAdapter) Add(ctx context.Context, ep *agent.MemoryEpisode) error {
-	episode := &memory.Episode{
-		ID:         ep.ID,
-		SessionID:  ep.SessionID,
-		Role:       ep.Role,
-		Content:    ep.Content,
-		Summary:    ep.Summary,
-		Topics:     ep.Topics,
-		Importance: ep.Importance,
-		Metadata:   ep.Metadata,
-		CreatedAt:  ep.CreatedAt,
-	}
-	return a.store.Add(ctx, episode)
-}
-
-func (a *memoryStoreAdapter) Search(ctx context.Context, query string, opts *memory.SearchOptions) ([]*memory.Episode, error) {
-	return a.store.Search(ctx, query, opts)
-}
-
-func (a *memoryStoreAdapter) Get(ctx context.Context, id string) (*memory.Episode, error) {
-	return a.store.Get(ctx, id)
-}
-
-func (a *memoryStoreAdapter) Delete(ctx context.Context, id string) error {
-	return a.store.Delete(ctx, id)
-}
-
-func (a *memoryStoreAdapter) Count(ctx context.Context, sessionID string) (int64, error) {
-	return a.store.Count(ctx, sessionID)
-}
-
-func (a *memoryStoreAdapter) List(ctx context.Context, opts *memory.ListOptions) ([]*memory.Episode, error) {
-	return a.store.List(ctx, opts)
-}
-
-func (a *memoryStoreAdapter) UpdateSummary(ctx context.Context, id string, summary, topics string) error {
-	return a.store.UpdateSummary(ctx, id, summary, topics)
-}
-
-func (a *memoryStoreAdapter) SetImportance(ctx context.Context, episodeID string, importance float64) error {
-	return a.store.SetImportance(ctx, episodeID, importance)
-}
-
-func (a *memoryStoreAdapter) SearchByTag(ctx context.Context, tag string, opts *memory.SearchOptions) ([]*memory.Episode, error) {
-	if searcher, ok := a.store.(pkgMemorySearcher); ok {
-		return searcher.SearchByTag(ctx, tag, opts)
-	}
-	return nil, fmt.Errorf("search by tag not supported")
-}
-
-func (a *memoryStoreAdapter) GetImportant(ctx context.Context, threshold float64, limit int) ([]*memory.Episode, error) {
-	if searcher, ok := a.store.(pkgMemorySearcher); ok {
-		return searcher.GetImportant(ctx, threshold, limit)
-	}
-	return nil, fmt.Errorf("get important not supported")
-}
-
-func (a *memoryStoreAdapter) GetTimeline(ctx context.Context, days int) (map[string][]*memory.Episode, error) {
-	if searcher, ok := a.store.(pkgMemorySearcher); ok {
-		return searcher.GetTimeline(ctx, days)
-	}
-	return nil, fmt.Errorf("get timeline not supported")
-}
-
-func (a *memoryStoreAdapter) GetMemoriesByTag(ctx context.Context, tag string, limit int) ([]*memory.Episode, error) {
-	if q, ok := a.store.(pkgMemoryQuery); ok {
-		return q.GetMemoriesByTag(ctx, tag, limit)
-	}
-	return nil, fmt.Errorf("get memories by tag not supported")
-}
-
-func (a *memoryStoreAdapter) GetMemoriesBySession(ctx context.Context, sessionID string) ([]*memory.Episode, error) {
-	if q, ok := a.store.(pkgMemoryQuery); ok {
-		return q.GetMemoriesBySession(ctx, sessionID)
-	}
-	return nil, fmt.Errorf("get memories by session not supported")
-}
-
-func (a *memoryStoreAdapter) GetImportantMemories(ctx context.Context, threshold float64, limit int) ([]*memory.Episode, error) {
-	if q, ok := a.store.(pkgMemoryQuery); ok {
-		return q.GetImportantMemories(ctx, threshold, limit)
-	}
-	return nil, fmt.Errorf("get important memories not supported")
-}
-
-func (a *memoryStoreAdapter) GetMemoryTimeline(ctx context.Context, days int) ([]*memory.MemoryTimelineGroup, error) {
-	if q, ok := a.store.(pkgMemoryQuery); ok {
-		return q.GetMemoryTimeline(ctx, days)
-	}
-	return nil, fmt.Errorf("get memory timeline not supported")
-}
-
-func (a *memoryStoreAdapter) CleanupExpired(ctx context.Context, maxAgeDays int) (int64, error) {
-	if lc, ok := a.store.(pkgMemoryLifecycle); ok {
-		return lc.CleanupExpired(ctx, maxAgeDays)
-	}
-	return 0, fmt.Errorf("cleanup expired not supported")
-}
-
-func (a *memoryStoreAdapter) Stats(ctx context.Context) (*memory.MemoryStats, error) {
-	return a.store.Stats(ctx)
-}
-
-func (a *memoryStoreAdapter) RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error {
-	if tu, ok := a.store.(pkgMemoryToolUse); ok {
-		return tu.RecordToolUse(ctx, sessionID, agentName, toolName, args, result)
-	}
-	return fmt.Errorf("record tool use not supported")
-}
-
-func (a *memoryStoreAdapter) ClearAll(ctx context.Context, sessionID string) error {
-	if lc, ok := a.store.(pkgMemoryLifecycle); ok {
-		return lc.ClearAll(ctx, sessionID)
-	}
-	return fmt.Errorf("clear all not supported")
-}
-
-func (a *memoryStoreAdapter) ExportMemories(ctx context.Context, sessionID, format string) ([]byte, error) {
-	if exp, ok := a.store.(pkgMemoryExporter); ok {
-		return exp.ExportMemories(ctx, sessionID, format)
-	}
-	return nil, fmt.Errorf("export memories not supported")
-}
-
-func (a *memoryStoreAdapter) ImportMemories(ctx context.Context, data []byte, format string) (int, error) {
-	if exp, ok := a.store.(pkgMemoryExporter); ok {
-		return exp.ImportMemories(ctx, data, format)
-	}
-	return 0, fmt.Errorf("import memories not supported")
-}
-
-func (a *memoryStoreAdapter) Close() error {
-	return a.store.Close()
+// NewMetricsAdapter 将 metrics.AgentMetrics 适配为 agent.MetricsRecorder。
+//
+// Deprecated: metrics.AgentMetrics 已直接满足 agent.MetricsRecorder 接口，无需适配器。
+// 直接传入 *metrics.AgentMetrics 即可，将在 v2.0.0 移除。
+func NewMetricsAdapter(m *metrics.AgentMetrics) agent.MetricsRecorder {
+	return m
 }
 
 // ===== EventPublisher 适配器 =====
@@ -219,42 +55,6 @@ func (a *eventBusAdapter) PublishAsync(eventType string, source string, payload 
 		Payload: payload,
 	}
 	return a.bus.PublishAsync(evt)
-}
-
-// ===== MetricsRecorder 适配器 =====
-
-// metricsAdapter 将 metrics.AgentMetrics 适配为 agent.MetricsRecorder
-type metricsAdapter struct {
-	metrics *metrics.AgentMetrics
-}
-
-// NewMetricsAdapter 将 metrics.AgentMetrics 适配为 agent.MetricsRecorder，用于注入到 ReActConfig.Metrics
-func NewMetricsAdapter(m *metrics.AgentMetrics) agent.MetricsRecorder {
-	return &metricsAdapter{metrics: m}
-}
-
-func (a *metricsAdapter) RecordLLMCall(duration time.Duration, err error) {
-	a.metrics.RecordLLMCall(duration, err)
-}
-
-func (a *metricsAdapter) RecordToolCall(duration time.Duration, err error) {
-	a.metrics.RecordToolCall(duration, err)
-}
-
-func (a *metricsAdapter) RecordTurn(duration time.Duration) {
-	a.metrics.RecordTurn(duration)
-}
-
-func (a *metricsAdapter) IncActiveAgents() {
-	a.metrics.IncActiveAgents()
-}
-
-func (a *metricsAdapter) DecActiveAgents() {
-	a.metrics.DecActiveAgents()
-}
-
-func (a *metricsAdapter) RecordTokenUsage(model string, promptTokens, completionTokens int) {
-	a.metrics.RecordTokenUsage(model, promptTokens, completionTokens)
 }
 
 // ===== EmbeddingProvider 适配器 =====

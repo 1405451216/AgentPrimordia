@@ -17,10 +17,10 @@ func TestAdaptMemoryStore(t *testing.T) {
 	}
 	defer store.Close()
 
-	adapter := &memoryStoreAdapter{store: store}
+	adapter := store
 	ctx := context.Background()
 
-	ep := &agent.MemoryEpisode{
+	ep := &memory.Episode{
 		ID:        "ep-test-1",
 		SessionID: "session-1",
 		Role:      "user",
@@ -89,7 +89,7 @@ func TestAdaptMemoryStore_Operations(t *testing.T) {
 	}
 	defer store.Close()
 
-	adapter := &memoryStoreAdapter{store: store}
+	adapter := store
 	ctx := context.Background()
 
 	if err := adapter.RecordToolUse(ctx, "session-1", "agent-1", "shell", "ls", "result"); err != nil {
@@ -156,7 +156,7 @@ func TestAdaptMemoryStore_Timeline(t *testing.T) {
 	}
 	defer store.Close()
 
-	adapter := &memoryStoreAdapter{store: store}
+	adapter := store
 	ctx := context.Background()
 
 	ep1 := &agent.MemoryEpisode{
@@ -232,10 +232,10 @@ func TestAdaptMemoryStore_SearchByTagAndGetImportant(t *testing.T) {
 	}
 	defer store.Close()
 
-	adapter := &memoryStoreAdapter{store: store}
+	adapter := store
 	ctx := context.Background()
 
-	ep := &agent.MemoryEpisode{
+	ep := &memory.Episode{
 		ID:         "ep-1",
 		SessionID:  "session-1",
 		Role:       "user",
@@ -278,10 +278,10 @@ func TestAdaptMemoryStore_CleanupExpired(t *testing.T) {
 	}
 	defer store.Close()
 
-	adapter := &memoryStoreAdapter{store: store}
+	adapter := store
 	ctx := context.Background()
 
-	ep := &agent.MemoryEpisode{
+	ep := &memory.Episode{
 		ID:        "ep-1",
 		SessionID: "session-1",
 		Role:      "user",
@@ -305,7 +305,7 @@ func TestAdaptMemoryStore_Close(t *testing.T) {
 		t.Fatalf("WithInMemory failed: %v", err)
 	}
 
-	adapter := &memoryStoreAdapter{store: store}
+	adapter := store
 	if err := adapter.Close(); err != nil {
 		t.Fatalf("Close() error = %v", err)
 	}

@@ -8,36 +8,34 @@ import (
 func runTest(args []string) {
 	var verbose bool
 
-	i := 0
-	for i < len(args) {
+	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--verbose", "-v":
 			verbose = true
 		case "--help", "-h":
-			fmt.Print(`ap test — 运行 eval 测试套件
+			fmt.Print(`ap test — run eval test suite
 
-用法:
+Usage:
   ap test [--verbose]
 
-选项:
-  --verbose, -v   显示详细输出
+Options:
+  --verbose, -v   show detailed output
 
-说明:
-  运行当前项目的 eval 测试套件，评估 Agent 在预设场景下的
-  工具调用准确性、输出质量和响应相关性。
+Description:
+  Run the eval test suite for the current project, evaluating
+  tool call accuracy, output quality, and response relevance.
 
-示例:
+Examples:
   ap test
   ap test --verbose
 `)
 			return
 		}
-		i++
 	}
 
 	dir, err := findProjectDir()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "错误: %v\n", err)
+		errorf("%v", err)
 		os.Exit(1)
 	}
 
@@ -54,17 +52,17 @@ func runTest(args []string) {
 	}
 
 	if !hasEval {
-		fmt.Println("未找到 eval 测试文件，正在生成模板...")
+		infof("eval test file not found, generating template...")
 		if err := generateEvalTemplate(dir); err != nil {
-			fmt.Fprintf(os.Stderr, "错误: 生成 eval 模板失败: %v\n", err)
+			errorf("generate eval template failed: %v", err)
 			os.Exit(1)
 		}
-		fmt.Println("已生成 eval_agent_test.go，请编辑后重新运行 ap test")
+		successf("generated eval_agent_test.go, edit it then re-run ap test")
 		return
 	}
 
 	// 运行 eval 测试
-	fmt.Println("运行 eval 测试套件...")
+	infof("running eval test suite...")
 	fmt.Println()
 
 	goTestArgs := []string{"test", "-v", "-run", "Eval", "./..."}
@@ -92,37 +90,37 @@ import (
 	ap "agentprimordia/pkg"
 )
 
-// EvalTestSuite 定义 Agent 评估测试套件
-// 修改以下测试用例以匹配你的 Agent 行为
+// EvalTestSuite defines the agent eval test suite.
+// Modify the test cases below to match your agent behavior.
 func EvalTestSuite(t *testing.T) {
-	// TODO: 替换为你的实际 LLM Provider
+	// TODO: replace with your actual LLM Provider
 	mockLLM := &testMockLLM{}
 
 	agent := ap.NewReActAgent(ap.ReActConfig{
 		Name:         "TestAgent",
-		SystemPrompt: "你是一个测试助手",
+		SystemPrompt: "you are a test assistant",
 		Model:        mockLLM,
 		MaxTurns:     5,
 	})
 
-	t.Run("基础回复", func(t *testing.T) {
-		resp, err := agent.Run(context.Background(), ap.UserMessage("你好"))
+	t.Run("basic reply", func(t *testing.T) {
+		resp, err := agent.Run(context.Background(), ap.UserMessage("hello"))
 		if err != nil {
-			t.Fatalf("运行失败: %v", err)
+			t.Fatalf("run failed: %v", err)
 		}
 		if resp.Content == "" {
-			t.Error("回复内容为空")
+			t.Error("response content is empty")
 		}
 	})
 }
 
-// testMockLLM 是测试用的 Mock LLM
+// testMockLLM is a mock LLM for testing.
 type testMockLLM struct{}
 
 func (m *testMockLLM) Complete(ctx context.Context, req *ap.CompletionRequest) (*ap.CompletionResponse, error) {
 	return &ap.CompletionResponse{
 		ID:      "eval-mock-1",
-		Content: "这是测试回复",
+		Content: "this is a test reply",
 		Role:    "assistant",
 		Usage:   ap.Usage{PromptTokens: 5, CompletionTokens: 10},
 	}, nil
@@ -132,7 +130,7 @@ func (m *testMockLLM) Stream(ctx context.Context, req *ap.CompletionRequest) (<-
 	ch := make(chan ap.Chunk, 1)
 	go func() {
 		defer close(ch)
-		ch <- ap.Chunk{Content: "这是测试回复", Done: true}
+		ch <- ap.Chunk{Content: "this is a test reply", Done: true}
 	}()
 	return ch, nil
 }

@@ -3,7 +3,7 @@
 //
 // 前置条件：
 //
-//	export OPENAI_API_KEY=sk-xxx
+//	set AP_LLM_API_KEY=sk-xxx
 //
 // 跑法：
 //
@@ -18,18 +18,18 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	ap "agentprimordia/pkg"
 )
 
 func main() {
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: os.Getenv("OPENAI_API_KEY"),
-		Model:  "gpt-4o",
-	})
+	cfg := ap.ConfigFromEnv("")
+	if cfg.APIKey == "" {
+		log.Fatal("set AP_LLM_API_KEY env var")
+	}
+	provider, err := ap.NewOpenAIProvider(cfg)
 	if err != nil {
-		log.Fatalf("创建 Provider 失败: %v", err)
+		log.Fatalf("create provider failed: %v", err)
 	}
 
 	// 创建 Prometheus 指标收集器
@@ -47,7 +47,7 @@ func main() {
 	// 接入 Agent
 	agent := ap.NewReActAgent(ap.ReActConfig{
 		Name:         "{{.ProjectName}}",
-		SystemPrompt: "你是一个智能助手",
+		SystemPrompt: "you are a helpful assistant",
 		Model:        provider,
 		MaxTurns:     10,
 	}).WithMetrics(metrics)
@@ -59,16 +59,16 @@ func main() {
 		"再见",
 	}
 	for _, q := range questions {
-		fmt.Printf("\n问: %s\n", q)
+		fmt.Printf("\nQ: %s\n", q)
 		resp, err := agent.Run(context.Background(), ap.UserMessage(q))
 		if err != nil {
-			log.Printf("调用失败: %v", err)
+			log.Printf("call failed: %v", err)
 			continue
 		}
-		fmt.Printf("答: %s\n", resp.Content)
+		fmt.Printf("A: %s\n", resp.Content)
 	}
 
-	fmt.Println("\n查询指标: curl http://localhost:9090/metrics")
-	fmt.Println("按 Enter 退出...")
+	fmt.Println("\nMetrics endpoint: curl http://localhost:9090/metrics")
+	fmt.Println("Press Enter to exit...")
 	fmt.Scanln()
 }

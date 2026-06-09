@@ -8,21 +8,23 @@ import (
 var Version = "dev"
 
 const (
-	usage = `AgentPrimordia (ap) — Go Agent 开发框架命令行工具
+	usage = `AgentPrimordia (ap) — Go Agent Framework CLI
 
-用法:
+Usage:
   ap <command> [arguments]
 
-命令:
-  init     创建新的 Agent 项目
-  run      编译并运行当前项目
-  debug    启动调试服务器
-  test     运行 eval 测试套件
-  mcp      管理 MCP Server
-  plugin   管理插件
-  version  显示版本号
+Commands:
+  init         create a new agent project
+  run          build and run the current project
+  debug        start debug server
+  test         run eval test suite
+  mcp          manage MCP servers
+  plugin       manage plugins
+  doctor       health check
+  completion   generate shell completion scripts
+  version      show version
 
-使用 "ap <command> --help" 查看子命令详情。
+Run "ap <command> --help" for subcommand details.
 `
 )
 
@@ -48,11 +50,14 @@ func main() {
 		runMCP(args)
 	case "plugin":
 		runPlugin(args)
+	case "doctor":
+		runDoctor(args)
+	case "completion":
+		runCompletion(args)
 	case "version", "-v", "--version":
 		fmt.Printf("AgentPrimordia CLI %s\n", Version)
 	default:
-		fmt.Fprintf(os.Stderr, "未知命令: %s\n\n", cmd)
-		fmt.Print(usage)
+		errorf("unknown command %q, run %s to see available commands", cmd, bold("ap --help"))
 		os.Exit(1)
 	}
 }

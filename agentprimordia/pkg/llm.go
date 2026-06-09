@@ -100,6 +100,8 @@ var (
 	NewCohereProvider = llm.NewCohereProvider
 	// NewMistralProvider 创建 Mistral 提供者实例
 	NewMistralProvider = llm.NewMistralProvider
+	// ConfigFromEnv 从环境变量读取 LLM 配置（AP_LLM_API_KEY, AP_LLM_BASE_URL, AP_LLM_MODEL 等）
+	ConfigFromEnv = llm.ConfigFromEnv
 )
 
 // LLMCache 是 LLM 响应缓存接口，支持 Get/Set/Stats/Clear/Invalidate

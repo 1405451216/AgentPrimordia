@@ -90,7 +90,9 @@ type AgentMetrics = agent.Metrics
 type MemoryStore = agent.MemoryStore
 
 // MemoryEpisode 是 Agent 使用的一集记忆，包含内容、摘要、主题、重要性等
-type MemoryEpisode = agent.MemoryEpisode
+//
+// Deprecated: 使用 memory.Episode 代替，将在 v2.0.0 移除。
+type MemoryEpisode = memory.Episode
 
 // SummaryExtractor 是摘要提取接口，供 Agent 层依赖，由 memory.Summarizer 实现
 type SummaryExtractor = memory.SummaryExtractor

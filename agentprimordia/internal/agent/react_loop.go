@@ -30,21 +30,13 @@ func nextMemoryID() string {
 
 // MemoryStore 是 Agent 所需的记忆存储接口
 type MemoryStore interface {
-	Add(ctx context.Context, episode *MemoryEpisode) error
+	Add(ctx context.Context, episode *memory.Episode) error
 }
 
-// MemoryEpisode 是 Agent 使用的一集记忆
-type MemoryEpisode struct {
-	ID         string
-	SessionID  string
-	Role       string
-	Content    string
-	Summary    string
-	Topics     string
-	Importance float64
-	Metadata   map[string]string
-	CreatedAt  string
-}
+// MemoryEpisode 是 Agent 使用的一集记忆（已废弃，使用 memory.Episode）
+//
+// Deprecated: 使用 memory.Episode 代替，将在 v2.0.0 移除。
+type MemoryEpisode = memory.Episode
 
 // EventPublisher 是 Agent 所需的事件发布接口
 type EventPublisher interface {
@@ -334,7 +326,7 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 	if mem == nil {
 		return
 	}
-	ep := &MemoryEpisode{
+	ep := &memory.Episode{
 		ID:        nextMemoryID(),
 		SessionID: a.config.SessionID,
 		Role:      string(msg.Role),

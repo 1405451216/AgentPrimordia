@@ -10,6 +10,17 @@ import (
 )
 
 func main() {
+	// 从环境变量读取 LLM 配置
+	cfg := ap.ConfigFromEnv("")
+	if cfg.APIKey == "" {
+		log.Fatal("set AP_LLM_API_KEY env var, e.g.: set AP_LLM_API_KEY=sk-xxx")
+	}
+
+	provider, err := ap.NewOpenAIProvider(cfg)
+	if err != nil {
+		log.Fatalf("create provider failed: %v", err)
+	}
+
 	// 配置工具集
 	registry, err := ap.DefaultToolkit(ap.ToolkitConfig{
 		RootDir:     ".",
@@ -18,36 +29,35 @@ func main() {
 		EnableWeb:   true,
 	})
 	if err != nil {
-		log.Fatalf("创建工具集失败: %v", err)
+		log.Fatalf("create toolkit failed: %v", err)
 	}
 
 	// 配置记忆存储
 	memory, err := ap.WithInMemory()
 	if err != nil {
-		log.Fatalf("创建记忆存储失败: %v", err)
+		log.Fatalf("create memory store failed: %v", err)
 	}
 	defer memory.Close()
 
 	agent := ap.NewReActAgent(ap.ReActConfig{
 		Name:         "{{.ProjectName}}",
-		SystemPrompt: "你是一个可以读写文件、执行命令和访问网页的助手。",
+		SystemPrompt: "you are an assistant that can read/write files, execute commands, and browse the web.",
+		Model:        provider,
 		MaxTurns:     20,
 		Toolkit:      registry,
 		Memory:       ap.NewMemoryAdapter(memory),
-		// 设置 Model 为你的 LLM Provider:
-		// Model: ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"}),
 	})
 
-	prompt := "列出当前目录的文件"
+	prompt := "list files in the current directory"
 	if envPrompt := os.Getenv("AP_PROMPT"); envPrompt != "" {
 		prompt = envPrompt
 	}
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage(prompt))
 	if err != nil {
-		log.Fatalf("Agent 运行失败: %v", err)
+		log.Fatalf("agent run failed: %v", err)
 	}
 
-	fmt.Printf("回复: %s\n", resp.Content)
-	fmt.Printf("工具调用: %d 次\n", resp.Metrics.TotalTools)
+	fmt.Printf("Reply: %s\n", resp.Content)
+	fmt.Printf("Tool calls: %d\n", resp.Metrics.TotalTools)
 }

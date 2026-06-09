@@ -153,23 +153,15 @@ func demonstrateFactoryPattern() {
 	demonstrateAgentWithMemory()
 }
 
+// memoryAdapter wraps memory.Memory to satisfy agent.MemoryStore.
+// Note: since v0.8.0, memory.Memory directly satisfies agent.MemoryStore,
+// so this adapter is no longer necessary. Kept for demonstration.
 type memoryAdapter struct {
 	store memory.Memory
 }
 
-func (a *memoryAdapter) Add(ctx context.Context, episode *agent.MemoryEpisode) error {
-	ep := &memory.Episode{
-		ID:         episode.ID,
-		SessionID:  episode.SessionID,
-		Role:       episode.Role,
-		Content:    episode.Content,
-		Summary:    episode.Summary,
-		Topics:     episode.Topics,
-		Importance: episode.Importance,
-		Metadata:   episode.Metadata,
-		CreatedAt:  episode.CreatedAt,
-	}
-	return a.store.Add(ctx, ep)
+func (a *memoryAdapter) Add(ctx context.Context, episode *memory.Episode) error {
+	return a.store.Add(ctx, episode)
 }
 
 func demonstrateAgentWithMemory() {

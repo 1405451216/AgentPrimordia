@@ -13,21 +13,21 @@ import (
 
 func runMCP(args []string) {
 	if len(args) == 0 {
-		fmt.Print(`ap mcp — 管理 MCP Server
+		fmt.Print(`ap mcp — manage MCP servers
 
-用法:
+Usage:
   ap mcp <subcommand> [arguments]
 
-子命令:
-  list              列出已注册的 MCP Server
-  add <name>        注册新的 MCP Server
-  remove <name>     移除 MCP Server
-  start <name>      启动 MCP Server
-  stop <name>       停止 MCP Server
-  test <name>       测试 MCP Server 连通性
-  tools <name>      列出 MCP Server 提供的工具
+Subcommands:
+  list              list registered MCP servers
+  add <name>        register a new MCP server
+  remove <name>     remove MCP server
+  start <name>      start MCP server
+  stop <name>       stop MCP server
+  test <name>       test MCP server connectivity
+  tools <name>      list tools provided by MCP server
 
-示例:
+Examples:
   ap mcp add filesystem --command "npx" --args "@modelcontextprotocol/server-filesystem,/tmp"
   ap mcp list
   ap mcp test filesystem
@@ -54,7 +54,7 @@ func runMCP(args []string) {
 	case "tools":
 		mcpTools(subargs)
 	default:
-		fmt.Fprintf(os.Stderr, "未知子命令: %s\n", subcmd)
+		errorf("unknown subcommand %q, run %s for help", subcmd, bold("ap mcp --help"))
 		os.Exit(1)
 	}
 }
@@ -62,18 +62,18 @@ func runMCP(args []string) {
 func mcpList() {
 	config := loadAPConfig()
 	if config.MCP == nil || len(config.MCP.Servers) == 0 {
-		fmt.Println("未注册任何 MCP Server")
+		fmt.Println("no MCP servers registered")
 		fmt.Println()
-		fmt.Println("使用 ap mcp add <name> 注册新的 Server")
+		fmt.Println("use ap mcp add <name> to register a server")
 		return
 	}
 
-	fmt.Printf("%-20s %-30s %-10s %-10s\n", "名称", "命令", "自动启动", "URL")
+	fmt.Printf("%-20s %-30s %-10s %-10s\n", "Name", "Command", "AutoStart", "URL")
 	fmt.Println(strings.Repeat("-", 75))
 	for name, srv := range config.MCP.Servers {
-		autoStart := "否"
+		autoStart := "no"
 		if srv.AutoStart {
-			autoStart = "是"
+			autoStart = "yes"
 		}
 		url := srv.BaseURL
 		if url == "" {
@@ -85,7 +85,7 @@ func mcpList() {
 
 func mcpAdd(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "错误: 请指定 Server 名称\n用法: ap mcp add <name> --command <cmd> [--args ...] [--url <url>]")
+		errorf("please specify server name\nUsage: ap mcp add <name> --command <cmd> [--args ...] [--url <url>]")
 		os.Exit(1)
 	}
 
@@ -101,47 +101,43 @@ func mcpAdd(args []string) {
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "--command", "-c":
-			i += 2
+			i++
 			if i >= len(args) {
-				fmt.Fprintln(os.Stderr, "错误: --command 需要指定命令")
+				errorf("--command requires a value")
 				os.Exit(1)
 			}
 			command = args[i]
 		case "--args", "-a":
-			i += 2
+			i++
 			if i >= len(args) {
-				fmt.Fprintln(os.Stderr, "错误: --args 需要指定参数")
+				errorf("--args requires a value")
 				os.Exit(1)
 			}
 			argsList = strings.Split(args[i], ",")
 		case "--url", "-u":
-			i += 2
+			i++
 			if i >= len(args) {
-				fmt.Fprintln(os.Stderr, "错误: --url 需要指定 URL")
+				errorf("--url requires a value")
 				os.Exit(1)
 			}
 			baseURL = args[i]
 		case "--auto-start":
 			autoStart = true
-			i++
 		case "--env", "-e":
-			i += 2
+			i++
 			if i >= len(args) {
-				fmt.Fprintln(os.Stderr, "错误: --env 需要指定 KEY=VALUE")
+				errorf("--env requires KEY=VALUE")
 				os.Exit(1)
 			}
 			envVars = strings.Split(args[i], ",")
-		default:
-			i++
 		}
 	}
 
 	if command == "" && baseURL == "" {
-		fmt.Fprintln(os.Stderr, "错误: 必须指定 --command 或 --url")
+		errorf("either --command or --url is required")
 		os.Exit(1)
 	}
 
-	// 写入 .ap.yaml
 	config := loadAPConfig()
 	if config.MCP == nil {
 		config.MCP = &mcpConfig{}
@@ -167,46 +163,46 @@ func mcpAdd(args []string) {
 	}
 
 	if err := saveAPConfig(config); err != nil {
-		fmt.Fprintf(os.Stderr, "错误: 保存配置失败: %v\n", err)
+		errorf("save config failed: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("✓ MCP Server %q 已注册\n", name)
+	successf("MCP server %q registered", name)
 	if autoStart {
-		fmt.Println("  自动启动: 已启用")
+		infof("auto-start: enabled")
 	}
 }
 
 func mcpRemove(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "错误: 请指定 Server 名称")
+		errorf("please specify server name")
 		os.Exit(1)
 	}
 
 	name := args[0]
 	config := loadAPConfig()
 	if config.MCP == nil || config.MCP.Servers == nil {
-		fmt.Fprintf(os.Stderr, "错误: MCP Server %q 不存在\n", name)
+		errorf("MCP server %q not found", name)
 		os.Exit(1)
 	}
 
 	if _, ok := config.MCP.Servers[name]; !ok {
-		fmt.Fprintf(os.Stderr, "错误: MCP Server %q 不存在\n", name)
+		errorf("MCP server %q not found", name)
 		os.Exit(1)
 	}
 
 	delete(config.MCP.Servers, name)
 	if err := saveAPConfig(config); err != nil {
-		fmt.Fprintf(os.Stderr, "错误: 保存配置失败: %v\n", err)
+		errorf("save config failed: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("✓ MCP Server %q 已移除\n", name)
+	successf("MCP server %q removed", name)
 }
 
 func mcpStart(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "错误: 请指定 Server 名称")
+		errorf("please specify server name")
 		os.Exit(1)
 	}
 
@@ -214,7 +210,7 @@ func mcpStart(args []string) {
 	config := loadAPConfig()
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "错误: MCP Server %q 不存在\n", name)
+		errorf("MCP server %q not found", name)
 		os.Exit(1)
 	}
 
@@ -226,29 +222,54 @@ func mcpStart(args []string) {
 		BaseURL: srvCfg.BaseURL,
 	})
 
-	fmt.Printf("启动 MCP Server %q ...\n", name)
+	infof("starting MCP server %q ...", name)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := registry.Start(ctx, name); err != nil {
-		fmt.Fprintf(os.Stderr, "启动失败: %v\n", err)
+		errorf("start failed: %v", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("✓ MCP Server %q 已启动\n", name)
+	successf("MCP server %q started", name)
 }
 
 func mcpStop(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "错误: 请指定 Server 名称")
+		errorf("please specify server name")
 		os.Exit(1)
 	}
-	fmt.Printf("MCP Server %q 已停止\n", args[0])
+
+	name := args[0]
+	config := loadAPConfig()
+	if config.MCP == nil || config.MCP.Servers == nil {
+		errorf("MCP server %q not found", name)
+		os.Exit(1)
+	}
+
+	srvCfg, ok := config.MCP.Servers[name]
+	if !ok {
+		errorf("MCP server %q not found", name)
+		os.Exit(1)
+	}
+
+	// 对于 URL 类型的 server，从配置中移除 auto-start
+	// 对于 command 类型的 server，目前没有进程管理，仅标记
+	if srvCfg.AutoStart {
+		srvCfg.AutoStart = false
+		config.MCP.Servers[name] = srvCfg
+		if err := saveAPConfig(config); err != nil {
+			warnf("save config failed: %v", err)
+		}
+	}
+
+	successf("MCP server %q stopped (auto-start disabled)", name)
+	infof("note: command-based servers cannot be stopped remotely; restart with 'ap mcp start %s'", name)
 }
 
 func mcpTest(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "错误: 请指定 Server 名称")
+		errorf("please specify server name")
 		os.Exit(1)
 	}
 
@@ -256,12 +277,12 @@ func mcpTest(args []string) {
 	config := loadAPConfig()
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "错误: MCP Server %q 不存在\n", name)
+		errorf("MCP server %q not found", name)
 		os.Exit(1)
 	}
 
 	if srvCfg.BaseURL == "" {
-		fmt.Fprintf(os.Stderr, "MCP Server %q 未配置 URL，无法测试\n", name)
+		errorf("MCP server %q has no URL configured, cannot test", name)
 		os.Exit(1)
 	}
 
@@ -269,14 +290,14 @@ func mcpTest(args []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	fmt.Printf("测试 MCP Server %q 连通性...\n", name)
+	infof("testing MCP server %q connectivity...", name)
 	if err := client.Initialize(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "✗ 连接失败: %v\n", err)
+		errorf("connection failed: %v", err)
 		os.Exit(1)
 	}
 
 	tools := client.Tools()
-	fmt.Printf("✓ 连接成功，发现 %d 个工具:\n", len(tools))
+	successf("connected, found %d tools:", len(tools))
 	for _, t := range tools {
 		fmt.Printf("  - %s: %s\n", t.Name, t.Description)
 	}
@@ -284,7 +305,7 @@ func mcpTest(args []string) {
 
 func mcpTools(args []string) {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "错误: 请指定 Server 名称")
+		errorf("please specify server name")
 		os.Exit(1)
 	}
 
@@ -292,12 +313,12 @@ func mcpTools(args []string) {
 	config := loadAPConfig()
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "错误: MCP Server %q 不存在\n", name)
+		errorf("MCP server %q not found", name)
 		os.Exit(1)
 	}
 
 	if srvCfg.BaseURL == "" {
-		fmt.Fprintf(os.Stderr, "MCP Server %q 未配置 URL，请先启动\n", name)
+		errorf("MCP server %q has no URL, please start it first", name)
 		os.Exit(1)
 	}
 
@@ -306,39 +327,39 @@ func mcpTools(args []string) {
 	defer cancel()
 
 	if err := client.Initialize(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "初始化失败: %v\n", err)
+		errorf("initialize failed: %v", err)
 		os.Exit(1)
 	}
 
 	tools := client.Tools()
 	if len(tools) == 0 {
-		fmt.Println("该 Server 没有注册任何工具")
+		fmt.Println("no tools registered on this server")
 		return
 	}
 
 	for _, t := range tools {
-		fmt.Printf("名称: %s\n", t.Name)
-		fmt.Printf("描述: %s\n", t.Description)
+		fmt.Printf("Name: %s\n", t.Name)
+		fmt.Printf("Description: %s\n", t.Description)
 		if t.InputSchema != nil {
 			schema, _ := json.MarshalIndent(t.InputSchema, "  ", "  ")
-			fmt.Printf("参数: %s\n", string(schema))
+			fmt.Printf("Parameters: %s\n", string(schema))
 		}
 		fmt.Println()
 	}
 }
 
-// ===== 配置文件辅助类型 =====
+// ===== Config types =====
 
 type mcpServerConfig struct {
-	Command   string            `json:"command"`
-	Args      []string          `json:"args,omitempty"`
-	BaseURL   string            `json:"baseUrl,omitempty"`
-	AutoStart bool              `json:"autoStart,omitempty"`
-	Env       map[string]string `json:"env,omitempty"`
+	Command   string            `json:"command" yaml:"command"`
+	Args      []string          `json:"args,omitempty" yaml:"args,omitempty"`
+	BaseURL   string            `json:"base_url,omitempty" yaml:"base_url,omitempty"`
+	AutoStart bool              `json:"auto_start,omitempty" yaml:"auto_start,omitempty"`
+	Env       map[string]string `json:"env,omitempty" yaml:"env,omitempty"`
 }
 
 type mcpConfig struct {
-	Servers map[string]mcpServerConfig `json:"servers"`
+	Servers map[string]mcpServerConfig `json:"servers" yaml:"servers"`
 }
 
 func truncate(s string, n int) string {
