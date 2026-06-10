@@ -19,6 +19,14 @@ import (
 //	    Name: "my-agent", Model: provider, MaxTurns: 10,
 //	}).WithMemory(mem).WithRAG(RAGConfig{...}).WithHooks(hooks)
 
+// AsCapability 将 ReActAgent 包装为 CapabilityAgent，暴露链式 API。
+//
+// 这是从 ReActAgent 转换为 CapabilityAgent 的标准方式。
+// 等价于 WithMemory(nil) 的语义效果，但语义更清晰。
+func (a *ReActAgent) AsCapability() *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a})
+}
+
 // wrapSelf 创建 CapabilityAgent 并更新 ReActAgent 的自引用
 func (a *ReActAgent) wrapSelf(cap *CapabilityAgent) *CapabilityAgent {
 	a.self = cap // 更新自引用，使引擎通过接口发现能力

@@ -212,7 +212,7 @@ func NewTestAgent(cfg TestAgentConfig) *agent.CapabilityAgent {
 	})
 
 	// 返回 CapabilityAgent 支持链式注入
-	return a.WithMemory(nil) // 触发 CapabilityAgent 包装
+	return a.AsCapability()
 }
 
 // ensure MockProvider implements interfaces

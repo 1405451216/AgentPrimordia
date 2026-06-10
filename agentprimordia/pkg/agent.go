@@ -258,6 +258,26 @@ type AgentOption = agent.AgentOption
 //	}).WithMemory(mem).WithRAG(ap.RAGConfig{...}).WithHooks(hooks)
 type CapabilityAgent = agent.CapabilityAgent
 
+// Session 维护多轮对话上下文，自动追加历史到记忆。
+//
+// 使用方式：
+//
+//	sess := ap.NewSession(agent, mem)
+//	resp, _ := sess.Ask(ctx, "你好")
+//	resp2, _ := sess.Ask(ctx, "刚才说的是什么？") // 自动关联上下文
+type Session = agent.Session
+
+// SessionOption 是 NewSession 的函数式选项
+type SessionOption = agent.SessionOption
+
+// SessWithID 设置自定义会话 ID，不传则自动生成。
+var SessWithID = agent.SessWithID
+
+// NewSession 创建新会话。
+//
+// 如果 mem == nil，使用 agent 已配置的记忆存储。如果都没有，历史消息仅在内存中保留。
+var NewSession = agent.NewSession
+
 // MemoryCapable 标识 Agent 具备记忆存储能力，引擎自动保存对话
 type MemoryCapable = agent.MemoryCapable
 

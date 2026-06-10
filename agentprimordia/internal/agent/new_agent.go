@@ -55,7 +55,6 @@ func NewAgent(name, systemPrompt string, model llm.Provider, opts ...AgentOption
 
 	a := NewReActAgent(cfg)
 
-	// 触发 CapabilityAgent 包装以支持链式注入
-	// WithMemory(nil) 将 ReActAgent 包装为 CapabilityAgent，内存能力留空
-	return a.WithMemory(nil)
+	// 包装为 CapabilityAgent 以暴露链式 API
+	return a.AsCapability()
 }
