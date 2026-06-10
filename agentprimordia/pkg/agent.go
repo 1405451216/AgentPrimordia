@@ -231,7 +231,21 @@ var (
 	NewLocalMessageBus = agent.NewLocalMessageBus
 	// NewHTTPTransport 创建基于 HTTP 的跨进程传输层实例
 	NewHTTPTransport = agent.NewHTTPTransport
+
+	// ===== NewAgent 简化入口（推荐） =====
+
+	// NewAgent 是创建 Agent 的推荐入口。暴露核心必填字段，能力通过链式 API 注入。
+	NewAgent = agent.NewAgent
+	// WithMaxTurns 设置 ReAct 循环的最大迭代次数
+	WithMaxTurns = agent.WithMaxTurns
+	// WithTemperature 设置 LLM 温度参数
+	WithTemperature = agent.WithTemperature
+	// WithSessionID 设置会话 ID
+	WithSessionID = agent.WithSessionID
 )
+
+// AgentOption 函数式选项，用于 NewAgent 的可选参数
+type AgentOption = agent.AgentOption
 
 // ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
 

@@ -235,14 +235,11 @@ func main() {
     // 2. 创建工具注册表
     registry := tools.NewRegistry()
 
-    // 3. 创建 Agent
-    agent := ap.NewReActAgent(ap.ReActConfig{
-        Name:         "my-agent",
-        SystemPrompt: "You are a helpful assistant.",
-        Model:        provider,
-        Toolkit:      registry,
-        MaxTurns:     10,
-    })
+    // 3. 创建 Agent（推荐入口：ap.NewAgent）
+    agent := ap.NewAgent("my-agent", "You are a helpful assistant.",
+        provider,
+        ap.WithMaxTurns(10),
+    ).WithToolkit(registry)
 
     // 4. 运行！
     resp, err := agent.Run(context.Background(), ap.UserMessage("Hello!"))
@@ -277,15 +274,10 @@ hooks.Register(agent.HookBeforeTool, func(ctx context.Context, hctx *agent.HookC
 })
 
 // Agent
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "smart-agent",
-    SystemPrompt: "You are a file analysis assistant.",
-    Model:        resilientProvider,
-    Toolkit:      registry,
-    Memory:       memory,
-    Hooks:        hooks,
-    MaxTurns:     5,
-})
+agent := ap.NewAgent("smart-agent", "You are a file analysis assistant.",
+    resilientProvider,
+    ap.WithMaxTurns(5),
+).WithToolkit(registry).WithMemory(memory).WithHooks(hooks)
 
 // 运行
 resp, _ := agent.Run(ctx, ap.UserMessage("分析当前目录的文件结构"))

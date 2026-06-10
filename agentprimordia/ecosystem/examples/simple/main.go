@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -19,18 +19,13 @@ func main() {
 		"你好!我是AI助手,很高兴为你服务!",
 	)
 
-	simpleAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "SimpleBot",
-		SystemPrompt: "你是一个友好的AI助手,用中文简洁回答。",
-		Model:        demoLLM,
-		MaxTurns:     3,
-	})
+	simpleAgent := ap.NewAgent("SimpleBot", "你是一个友好的AI助手,用中文简洁回答。", demoLLM, ap.WithMaxTurns(3))
 
 	fmt.Println("📝 用户输入: 你好")
 	fmt.Println("🤖 Agent 正在思考...")
 
 	startTime := time.Now()
-	resp, err := simpleAgent.Run(context.Background(), agent.UserMessage("你好"))
+	resp, err := simpleAgent.Run(context.Background(), ap.UserMessage("你好"))
 	if err != nil {
 		log.Fatalf("❌ 运行失败: %v", err)
 	}

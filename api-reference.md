@@ -25,13 +25,14 @@ type Agent interface {
 `ReActAgent` 是基于 ReAct（推理+行动）循环的 Agent 实现，是框架的核心引擎。
 
 ```go
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "my-agent",
-    SystemPrompt: "你是一个助手",
-    Model:        provider,
-    Toolkit:      registry,
-    MaxTurns:     50,
-})
+// 推荐入口：ap.NewAgent（不暴露废弃字段）
+agent := ap.NewAgent("my-agent", "你是一个助手", provider,
+    ap.WithMaxTurns(50),
+).WithToolkit(registry)
+
+// 旧入口（仍可用，但有 14 个 Deprecated 字段视野污染）
+// agent := ap.NewReActAgent(ap.ReActConfig{...})
+
 resp, err := agent.Run(ctx, ap.UserMessage("你好"))
 ```
 

@@ -71,12 +71,9 @@ agent := ap.NewReActAgent(ap.ReActConfig{
 ### After (v0.6.0+ 推荐)
 
 ```go
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "my-agent",
-    SystemPrompt: "你是一个智能助手",
-    Model:        provider,
-    MaxTurns:     10,
-}).WithMemory(mem).
+agent := ap.NewAgent("my-agent", "你是一个智能助手", provider,
+    ap.WithMaxTurns(10),
+).WithMemory(mem).
     WithRAG(ap.RAGConfig{...}).
     WithHooks(hooks).
     WithMetrics(metrics).
@@ -86,17 +83,48 @@ agent := ap.NewReActAgent(ap.ReActConfig{
     WithCache(cache)
 ```
 
+### After v0.8.0+（v0.7.0 新增，**更推荐**）
+
+> v0.7.0 起 `ap.NewAgent()` 替代 `ap.NewReActAgent(ReActConfig{...})` 作为推荐入口。
+> 优势：不暴露 14 个 Deprecated 字段视野污染，函数式选项语义清晰。
+
+```go
+agent := ap.NewAgent("my-agent", "你是一个智能助手", provider,
+    ap.WithMaxTurns(10),
+).WithMemory(mem).
+    WithRAG(ap.RAGConfig{...}).
+    WithHooks(hooks)
+```
+
+### RAG 简化（v0.7.0+）
+
+> v0.7.0 起启用 RAG 不再需要 6 步手动组装，使用 `WithRAGMemory` 一步完成：
+
+```go
+// 旧（6 步）
+adapter := ap.NewEmbeddingAdapter(provider, 1536)
+ragStore := ap.NewRAGStore(memory, adapter)
+ragProvider := ap.NewRAGProviderAdapter(ragStore)
+agent := ap.NewReActAgent(ap.ReActConfig{Model: provider, RAG: &ap.RAGConfig{Provider: ragProvider}})
+
+// 新（2 步）
+agent := ap.NewAgent("my-agent", "你是一个智能助手", provider).
+    WithMemory(memory).
+    WithRAGMemory(memory, provider)  // 自动完成 VectorStore + RAGStore + 适配器
+```
+
 ### 混合写法(过渡期)
 
 ```go
-// 必填字段用 ReActConfig，可选能力全部用链式
+// 推荐入口用 ap.NewAgent, 必填字段也用 NewAgent 的参数，可选能力全部用链式
+agent := ap.NewAgent("my-agent", "你是一个智能助手", provider,
+    ap.WithMaxTurns(10),
+).WithMemory(mem).WithRAG(...)
+
+// 旧 ReActConfig 仍可使用（v2.0.0 移除前一直可用）
 agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "my-agent",
-    SystemPrompt: "你是一个智能助手",
-    Model:        provider,
-    MaxTurns:     10,
+    Name: "my-agent", SystemPrompt: "你是一个智能助手", Model: provider, MaxTurns: 10,
     // Lifecycle / Logger 仍可放 Config 里(非废弃)
-    Lifecycle:    ap.NewLifecycle(),
 }).WithMemory(mem).WithRAG(...)
 ```
 

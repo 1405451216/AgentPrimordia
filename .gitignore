@@ -81,6 +81,11 @@ gen_*.py
 next-env.d.ts
 out/
 
+# ---------- Binary Reports ----------
+*.docx
+*.pptx
+*.xlsx
+
 # ---------- Claude Code ----------
 .claude/
 

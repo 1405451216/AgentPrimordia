@@ -57,15 +57,13 @@ import (
 )
 
 func main() {
-    agent := ap.NewReActAgent(ap.ReActConfig{
-        Name:         "HelloAgent",
-        SystemPrompt: "你是一个智能助手",
-        Model:        ap.NewOpenAIProvider(ap.Config{
+    agent := ap.NewAgent("HelloAgent", "你是一个智能助手",
+        ap.NewOpenAIProvider(ap.Config{
             APIKey: os.Getenv("OPENAI_API_KEY"),
             Model:  "gpt-4o",
         }),
-        MaxTurns: 10,
-    })
+        ap.WithMaxTurns(10),
+    )
 
     resp, _ := agent.Run(context.Background(), ap.UserMessage("你好"))
     fmt.Println(resp.Content)
@@ -85,13 +83,9 @@ registry, _ := ap.DefaultToolkit(ap.ToolkitConfig{
 memory, _ := ap.WithInMemory()
 defer memory.Close()
 
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:    "CodingAssistant",
-    Model:   provider,
-    Toolkit: registry,
-    Memory:  ap.NewMemoryAdapter(memory),
-    MaxTurns: 20,
-})
+agent := ap.NewAgent("CodingAssistant", "", provider,
+    ap.WithMaxTurns(20),
+).WithToolkit(registry).WithMemory(memory)
 ```
 
 ### 多 Agent 调度

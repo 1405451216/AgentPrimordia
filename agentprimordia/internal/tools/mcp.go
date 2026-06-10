@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 const (
@@ -113,8 +112,7 @@ func nextMCPID() int {
 
 // MCPClient 连接外部 MCP 服务器，发现并调用其工具
 type MCPClient struct {
-	baseURL     string
-	client      *http.Client
+	transport   mcpTransport
 	serverInfo  *MCPServerInfo
 	tools       []MCPToolDefinition
 	mu          sync.RWMutex
@@ -122,12 +120,19 @@ type MCPClient struct {
 	initialized bool
 }
 
-// NewMCPClient 创建 MCP 客户端
+// NewMCPClient 创建 HTTP 模式 MCP 客户端
 func NewMCPClient(baseURL string) *MCPClient {
 	return &MCPClient{
-		baseURL: strings.TrimRight(baseURL, "/"),
-		client:  &http.Client{Timeout: 30 * time.Second},
-		logger:  slog.Default(),
+		transport: newHTTPTransport(baseURL),
+		logger:    slog.Default(),
+	}
+}
+
+// NewMCPClientStdio 创建 stdio 模式 MCP 客户端（JSON-RPC over stdin/stdout）
+func NewMCPClientStdio(stdin io.WriteCloser, stdout io.ReadCloser) *MCPClient {
+	return &MCPClient{
+		transport: newStdioTransport(stdin, stdout),
+		logger:    slog.Default(),
 	}
 }
 
@@ -270,7 +275,7 @@ func (c *MCPClient) RegisterIntoRegistry(registry *Registry) error {
 
 // Close 关闭 MCP 客户端
 func (c *MCPClient) Close() error {
-	return nil
+	return c.transport.Close()
 }
 
 // ===== 内部方法 =====
@@ -283,38 +288,11 @@ func (c *MCPClient) sendRequest(ctx context.Context, method string, params any) 
 		Params:  params,
 	}
 
-	body, err := json.Marshal(req)
+	resp, err := c.transport.SendRequest(ctx, &req)
 	if err != nil {
-		return nil, fmt.Errorf("marshal request: %w", err)
+		return nil, fmt.Errorf("MCP request %q failed: %w", method, err)
 	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL, strings.NewReader(string(body)))
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, mcpMaxResponseBody))
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("MCP server returned HTTP %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var mcpResp MCPResponse
-	if err := json.Unmarshal(respBody, &mcpResp); err != nil {
-		return nil, fmt.Errorf("unmarshal response: %w", err)
-	}
-
-	return &mcpResp, nil
+	return resp, nil
 }
 
 func (c *MCPClient) sendNotification(ctx context.Context, method string, params any) error {
@@ -324,23 +302,7 @@ func (c *MCPClient) sendNotification(ctx context.Context, method string, params 
 		Params:  params,
 	}
 
-	body, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL, strings.NewReader(string(body)))
-	if err != nil {
-		return err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(httpReq)
-	if err != nil {
-		return err
-	}
-	resp.Body.Close()
-	return nil
+	return c.transport.SendNotification(ctx, &req)
 }
 
 // ===== MCP Tool Adapter =====

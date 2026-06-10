@@ -4,51 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 	"time"
 
 	ap "agentprimordia/pkg"
+	"agentprimordia/testutil"
 )
-
-type MockLLM struct {
-	mu    sync.Mutex
-	count int
-}
-
-func (m *MockLLM) Complete(ctx context.Context, req *ap.CompletionRequest) (*ap.CompletionResponse, error) {
-	m.mu.Lock()
-	m.count++
-	n := m.count
-	m.mu.Unlock()
-
-	return &ap.CompletionResponse{
-		ID:      fmt.Sprintf("mock-%d", n),
-		Content: fmt.Sprintf("任务 %d 处理完成", n),
-		Role:    "assistant",
-		Usage:   ap.Usage{PromptTokens: 10, CompletionTokens: 20},
-	}, nil
-}
-
-func (m *MockLLM) Stream(ctx context.Context, req *ap.CompletionRequest) (<-chan ap.Chunk, error) {
-	ch := make(chan ap.Chunk, 1)
-	go func() {
-		defer close(ch)
-		ch <- ap.Chunk{Content: "streaming response", Done: true}
-	}()
-	return ch, nil
-}
-
-func (m *MockLLM) CallTools(ctx context.Context, req *ap.ToolCallRequest) (*ap.ToolCallResponse, error) {
-	return &ap.ToolCallResponse{Usage: ap.Usage{}}, nil
-}
-
-func (m *MockLLM) Embeddings(ctx context.Context, texts []string) ([][]float32, error) {
-	return make([][]float32, len(texts)), nil
-}
-
-func (m *MockLLM) Info() ap.ModelInfo {
-	return ap.ModelInfo{Name: "mock", Provider: "mock", MaxContext: 4096, SupportsTools: true}
-}
 
 func main() {
 	fmt.Println("=== AgentPrimordia: 多 Agent 调度示例 ===")
@@ -98,7 +58,8 @@ func main() {
 	})
 	defer pool.Close()
 
-	pool.SetModel(&MockLLM{})
+	mock := testutil.NewMockProvider()
+	pool.SetModel(mock)
 
 	tasks := []ap.TaskConfig{
 		{ID: "task-1", Title: "数据分析", Prompt: "分析销售数据趋势", SessionID: "session-001"},

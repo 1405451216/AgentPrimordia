@@ -382,7 +382,7 @@ agent := agent.NewReActAgent(
 ## 已知限制
 
 1. **集成测试需要真实 API Key**: `make test-integration` 需要设置 `OPENAI_API_KEY` 环境变量，CI 环境需通过 Secret 注入
-2. **MCPClient 为占位实现**: Model Context Protocol 客户端目前仅提供接口定义，未实现实际连接逻辑，待 v0.8.0 补全
+2. ~~**MCPClient 为占位实现**: Model Context Protocol 客户端目前仅提供接口定义，未实现实际连接逻辑，待 v0.8.0 补全~~ (v0.7.0 已完整实现：HTTP + stdio 双传输模式、进程管理、工具发现、CLI 全链路)
 3. **K8s Operator 未经过真实集群验证**: Controller 逻辑通过单元测试验证，尚未在真实 Kubernetes 集群上进行端到端部署验证
 4. **TypeScript SDK 内存管理**: 大量流式输出场景下需手动调用 `agent.dispose()` 释放资源，暂无自动 GC 钩子
 5. **HPA 自定义指标需 Prometheus Adapter**: K8s 集群需额外安装 Prometheus Adapter 才能使用 `concurrent_tasks_per_pod` 自定义指标
@@ -391,7 +391,7 @@ agent := agent.NewReActAgent(
 
 ## 下一阶段规划（Phase 13+ — v0.8.0）
 
-- [ ] MCPClient 完整实现（Model Context Protocol 连接、工具发现、会话管理）
+- [x] MCPClient 完整实现（Model Context Protocol 连接、工具发现、会话管理）(v0.7.0 已完成)
 - [ ] K8s Operator 真实集群端到端验证 + E2E 测试
 - [ ] 移除已废弃的 ReActConfig 直接字段赋值
 - [ ] TypeScript SDK 自动资源回收（GC 钩子）

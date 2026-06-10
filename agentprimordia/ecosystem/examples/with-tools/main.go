@@ -6,39 +6,8 @@ import (
 	"log"
 
 	ap "agentprimordia/pkg"
+	"agentprimordia/testutil"
 )
-
-type MockLLM struct{}
-
-func (m *MockLLM) Complete(ctx context.Context, req *ap.CompletionRequest) (*ap.CompletionResponse, error) {
-	return &ap.CompletionResponse{
-		ID:      "mock-1",
-		Content: "让我帮你读取文件内容。",
-		Role:    "assistant",
-		Usage:   ap.Usage{PromptTokens: 10, CompletionTokens: 15},
-	}, nil
-}
-
-func (m *MockLLM) Stream(ctx context.Context, req *ap.CompletionRequest) (<-chan ap.Chunk, error) {
-	ch := make(chan ap.Chunk, 1)
-	go func() {
-		defer close(ch)
-		ch <- ap.Chunk{Content: "让我帮你读取文件内容。", Done: true}
-	}()
-	return ch, nil
-}
-
-func (m *MockLLM) CallTools(ctx context.Context, req *ap.ToolCallRequest) (*ap.ToolCallResponse, error) {
-	return &ap.ToolCallResponse{Usage: ap.Usage{}}, nil
-}
-
-func (m *MockLLM) Embeddings(ctx context.Context, texts []string) ([][]float32, error) {
-	return make([][]float32, len(texts)), nil
-}
-
-func (m *MockLLM) Info() ap.ModelInfo {
-	return ap.ModelInfo{Name: "mock", Provider: "mock", MaxContext: 4096, SupportsTools: true}
-}
 
 func main() {
 	fmt.Println("=== AgentPrimordia: 工具 + 记忆示例 ===")
@@ -71,15 +40,12 @@ func main() {
 		return nil
 	})
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "TooledAgent",
-		SystemPrompt: "你是一个可以读写文件、执行命令和访问网页的助手",
-		Model:        &MockLLM{},
-		Toolkit:      registry,
-		Memory:       ap.NewMemoryAdapter(memory),
-		MaxTurns:     5,
-		Hooks:        hooks,
-	})
+	mock := testutil.NewMockProvider("让我帮你读取文件内容。")
+
+	agent := ap.NewAgent("TooledAgent", "你是一个可以读写文件、执行命令和访问网页的助手", mock, ap.WithMaxTurns(5)).
+		WithToolkit(registry).
+		WithMemory(memory).
+		WithHooks(hooks)
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage("读取当前目录的文件"))
 	if err != nil {

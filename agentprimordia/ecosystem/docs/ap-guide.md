@@ -145,13 +145,10 @@ import (
 )
 
 func main() {
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "my-agent",
-		SystemPrompt: "你是一个智能助手，用中文回答问题。",
-		MaxTurns:     10,
-		// 设置 Model 为你的 LLM Provider:
-		// Model: ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"}),
-	})
+	agent := ap.NewAgent("my-agent", "你是一个智能助手，用中文回答问题。",
+		nil, // 替换为你的 LLM Provider: ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"}),
+		ap.WithMaxTurns(10),
+	)
 
 	prompt := "你好！"
 	resp, err := agent.Run(context.Background(), ap.UserMessage(prompt))
@@ -270,52 +267,20 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 
 	ap "agentprimordia/pkg"
+	"agentprimordia/testutil"
 )
-
-type mockLLM struct {
-	mu    sync.Mutex
-	count int
-}
-
-func (m *mockLLM) Complete(ctx context.Context, req *ap.CompletionRequest) (*ap.CompletionResponse, error) {
-	m.mu.Lock()
-	m.count++
-	n := m.count
-	m.mu.Unlock()
-	return &ap.CompletionResponse{
-		ID:      fmt.Sprintf("mock-%d", n),
-		Content: fmt.Sprintf("任务 %d 处理完成", n),
-		Role:    "assistant",
-		Usage:   ap.Usage{PromptTokens: 10, CompletionTokens: 20},
-	}, nil
-}
-
-func (m *mockLLM) Stream(ctx context.Context, req *ap.CompletionRequest) (<-chan ap.Chunk, error) {
-	ch := make(chan ap.Chunk, 1)
-	go func() {
-		defer close(ch)
-		ch <- ap.Chunk{Content: "streaming response", Done: true}
-	}()
-	return ch, nil
-}
-
-func (m *mockLLM) CallTools(ctx context.Context, req *ap.ToolCallRequest) (*ap.ToolCallResponse, error) {
-	return &ap.ToolCallResponse{Usage: ap.Usage{}}, nil
-}
-
-func (m *mockLLM) Embeddings(ctx context.Context, texts []string) ([][]float32, error) {
-	return make([][]float32, len(texts)), nil
-}
-
-func (m *mockLLM) Info() ap.ModelInfo {
-	return ap.ModelInfo{Name: "mock", Provider: "mock", MaxContext: 4096, SupportsTools: true}
-}
 
 func main() {
 	fmt.Println("=== my-agent: 多 Agent 协作 ===")
+
+	// 使用 testutil.NewMockProvider 提供预设响应（无需手写 mock）
+	mockLLM := testutil.NewMockProvider(
+		"任务处理完成",
+		"分析结果已生成",
+		"报告已生成",
+	)
 
 	// 使用 Pool 进行多 Agent 调度
 	pool := ap.NewPool(ap.PoolConfig{
@@ -329,7 +294,7 @@ func main() {
 
 	// 替换为你的 LLM Provider:
 	// pool.SetModel(ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"}))
-	pool.SetModel(&mockLLM{})
+	pool.SetModel(mockLLM)
 
 	tasks := []ap.TaskConfig{
 		{ID: "task-1", Title: "数据收集", Prompt: "收集相关数据", SessionID: "session-001"},

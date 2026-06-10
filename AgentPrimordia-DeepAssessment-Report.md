@@ -153,7 +153,7 @@ for {
 | M7 | Orchestration | Pipeline/Handoff/Parallel 未检查 `ctx.Done()` |
 | M8 | Pool | Task Map 无界增长，长期运行内存泄漏 |
 | M9 | LLM | `Stream()` 无重试保护，缺少 `Chunk.Err` 错误传播 |
-| M10 | MCP | stdio 模式未实际实现，启动进程后仍用 HTTP 连接 |
+| M10 | MCP | ~~stdio 模式未实际实现，启动进程后仍用 HTTP 连接~~ (v0.7.0 已修复) |
 | M11 | 安全性 | SQL 注入风险: PRAGMA 语句直接拼接表名 |
 | M12 | 安全性 | Sandbox 与 Shell 工具双重安全实现，Sandbox 策略可被绕过 |
 | M13 | Metrics | Grafana Dashboard PromQL 与实际指标 label/名称不匹配 |
@@ -360,9 +360,9 @@ AgentDeployment CRD 设计成熟，Reconciler 覆盖 ConfigMap/Deployment/Servic
 - [ ] 修复所有 Medium 级别 bug (M1-M13)
 - [ ] 为 Metrics 添加 provider/model/agent_name label 维度
 - [ ] 修复 Grafana Dashboard PromQL 与实际指标的不匹配
-- [ ] 完善 MCP stdio 模式实现
+- [x] 完善 MCP stdio 模式实现 (v0.7.0 已完成：传输层 + 进程管理 + CLI 全链路)
 - [ ] Operator: 注入 healthCheck probes、填充 Status 字段
-- [ ] 启用真实 OTel SDK 集成
+- [x] 启用 OTel 桥接集成 (v0.7.0 已完成：内建 OTelBridge + W3C Trace Context + OTLP 导出，无需外部 SDK)
 - [ ] t.Parallel 推广、引入 mock 框架
 
 ### P3 — 长期演进

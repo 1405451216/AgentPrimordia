@@ -20,12 +20,7 @@ func main() {
 		log.Fatalf("create provider failed: %v", err)
 	}
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "{{.ProjectName}}",
-		SystemPrompt: "you are a helpful assistant.",
-		Model:        provider,
-		MaxTurns:     10,
-	})
+	agent := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant.", provider, ap.WithMaxTurns(10))
 
 	prompt := "Hello!"
 	resp, err := agent.Run(context.Background(), ap.UserMessage(prompt))

@@ -5,6 +5,8 @@ import (
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
+	"context"
+	"strings"
 )
 
 // 此文件提供 ReActAgent 的链式 API 入口方法。
@@ -116,3 +118,51 @@ func (a *ReActAgent) WithCache(cache llm.LLMCache) *CapabilityAgent {
 	}
 	return a.wrapSelf(&CapabilityAgent{inner: a, cache: cache})
 }
+
+// ===== RAG 简化 API =====
+
+// ragStoreAdapter 将 memory.RAGStore 适配为 agent.RAGProvider，
+// 避免用户手动调用 NewRAGProviderAdapter。
+type ragStoreAdapter struct {
+	store *memory.RAGStore
+}
+
+func (a *ragStoreAdapter) Search(ctx context.Context, query string, topK int) ([]*RAGDocument, error) {
+	results, err := a.store.HybridSearch(ctx, query, topK)
+	if err != nil {
+		return nil, err
+	}
+	docs := make([]*RAGDocument, len(results))
+	for i, r := range results {
+		source := strings.Join(r.Sources, "+")
+		docs[i] = &RAGDocument{
+			ID:      r.Episode.ID,
+			Content: r.Episode.Content,
+			Score:   r.Score,
+			Source:  source,
+			Role:    string(r.Episode.Role),
+		}
+	}
+	return docs, nil
+}
+
+// WithRAGMemory 一步完成 RAG 设置。
+//
+//	agent.WithRAGMemory(mem, provider) 等价于以下手动 6 步：
+//	  NewEmbeddingAdapter → NewRAGStore → NewRAGProviderAdapter → RAGConfig → WithRAG
+//
+// 内部自动创建 VectorStore + RAGStore + 适配器，使用默认 RAG 参数：
+//
+//	Mode=RAGModeAuto, TopK=5, MinScore=0.3
+func (a *ReActAgent) WithRAGMemory(mem memory.Memory, emb memory.EmbeddingProvider) *CapabilityAgent {
+	ragStore := memory.NewRAGStore(mem, emb)
+	cfg := RAGConfig{
+		Provider: &ragStoreAdapter{store: ragStore},
+		Mode:     RAGModeAuto,
+		TopK:     5,
+		MinScore: defaultRAGMinScore(),
+	}
+	return a.WithRAG(cfg)
+}
+
+func defaultRAGMinScore() float32 { return 0.3 }

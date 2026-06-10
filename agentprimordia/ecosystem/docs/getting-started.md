@@ -41,26 +41,25 @@ import (
     "fmt"
     "log"
 
-    "agentprimordia/cmd/example/demo"
-    "agentprimordia/internal/agent"
+    "agentprimordia/pkg"
+    ap "agentprimordia/pkg"
+    "agentprimordia/testutil"
 )
 
 func main() {
-    // 使用内置的 Demo LLM（无需 API Key）
-    demoLLM := demo.NewDemoLLM(
+    // 使用 testutil.NewMockProvider 提供预设响应（无需 API Key）
+    mockLLM := testutil.NewMockProvider(
         "你好!我是AI助手,很高兴为你服务!",
     )
 
-    // 创建 ReAct Agent
-    simpleAgent := agent.NewReActAgent(agent.ReActConfig{
-        Name:         "SimpleBot",
-        SystemPrompt: "你是一个友好的AI助手",
-        Model:        demoLLM,
-        MaxTurns:     3,
-    })
+    // 创建 ReAct Agent（推荐入口：ap.NewAgent）
+    simpleAgent := ap.NewAgent("SimpleBot", "你是一个友好的AI助手",
+        mockLLM,
+        ap.WithMaxTurns(3),
+    )
 
     // 运行 Agent
-    resp, err := simpleAgent.Run(context.Background(), agent.UserMessage("你好"))
+    resp, err := simpleAgent.Run(context.Background(), ap.UserMessage("你好"))
     if err != nil {
         log.Fatalf("❌ 运行失败: %v", err)
     }

@@ -26,13 +26,13 @@ func WithTimeout(d time.Duration) Option {
 	return func(o *options) { o.timeout = d }
 }
 
-// WithMaxTurns 设置 ReAct 循环的最大迭代次数
-func WithMaxTurns(n int) Option {
+// WithMaxIterations 设置 ReAct 循环的最大迭代次数（区别于 agent.WithMaxTurns 的 AgentOption 类型）
+func WithMaxIterations(n int) Option {
 	return func(o *options) { o.maxTurns = n }
 }
 
-// WithTemperature 设置 LLM 温度参数
-func WithTemperature(t float64) Option {
+// WithTemp 设置 LLM 温度参数（区别于 agent.WithTemperature 的 AgentOption 类型）
+func WithTemp(t float64) Option {
 	return func(o *options) { o.temperature = t }
 }
 

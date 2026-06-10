@@ -166,6 +166,35 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 	entry.Cmd = cmd
 	entry.Stdin = stdin
 	entry.Stdout = stdout
+
+	// 创建 stdio 模式 MCP 客户端并通过 JSON-RPC 初始化连接
+	client := NewMCPClientStdio(stdin, stdout)
+	entry.Client = client
+	r.mu.Unlock()
+
+	// 执行 MCP 握手（initialize → tools/list），最多重试 3 次应对慢启动
+	var initErr error
+	for i := 0; i < 3; i++ {
+		initCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		initErr = client.Initialize(initCtx)
+		cancel()
+		if initErr == nil {
+			break
+		}
+		time.Sleep(time.Duration(i+1) * time.Second)
+	}
+
+	if initErr != nil {
+		r.mu.Lock()
+		entry.Status = MCPClientFailed
+		entry.Client = nil
+		r.mu.Unlock()
+		_ = cmd.Process.Signal(os.Interrupt)
+		return fmt.Errorf("MCP Server %q stdio 初始化失败: %w", name, initErr)
+	}
+
+	r.mu.Lock()
+	entry.Tools = client.Tools()
 	entry.Status = MCPClientRunning
 	r.mu.Unlock()
 

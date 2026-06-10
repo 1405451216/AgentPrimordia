@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
 	"agentprimordia/internal/memory"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -153,17 +153,6 @@ func demonstrateFactoryPattern() {
 	demonstrateAgentWithMemory()
 }
 
-// memoryAdapter wraps memory.Memory to satisfy agent.MemoryStore.
-// Note: since v0.8.0, memory.Memory directly satisfies agent.MemoryStore,
-// so this adapter is no longer necessary. Kept for demonstration.
-type memoryAdapter struct {
-	store memory.Memory
-}
-
-func (a *memoryAdapter) Add(ctx context.Context, episode *memory.Episode) error {
-	return a.store.Add(ctx, episode)
-}
-
 func demonstrateAgentWithMemory() {
 	fmt.Println("🤖 Agent 集成 Memory 示例")
 	fmt.Println("-" + string(make([]byte, 40)))
@@ -181,16 +170,10 @@ func demonstrateAgentWithMemory() {
 		"根据你的记忆，我们之前讨论过 Go 语言和 AI Agent 的开发。",
 	)
 
-	agentMemStore := &memoryAdapter{store: memStore}
+	memoryAgent := ap.NewAgent("MemoryBot", "你拥有长期记忆，可以记住对话历史。请参考记忆回答问题。", demoLLM).
+		WithMemory(memStore)
 
-	memoryAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "MemoryBot",
-		SystemPrompt: "你拥有长期记忆，可以记住对话历史。请参考记忆回答问题。",
-		Model:        demoLLM,
-		Memory:       agentMemStore,
-	})
-
-	resp, _ := memoryAgent.Run(ctx, agent.UserMessage("我们之前讨论过什么？"))
+	resp, _ := memoryAgent.Run(ctx, ap.UserMessage("我们之前讨论过什么？"))
 	fmt.Printf("🤖 Agent 回复: %s\n", resp.Content)
 
 	stats, _ := memStore.Stats(ctx)

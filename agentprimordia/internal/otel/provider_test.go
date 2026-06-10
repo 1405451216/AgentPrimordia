@@ -79,8 +79,8 @@ func TestTelemetryProvider_ExportNow_NoExporter(t *testing.T) {
 
 func TestTelemetryProvider_BridgeEnabled(t *testing.T) {
 	tp, _ := NewTelemetryProvider(TelemetryConfig{}, nil)
-	if tp.BridgeEnabled() {
-		t.Error("BridgeEnabled should be false without -tags otel")
+	if !tp.BridgeEnabled() {
+		t.Error("BridgeEnabled should be true (unified implementation)")
 	}
 	_ = tp.Shutdown()
 }
