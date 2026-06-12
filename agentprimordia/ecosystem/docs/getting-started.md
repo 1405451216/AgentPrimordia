@@ -1,14 +1,14 @@
-# 🚀 快速入门指南
+# 快速入门指南
 
 欢迎来到 AgentPrimordia！本指南将在 5 分钟内带你从零到运行第一个 AI Agent。
 
-## 📋 前置要求
+## 前置要求
 
-- **Go 1.22+**（推荐 Go 1.26+）
+- **Go 1.22+**（推荐 Go 1.24+）
 - **Git**（用于克隆项目）
 - 可选：**API Key**（OpenAI / Gemini / 通义千问）
 
-## 🔧 安装步骤
+## 安装步骤
 
 ### 方式一：直接下载（推荐）
 
@@ -26,10 +26,10 @@ go build ./...
 在你的 `go.mod` 中添加：
 
 ```
-require agentprimordia v0.1.0
+require agentprimordia v0.7.0
 ```
 
-## ⚡ 第一个 Agent（无需 API Key）
+## 第一个 Agent（无需 API Key）
 
 让我们创建一个最简单的 Agent：
 
@@ -41,7 +41,6 @@ import (
     "fmt"
     "log"
 
-    "agentprimordia/pkg"
     ap "agentprimordia/pkg"
     "agentprimordia/testutil"
 )
@@ -61,49 +60,44 @@ func main() {
     // 运行 Agent
     resp, err := simpleAgent.Run(context.Background(), ap.UserMessage("你好"))
     if err != nil {
-        log.Fatalf("❌ 运行失败: %v", err)
+        log.Fatalf("运行失败: %v", err)
     }
 
-    fmt.Println("✅ Agent 回复:", resp.Content)
+    fmt.Println("Agent 回复:", resp.Content)
 }
 ```
 
 运行：
 
 ```bash
-go run examples/go/simple/main.go
+go run ./ecosystem/examples/basic/
 ```
 
-## 🌐 连接真实 LLM Provider
+## 连接真实 LLM Provider
+
+所有 Provider 通过 `ap.NewXxxProvider(ap.Config{...})` 创建，统一使用 `ap.Config` 配置。
 
 ### OpenAI (GPT-4o)
 
 ```go
-import "agentprimordia/internal/llm"
+import ap "agentprimordia/pkg"
 
-provider, err := llm.NewOpenAIProvider(llm.Config{
-    APIKey: "your-openai-api-key",
+provider := ap.NewOpenAIProvider(ap.Config{
+    APIKey: os.Getenv("OPENAI_API_KEY"),
     Model:  "gpt-4o",
 })
-if err != nil {
-    log.Fatal(err)
-}
 
-// 创建带真实 LLM 的 Agent
-agent := agent.NewReActAgent(agent.ReActConfig{
-    Name:         "GPTBot",
-    SystemPrompt: "你是一个专业的AI助手",
-    Model:        provider,
-})
+agent := ap.NewAgent("GPTBot", "你是一个专业的AI助手",
+    provider,
+    ap.WithMaxTurns(10),
+)
 ```
 
 ### Google Gemini
 
 ```go
-import "agentprimordia/internal/llm"
-
-provider, err := llm.NewGeminiProvider(llm.Config{
-    APIKey: "your-gemini-api-key",
+provider := ap.NewGeminiProvider(ap.Config{
+    APIKey: os.Getenv("GEMINI_API_KEY"),
     Model:  "gemini-2.0-flash",
 })
 ```
@@ -111,114 +105,153 @@ provider, err := llm.NewGeminiProvider(llm.Config{
 ### 通义千问 (Qwen)
 
 ```go
-import "agentprimordia/internal/llm"
-
-provider, err := llm.NewQwenProvider(llm.Config{
-    APIKey:  "your-qwen-api-key",
-    BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",  // 阿里云兼容接口
+provider := ap.NewQwenProvider(ap.Config{
+    APIKey:  os.Getenv("QWEN_API_KEY"),
+    BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     Model:   "qwen-plus",
 })
 ```
 
-## 🛠️ 添加工具能力
+### Ollama（本地模型，无需 API Key）
+
+```go
+provider := ap.NewOllamaProvider(ap.Config{
+    BaseURL: "http://localhost:11434",
+    Model:   "llama3",
+})
+```
+
+### Resilient Provider（重试 + 降级 + 熔断）
+
+```go
+primary := ap.NewOpenAIProvider(ap.Config{APIKey: key, Model: "gpt-4o"})
+fallback := ap.NewGeminiProvider(ap.Config{APIKey: geminiKey, Model: "gemini-2.0-flash"})
+local := ap.NewOllamaProvider(ap.Config{BaseURL: "http://localhost:11434", Model: "llama3"})
+
+resilient := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
+resilient.AddFallback(fallback)
+resilient.AddFallback(local)
+```
+
+## 添加工具能力
 
 让 Agent 能够执行文件操作、Shell 命令等：
 
 ```go
-import (
-    "agentprimordia/internal/tools/builtin"
-)
-
 // 创建工具集
-registry, err := builtin.DefaultToolkit(builtin.ToolkitConfig{
-    RootDir:     "./workspace",   // 工作目录
-    EnableFS:    true,            // 启用文件系统工具
-    EnableShell: true,            // 启用 Shell 工具
-    EnableWeb:   true,            // 启用 Web 工具
-    EnableUtils: true,            // 启用计算器/日期时间工具
+registry, err := ap.DefaultToolkit(ap.ToolkitConfig{
+    RootDir:     "./workspace",
+    EnableFS:    true,
+    EnableShell: true,
+    EnableWeb:   true,
 })
 if err != nil {
     log.Fatal(err)
 }
 
-// 创建带工具的 Agent
-agent := agent.NewReActAgent(agent.ReActConfig{
-    Name:         "ToolBot",
-    SystemPrompt: "你可以使用工具来帮助用户完成任务",
-    Model:        provider,
-    Tools:        registry,
-})
+// 创建带工具的 Agent（链式 API）
+agent := ap.NewAgent("ToolBot", "你可以使用工具来帮助用户完成任务",
+    provider,
+    ap.WithMaxTurns(20),
+).WithToolkit(registry)
 ```
 
-## 💾 使用 Memory 系统
+## 使用 Memory 系统
 
 让 Agent 拥有记忆能力：
 
 ```go
-import "agentprimordia/internal/memory"
+// 方式1: SQLite 存储（持久化，推荐生产环境）
+memoryStore, err := ap.NewSQLiteStore("./my_agent_memory.db")
+if err != nil {
+    log.Fatal(err)
+}
+defer memoryStore.Close()
 
-// 方式1: SQLite 存储（持久化）
-memoryStore, err := memory.NewMemory(memory.Config{
-    Type: memory.BackendSQLite,
-    Path: "./my_agent_memory.db",
-})
+// 方式2: 内存存储（测试用，无需文件）
+memoryStore, err := ap.WithInMemory()
+if err != nil {
+    log.Fatal(err)
+}
+defer memoryStore.Close()
 
-// 方式2: 内存存储（测试用）
-memoryStore, _ := memory.NewMemory(memory.Config{
-    Type: memory.BackendMemory,
-})
-
-// 创建带记忆的 Agent
-agent := agent.NewReActAgent(agent.ReActConfig{
-    Name:         "MemoryBot",
-    SystemPrompt: "你拥有长期记忆，可以记住对话内容",
-    Model:        provider,
-    Memory:       memoryStore,
-})
+// 创建带记忆的 Agent（链式 API）
+agent := ap.NewAgent("MemoryBot", "你拥有长期记忆，可以记住对话内容",
+    provider,
+    ap.WithMaxTurns(20),
+).WithMemory(ap.NewMemoryAdapter(memoryStore))
 ```
 
-## 🐛 调试与可视化
-
-使用内置的调试工具：
+## 多 Agent 调度
 
 ```go
-import "agentprimordia/internal/debugger"
+pool := ap.NewPool(ap.PoolConfig{
+    MaxConcurrency: 5,
+    DefaultAgent: ap.ReActAgentConfig{
+        SystemPrompt: "你是任务处理助手",
+        MaxTurns:     10,
+    },
+})
+defer pool.Close()
 
-// 启动调试 HTTP 服务器
-debugServer := debugger.NewDebugServer(":8080")
-go func() {
-    if err := debugServer.Start(); err != nil {
-        log.Fatal(err)
-    }
-}()
+pool.SetModel(provider)
 
-// 记录事件
-debugServer.AddEvent("info", "Agent 启动成功")
-
-// 浏览器访问 http://localhost:8080 查看调试界面
+results, err := pool.Dispatch(ctx, []ap.TaskConfig{
+    {ID: "task-1", Title: "代码分析", Prompt: "分析 main.go"},
+    {ID: "task-2", Title: "运行测试", Prompt: "执行 go test"},
+})
 ```
 
-## 📚 下一步
+## 使用 CLI 工具
 
-- 📘 [API 完整参考](./api-reference.md) - 所有接口详细说明
-- 📗 [最佳实践指南](./best-practices.md) - 生产环境建议
-- 📕 [示例代码库](../examples/) - 10+ 示例
-- 🎥 [视频教程](https://youtube.com/...) - 视频学习
+```bash
+# 安装 CLI
+go build -o ap ./cmd/ap/
 
-## ❓ 常见问题
+# 3 步创建 Agent
+ap init my-agent
+cd my-agent
+ap run
+
+# 带工具模板
+ap init my-agent --template with-tools
+
+# 多 Agent 模板
+ap init my-agent --template multi-agent
+
+# 热重载开发
+ap run --watch
+
+# 调试服务器
+ap debug
+```
+
+## 下一步
+
+- [API 完整参考](./api-reference.md) - 所有接口详细说明
+- [最佳实践指南](./best-practices.md) - 生产环境建议
+- [CLI 开发手册](./ap-guide.md) - ap 命令行工具完整文档
+- [示例代码库](../examples/) - 18+ 示例
+- [Cookbook: 客服机器人](./cookbook/customer-support-bot.md)
+- [Cookbook: 代码审查 Agent](./cookbook/code-review-agent.md)
+
+## 常见问题
 
 ### Q: 需要付费的 API Key 吗？
-A: 不需要！内置 Demo LLM 可以免费体验所有功能。
+不需要！可以使用 `testutil.NewMockProvider` 免费体验所有功能，或使用 `ap.NewOllamaProvider` 连接本地模型。
 
 ### Q: 支持 Windows 吗？
-A: ✅ 完全支持！Zero CGO 设计确保跨平台兼容性。
+完全支持！Zero CGO 设计确保跨平台兼容性。
 
 ### Q: 如何切换不同的 LLM？
-A: 只需替换 `Model` 参数即可，一行代码搞定！
+只需替换 Provider 参数即可，所有 Provider 实现相同的 `ap.Provider` 接口：
+```go
+// 从 OpenAI 切换到 Gemini，只需改一行
+provider := ap.NewGeminiProvider(ap.Config{...})  // 替换 ap.NewOpenAIProvider(...)
+```
 
 ### Q: 性能如何？
-A: 单 Agent 响应 <100ms（不含 LLM 调用时间），支持并发 1000+ Agents。
+单 Agent 响应 <100ms（不含 LLM 调用时间），支持并发 1000+ Agents。
 
----
-
-**🎉 恭喜！你已经掌握了 AgentPrimordia 的基础用法。继续探索更多功能吧！**
+### Q: NewAgent 和 NewReActAgent 有什么区别？
+`ap.NewAgent` 是推荐入口，使用链式 API 注入能力；`ap.NewReActAgent` 是旧入口，通过 `ReActConfig` 结构体配置。两者创建的 Agent 功能完全相同，推荐使用 `NewAgent`。
