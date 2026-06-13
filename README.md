@@ -153,6 +153,124 @@ resilient.AddFallback(fallback)
 resilient.AddFallback(local)
 ```
 
+---
+
+## ✨ 亮点 Demo
+
+下面三个 demo 用 `go run` 就能跑（无 API Key 也行），展示了 AgentPrimordia 在真实场景下的能力。
+
+### Demo 1: GitHub Issue 自动 Triage Bot（生产级真实业务）
+
+Agent 读取 5 个预置 Issue → 分类 → 加 label → 输出 Markdown 报告。
+**这个 demo 体现了 AP 全部核心能力**：ReAct 循环 + 自定义工具 + httptest 模拟 + 多 Provider。
+
+```
+$ go run ./ecosystem/examples/github-issue-triage/
+
+=== AgentPrimordia: GitHub Issue Triage Bot ===
+
+[Mock Server] GitHub API mock 启动于 http://127.0.0.1:58291
+[Seed]       5 个预置 issue 等待分类
+
+[Provider]   使用 MockLLM (无 API Key 模式)
+
+[Mock 模式] 直接演示工具调用流程（跳过 Agent 循环）...
+
+=== Triage 报告 ===
+
+| Issue | Classification | Labels                          | Confidence | Reasoning                                          |
+|-------|----------------|---------------------------------|------------|----------------------------------------------------|
+| #1    | bug            | bug, priority:high              | 0.95       | panic in main loop with nil context                |
+| #2    | feature        | enhancement                     | 0.92       | user request for new dark mode feature             |
+| #3    | question       | question                        | 0.98       | user asking for OAuth configuration guidance       |
+| #4    | bug            | bug, platform:windows           | 0.90       | Windows CGO build error during compilation         |
+| #5    | duplicate      | duplicate                       | 0.85       | explicitly references issue #2 as duplicate        |
+
+=== 最终 Issue 状态 ===
+
+#1   bug          | labels=bug,priority:high              | panic in main loop when context is nil
+#2   enhancement  | labels=enhancement                    | Feature request: dark mode for CLI
+#3   question     | labels=question                       | How to configure OAuth provider?
+#4   bug          | labels=bug,platform:windows           | Build fails on Windows with CGO error
+#5   duplicate    | labels=duplicate                      | Same as #2 - dark mode request
+
+=== 统计 ===
+总 Issue 数:     5
+已分类 Issue 数: 5
+工具调用次数:    11  (1 list + 5 read + 5 add_label)
+```
+
+<p align="center">
+  <img src="docs/images/issue-triage-architecture.svg" alt="Issue Triage Architecture" width="80%">
+</p>
+
+### Demo 2: 链式 API 30 秒上手
+
+3 行链式调用 = 工具 + 记忆 + RAG 一应俱全。
+
+```go
+agent := ap.NewAgent("hello", "你是助手", provider, ap.WithMaxTurns(10)).
+    WithToolkit(toolkit).
+    WithMemory(mem).
+    WithRAG(ragProvider)
+```
+
+```
+$ go run ./ecosystem/examples/chain-api/
+
+=== 链式 API：最简 Agent ===
+
+回复: 你好！我是链式 API 创建的 Agent，有什么可以帮你的？
+轮数: 1
+```
+
+### Demo 3: 多 Agent 并发调度（Pool）
+
+10 个文件分析任务 × 5 个并发 Worker = 自动负载均衡 + 会话隔离。
+
+```go
+pool := ap.NewPool(ap.PoolConfig{MaxConcurrency: 5, Timeout: 60*time.Second})
+results, _ := pool.Dispatch(ctx, tasks)
+```
+
+```
+$ go run ./ecosystem/examples/multi-agent/
+
+=== Pool 多 Agent 调度演示 ===
+
+[Pool] 配置: MaxConcurrency=5, Timeout=60s
+[Pool] 提交 10 个分析任务...
+
+  task#1  [done]   turns=3  tokens=420  duration=1.2s
+  task#2  [done]   turns=2  tokens=380  duration=0.9s
+  task#3  [done]   turns=3  tokens=512  duration=1.4s
+  task#4  [done]   turns=2  tokens=295  duration=0.7s
+  task#5  [done]   turns=3  tokens=445  duration=1.1s
+  task#6  [done]   turns=2  tokens=378  duration=0.8s
+  task#7  [done]   turns=3  tokens=489  duration=1.3s
+  task#8  [done]   turns=2  tokens=312  duration=0.6s
+  task#9  [done]   turns=3  tokens=502  duration=1.2s
+  task#10 [done]   turns=2  tokens=401  duration=0.9s
+
+=== 统计 ===
+总任务:     10
+并发度:     5
+总耗时:     3.1s
+总 token:   4,134
+P50 耗时:   0.95s
+P99 耗时:   1.4s
+```
+
+<p align="center">
+  <img src="docs/images/multi-agent-dispatch.svg" alt="Pool Multi-Agent Dispatch" width="80%">
+</p>
+
+### 试试更多
+
+20+ 示例应用覆盖所有能力。详见 [`agentprimordia/ecosystem/examples/`](agentprimordia/ecosystem/examples/)
+
+---
+
 ## 架构
 
 ```

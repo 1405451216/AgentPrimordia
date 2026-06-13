@@ -16,6 +16,11 @@
 - **Phase 18 实施计划**: `docs/plans/2026-06-12-issue-triage-bot.md`
 - **公共 API 补全**: `pkg/llm.go` 新增 `QwenProvider / GLMProvider / DeepSeekProvider` 类型别名
   和 `NewQwenProvider / NewGLMProvider` 构造器，弥补 Phase 15 补遗中未实现的文档承诺
+- **README 亮点 Demo 板块**: 在「快速开始」与「架构」之间插入 3 个 demo 展示
+  （GitHub Issue Triage Bot / 链式 API 30 秒上手 / Pool 多 Agent 调度），
+  配套 2 张 SVG 架构图（手写、可在 GitHub 直接渲染）
+  - `docs/images/issue-triage-architecture.svg`
+  - `docs/images/multi-agent-dispatch.svg`
 
 - **Qwen Provider 工具调用与流式测试** (Phase 16-A): `qwen_provider_test.go` 新增 6 个集成测试
   - `TestQwenProvider_CallTools_Success / MultipleTools / NoToolCall`

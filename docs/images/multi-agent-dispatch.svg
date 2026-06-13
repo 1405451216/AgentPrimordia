@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" font-family="-apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <linearGradient id="poolGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1f6feb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0969da;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="workerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2ea043;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1f883d;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="resultGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#bf8700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9a6700;stop-opacity:1" />
+    </linearGradient>
+    <marker id="arrow2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#57606a" />
+    </marker>
+  </defs>
+
+  <text x="400" y="30" text-anchor="middle" font-size="20" font-weight="700" fill="#1f2328">Pool 多 Agent 调度 — 架构</text>
+  <text x="400" y="52" text-anchor="middle" font-size="13" fill="#57606a">并发原生 · 会话隔离 · 自动重试 · 信号量限流</text>
+
+  <!-- Pool -->
+  <rect x="50" y="80" width="700" height="100" rx="12" fill="url(#poolGrad)" opacity="0.95"/>
+  <text x="400" y="108" text-anchor="middle" font-size="16" font-weight="600" fill="white">Pool (信号量调度器)</text>
+  <text x="400" y="132" text-anchor="middle" font-size="12" fill="#ddf4ff">MaxConcurrency=5 · 任务队列 · 会话隔离 · 自动重试</text>
+  <text x="400" y="152" text-anchor="middle" font-size="11" fill="#ddf4ff" font-style="italic">Dispatch(tasks) → 并发执行 → 收集结果</text>
+  <text x="400" y="170" text-anchor="middle" font-size="11" fill="#ddf4ff" font-style="italic">支持多种 Agent 模板，可混合 ReActAgent/CapabilityAgent</text>
+
+  <!-- 5 Workers (ReAct Agents) -->
+  <rect x="50" y="220" width="130" height="90" rx="10" fill="url(#workerGrad)" opacity="0.9"/>
+  <text x="115" y="248" text-anchor="middle" font-size="14" font-weight="600" fill="white">Worker 1</text>
+  <text x="115" y="270" text-anchor="middle" font-size="11" fill="#dafbe1">ReAct Agent</text>
+  <text x="115" y="290" text-anchor="middle" font-size="10" fill="#dafbe1" font-style="italic">任务: 代码分析</text>
+
+  <rect x="200" y="220" width="130" height="90" rx="10" fill="url(#workerGrad)" opacity="0.9"/>
+  <text x="265" y="248" text-anchor="middle" font-size="14" font-weight="600" fill="white">Worker 2</text>
+  <text x="265" y="270" text-anchor="middle" font-size="11" fill="#dafbe1">ReAct Agent</text>
+  <text x="265" y="290" text-anchor="middle" font-size="10" fill="#dafbe1" font-style="italic">任务: 运行测试</text>
+
+  <rect x="350" y="220" width="130" height="90" rx="10" fill="url(#workerGrad)" opacity="0.9"/>
+  <text x="415" y="248" text-anchor="middle" font-size="14" font-weight="600" fill="white">Worker 3</text>
+  <text x="415" y="270" text-anchor="middle" font-size="11" fill="#dafbe1">ReAct Agent</text>
+  <text x="415" y="290" text-anchor="middle" font-size="10" fill="#dafbe1" font-style="italic">任务: 生成文档</text>
+
+  <rect x="500" y="220" width="130" height="90" rx="10" fill="url(#workerGrad)" opacity="0.5"/>
+  <text x="565" y="248" text-anchor="middle" font-size="14" font-weight="600" fill="white">Worker 4</text>
+  <text x="565" y="270" text-anchor="middle" font-size="11" fill="#dafbe1">空闲</text>
+  <text x="565" y="290" text-anchor="middle" font-size="10" fill="#dafbe1" font-style="italic">(await slot)</text>
+
+  <rect x="650" y="220" width="100" height="90" rx="10" fill="#afb8c1" stroke="#57606a" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"/>
+  <text x="700" y="265" text-anchor="middle" font-size="12" fill="#57606a" font-style="italic">Queue</text>
+
+  <!-- Results -->
+  <rect x="100" y="350" width="600" height="80" rx="10" fill="url(#resultGrad)" opacity="0.92"/>
+  <text x="400" y="378" text-anchor="middle" font-size="15" font-weight="600" fill="white">聚合结果 (channels + WaitGroup)</text>
+  <text x="400" y="400" text-anchor="middle" font-size="11" fill="#fff8c5">[]TaskResult {ID, Status, Content, Metrics, Error}</text>
+  <text x="400" y="418" text-anchor="middle" font-size="10" fill="#fff8c5" font-style="italic">天然支持失败任务重试、超时控制、错误聚合</text>
+
+  <!-- Arrows: Pool → Workers -->
+  <line x1="115" y1="180" x2="115" y2="218" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="265" y1="180" x2="265" y2="218" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="415" y1="180" x2="415" y2="218" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="565" y1="180" x2="565" y2="218" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- Arrows: Workers → Results -->
+  <line x1="115" y1="310" x2="200" y2="348" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="265" y1="310" x2="300" y2="348" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+  <line x1="415" y1="310" x2="500" y2="348" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow2)"/>
+
+  <!-- Bottom stats -->
+  <text x="400" y="460" text-anchor="middle" font-size="11" fill="#57606a" font-style="italic">统计示例: 10 任务 × 3 并发 = 总耗时 / 3，CPU 占用均衡，无 goroutine 泄漏</text>
+</svg>
