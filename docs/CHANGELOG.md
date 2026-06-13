@@ -27,6 +27,17 @@
   统一改为 `ap.Xxx` 公共 API；删除不存在的 API 引用（`memory.NewMemory`, `debugger.NewDebugServer` 等）
 - **`pkg/version.go` 版本号** (Phase 15 补遗): 从 `0.1.0` 修正为 `0.7.0`，与 README/CHANGELOG 一致
 
+### Testing
+
+- **Anthropic 真实 API 集成测试** (Phase 17-A): `TestIntegration_Anthropic_Complete/Stream/CallTools`
+  使用 `claude-haiku-4-5-20251001` 降低测试成本
+- **GLM 真实 API 集成测试** (Phase 17-B): `TestIntegration_GLM_Complete/Stream`（CallTools 跳过，Phase 16-B 已锁定 `ErrNotSupported`）
+- **Qwen/DeepSeek Stream 集成测试** (Phase 17-C): `TestIntegration_Qwen_Stream`, `TestIntegration_DeepSeek_Stream`
+- **`pkg/` 公共 API 端到端测试** (Phase 17-D): `pkg/integration_test.go` — 4 个 e2e 测试
+  验证 `ap.NewAgent / NewSession / WithMemory / StreamRun` 的真实跑通路径
+- **跨平台集成测试脚本** (Phase 17-E): `scripts/test-integration.ps1`
+  自动检测 API Key 并报告跳过情况，支持 Provider 过滤（`-Provider openai` 等）
+
 ### Changed
 
 - **README.md 文档链接** (Phase 15 补遗): 新增 FAQ / CLI 手册 / RAG Cookbook / 迁移指南的链接

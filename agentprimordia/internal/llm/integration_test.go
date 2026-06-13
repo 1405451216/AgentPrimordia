@@ -320,6 +320,331 @@ func TestIntegration_Gemini_CallTools(t *testing.T) {
 	}
 }
 
+// ===== Phase 17-A: Anthropic 集成测试 =====
+
+func TestIntegration_Anthropic_Complete(t *testing.T) {
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		t.Skip("ANTHROPIC_API_KEY not set, skipping Anthropic integration test")
+	}
+
+	provider, err := NewAnthropicProvider(Config{
+		APIKey: apiKey,
+		Model:  "claude-haiku-4-5-20251001",
+	})
+	if err != nil {
+		t.Fatalf("NewAnthropicProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := provider.Complete(ctx, &CompletionRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "Say 'hello from anthropic' and nothing else."},
+		},
+		Temperature: Float64Ptr(0),
+		MaxTokens:   20,
+	})
+	if err != nil {
+		t.Fatalf("Complete() error = %v", err)
+	}
+
+	if resp.Content == "" {
+		t.Error("expected non-empty content from Anthropic")
+	}
+
+	t.Logf("Anthropic Response: %s", resp.Content)
+	t.Logf("Usage: prompt=%d completion=%d total=%d",
+		resp.Usage.PromptTokens, resp.Usage.CompletionTokens, resp.Usage.TotalTokens)
+}
+
+func TestIntegration_Anthropic_Stream(t *testing.T) {
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		t.Skip("ANTHROPIC_API_KEY not set, skipping Anthropic stream integration test")
+	}
+
+	provider, err := NewAnthropicProvider(Config{
+		APIKey: apiKey,
+		Model:  "claude-haiku-4-5-20251001",
+	})
+	if err != nil {
+		t.Fatalf("NewAnthropicProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch, err := provider.Stream(ctx, &CompletionRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "Count from 1 to 3."},
+		},
+		Temperature: Float64Ptr(0),
+		MaxTokens:   50,
+	})
+	if err != nil {
+		t.Fatalf("Stream() error = %v", err)
+	}
+
+	var fullContent string
+	chunkCount := 0
+	for chunk := range ch {
+		fullContent += chunk.Content
+		chunkCount++
+		if chunk.Done {
+			break
+		}
+	}
+
+	if fullContent == "" {
+		t.Error("expected non-empty streamed content from Anthropic")
+	}
+	if chunkCount == 0 {
+		t.Error("expected at least 1 chunk from Anthropic stream")
+	}
+
+	t.Logf("Anthropic Streamed (%d chunks): %s", chunkCount, fullContent)
+}
+
+func TestIntegration_Anthropic_CallTools(t *testing.T) {
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		t.Skip("ANTHROPIC_API_KEY not set, skipping Anthropic tool call integration test")
+	}
+
+	provider, err := NewAnthropicProvider(Config{
+		APIKey: apiKey,
+		Model:  "claude-haiku-4-5-20251001",
+	})
+	if err != nil {
+		t.Fatalf("NewAnthropicProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := provider.CallTools(ctx, &ToolCallRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "What is the weather in Tokyo?"},
+		},
+		Tools: []ToolDefinition{
+			{
+				Type: "function",
+				Function: FunctionDefinition{
+					Name:        "get_weather",
+					Description: "Get the current weather for a city",
+					Parameters: map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"city": map[string]any{
+								"type":        "string",
+								"description": "City name",
+							},
+						},
+						"required": []string{"city"},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CallTools() error = %v", err)
+	}
+
+	t.Logf("Response: %s", resp.Content)
+	if len(resp.ToolCalls) > 0 {
+		t.Logf("Tool call: name=%s args=%s", resp.ToolCalls[0].Name, resp.ToolCalls[0].Arguments)
+	}
+}
+
+// ===== Phase 17-B: GLM 集成测试 =====
+// 注意：GLM CallTools 跳过，Phase 16-B 已用 mock 测试锁定 ErrNotSupported 行为。
+
+func TestIntegration_GLM_Complete(t *testing.T) {
+	apiKey := os.Getenv("GLM_API_KEY")
+	if apiKey == "" {
+		t.Skip("GLM_API_KEY not set, skipping GLM integration test")
+	}
+
+	provider, err := NewGLMProvider(Config{
+		APIKey: apiKey,
+		Model:  "glm-4-flash",
+	})
+	if err != nil {
+		t.Fatalf("NewGLMProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	resp, err := provider.Complete(ctx, &CompletionRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "Say 'hello from glm' and nothing else."},
+		},
+		Temperature: Float64Ptr(0),
+		MaxTokens:   20,
+	})
+	if err != nil {
+		t.Fatalf("Complete() error = %v", err)
+	}
+
+	if resp.Content == "" {
+		t.Error("expected non-empty content from GLM")
+	}
+
+	t.Logf("GLM Response: %s", resp.Content)
+	t.Logf("Usage: prompt=%d completion=%d total=%d",
+		resp.Usage.PromptTokens, resp.Usage.CompletionTokens, resp.Usage.TotalTokens)
+}
+
+func TestIntegration_GLM_Stream(t *testing.T) {
+	apiKey := os.Getenv("GLM_API_KEY")
+	if apiKey == "" {
+		t.Skip("GLM_API_KEY not set, skipping GLM stream integration test")
+	}
+
+	provider, err := NewGLMProvider(Config{
+		APIKey: apiKey,
+		Model:  "glm-4-flash",
+	})
+	if err != nil {
+		t.Fatalf("NewGLMProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch, err := provider.Stream(ctx, &CompletionRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "Count from 1 to 3."},
+		},
+		Temperature: Float64Ptr(0),
+		MaxTokens:   50,
+	})
+	if err != nil {
+		t.Fatalf("Stream() error = %v", err)
+	}
+
+	var fullContent string
+	chunkCount := 0
+	for chunk := range ch {
+		fullContent += chunk.Content
+		chunkCount++
+		if chunk.Done {
+			break
+		}
+	}
+
+	if fullContent == "" {
+		t.Error("expected non-empty streamed content from GLM")
+	}
+	if chunkCount == 0 {
+		t.Error("expected at least 1 chunk from GLM stream")
+	}
+
+	t.Logf("GLM Streamed (%d chunks): %s", chunkCount, fullContent)
+}
+
+// ===== Phase 17-C: Qwen / DeepSeek Stream 集成测试 =====
+
+func TestIntegration_Qwen_Stream(t *testing.T) {
+	apiKey := os.Getenv("QWEN_API_KEY")
+	if apiKey == "" {
+		t.Skip("QWEN_API_KEY not set, skipping Qwen stream integration test")
+	}
+
+	provider, err := NewQwenProvider(Config{
+		APIKey: apiKey,
+		Model:  "qwen-turbo",
+	})
+	if err != nil {
+		t.Fatalf("NewQwenProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch, err := provider.Stream(ctx, &CompletionRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "Count from 1 to 3."},
+		},
+		Temperature: Float64Ptr(0),
+		MaxTokens:   50,
+	})
+	if err != nil {
+		t.Fatalf("Stream() error = %v", err)
+	}
+
+	var fullContent string
+	chunkCount := 0
+	for chunk := range ch {
+		fullContent += chunk.Content
+		chunkCount++
+		if chunk.Done {
+			break
+		}
+	}
+
+	if fullContent == "" {
+		t.Error("expected non-empty streamed content from Qwen")
+	}
+	if chunkCount == 0 {
+		t.Error("expected at least 1 chunk from Qwen stream")
+	}
+
+	t.Logf("Qwen Streamed (%d chunks): %s", chunkCount, fullContent)
+}
+
+func TestIntegration_DeepSeek_Stream(t *testing.T) {
+	apiKey := os.Getenv("DEEPSEEK_API_KEY")
+	if apiKey == "" {
+		t.Skip("DEEPSEEK_API_KEY not set, skipping DeepSeek stream integration test")
+	}
+
+	provider, err := NewOpenAIProvider(Config{
+		APIKey:  apiKey,
+		BaseURL: "https://api.deepseek.com/v1",
+		Model:   "deepseek-chat",
+	})
+	if err != nil {
+		t.Fatalf("NewOpenAIProvider() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch, err := provider.Stream(ctx, &CompletionRequest{
+		Messages: []ChatMessage{
+			{Role: "user", Content: "Count from 1 to 3."},
+		},
+		Temperature: Float64Ptr(0),
+		MaxTokens:   50,
+	})
+	if err != nil {
+		t.Fatalf("Stream() error = %v", err)
+	}
+
+	var fullContent string
+	chunkCount := 0
+	for chunk := range ch {
+		fullContent += chunk.Content
+		chunkCount++
+		if chunk.Done {
+			break
+		}
+	}
+
+	if fullContent == "" {
+		t.Error("expected non-empty streamed content from DeepSeek")
+	}
+	if chunkCount == 0 {
+		t.Error("expected at least 1 chunk from DeepSeek stream")
+	}
+
+	t.Logf("DeepSeek Streamed (%d chunks): %s", chunkCount, fullContent)
+}
+
 func TestIntegration_Qwen_Complete(t *testing.T) {
 	apiKey := os.Getenv("QWEN_API_KEY")
 	if apiKey == "" {
