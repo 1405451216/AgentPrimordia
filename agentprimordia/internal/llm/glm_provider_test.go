@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewGLMProvider_Success(t *testing.T) {
@@ -355,5 +356,142 @@ func TestComplexScenario_GLM4V_MultiModal(t *testing.T) {
 	}
 	if !hasImage {
 		t.Error("user message should contain image parts")
+	}
+}
+
+// TestGLMProvider_CallTools_NotSupported 验证 GLM Provider 不支持工具调用时返回 ErrNotSupported
+// 当前 GLM-4 的 OpenAI 兼容接口对 tools 参数的支持有限，此处显式锁定该行为，
+// 避免用户误用工具调用时出现难以理解的错误。
+func TestGLMProvider_CallTools_NotSupported(t *testing.T) {
+	provider, err := NewGLMProvider(Config{
+		APIKey: "test-key",
+		Model:  "glm-4-plus",
+	})
+	if err != nil {
+		t.Fatalf("NewGLMProvider error: %v", err)
+	}
+
+	resp, err := provider.CallTools(context.Background(), &ToolCallRequest{
+		Messages: []ChatMessage{{Role: "user", Content: "test"}},
+		Tools:    []ToolDefinition{{Type: "function", Function: FunctionDefinition{Name: "x"}}},
+	})
+	if err == nil {
+		t.Fatal("expected ErrNotSupported, got nil")
+	}
+	if err != ErrNotSupported {
+		t.Errorf("expected ErrNotSupported, got: %v", err)
+	}
+	if resp != nil {
+		t.Errorf("expected nil response on ErrNotSupported, got: %+v", resp)
+	}
+}
+
+// TestGLMProvider_Stream_Basic 验证 GLM SSE 流式输出拼接与 Done 信号
+func TestGLMProvider_Stream_Basic(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var reqBody map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
+		if !reqBody["stream"].(bool) {
+			t.Error("expected stream=true in request body")
+		}
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("data: {\"id\":\"chatcmpl-glm-1\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"你好\"},\"finish_reason\":null}]}\n\n"))
+		_, _ = w.Write([]byte("data: {\"id\":\"chatcmpl-glm-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"，\"},\"finish_reason\":null}]}\n\n"))
+		_, _ = w.Write([]byte("data: {\"id\":\"chatcmpl-glm-1\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"智谱AI\"},\"finish_reason\":null}]}\n\n"))
+		_, _ = w.Write([]byte("data: {\"id\":\"chatcmpl-glm-1\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":6,\"total_tokens\":16}}\n\n"))
+		_, _ = w.Write([]byte("data: [DONE]\n\n"))
+	}))
+	defer server.Close()
+
+	provider, _ := NewGLMProvider(Config{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Model:   "glm-4-flash",
+	})
+
+	ch, err := provider.Stream(context.Background(), &CompletionRequest{
+		Messages: []ChatMessage{{Role: "user", Content: "你好"}},
+	})
+	if err != nil {
+		t.Fatalf("Stream error: %v", err)
+	}
+
+	var content strings.Builder
+	var lastChunk Chunk
+	for chunk := range ch {
+		content.WriteString(chunk.Content)
+		lastChunk = chunk
+	}
+
+	got := content.String()
+	if got != "你好，智谱AI" {
+		t.Errorf("streamed content = %q, want %q", got, "你好，智谱AI")
+	}
+	if !lastChunk.Done {
+		t.Error("last chunk should have Done=true")
+	}
+}
+
+// TestGLMProvider_Stream_ContextCancel 验证流式 context 取消时提前终止
+func TestGLMProvider_Stream_ContextCancel(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher, _ := w.(http.Flusher)
+		for i := 0; i < 100; i++ {
+			_, _ = w.Write([]byte("data: {\"choices\":[{\"delta\":{\"content\":\"x\"}}]}\n\n"))
+			if flusher != nil {
+				flusher.Flush()
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}))
+	defer server.Close()
+
+	provider, _ := NewGLMProvider(Config{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	ch, err := provider.Stream(ctx, &CompletionRequest{
+		Messages: []ChatMessage{{Role: "user", Content: "test"}},
+	})
+	if err != nil {
+		t.Fatalf("Stream error: %v", err)
+	}
+
+	count := 0
+	for range ch {
+		count++
+	}
+	if count >= 100 {
+		t.Errorf("expected stream to be canceled early, got %d chunks", count)
+	}
+}
+
+// TestGLMProvider_Stream_APIError 验证流式请求错误返回
+func TestGLMProvider_Stream_APIError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":{"message":"internal error","code":"internal_error","type":"server_error"}}`))
+	}))
+	defer server.Close()
+
+	provider, _ := NewGLMProvider(Config{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+	})
+
+	_, err := provider.Stream(context.Background(), &CompletionRequest{
+		Messages: []ChatMessage{{Role: "user", Content: "test"}},
+	})
+	if err == nil {
+		t.Fatal("expected error for 500 response")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("expected error to contain '500', got %q", err.Error())
 	}
 }
