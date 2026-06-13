@@ -21,45 +21,27 @@ make run-multi        # = multi-agent
 make run-production   # = chain-production
 ```
 
-## Example 列表
+## 可运行示例
 
-### 基础
-
-| 目录 | 描述 |
-|------|------|
-| `basic/` | 最小可用 Agent（ReAct 循环 + 单一 LLM 调用） |
-| `simple/` | 最简 hello-world 风格 |
-| `with-tools/` | 含工具的 Agent（FileSystem / Shell / Web） |
-| `builtin-tools/` | 多工具组合示例 |
-
-### 多 Agent 编排
-
-| 目录 | 描述 |
-|------|------|
-| `multi-agent/` | Pipeline 顺序编排 |
-| `multi-agent-collab/` | Handoff 动态交接 |
-| `chain-capable/` | 链式 API + CapabilityAgent |
-| `chain-plugins/` | 链式 API + 插件注入 |
-| `chain-rag/` | 链式 API + RAG 检索 |
-| `chain-api/` | **推荐起点**：链式 API 完整用法 |
-| `chain-production/` | 生产级示例（监控 + 成本 + 限流） |
-
-### 多模态
-
-| 目录 | 描述 |
-|------|------|
-| `multimodal-vision/` | 视觉输入（图像理解） |
-| `multimodal-advanced/` | 多模态组合（文本 + 图像 + 音频） |
-
-### LLM Provider
-
-| 目录 | 描述 |
-|------|------|
-| `gemini-provider/` | Google Gemini |
-| `qwen-provider/` | 阿里 Qwen |
-| `resilient-provider/` | ResilientProvider 重试/降级/熔断 |
-| `memory-backends/` | 多种 Memory 后端（SQLite / Vector） |
-| `debug-tools/` | 调试模式 + Trace 查看 |
+| 名称 | 说明 | 关键 API |
+|------|------|----------|
+| `basic/` | 最简单的 Agent 启动 | `ap.NewAgent` |
+| `with-tools/` | 带工具调用的 Agent | `ap.DefaultToolkit` |
+| `with-memory/` | 带记忆的 Agent | `ap.WithInMemory` |
+| `chain-api/` | 链式 API 完整用法 | `WithToolkit/WithMemory/WithRAG` |
+| `multi-agent/` | 多 Agent 调度 | `ap.NewPool` |
+| `multimodal/` | 多模态 Agent | `ap.NewMultimodalProvider` |
+| `provider-switching/` | 多 LLM 切换 | `ap.NewOpenAIProvider` + Qwen/GLM/DeepSeek |
+| `with-observability/` | Prometheus 指标 | `ap.NewMetrics` |
+| `claude-agents/` | Claude 风格子代理 | `ap.NewSubAgent` |
+| `mcp-server/` | MCP 协议服务 | `ap.MCPServer` |
+| `mcp-client/` | MCP 客户端 | `ap.MCPClient` |
+| `with-orchestration/` | DAG 工作流 | `ap.NewDAGBuilder` |
+| `with-rag/` | RAG 知识库 | `ap.NewRAGStore` |
+| `self-evolving/` | 自演化 Agent | `ap.HookAfterRun` |
+| `with-guardrails/` | 输入/输出护栏 | `ap.NewGuardrails` |
+| `web-chatbot/` | Web 聊天机器人 | `ap.NewHTTPServer` |
+| `github-issue-triage/` | **GitHub Issue Triage Bot**（Phase 18） | ReAct + 3 个自定义工具 + Mock Server |
 
 ## 不在 examples 中的内容
 
@@ -81,3 +63,4 @@ make run-production   # = chain-production
 - 多数 example 需要 `OPENAI_API_KEY` 环境变量；没有 Key 的会运行失败
 - `ap run` 命令假定当前目录有 `.ap.yaml`（通过 `ap init` 生成）
 - 部分 example 使用 `--watch` 监视模式（Makefile 提供入口）
+- **`github-issue-triage/` 是例外**：无 API Key 时用 mock 模式自动跑通演示

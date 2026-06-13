@@ -100,6 +100,13 @@ var (
 	NewCohereProvider = llm.NewCohereProvider
 	// NewMistralProvider 创建 Mistral 提供者实例
 	NewMistralProvider = llm.NewMistralProvider
+	// NewQwenProvider 创建通义千问提供者实例（DashScope OpenAI 兼容模式）
+	NewQwenProvider = llm.NewQwenProvider
+	// NewGLMProvider 创建智谱 GLM 提供者实例（OpenAI 兼容模式）
+	//
+	// 注意: GLMProvider 的 CallTools 当前返回 ErrNotSupported（智谱 OpenAI 兼容层对 tool_calls
+	// 协议支持有限）。如需工具调用，请使用 OpenAI/Anthropic/Gemini/Qwen。
+	NewGLMProvider = llm.NewGLMProvider
 	// ConfigFromEnv 从环境变量读取 LLM 配置（AP_LLM_API_KEY, AP_LLM_BASE_URL, AP_LLM_MODEL 等）
 	ConfigFromEnv = llm.ConfigFromEnv
 )

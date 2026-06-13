@@ -6,6 +6,17 @@
 
 ### Added
 
+- **GitHub Issue Triage Bot** (Phase 18): `ecosystem/examples/github-issue-triage/`
+  生产级 demo，展示 AgentPrimordia 在真实业务场景下的能力
+  - 5 个预置 Issue，涵盖 bug/feature/question/duplicate 4 种分类
+  - 3 个自定义工具（list_issues / read_issue / add_label）
+  - httptest 模拟 GitHub API（生产可换成真实 API）
+  - 支持 OpenAI / Qwen / DeepSeek / MockLLM 4 种模式
+  - 无 API Key 时用 mock 模式自动跑通完整演示
+- **Phase 18 实施计划**: `docs/plans/2026-06-12-issue-triage-bot.md`
+- **公共 API 补全**: `pkg/llm.go` 新增 `QwenProvider / GLMProvider / DeepSeekProvider` 类型别名
+  和 `NewQwenProvider / NewGLMProvider` 构造器，弥补 Phase 15 补遗中未实现的文档承诺
+
 - **Qwen Provider 工具调用与流式测试** (Phase 16-A): `qwen_provider_test.go` 新增 6 个集成测试
   - `TestQwenProvider_CallTools_Success / MultipleTools / NoToolCall`
   - `TestQwenProvider_Stream_Basic / ContextCancel / APIError`
