@@ -2,6 +2,35 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- **Qwen Provider 工具调用与流式测试** (Phase 16-A): `qwen_provider_test.go` 新增 6 个集成测试
+  - `TestQwenProvider_CallTools_Success / MultipleTools / NoToolCall`
+  - `TestQwenProvider_Stream_Basic / ContextCancel / APIError`
+- **GLM Provider 流式测试与行为锁定** (Phase 16-B): `glm_provider_test.go` 新增 4 个集成测试
+  - `TestGLMProvider_CallTools_NotSupported` 锁定 `ErrNotSupported` 当前行为
+  - `TestGLMProvider_Stream_Basic / ContextCancel / APIError`
+- **DeepSeek Provider 集成测试** (Phase 16-C): 新建 `deepseek_provider_test.go`
+  - 7 个测试覆盖 `deepseek-chat` / `deepseek-reasoner` / `deepseek-coder` 三种模型
+  - 验证 OpenAI 兼容接口（`BaseURL=https://api.deepseek.com/v1`）的 Complete / CallTools / Stream 路径
+- **Phase 16 实施计划** (Phase 16): `docs/plans/2026-06-12-llm-provider-tests.md`
+- **FAQ 文档** (Phase 15 补遗): `agentprimordia/ecosystem/docs/faq.md` — 7 大分类 22 个问答
+- **RAG Agent Cookbook** (Phase 15 补遗): `agentprimordia/ecosystem/docs/cookbook/rag-agent.md` — 含架构图、完整代码、三种 RAG 模式对比
+- **`pkg/example_test.go`**: 8 个 Go Example 函数（NewAgent / Pool / DAG / Session / ResilientProvider 等）
+  覆盖公共 API，可在 `go doc` 和 pkg.go.dev 上展示
+
+### Fixed
+
+- **文档 API 路径不一致** (Phase 15 补遗): `getting-started.md` 和 `best-practices.md` 大量使用 `internal/` 旧路径，
+  统一改为 `ap.Xxx` 公共 API；删除不存在的 API 引用（`memory.NewMemory`, `debugger.NewDebugServer` 等）
+- **`pkg/version.go` 版本号** (Phase 15 补遗): 从 `0.1.0` 修正为 `0.7.0`，与 README/CHANGELOG 一致
+
+### Changed
+
+- **README.md 文档链接** (Phase 15 补遗): 新增 FAQ / CLI 手册 / RAG Cookbook / 迁移指南的链接
+
 ## [0.7.0] - 2026-06-05
 
 ### Added
