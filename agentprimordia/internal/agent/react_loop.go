@@ -31,6 +31,8 @@ func nextMemoryID() string {
 // MemoryStore 是 Agent 所需的记忆存储接口
 type MemoryStore interface {
 	Add(ctx context.Context, episode *memory.Episode) error
+	// UpdateSummary 更新指定 episode 的摘要和标签（M2 修复：异步摘要存储）。
+	UpdateSummary(ctx context.Context, id, summary, topics string) error
 }
 
 // MemoryEpisode 是 Agent 使用的一集记忆（已废弃，使用 memory.Episode）
@@ -374,6 +376,10 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 				return
 			}
 			a.logger.Info("异步摘要提取成功", "id", epID, "summary_len", len(result.Summary), "topics", result.Topics)
+			// M2 修复：存储摘要结果，不再只记录日志丢弃
+			if err := mem.UpdateSummary(sumCtx, epID, result.Summary, result.Topics); err != nil {
+				a.logger.Warn("异步摘要存储失败", "id", epID, "error", err)
+			}
 		}()
 	}
 }

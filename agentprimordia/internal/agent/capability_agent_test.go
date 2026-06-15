@@ -18,6 +18,10 @@ func (m *capTestMemoryStore) Add(ctx context.Context, episode *MemoryEpisode) er
 	return nil
 }
 
+func (m *capTestMemoryStore) UpdateSummary(_ context.Context, _, _, _ string) error {
+	return nil // stub: 测试不验证摘要存储
+}
+
 // capTestEventPublisher 是 CapabilityAgent 测试专用的 EventPublisher 实现
 type capTestEventPublisher struct {
 	events []struct {
