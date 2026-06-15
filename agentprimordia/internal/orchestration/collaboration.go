@@ -353,6 +353,13 @@ func (s *CollaborationSession) executeDebate(ctx context.Context, topic string) 
 
 // executeReview 执行评审
 func (s *CollaborationSession) executeReview(ctx context.Context, content string) error {
+	// 检查上下文是否已取消
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	reviewers := s.getCollaboratorsByRole("reviewer")
 
 	if len(reviewers) == 0 {
@@ -459,6 +466,13 @@ func (s *CollaborationSession) executeConsensus(ctx context.Context, topic strin
 
 // executeBrainstorm 执行头脑风暴
 func (s *CollaborationSession) executeBrainstorm(ctx context.Context, topic string) error {
+	// 检查上下文是否已取消
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	ideas := make([]*CollaborationStatement, 0)
 	var wg sync.WaitGroup
 
