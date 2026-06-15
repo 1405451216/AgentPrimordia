@@ -42,6 +42,16 @@
 - **文档 API 路径不一致** (Phase 15 补遗): `getting-started.md` 和 `best-practices.md` 大量使用 `internal/` 旧路径，
   统一改为 `ap.Xxx` 公共 API；删除不存在的 API 引用（`memory.NewMemory`, `debugger.NewDebugServer` 等）
 - **`pkg/version.go` 版本号** (Phase 15 补遗): 从 `0.1.0` 修正为 `0.7.0`，与 README/CHANGELOG 一致
+- **异步摘要结果丢失** (P2 M2): 扩展 `MemoryStore` 接口添加 `UpdateSummary` 方法，
+  ReAct 异步摘要 goroutine 现在将结果写入记忆存储而非仅日志记录
+- **Pool Task Map 无界增长** (P2 M8): 新增 `MaxRetainedTasks` 配置（默认 0=禁用），
+  Dispatch 后自动清理已完成的终端任务，防止长期运行内存泄漏
+- **编排循环缺少 ctx.Done() 检查** (P2 M7): `orchestrator.go` 的 executeSequential/Parallel/DAG 循环、
+  重试循环及 `collaboration.go` 的 executeReview/executeBrainstorm 入口均已添加 ctx.Done() 检查，
+  上下文取消时在 ~100ms 内返回
+- **Metrics label 维度缺失** (P2 M13): 新增 `LabeledMetricsRecorder` 可选接口，
+  react_loop 通过类型断言自动分发带标签指标（provider/model/tool_name/agent_name），
+  Prometheus 输出现在包含三维标签，Dashboard PromQL 可正确聚合
 
 ### Testing
 
@@ -53,6 +63,10 @@
   验证 `ap.NewAgent / NewSession / WithMemory / StreamRun` 的真实跑通路径
 - **跨平台集成测试脚本** (Phase 17-E): `scripts/test-integration.ps1`
   自动检测 API Key 并报告跳过情况，支持 Provider 过滤（`-Provider openai` 等）
+- **异步摘要存储测试** (P2): `summary_store_test.go` — 验证 `UpdateSummary` 被正确调用
+- **Pool 自动清理测试** (P2): `dispatcher_cleanup_test.go` — 验证 `MaxRetainedTasks` 阈值清理语义
+- **编排 ctx.Done() 取消测试** (P2): `ctx_cancel_test.go` — 4 个测试覆盖顺序/并行/DAG 取消 + 无取消基线
+- **Metrics label 维度测试** (P2): `metrics_labels_test.go` — 4 个测试验证 provider/model/tool_name/agent_name 标签输出
 
 ### Changed
 
