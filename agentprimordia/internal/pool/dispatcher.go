@@ -89,6 +89,8 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 	p.stats.QueuedTasks += len(tasks)
 	p.mu.Unlock()
 
+	// M8 修复：派发前检查是否需要清理终态任务，避免 task map 无界增长
+	p.cleanupIfNeeded()
 	results := make([]*TaskResult, len(tasks))
 	errCh := make(chan error, len(tasks))
 
@@ -524,6 +526,25 @@ func (p *Pool) SetToolkit(registry *tools.Registry) {
 func (p *Pool) Cleanup() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	for id, t := range p.tasks {
+		if t.status == PoolTaskCompleted || t.status == PoolTaskFailed || t.status == PoolTaskCancelled {
+			delete(p.tasks, id)
+		}
+	}
+}
+
+// cleanupIfNeeded 当 task map 超过 MaxRetainedTasks 阈值时自动清理终态任务（M8 修复）。
+// 仅在配置了 MaxRetainedTasks（>0）且当前任务数超过阈值时触发，保留活跃任务。
+// 零值（0）时不做任何事，保持向后兼容。
+func (p *Pool) cleanupIfNeeded() {
+	if p.config.MaxRetainedTasks <= 0 {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.tasks) < p.config.MaxRetainedTasks {
+		return
+	}
 	for id, t := range p.tasks {
 		if t.status == PoolTaskCompleted || t.status == PoolTaskFailed || t.status == PoolTaskCancelled {
 			delete(p.tasks, id)

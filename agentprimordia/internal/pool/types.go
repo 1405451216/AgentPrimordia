@@ -55,10 +55,13 @@ type PoolStats struct {
 }
 
 type PoolConfig struct {
-	MaxConcurrency int              `json:"max_concurrency"`
-	Timeout        time.Duration    `json:"timeout"`
-	RetryPolicy    RetryPolicy      `json:"retry_policy,omitempty"`
-	DefaultAgent   ReActAgentConfig `json:"default_agent"`
+	MaxConcurrency int           `json:"max_concurrency"`
+	Timeout        time.Duration `json:"timeout"`
+	RetryPolicy    RetryPolicy   `json:"retry_policy,omitempty"`
+	// MaxRetainedTasks 保留的已完成任务数上限，超过时自动清理最早的终态任务（M8 修复）。
+	// 0 表示不自动清理（向后兼容）。生产环境建议设置（如 1000）避免长期运行内存泄漏。
+	MaxRetainedTasks int              `json:"max_retained_tasks,omitempty"`
+	DefaultAgent     ReActAgentConfig `json:"default_agent"`
 }
 
 type RetryPolicy struct {
