@@ -145,18 +145,18 @@ for {
 | # | 模块 | 问题 |
 |---|------|------|
 | M1 | ReAct | `callToolsWithRetry`/`completeWithRetry` 名不副实，无实际重试逻辑 |
-| M2 | ReAct | 异步 summary goroutine 泄漏，结果仅日志记录未存储 |
+| M2 | ReAct | ~~异步 summary goroutine 泄漏，结果仅日志记录未存储~~ ✅ P2 修复 (Commit L) |
 | M3 | Workflow | `currentNode` 并行执行时数据竞态 |
 | M4 | Workflow | 状态机无迭代上限，条件循环导致无限循环 |
 | M5 | Workflow | `Pause()` 取消 context 后 `Resume()` 无法重启 Execute |
 | M6 | DAG | 条件边导致 `remainingDeps` 计数不一致 |
-| M7 | Orchestration | Pipeline/Handoff/Parallel 未检查 `ctx.Done()` |
-| M8 | Pool | Task Map 无界增长，长期运行内存泄漏 |
+| M7 | Orchestration | ~~Pipeline/Handoff/Parallel 未检查 `ctx.Done()`~~ ✅ P2 修复 (Commit N) |
+| M8 | Pool | ~~Task Map 无界增长，长期运行内存泄漏~~ ✅ P2 修复 (Commit M) |
 | M9 | LLM | `Stream()` 无重试保护，缺少 `Chunk.Err` 错误传播 |
 | M10 | MCP | ~~stdio 模式未实际实现，启动进程后仍用 HTTP 连接~~ (v0.7.0 已修复) |
 | M11 | 安全性 | SQL 注入风险: PRAGMA 语句直接拼接表名 |
 | M12 | 安全性 | Sandbox 与 Shell 工具双重安全实现，Sandbox 策略可被绕过 |
-| M13 | Metrics | Grafana Dashboard PromQL 与实际指标 label/名称不匹配 |
+| M13 | Metrics | ~~Grafana Dashboard PromQL 与实际指标 label/名称不匹配~~ ✅ P2 修复 (Commit O) |
 
 ### 3.4 其他发现
 
@@ -270,7 +270,9 @@ MCP Client 实现了完整的初始化流程 (`initialize` → `notifications/in
 
 ### 7.1 Prometheus 指标
 
-定义了 11 个核心指标 (counter/gauge/histogram)，使用 atomic + mutex 保证原子性。Histogram bucket 设计合理。但指标缺少 label 维度 (provider/model/agent_name)，而 Grafana Dashboard 引用了这些 label，导致 **Dashboard 无法正确渲染数据**。
+定义了 11 个核心指标 (counter/gauge/histogram)，使用 atomic + mutex 保证原子性。Histogram bucket 设计合理。
+
+> **P2 修复 (Commit O):** 已新增 `LabeledMetricsRecorder` 可选接口，`react_loop` 所有 ~15 个调用点通过类型断言自动分发带标签指标。Prometheus exposition 现在输出 `ap_llm_calls_by_provider{provider,model}`、`ap_tool_calls{tool_name}`、`ap_turns{agent_name}` 三维标签，Dashboard PromQL 可正确聚合。
 
 | 指标名 | 类型 | 描述 |
 |--------|------|------|
@@ -357,9 +359,9 @@ AgentDeployment CRD 设计成熟，Reconciler 覆盖 ConfigMap/Deployment/Servic
 
 ### P2 — 中期优化
 
-- [ ] 修复所有 Medium 级别 bug (M1-M13)
-- [ ] 为 Metrics 添加 provider/model/agent_name label 维度
-- [ ] 修复 Grafana Dashboard PromQL 与实际指标的不匹配
+- [x] 修复所有 Medium 级别 bug (M1-M13) — P2 阶段修复 M2/M7/M8/M13（其余已在 P0/P1 修复）
+- [x] 为 Metrics 添加 provider/model/agent_name label 维度 (Commit O: LabeledMetricsRecorder + react_loop 接入)
+- [x] 修复 Grafana Dashboard PromQL 与实际指标的不匹配 (Commit O: 指标输出现包含标签)
 - [x] 完善 MCP stdio 模式实现 (v0.7.0 已完成：传输层 + 进程管理 + CLI 全链路)
 - [ ] Operator: 注入 healthCheck probes、填充 Status 字段
 - [x] 启用 OTel 桥接集成 (v0.7.0 已完成：内建 OTelBridge + W3C Trace Context + OTLP 导出，无需外部 SDK)

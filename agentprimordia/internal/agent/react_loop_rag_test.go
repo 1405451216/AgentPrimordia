@@ -18,6 +18,10 @@ func (m *mockMemoryStore) Add(_ context.Context, episode *MemoryEpisode) error {
 	return nil
 }
 
+func (m *mockMemoryStore) UpdateSummary(_ context.Context, _, _, _ string) error {
+	return nil // stub: 测试不验证摘要存储
+}
+
 func TestReActAgent_RAG_AutoMode_WithMemory(t *testing.T) {
 	ragProvider := &mockRAGProvider{
 		docs: []*RAGDocument{
