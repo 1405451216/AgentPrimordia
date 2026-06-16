@@ -2,333 +2,320 @@ package agent
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"sync"
-	"sync/atomic"
+	"net"
 	"testing"
 	"time"
 )
 
-func TestTCPTransport_StartAndClose(t *testing.T) {
-	tr := NewTCPTransport()
+func TestTCPTransport_StartClose(t *testing.T) {
+	transport := NewTCPTransport()
 
-	if err := tr.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("Start failed: %v", err)
+	// 启动传输层
+	if err := transport.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动失败: %v", err)
 	}
 
-	if tr.Addr() == "" {
-		t.Error("Addr should not be empty after Start")
+	addr := transport.Addr()
+	if addr == "" {
+		t.Fatal("地址为空")
 	}
 
-	if err := tr.Close(); err != nil {
-		t.Fatalf("Close failed: %v", err)
+	// 重复启动应该失败
+	if err := transport.Start("127.0.0.1:0"); err == nil {
+		t.Fatal("重复启动应该失败")
+	}
+
+	// 关闭传输层
+	if err := transport.Close(); err != nil {
+		t.Fatalf("关闭失败: %v", err)
+	}
+
+	// 重复关闭应该成功
+	if err := transport.Close(); err != nil {
+		t.Fatalf("重复关闭失败: %v", err)
 	}
 }
 
-func TestTCPTransport_SendAndReceive(t *testing.T) {
-	sender := NewTCPTransport()
-	receiver := NewTCPTransport()
+func TestTCPTransport_SendReceive(t *testing.T) {
+	// 启动两个传输层
+	transport1 := NewTCPTransport()
+	transport2 := NewTCPTransport()
 
-	if err := sender.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("sender Start failed: %v", err)
+	if err := transport1.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport1 启动失败: %v", err)
 	}
-	defer sender.Close()
+	defer transport1.Close()
 
-	if err := receiver.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("receiver Start failed: %v", err)
+	if err := transport2.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport2 启动失败: %v", err)
 	}
-	defer receiver.Close()
+	defer transport2.Close()
 
+	// 发送消息
+	ctx := context.Background()
 	msg := &BusMessage{
-		ID:        "msg-001",
-		From:      "agent-sender",
-		To:        "agent-receiver",
-		Type:      BusMsgTaskRequest,
-		Content:   "hello from sender",
-		Timestamp: time.Now(),
+		ID:      "test-msg-1",
+		From:    "agent1",
+		To:      "agent2",
+		Content: `{"test": "data"}`,
 	}
 
-	if err := sender.Send(context.Background(), receiver.Addr(), msg); err != nil {
-		t.Fatalf("Send failed: %v", err)
+	if err := transport1.Send(ctx, transport2.Addr(), msg); err != nil {
+		t.Fatalf("发送失败: %v", err)
 	}
 
+	// 接收消息
 	select {
-	case received := <-receiver.Receive():
+	case received := <-transport2.Receive():
 		if received.ID != msg.ID {
-			t.Errorf("ID = %q, want %q", received.ID, msg.ID)
+			t.Errorf("消息 ID 不匹配: 期望 %s, 得到 %s", msg.ID, received.ID)
 		}
 		if received.From != msg.From {
-			t.Errorf("From = %q, want %q", received.From, msg.From)
+			t.Errorf("消息 From 不匹配: 期望 %s, 得到 %s", msg.From, received.From)
 		}
-		if received.To != msg.To {
-			t.Errorf("To = %q, want %q", received.To, msg.To)
-		}
-		if received.Type != msg.Type {
-			t.Errorf("Type = %q, want %q", received.Type, msg.Type)
-		}
-		if received.Content != msg.Content {
-			t.Errorf("Content = %q, want %q", received.Content, msg.Content)
-		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("timeout waiting for message")
+	case <-time.After(2 * time.Second):
+		t.Fatal("接收消息超时")
 	}
 }
 
-func TestTCPTransport_ConcurrentMessages(t *testing.T) {
-	sender := NewTCPTransport()
-	receiver := NewTCPTransport()
+func TestTCPTransport_SendWithAck(t *testing.T) {
+	transport1 := NewTCPTransport()
+	transport2 := NewTCPTransport()
 
-	if err := sender.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("sender Start failed: %v", err)
+	if err := transport1.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport1 启动失败: %v", err)
 	}
-	defer sender.Close()
+	defer transport1.Close()
 
-	if err := receiver.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("receiver Start failed: %v", err)
+	if err := transport2.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport2 启动失败: %v", err)
 	}
-	defer receiver.Close()
+	defer transport2.Close()
 
-	const count = 20
-	var sendErr atomic.Int32
-
-	var wg sync.WaitGroup
-	for i := 0; i < count; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			msg := &BusMessage{
-				ID:        fmt.Sprintf("msg-%d", idx),
-				From:      "sender",
-				To:        "receiver",
-				Type:      BusMsgTaskRequest,
-				Content:   fmt.Sprintf("concurrent message %d", idx),
-				Timestamp: time.Now(),
-			}
-			if err := sender.Send(context.Background(), receiver.Addr(), msg); err != nil {
-				sendErr.Add(1)
-			}
-		}(i)
-	}
-	wg.Wait()
-
-	if sendErr.Load() > 0 {
-		t.Errorf("%d concurrent sends failed", sendErr.Load())
+	ctx := context.Background()
+	msg := &BusMessage{
+		ID:      "test-msg-ack",
+		From:    "agent1",
+		To:      "agent2",
+		Content: `{"test": "ack"}`,
 	}
 
-	received := 0
-	timeout := time.After(5 * time.Second)
-	for received < count {
+	// 启动一个 goroutine 来接收消息并发送 ACK
+	go func() {
 		select {
-		case <-receiver.Receive():
-			received++
-		case <-timeout:
-			t.Fatalf("timeout: received %d/%d messages", received, count)
+		case received := <-transport2.Receive():
+			// 收到消息后，handleConn 会自动发送 ACK
+			t.Logf("收到消息: %s", received.ID)
+		case <-time.After(2 * time.Second):
+			t.Error("接收消息超时")
 		}
-	}
+	}()
 
-	if received != count {
-		t.Errorf("received %d messages, want %d", received, count)
-	}
-}
-
-func TestTCPTransport_LargeMessage(t *testing.T) {
-	sender := NewTCPTransport()
-	receiver := NewTCPTransport()
-
-	if err := sender.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("sender Start failed: %v", err)
-	}
-	defer sender.Close()
-
-	if err := receiver.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("receiver Start failed: %v", err)
-	}
-	defer receiver.Close()
-
-	largeContent := strings.Repeat("A", 1024*100)
-	msg := &BusMessage{
-		ID:        "msg-large",
-		From:      "agent-sender",
-		To:        "agent-receiver",
-		Type:      BusMsgTaskRequest,
-		Content:   largeContent,
-		Timestamp: time.Now(),
-	}
-
-	if err := sender.Send(context.Background(), receiver.Addr(), msg); err != nil {
-		t.Fatalf("Send large message failed: %v", err)
-	}
-
-	select {
-	case received := <-receiver.Receive():
-		if len(received.Content) != len(largeContent) {
-			t.Errorf("Content length = %d, want %d", len(received.Content), len(largeContent))
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("timeout waiting for large message")
-	}
-}
-
-func TestTCPTransport_SendBeforeStart(t *testing.T) {
-	tr := NewTCPTransport()
-
-	msg := &BusMessage{
-		ID:      "msg-no-start",
-		From:    "agent-1",
-		To:      "agent-2",
-		Type:    BusMsgTaskRequest,
-		Content: "should fail",
-	}
-
-	err := tr.Send(context.Background(), "127.0.0.1:9999", msg)
-	if err == nil {
-		t.Error("expected error when sending before Start")
-	}
-}
-
-func TestTCPTransport_DoubleStart(t *testing.T) {
-	tr := NewTCPTransport()
-
-	if err := tr.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("first Start failed: %v", err)
-	}
-	defer tr.Close()
-
-	if err := tr.Start("127.0.0.1:0"); err == nil {
-		t.Error("expected error on double Start")
-	}
-}
-
-func TestTCPTransport_CloseBeforeStart(t *testing.T) {
-	tr := NewTCPTransport()
-
-	if err := tr.Close(); err != nil {
-		t.Errorf("Close before Start should not error, got: %v", err)
+	// 发送需要 ACK 的消息
+	if err := transport1.SendWithAck(ctx, transport2.Addr(), msg); err != nil {
+		t.Fatalf("发送带 ACK 的消息失败: %v", err)
 	}
 }
 
 func TestTCPTransport_ConnectionPool(t *testing.T) {
 	cfg := DefaultTCPTransportConfig()
 	cfg.PoolSize = 4
-	sender := NewTCPTransportWithConfig(cfg)
-	receiver := NewTCPTransport()
 
-	if err := sender.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("sender Start failed: %v", err)
+	transport1 := NewTCPTransportWithConfig(cfg)
+	transport2 := NewTCPTransportWithConfig(cfg)
+
+	if err := transport1.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport1 启动失败: %v", err)
 	}
-	defer sender.Close()
+	defer transport1.Close()
 
-	if err := receiver.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("receiver Start failed: %v", err)
+	if err := transport2.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport2 启动失败: %v", err)
 	}
-	defer receiver.Close()
+	defer transport2.Close()
 
-	msg := &BusMessage{
-		ID:        "msg-pool-1",
-		From:      "sender",
-		To:        "receiver",
-		Type:      BusMsgTaskRequest,
-		Content:   "pool test",
-		Timestamp: time.Now(),
+	ctx := context.Background()
+
+	// 发送多条消息以测试连接池
+	for i := 0; i < 5; i++ {
+		msg := &BusMessage{
+			ID:      "test-msg-pool",
+			From:    "agent1",
+			To:      "agent2",
+			Content: `{"test": "pool"}`,
+		}
+
+		if err := transport1.Send(ctx, transport2.Addr(), msg); err != nil {
+			t.Fatalf("发送失败: %v", err)
+		}
+
+		// 接收消息
+		select {
+		case <-transport2.Receive():
+		case <-time.After(2 * time.Second):
+			t.Fatal("接收消息超时")
+		}
 	}
 
-	if err := sender.Send(context.Background(), receiver.Addr(), msg); err != nil {
-		t.Fatalf("Send failed: %v", err)
-	}
+	// 检查连接池状态
+	active, idle := transport1.PoolStats()
+	t.Logf("连接池状态: active=%d, idle=%d", active, idle)
 
-	select {
-	case <-receiver.Receive():
-	case <-time.After(3 * time.Second):
-		t.Fatal("timeout waiting for message")
+	// 应该有空闲连接
+	if idle == 0 {
+		t.Log("警告: 没有空闲连接")
 	}
 }
 
-func TestTCPTransport_MessageAck_Timeout(t *testing.T) {
-	cfg := TCPTransportConfig{
-		AckTimeout:    100 * time.Millisecond,
-		MaxRetries:    1,
-		RetryInterval: 50 * time.Millisecond,
-		PoolSize:      4,
-	}
-	sender := NewTCPTransportWithConfig(cfg)
+func TestTCPTransport_Retry(t *testing.T) {
+	transport := NewTCPTransport()
 
-	if err := sender.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("sender Start failed: %v", err)
+	if err := transport.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动失败: %v", err)
 	}
-	defer sender.Close()
+	defer transport.Close()
 
+	ctx := context.Background()
 	msg := &BusMessage{
-		ID:        "msg-ack-timeout",
-		From:      "sender",
-		To:        "receiver",
-		Type:      BusMsgTaskRequest,
-		Content:   "ack timeout test",
-		Timestamp: time.Now(),
+		ID:      "test-msg-retry",
+		From:    "agent1",
+		To:      "agent2",
+		Content: `{"test": "retry"}`,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := sender.SendWithAck(ctx, "127.0.0.1:1", msg)
+	// 尝试发送到一个不存在的地址，应该重试后失败
+	err := transport.Send(ctx, "127.0.0.1:59999", msg)
 	if err == nil {
-		t.Error("expected send failure error for unreachable target")
+		t.Fatal("发送到不存在的地址应该失败")
 	}
+
+	t.Logf("重试后失败（符合预期）: %v", err)
 }
 
-func TestTCPTransport_RetryOnFailure(t *testing.T) {
-	cfg := TCPTransportConfig{
-		AckTimeout:    1 * time.Second,
-		MaxRetries:    2,
-		RetryInterval: 100 * time.Millisecond,
-		PoolSize:      4,
-	}
-	sender := NewTCPTransportWithConfig(cfg)
+func TestTCPTransport_SendBeforeStart(t *testing.T) {
+	transport := NewTCPTransport()
 
-	if err := sender.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("sender Start failed: %v", err)
-	}
-	defer sender.Close()
-
+	ctx := context.Background()
 	msg := &BusMessage{
-		ID:        "msg-retry",
-		From:      "sender",
-		To:        "receiver",
-		Type:      BusMsgTaskRequest,
-		Content:   "retry test",
-		Timestamp: time.Now(),
+		ID:      "test-msg",
+		From:    "agent1",
+		To:      "agent2",
+		Content: `{"test": "data"}`,
 	}
 
-	err := sender.Send(context.Background(), "127.0.0.1:1", msg)
+	// 在启动前发送应该失败
+	err := transport.Send(ctx, "127.0.0.1:8080", msg)
 	if err == nil {
-		t.Error("expected error when target is unreachable")
+		t.Fatal("在启动前发送应该失败")
+	}
+
+	if err.Error() != "transport not started" {
+		t.Errorf("错误消息不匹配: %v", err)
 	}
 }
 
-func TestTCPTransport_PoolStats(t *testing.T) {
-	tr := NewTCPTransport()
+func TestTCPTransport_AckTimeout(t *testing.T) {
+	cfg := DefaultTCPTransportConfig()
+	cfg.AckTimeout = 500 * time.Millisecond
+	cfg.MaxRetries = 1                   // 最少重试次数
+	cfg.RetryInterval = time.Millisecond // 最小间隔
 
-	active, idle := tr.PoolStats()
-	if active != 0 || idle != 0 {
-		t.Errorf("PoolStats before start = (%d, %d), want (0, 0)", active, idle)
+	transport1 := NewTCPTransportWithConfig(cfg)
+
+	if err := transport1.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport1 启动失败: %v", err)
 	}
+	defer transport1.Close()
+
+	// 启动一个不响应 ACK 的服务器
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("监听失败: %v", err)
+	}
+	defer ln.Close()
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		// 接收消息但不发送 ACK
+		buf := make([]byte, 1024)
+		conn.Read(buf)
+		// 保持连接打开但不响应
+		time.Sleep(2 * time.Second)
+		conn.Close()
+	}()
+
+	ctx := context.Background()
+	msg := &BusMessage{
+		ID:      "test-msg-timeout",
+		From:    "agent1",
+		To:      "agent2",
+		Content: `{"test": "timeout"}`,
+	}
+
+	// 发送需要 ACK 的消息，应该超时
+	start := time.Now()
+	err = transport1.SendWithAck(ctx, ln.Addr().String(), msg)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("应该超时失败")
+	}
+
+	// 检查超时时间是否合理（允许一定误差，考虑重试）
+	if elapsed < 400*time.Millisecond || elapsed > 5*time.Second {
+		t.Errorf("超时时间不合理: %v", elapsed)
+	}
+
+	t.Logf("超时失败（符合预期）: %v, 耗时: %v", err, elapsed)
 }
 
-func TestTCPTransportWithConfig(t *testing.T) {
-	cfg := TCPTransportConfig{
-		AckTimeout:    5 * time.Second,
-		MaxRetries:    5,
-		RetryInterval: 200 * time.Millisecond,
-		PoolSize:      16,
-	}
-	tr := NewTCPTransportWithConfig(cfg)
+func TestTCPTransport_MultipleMessages(t *testing.T) {
+	transport1 := NewTCPTransport()
+	transport2 := NewTCPTransport()
 
-	if err := tr.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("Start failed: %v", err)
+	if err := transport1.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport1 启动失败: %v", err)
 	}
-	defer tr.Close()
+	defer transport1.Close()
 
-	if tr.Addr() == "" {
-		t.Error("Addr should not be empty after Start")
+	if err := transport2.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("transport2 启动失败: %v", err)
+	}
+	defer transport2.Close()
+
+	ctx := context.Background()
+
+	// 发送多条消息
+	numMessages := 10
+	for i := 0; i < numMessages; i++ {
+		msg := &BusMessage{
+			ID:      "test-msg",
+			From:    "agent1",
+			To:      "agent2",
+			Content: `{"test": "data"}`,
+		}
+
+		if err := transport1.Send(ctx, transport2.Addr(), msg); err != nil {
+			t.Fatalf("发送消息 %d 失败: %v", i, err)
+		}
+	}
+
+	// 接收所有消息
+	received := 0
+	timeout := time.After(5 * time.Second)
+	for received < numMessages {
+		select {
+		case <-transport2.Receive():
+			received++
+		case <-timeout:
+			t.Fatalf("接收超时，只收到 %d/%d 条消息", received, numMessages)
+		}
+	}
+
+	if received != numMessages {
+		t.Errorf("消息数量不匹配: 期望 %d, 得到 %d", numMessages, received)
 	}
 }

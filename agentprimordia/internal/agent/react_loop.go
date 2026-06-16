@@ -349,10 +349,10 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 
 		if a.shouldRAG(turn) && ragQuery != "" {
-			ragContext, _ := a.searchRAG(ctx, ragQuery)
+			ragContext, ragDocs := a.searchRAG(ctx, ragQuery)
 			if ragContext != "" {
 				history = a.injectRAGContext(history, ragContext)
-				a.logger.Debug("RAG 上下文已注入", "turn", turn, "query_len", len(ragQuery))
+				a.logger.Debug("RAG 上下文已注入", "turn", turn, "query_len", len(ragQuery), "docs", len(ragDocs))
 				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[RAG] 知识库上下文已注入"})
 			}
 		}
