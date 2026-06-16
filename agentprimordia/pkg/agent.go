@@ -238,18 +238,91 @@ var (
 
 	// ===== NewAgent 简化入口（推荐） =====
 
-	// NewAgent 是创建 Agent 的推荐入口。暴露核心必填字段，能力通过链式 API 注入。
+	// NewAgent 是创建 Agent 的推荐入口（v0.7.0 起）。
+	// 暴露核心字段（名称、系统提示词、模型），能力通过 Functional Options 注入。
+	// 构造后核心能力不可变，返回 (*CapabilityAgent, error)。
 	NewAgent = agent.NewAgent
-	// WithMaxTurns 设置 ReAct 循环的最大迭代次数
+
+	// ===== 标量 Option =====
+
+	// WithMaxTurns 设置 ReAct 循环的最大迭代次数（默认 50）
 	WithMaxTurns = agent.WithMaxTurns
-	// WithTemperature 设置 LLM 温度参数
+	// WithTemperature 设置 LLM 温度参数（默认 0.0）
 	WithTemperature = agent.WithTemperature
-	// WithSessionID 设置会话 ID
+	// WithSessionID 设置会话 ID，用于跨轮记忆关联
 	WithSessionID = agent.WithSessionID
+	// WithPromptTemplate 设置自定义提示词模板
+	WithPromptTemplate = agent.WithPromptTemplate
+
+	// ===== 顶层快捷注入 Option =====
+
+	// WithMemory 注入记忆存储
+	WithMemory = agent.WithMemory
+	// WithToolkit 注入工具注册表
+	WithToolkit = agent.WithToolkit
+	// WithHooks 注入生命周期钩子
+	WithHooks = agent.WithHooks
+	// WithRAG 注入检索增强配置
+	WithRAG = agent.WithRAG
+	// WithTracer 注入追踪器
+	WithTracer = agent.WithTracer
+	// WithCostTracker 注入成本追踪器
+	WithCostTracker = agent.WithCostTracker
+	// WithContextWindow 注入上下文窗口裁剪策略
+	WithContextWindow = agent.WithContextWindow
+	// WithEvents 注入事件发布器
+	WithEvents = agent.WithEvents
+	// WithMetrics 注入指标记录器
+	WithMetrics = agent.WithMetrics
+	// WithCheckpointStore 注入检查点存储
+	WithCheckpointStore = agent.WithCheckpointStore
+	// WithSummarizer 注入摘要提取器
+	WithSummarizer = agent.WithSummarizer
+	// WithFileScope 注入文件访问范围
+	WithFileScope = agent.WithFileScope
+	// WithCache 注入 LLM 缓存
+	WithCache = agent.WithCache
+	// WithHITL 注入 Human-in-the-Loop 配置
+	WithHITL = agent.WithHITL
+
+	// ===== 分组注入 Option =====
+
+	// WithMemoryConfig 一次性注入记忆相关配置
+	WithMemoryConfig = agent.WithMemoryConfig
+	// WithObservability 一次性注入可观测性配置
+	WithObservability = agent.WithObservability
+	// WithResilience 一次性注入容错配置
+	WithResilience = agent.WithResilience
+	// WithToolsConfig 一次性注入工具配置
+	WithToolsConfig = agent.WithToolsConfig
 )
 
-// AgentOption 函数式选项，用于 NewAgent 的可选参数
+// AgentOption 是 NewAgent 的函数式选项类型（v0.7.0 起等同于 agent.Option）
+//
+// 注意：pkg/options.go 中另有一个 Option 类型（func(*options)）用于 ApplyOptions，
+// 与此处的 AgentOption 不同。NewAgent 接受的是 AgentOption。
 type AgentOption = agent.AgentOption
+
+// ===== v0.7.0 分组配置 struct =====
+
+// AgentConfig 是 Agent 的完整配置，构造后不可变。
+// 用户不直接构造此 struct，而是通过 NewAgent + Option 函数填充。
+type AgentConfig = agent.AgentConfig
+
+// MemoryConfig 记忆能力分组配置（Store / Summarizer / FileScope）
+type MemoryConfig = agent.MemoryConfig
+
+// ObservabilityConfig 可观测性分组配置（Hooks / Tracer / Metrics / Events / CostTracker）
+type ObservabilityConfig = agent.ObservabilityConfig
+
+// ResilienceConfig 容错分组配置（CheckpointStore / HITL / Cache / ContextWindow）
+type ResilienceConfig = agent.ResilienceConfig
+
+// ToolsConfig 工具系统分组配置（Registry）
+type ToolsConfig = agent.ToolsConfig
+
+// HITLConfig 人机协作配置
+type HITLConfig = agent.HITLConfig
 
 // ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
 
