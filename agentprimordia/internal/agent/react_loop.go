@@ -277,7 +277,7 @@ func (a *ReActAgent) getLabeledRecorder() LabeledMetricsRecorder {
 		}
 	}
 	return nil
-	}
+}
 
 // recordLLM 记录 LLM 调用，优先使用带标签的记录器（内部已调用 RecordLLMCall）
 func (a *ReActAgent) recordLLM(duration time.Duration, err error) {
@@ -768,12 +768,12 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			_ = a.lifecycle.SetStatus(StatusCompleted)
 			a.saveCheckpoint(ctx, history, turn+1, response.Metrics)
 			_ = a.fireHook(HookOnComplete, &HookContext{Response: response})
-				turnSpan.End()
-				_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
-				a.recordTurn(time.Since(turnStart))
-				a.publishEvent("turn.end", map[string]int{"turn": turn})
+			turnSpan.End()
+			_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
+			a.recordTurn(time.Since(turnStart))
+			a.publishEvent("turn.end", map[string]int{"turn": turn})
 
-				a.emitStream(cfg, StreamEvent{Type: StreamEventComplete, Content: thought.Content, Data: response})
+			a.emitStream(cfg, StreamEvent{Type: StreamEventComplete, Content: thought.Content, Data: response})
 
 			if cfg.stream {
 				a.logger.Info("Agent 流式完成", "name", a.config.Name, "turns", turn+1, "duration", duration)
@@ -852,8 +852,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			if err != nil {
 				toolSpan.SetStatus(SpanStatusError, err.Error())
 			}
-				toolSpan.End()
-				a.recordTool(toolLatency, err, tc.Name)
+			toolSpan.End()
+			a.recordTool(toolLatency, err, tc.Name)
 
 			if err != nil {
 				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: fmt.Sprintf("tool %s error: %v", tc.Name, err)})
@@ -881,12 +881,12 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			a.saveMemory(ctx, result.ToMessage())
 		}
 
-			turnSpan.End()
-			_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
-			a.recordTurn(time.Since(turnStart))
-			a.publishEvent("turn.end", map[string]int{"turn": turn})
+		turnSpan.End()
+		_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
+		a.recordTurn(time.Since(turnStart))
+		a.publishEvent("turn.end", map[string]int{"turn": turn})
 
-			if a.lifecycle.IsGracefulShutdown() {
+		if a.lifecycle.IsGracefulShutdown() {
 			a.logger.Info("Agent 优雅关闭：当前 turn 已完成，退出循环", "name", a.config.Name, "turn", turn+1)
 			_ = a.lifecycle.SetStatusWithReason(StatusCancelled, "graceful shutdown")
 			duration := time.Since(a.startTime)
@@ -1032,15 +1032,15 @@ func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMe
 
 	if len(toolDefs) > 0 {
 		resp, err := a.callToolsWithRetry(ctx, llmMessages, toolDefs)
-			if err != nil {
-				a.recordLLM(time.Since(llmStart), err)
-				return Thought{}, err
-			}
-			if len(resp.ToolCalls) == 0 && resp.Content == "" {
-				completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
-				if completeErr != nil {
-					a.recordLLM(time.Since(llmStart), completeErr)
-					return Thought{}, completeErr
+		if err != nil {
+			a.recordLLM(time.Since(llmStart), err)
+			return Thought{}, err
+		}
+		if len(resp.ToolCalls) == 0 && resp.Content == "" {
+			completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
+			if completeErr != nil {
+				a.recordLLM(time.Since(llmStart), completeErr)
+				return Thought{}, completeErr
 			}
 			thought = Thought{Content: completeResp.Content, Usage: completeResp.Usage}
 		} else {
@@ -1049,17 +1049,17 @@ func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMe
 				ToolCalls: convertToToolCalls(resp.ToolCalls),
 				Usage:     resp.Usage,
 			}
-			}
-			a.recordLLM(time.Since(llmStart), nil)
-		} else {
-			resp, err := a.completeWithRetry(ctx, llmMessages)
-			if err != nil {
-				a.recordLLM(time.Since(llmStart), err)
-				return Thought{}, err
-			}
-			thought = Thought{Content: resp.Content, Usage: resp.Usage}
-			a.recordLLM(time.Since(llmStart), nil)
 		}
+		a.recordLLM(time.Since(llmStart), nil)
+	} else {
+		resp, err := a.completeWithRetry(ctx, llmMessages)
+		if err != nil {
+			a.recordLLM(time.Since(llmStart), err)
+			return Thought{}, err
+		}
+		thought = Thought{Content: resp.Content, Usage: resp.Usage}
+		a.recordLLM(time.Since(llmStart), nil)
+	}
 
 	return thought, nil
 }
@@ -1101,52 +1101,52 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 					}
 				}
 			}
-			}
-
-			a.recordLLM(time.Since(llmStart), nil)
-			return thought
 		}
+
+		a.recordLLM(time.Since(llmStart), nil)
+		return thought
+	}
 
 	// Fallback: 非流式调用
-		if len(toolDefs) > 0 {
-			resp, err := a.callToolsWithRetry(ctx, llmMessages, toolDefs)
-			if err != nil {
-				a.recordLLM(time.Since(llmStart), err)
-				_ = a.lifecycle.SetStatus(StatusFailed)
-				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
-				return Thought{}
-			}
-			if len(resp.ToolCalls) == 0 && resp.Content == "" {
-				completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
-				if completeErr != nil {
-					a.recordLLM(time.Since(llmStart), completeErr)
-					_ = a.lifecycle.SetStatus(StatusFailed)
-					a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: completeErr.Error()})
-					return Thought{}
-				}
-				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: completeResp.Content})
-				a.recordLLM(time.Since(llmStart), nil)
-				return Thought{Content: completeResp.Content}
-			}
-			a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
-			a.recordLLM(time.Since(llmStart), nil)
-			return Thought{
-				Content:   resp.Content,
-				ToolCalls: convertToToolCalls(resp.ToolCalls),
-			}
-		}
-
-		resp, err := a.completeWithRetry(ctx, llmMessages)
+	if len(toolDefs) > 0 {
+		resp, err := a.callToolsWithRetry(ctx, llmMessages, toolDefs)
 		if err != nil {
 			a.recordLLM(time.Since(llmStart), err)
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
 			return Thought{}
 		}
+		if len(resp.ToolCalls) == 0 && resp.Content == "" {
+			completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
+			if completeErr != nil {
+				a.recordLLM(time.Since(llmStart), completeErr)
+				_ = a.lifecycle.SetStatus(StatusFailed)
+				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: completeErr.Error()})
+				return Thought{}
+			}
+			a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: completeResp.Content})
+			a.recordLLM(time.Since(llmStart), nil)
+			return Thought{Content: completeResp.Content}
+		}
 		a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
 		a.recordLLM(time.Since(llmStart), nil)
-		return Thought{Content: resp.Content}
+		return Thought{
+			Content:   resp.Content,
+			ToolCalls: convertToToolCalls(resp.ToolCalls),
+		}
 	}
+
+	resp, err := a.completeWithRetry(ctx, llmMessages)
+	if err != nil {
+		a.recordLLM(time.Since(llmStart), err)
+		_ = a.lifecycle.SetStatus(StatusFailed)
+		a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
+		return Thought{}
+	}
+	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
+	a.recordLLM(time.Since(llmStart), nil)
+	return Thought{Content: resp.Content}
+}
 
 // ErrMaxTurnsExceeded is returned when the agent exceeds max turn limit
 var ErrMaxTurnsExceeded = errors.New("max turns exceeded")

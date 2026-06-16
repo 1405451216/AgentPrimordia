@@ -294,34 +294,34 @@ func (o *Orchestrator) executeSequential(ctx context.Context, input map[string]a
 		stepResult := o.executeStep(stepCtx, step, currentInput)
 		result.Steps[step.ID] = stepResult
 
-			if stepResult.Status == StepFailed {
-				if step.RetryPolicy != nil || o.config.MaxRetries > 0 {
-					retries := o.getMaxRetries(step)
-					for i := 0; i < retries; i++ {
-						// 重试前检查上下文是否已取消
-						select {
-						case <-ctx.Done():
-							cancel()
-							return ctx.Err()
-						default:
-						}
-
-						time.Sleep(o.getBackoff(step, i))
-						stepResult = o.executeStep(stepCtx, step, currentInput)
-						result.Steps[step.ID] = stepResult
-						if stepResult.Status == StepCompleted {
-							break
-						}
+		if stepResult.Status == StepFailed {
+			if step.RetryPolicy != nil || o.config.MaxRetries > 0 {
+				retries := o.getMaxRetries(step)
+				for i := 0; i < retries; i++ {
+					// 重试前检查上下文是否已取消
+					select {
+					case <-ctx.Done():
+						cancel()
+						return ctx.Err()
+					default:
 					}
-				}
 
-				if stepResult.Status == StepFailed {
-					cancel()
-					return fmt.Errorf("step '%s' failed after retries: %w", step.Name, stepResult.Error)
+					time.Sleep(o.getBackoff(step, i))
+					stepResult = o.executeStep(stepCtx, step, currentInput)
+					result.Steps[step.ID] = stepResult
+					if stepResult.Status == StepCompleted {
+						break
+					}
 				}
 			}
 
-			// 合并输出到当前输入，供后续步骤使用
+			if stepResult.Status == StepFailed {
+				cancel()
+				return fmt.Errorf("step '%s' failed after retries: %w", step.Name, stepResult.Error)
+			}
+		}
+
+		// 合并输出到当前输入，供后续步骤使用
 		if stepResult.Output != nil {
 			for k, v := range stepResult.Output {
 				currentInput[k] = v
@@ -431,17 +431,17 @@ func (o *Orchestrator) executeDAG(ctx context.Context, input map[string]any, res
 		return fmt.Errorf("DAG validation failed: %w", err)
 	}
 
-		// 按拓扑顺序执行
-		for _, stepID := range sortedOrder {
-			// 检查上下文是否已取消
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
+	// 按拓扑顺序执行
+	for _, stepID := range sortedOrder {
+		// 检查上下文是否已取消
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
 
-			step := o.findStepByID(stepID)
-			if step == nil {
+		step := o.findStepByID(stepID)
+		if step == nil {
 			continue
 		}
 
@@ -485,25 +485,25 @@ func (o *Orchestrator) executeDAG(ctx context.Context, input map[string]any, res
 		stepResult := o.executeStep(stepCtx, step, stepInput)
 		result.Steps[step.ID] = stepResult
 
-			if stepResult.Status == StepFailed && (step.RetryPolicy != nil || o.config.MaxRetries > 0) {
-				retries := o.getMaxRetries(step)
-				for i := 0; i < retries; i++ {
-					// 重试前检查上下文是否已取消
-					select {
-					case <-ctx.Done():
-						cancel()
-						return ctx.Err()
-					default:
-					}
-
-					time.Sleep(o.getBackoff(step, i))
-					stepResult = o.executeStep(stepCtx, step, stepInput)
-					if stepResult.Status == StepCompleted {
-						break
-					}
+		if stepResult.Status == StepFailed && (step.RetryPolicy != nil || o.config.MaxRetries > 0) {
+			retries := o.getMaxRetries(step)
+			for i := 0; i < retries; i++ {
+				// 重试前检查上下文是否已取消
+				select {
+				case <-ctx.Done():
+					cancel()
+					return ctx.Err()
+				default:
 				}
-				result.Steps[step.ID] = stepResult
+
+				time.Sleep(o.getBackoff(step, i))
+				stepResult = o.executeStep(stepCtx, step, stepInput)
+				if stepResult.Status == StepCompleted {
+					break
+				}
 			}
+			result.Steps[step.ID] = stepResult
+		}
 
 		if stepResult.Status == StepCompleted {
 			completed[stepID] = true
