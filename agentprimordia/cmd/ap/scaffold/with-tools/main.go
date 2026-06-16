@@ -39,14 +39,15 @@ func main() {
 	}
 	defer memory.Close()
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "{{.ProjectName}}",
-		SystemPrompt: "you are an assistant that can read/write files, execute commands, and browse the web.",
-		Model:        provider,
-		MaxTurns:     20,
-		Toolkit:      registry,
-		Memory:       memory,
-	})
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are an assistant that can read/write files, execute commands, and browse the web.",
+		provider,
+		ap.WithMaxTurns(20),
+		ap.WithToolkit(registry),
+		ap.WithMemory(memory),
+	)
+	if err != nil {
+		log.Fatalf("create agent failed: %v", err)
+	}
 
 	prompt := "list files in the current directory"
 	if envPrompt := os.Getenv("AP_PROMPT"); envPrompt != "" {
