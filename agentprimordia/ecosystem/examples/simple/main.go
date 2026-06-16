@@ -19,7 +19,10 @@ func main() {
 		"你好!我是AI助手,很高兴为你服务!",
 	)
 
-	simpleAgent := ap.NewAgent("SimpleBot", "你是一个友好的AI助手,用中文简洁回答。", demoLLM, ap.WithMaxTurns(3))
+	simpleAgent, err := ap.NewAgent("SimpleBot", "你是一个友好的AI助手,用中文简洁回答。", demoLLM, ap.WithMaxTurns(3))
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	fmt.Println("📝 用户输入: 你好")
 	fmt.Println("🤖 Agent 正在思考...")

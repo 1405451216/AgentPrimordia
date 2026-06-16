@@ -5,12 +5,16 @@ import (
 	"testing"
 
 	"agentprimordia/internal/llm"
+	"agentprimordia/internal/tools"
 )
 
 func TestNewAgent_Basic(t *testing.T) {
 	mock := llm.NewMockLLM(t).WithResponse("Hello, I am a test agent.")
 
-	agent := NewAgent("test-bot", "you are helpful", mock, WithMaxTurns(5))
+	agent, err := NewAgent("test-bot", "you are helpful", mock, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	if agent == nil {
 		t.Fatal("NewAgent returned nil")
@@ -32,11 +36,14 @@ func TestNewAgent_Basic(t *testing.T) {
 func TestNewAgent_WithAllOptions(t *testing.T) {
 	mock := llm.NewMockLLM(t).WithResponse("ok")
 
-	agent := NewAgent("opt-bot", "be helpful", mock,
+	agent, err := NewAgent("opt-bot", "be helpful", mock,
 		WithMaxTurns(20),
 		WithTemperature(0.5),
 		WithSessionID("session-42"),
 	)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	inner := agent.inner
 	if inner.config.MaxTurns != 20 {
@@ -53,7 +60,10 @@ func TestNewAgent_WithAllOptions(t *testing.T) {
 func TestNewAgent_Defaults(t *testing.T) {
 	mock := llm.NewMockLLM(t).WithResponse("ok")
 
-	agent := NewAgent("default-bot", "be helpful", mock)
+	agent, err := NewAgent("default-bot", "be helpful", mock)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	inner := agent.inner
 	if inner.config.MaxTurns != 50 {
@@ -64,7 +74,10 @@ func TestNewAgent_Defaults(t *testing.T) {
 func TestNewAgent_CanRun(t *testing.T) {
 	mock := llm.NewMockLLM(t).WithResponse("Hello from test agent!")
 
-	agent := NewAgent("run-bot", "you are helpful", mock, WithMaxTurns(3))
+	agent, err := NewAgent("run-bot", "you are helpful", mock, WithMaxTurns(3))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("hi"))
 	if err != nil {
@@ -79,7 +92,10 @@ func TestNewAgent_ChainAPI(t *testing.T) {
 	mock := llm.NewMockLLM(t).WithResponse("ok")
 
 	// 验证 NewAgent 返回的是 CapabilityAgent，可链式调用
-	agent := NewAgent("chain-bot", "be helpful", mock)
+	agent, err := NewAgent("chain-bot", "be helpful", mock)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	// 链式调用不应 panic
 	agent.WithMemory(nil)
@@ -97,7 +113,10 @@ func TestNewAgent_EquivalentToNewReActAgent(t *testing.T) {
 	mock2 := llm.NewMockLLM(t).WithResponse("response 2")
 
 	// 方式 1：NewAgent
-	agent1 := NewAgent("equivalent", "prompt", mock1, WithMaxTurns(7))
+	agent1, err := NewAgent("equivalent", "prompt", mock1, WithMaxTurns(7))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	// 方式 2：NewReActAgent（旧方式）
 	agent2 := NewReActAgent(ReActConfig{
@@ -127,5 +146,39 @@ func TestNewAgent_EquivalentToNewReActAgent(t *testing.T) {
 	// 验证两种方式创建的 agent 都有正确的配置
 	if agent1.inner.config.MaxTurns != agent2.config.MaxTurns {
 		t.Errorf("MaxTurns mismatch: %d vs %d", agent1.inner.config.MaxTurns, agent2.config.MaxTurns)
+	}
+}
+
+func TestNewAgent_ValidationError(t *testing.T) {
+	mock := llm.NewMockLLM(t).WithResponse("ok")
+
+	// 空 name
+	_, err := NewAgent("", "prompt", mock)
+	if err == nil {
+		t.Fatal("空 name 应返回错误")
+	}
+
+	// nil model
+	_, err = NewAgent("test", "prompt", nil)
+	if err == nil {
+		t.Fatal("nil model 应返回错误")
+	}
+}
+
+func TestNewAgent_CapabilityInjection(t *testing.T) {
+	// 验证能力注入不 panic
+	mock := llm.NewMockLLM(t).WithResponse("ok")
+	reg := tools.NewRegistry()
+
+	agent, err := NewAgent("cap-bot", "prompt", mock,
+		WithToolkit(reg),
+		WithHooks(NewHookManager()),
+		WithTracer(NewNoopTracer()),
+	)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	if agent == nil {
+		t.Fatal("agent 不应为 nil")
 	}
 }

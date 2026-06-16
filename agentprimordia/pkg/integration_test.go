@@ -41,11 +41,14 @@ func TestIntegration_NewAgent_Run(t *testing.T) {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
 
-	agent := ap.NewAgent("integration-test", "You are a helpful assistant. Follow instructions exactly.",
+	agent, err := ap.NewAgent("integration-test", "You are a helpful assistant. Follow instructions exactly.",
 		provider,
 		ap.WithMaxTurns(3),
 		ap.WithTemperature(0),
 	)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -77,11 +80,14 @@ func TestIntegration_NewAgent_Stream(t *testing.T) {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
 
-	agent := ap.NewAgent("stream-test", "You are a helpful assistant.",
+	agent, err := ap.NewAgent("stream-test", "You are a helpful assistant.",
 		provider,
 		ap.WithMaxTurns(2),
 		ap.WithTemperature(0),
 	)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -131,11 +137,15 @@ func TestIntegration_NewAgent_WithMemory(t *testing.T) {
 	}
 	defer memStore.Close()
 
-	agent := ap.NewAgent("memory-test", "You are a helpful assistant. Remember the user's name when told.",
+	agent, err := ap.NewAgent("memory-test", "You are a helpful assistant. Remember the user's name when told.",
 		provider,
 		ap.WithMaxTurns(3),
 		ap.WithTemperature(0),
-	).WithMemory(memStore)
+	)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	agent = agent.WithMemory(memStore)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -177,11 +187,14 @@ func TestIntegration_NewSession_Ask(t *testing.T) {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
 
-	agent := ap.NewAgent("session-test", "You are a helpful assistant. Always answer in one short sentence.",
+	agent, err := ap.NewAgent("session-test", "You are a helpful assistant. Always answer in one short sentence.",
 		provider,
 		ap.WithMaxTurns(2),
 		ap.WithTemperature(0),
 	)
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()

@@ -170,8 +170,11 @@ func demonstrateAgentWithMemory() {
 		"根据你的记忆，我们之前讨论过 Go 语言和 AI Agent 的开发。",
 	)
 
-	memoryAgent := ap.NewAgent("MemoryBot", "你拥有长期记忆，可以记住对话历史。请参考记忆回答问题。", demoLLM).
-		WithMemory(memStore)
+	memoryAgent, err := ap.NewAgent("MemoryBot", "你拥有长期记忆，可以记住对话历史。请参考记忆回答问题。", demoLLM)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+	memoryAgent = memoryAgent.WithMemory(memStore)
 
 	resp, _ := memoryAgent.Run(ctx, ap.UserMessage("我们之前讨论过什么？"))
 	fmt.Printf("🤖 Agent 回复: %s\n", resp.Content)

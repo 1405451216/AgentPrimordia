@@ -20,7 +20,10 @@ func main() {
 		log.Fatalf("create provider failed: %v", err)
 	}
 
-	agent := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant.", provider, ap.WithMaxTurns(10))
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant.", provider, ap.WithMaxTurns(10))
+	if err != nil {
+		log.Fatalf("create agent failed: %v", err)
+	}
 
 	prompt := "Hello!"
 	resp, err := agent.Run(context.Background(), ap.UserMessage(prompt))
