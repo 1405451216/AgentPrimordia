@@ -314,11 +314,13 @@ func (p *Pool) createAgentForTask(task TaskConfig) agent.Agent {
 		cfg.Model = p.model
 	}
 
+	// v0.7.0: Toolkit 字段已废弃，通过链式 API 注入工具能力
+	reactAgt := agent.NewReActAgent(cfg)
+	var agt agent.Agent = reactAgt
 	if p.toolkit != nil {
-		cfg.Toolkit = p.toolkit
+		agt = reactAgt.AsCapability().WithToolkit(p.toolkit)
 	}
 
-	agt := agent.NewReActAgent(cfg)
 	p.mu.Lock()
 	p.agents[task.ID] = agt
 	p.mu.Unlock()
