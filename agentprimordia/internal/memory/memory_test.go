@@ -8,7 +8,6 @@ import (
 )
 
 func TestNewSQLiteStore_InMemory(t *testing.T) {
-	t.Parallel()
 	store, err := WithInMemory()
 	if err != nil {
 		t.Fatalf("WithInMemory() error = %v", err)
@@ -21,7 +20,6 @@ func TestNewSQLiteStore_InMemory(t *testing.T) {
 }
 
 func TestNewSQLiteStore_FileBased(t *testing.T) {
-	t.Parallel()
 	dir := t.TempDir()
 	dbPath := dir + "/test.db"
 
@@ -37,7 +35,6 @@ func TestNewSQLiteStore_FileBased(t *testing.T) {
 }
 
 func TestAdd_Episode(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -70,7 +67,6 @@ func TestAdd_Episode(t *testing.T) {
 }
 
 func TestAdd_MultipleEpisodes(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -98,7 +94,6 @@ func TestAdd_MultipleEpisodes(t *testing.T) {
 }
 
 func TestGet_ByID(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -124,7 +119,6 @@ func TestGet_ByID(t *testing.T) {
 }
 
 func TestGet_NotFound(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -136,7 +130,6 @@ func TestGet_NotFound(t *testing.T) {
 }
 
 func TestDelete_Episode(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -160,7 +153,6 @@ func TestDelete_Episode(t *testing.T) {
 }
 
 func TestDelete_NotFound(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -172,7 +164,6 @@ func TestDelete_NotFound(t *testing.T) {
 }
 
 func TestCount_All(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -192,7 +183,6 @@ func TestCount_All(t *testing.T) {
 }
 
 func TestCount_BySession(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -229,7 +219,6 @@ func TestCount_BySession(t *testing.T) {
 }
 
 func TestSearch_BasicMatch(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -247,7 +236,6 @@ func TestSearch_BasicMatch(t *testing.T) {
 }
 
 func TestSearch_NoMatch(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -264,7 +252,6 @@ func TestSearch_NoMatch(t *testing.T) {
 }
 
 func TestSearch_WithSessionFilter(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -288,7 +275,6 @@ func TestSearch_WithSessionFilter(t *testing.T) {
 }
 
 func TestSearch_WithLimit(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -307,7 +293,6 @@ func TestSearch_WithLimit(t *testing.T) {
 }
 
 func TestSearch_WithRoleFilter(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -331,7 +316,6 @@ func TestSearch_WithRoleFilter(t *testing.T) {
 }
 
 func TestSearch_SummarySearch(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -350,7 +334,6 @@ func TestSearch_SummarySearch(t *testing.T) {
 }
 
 func TestList_Pagination(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -385,7 +368,6 @@ func TestList_Pagination(t *testing.T) {
 }
 
 func TestList_Ordering(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -426,7 +408,6 @@ func TestList_Ordering(t *testing.T) {
 }
 
 func TestList_BySession(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -453,7 +434,6 @@ func TestList_BySession(t *testing.T) {
 }
 
 func TestEmptyContent(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -470,7 +450,6 @@ func TestEmptyContent(t *testing.T) {
 }
 
 func TestSpecialCharacters(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -493,7 +472,6 @@ func TestSpecialCharacters(t *testing.T) {
 }
 
 func TestConcurrentAccess(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -524,7 +502,6 @@ func TestConcurrentAccess(t *testing.T) {
 }
 
 func TestClose_DoubleClose(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 
 	err := store.Close()
@@ -539,7 +516,6 @@ func TestClose_DoubleClose(t *testing.T) {
 }
 
 func TestEnhanced_UpdateSummary(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -562,7 +538,6 @@ func TestEnhanced_UpdateSummary(t *testing.T) {
 }
 
 func TestEnhanced_SetImportance(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -582,7 +557,6 @@ func TestEnhanced_SetImportance(t *testing.T) {
 }
 
 func TestEnhanced_SearchByTag(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -605,7 +579,6 @@ func TestEnhanced_SearchByTag(t *testing.T) {
 }
 
 func TestEnhanced_SearchByTag_NoResults(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -624,7 +597,6 @@ func TestEnhanced_SearchByTag_NoResults(t *testing.T) {
 }
 
 func TestEnhanced_GetImportant(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -654,7 +626,6 @@ func TestEnhanced_GetImportant(t *testing.T) {
 }
 
 func TestEnhanced_GetImportant_Empty(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -673,7 +644,6 @@ func TestEnhanced_GetImportant_Empty(t *testing.T) {
 }
 
 func TestEnhanced_GetTimeline(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -690,7 +660,6 @@ func TestEnhanced_GetTimeline(t *testing.T) {
 }
 
 func TestEnhanced_CleanupExpired(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -707,7 +676,6 @@ func TestEnhanced_CleanupExpired(t *testing.T) {
 }
 
 func TestEnhanced_CleanupExpired_None(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -724,7 +692,6 @@ func TestEnhanced_CleanupExpired_None(t *testing.T) {
 }
 
 func TestEnhanced_Stats(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -748,7 +715,6 @@ func TestEnhanced_Stats(t *testing.T) {
 }
 
 func TestEnhanced_Topics_Default(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -763,7 +729,6 @@ func TestEnhanced_Topics_Default(t *testing.T) {
 }
 
 func TestEnhanced_Importance_Range(t *testing.T) {
-	t.Parallel()
 	ep := MustEpisode("s1", "user", "Message")
 	ep.Importance = 1.5
 
@@ -774,7 +739,6 @@ func TestEnhanced_Importance_Range(t *testing.T) {
 }
 
 func TestEpisodeID_Monotonic(t *testing.T) {
-	t.Parallel()
 	var ids []string
 	for i := 0; i < 100; i++ {
 		ids = append(ids, generateEpisodeID())
@@ -787,7 +751,6 @@ func TestEpisodeID_Monotonic(t *testing.T) {
 }
 
 func TestSearchAdvanced(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -811,7 +774,6 @@ func TestSearchAdvanced(t *testing.T) {
 }
 
 func TestSearchAdvanced_SemanticWeight(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -833,7 +795,6 @@ func TestSearchAdvanced_SemanticWeight(t *testing.T) {
 }
 
 func TestGetMemoriesByTag(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -856,7 +817,6 @@ func TestGetMemoriesByTag(t *testing.T) {
 }
 
 func TestGetMemoriesBySession(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -880,7 +840,6 @@ func TestGetMemoriesBySession(t *testing.T) {
 }
 
 func TestGetImportantMemories(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -903,7 +862,6 @@ func TestGetImportantMemories(t *testing.T) {
 }
 
 func TestRecordToolUse(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -931,7 +889,6 @@ func TestRecordToolUse(t *testing.T) {
 }
 
 func TestClearAll_BySession(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -955,7 +912,6 @@ func TestClearAll_BySession(t *testing.T) {
 }
 
 func TestClearAll_EntireStore(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -975,7 +931,6 @@ func TestClearAll_EntireStore(t *testing.T) {
 }
 
 func TestExportMemories_JSON(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -992,7 +947,6 @@ func TestExportMemories_JSON(t *testing.T) {
 }
 
 func TestExportMemories_Markdown(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 
@@ -1009,7 +963,6 @@ func TestExportMemories_Markdown(t *testing.T) {
 }
 
 func TestImportMemories(t *testing.T) {
-	t.Parallel()
 	store, _ := WithInMemory()
 	defer store.Close()
 

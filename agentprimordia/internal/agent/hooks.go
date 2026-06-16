@@ -67,6 +67,7 @@ const (
 
 type HookContext struct {
 	AgentID    string
+	RequestID  string
 	SessionID  string
 	Point      HookPoint
 	Turn       int

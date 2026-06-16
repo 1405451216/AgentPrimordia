@@ -145,6 +145,15 @@ func (a *ReActAgent) getFileScope() []string {
 func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	if a.hooks != nil {
 		hctx.Point = point
+		// 自动填充请求 ID 和 Agent ID
+		if hctx.RequestID == "" {
+			a.mu.Lock()
+			hctx.RequestID = a.currentRequestID
+			a.mu.Unlock()
+		}
+		if hctx.AgentID == "" {
+			hctx.AgentID = a.config.Name
+		}
 		// 使用 agent 的运行 context 而非 Background，确保取消能传播到 hook
 		ctx := a.hookCtx
 		if ctx == nil {
@@ -158,9 +167,15 @@ func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	return nil
 }
 
-// publishEvent 向 EventPublisher 发布事件
+// publishEvent 向 EventPublisher 发布事件，自动注入 request_id
 func (a *ReActAgent) publishEvent(eventType string, payload any) {
 	if ep := a.getEventPublisher(); ep != nil {
+		// 如果 payload 是 map[string]string，注入 request_id
+		if m, ok := payload.(map[string]string); ok {
+			a.mu.Lock()
+			m["request_id"] = a.currentRequestID
+			a.mu.Unlock()
+		}
 		if err := ep.PublishAsync(eventType, a.config.Name, payload); err != nil {
 			a.logger.Warn("发布事件失败", "error", err, "type", eventType)
 		}
