@@ -8,6 +8,7 @@ import (
 )
 
 func TestLocalMessageBus_RegisterAndUnregister(t *testing.T) {
+	t.Parallel()
 	bus := NewLocalMessageBus()
 
 	handler := func(ctx context.Context, msg *BusMessage) (*BusMessage, error) {
@@ -28,6 +29,7 @@ func TestLocalMessageBus_RegisterAndUnregister(t *testing.T) {
 }
 
 func TestLocalMessageBus_Send(t *testing.T) {
+	t.Parallel()
 	bus := NewLocalMessageBus()
 
 	var received atomic.Value
@@ -65,6 +67,7 @@ func TestLocalMessageBus_Send(t *testing.T) {
 }
 
 func TestLocalMessageBus_SendToUnregistered(t *testing.T) {
+	t.Parallel()
 	bus := NewLocalMessageBus()
 
 	_, err := bus.Send(context.Background(), &BusMessage{
@@ -80,6 +83,7 @@ func TestLocalMessageBus_SendToUnregistered(t *testing.T) {
 }
 
 func TestLocalMessageBus_Broadcast(t *testing.T) {
+	t.Parallel()
 	bus := NewLocalMessageBus()
 
 	var count atomic.Int32
@@ -109,6 +113,7 @@ func TestLocalMessageBus_Broadcast(t *testing.T) {
 }
 
 func TestLocalMessageBus_Subscribe(t *testing.T) {
+	t.Parallel()
 	bus := NewLocalMessageBus()
 
 	ch := bus.Subscribe("agent-1")
@@ -138,6 +143,7 @@ func TestLocalMessageBus_Subscribe(t *testing.T) {
 }
 
 func TestLocalMessageBus_ConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	bus := NewLocalMessageBus()
 
 	handler := func(ctx context.Context, msg *BusMessage) (*BusMessage, error) {

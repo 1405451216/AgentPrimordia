@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewSession_AutoID(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).WithResponse("hello")
 	agent := NewReActAgent(ReActConfig{
 		Name:     "test",
@@ -26,6 +27,7 @@ func TestNewSession_AutoID(t *testing.T) {
 }
 
 func TestNewSession_WithCustomID(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).WithResponse("hello")
 	agent := NewReActAgent(ReActConfig{
 		Name:     "test",
@@ -40,6 +42,7 @@ func TestNewSession_WithCustomID(t *testing.T) {
 }
 
 func TestSession_Ask(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).WithResponse("Hello, how can I help?")
 	agent := NewReActAgent(ReActConfig{
 		Name:     "test",
@@ -61,6 +64,7 @@ func TestSession_Ask(t *testing.T) {
 }
 
 func TestSession_LastResponse(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).WithResponse("first")
 	agent := NewReActAgent(ReActConfig{
 		Name:     "test",
@@ -83,6 +87,7 @@ func TestSession_LastResponse(t *testing.T) {
 }
 
 func TestSession_MultiTurn(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).
 		WithResponse("response1").
 		WithResponse("response2").
@@ -112,6 +117,7 @@ func TestSession_MultiTurn(t *testing.T) {
 }
 
 func TestSession_History(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).
 		WithResponse("resp1").
 		WithResponse("resp2")
@@ -141,6 +147,7 @@ func TestSession_History(t *testing.T) {
 }
 
 func TestSession_Reset(t *testing.T) {
+	t.Parallel()
 	mock := llm.NewMockLLM(t).WithResponse("resp")
 	agent := NewReActAgent(ReActConfig{
 		Name:     "test",
@@ -169,6 +176,7 @@ func TestSession_Reset(t *testing.T) {
 }
 
 func TestSession_WithMemory(t *testing.T) {
+	t.Parallel()
 	mem := memory.NewInMemoryStore()
 	mock := llm.NewMockLLM(t).WithResponse("hello")
 	agent := NewReActAgent(ReActConfig{

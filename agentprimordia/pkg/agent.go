@@ -89,11 +89,6 @@ type AgentMetrics = agent.Metrics
 // MemoryStore 是 Agent 所需的记忆存储接口，由 memory.Memory 通过适配器实现
 type MemoryStore = agent.MemoryStore
 
-// MemoryEpisode 是 Agent 使用的一集记忆，包含内容、摘要、主题、重要性等
-//
-// Deprecated: 使用 memory.Episode 代替，将在 v2.0.0 移除。
-type MemoryEpisode = memory.Episode
-
 // SummaryExtractor 是摘要提取接口，供 Agent 层依赖，由 memory.Summarizer 实现
 type SummaryExtractor = memory.SummaryExtractor
 
@@ -231,6 +226,15 @@ var (
 	NewLocalMessageBus = agent.NewLocalMessageBus
 	// NewHTTPTransport 创建基于 HTTP 的跨进程传输层实例
 	NewHTTPTransport = agent.NewHTTPTransport
+
+	// ===== 请求 ID 关联（可观测性） =====
+
+	// NewRequestID 生成唯一的请求 ID（32 字符 hex）
+	NewRequestID = agent.NewRequestID
+	// WithRequestID 将请求 ID 注入 context
+	WithRequestID = agent.WithRequestID
+	// RequestIDFromCtx 从 context 中提取请求 ID
+	RequestIDFromCtx = agent.RequestIDFromCtx
 
 	// ===== NewAgent 简化入口（推荐） =====
 

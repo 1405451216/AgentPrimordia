@@ -180,14 +180,12 @@ func TestReconcile_UpdatesStatus(t *testing.T) {
 	ad.ResourceVersion = "1"
 
 	replicas := int32(2)
-	readyReplicas := int32(2)
 	existingDeploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-agent-agent", Namespace: "default"},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "agentprimordia"}},
 		},
-		Status: appsv1.DeploymentStatus{ReadyReplicas: readyReplicas},
 	}
 
 	existingCM := &corev1.ConfigMap{
@@ -195,9 +193,35 @@ func TestReconcile_UpdatesStatus(t *testing.T) {
 		Data:       map[string]string{"ap.yaml": "test"},
 	}
 
+	// 添加 2 个 Running + Ready 的 Pod
+	pod1 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-agent-pod-1", Namespace: "default",
+			Labels: map[string]string{"app": "agentprimordia", "agent-deploy": "test-agent"},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{
+				{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+			},
+		},
+	}
+	pod2 := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-agent-pod-2", Namespace: "default",
+			Labels: map[string]string{"app": "agentprimordia", "agent-deploy": "test-agent"},
+		},
+		Status: corev1.PodStatus{
+			Phase: corev1.PodRunning,
+			Conditions: []corev1.PodCondition{
+				{Type: corev1.PodReady, Status: corev1.ConditionTrue},
+			},
+		},
+	}
+
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
-		WithObjects(ad, existingDeploy, existingCM).
+		WithObjects(ad, existingDeploy, existingCM, pod1, pod2).
 		WithStatusSubresource(&agentv1.AgentDeployment{}).
 		Build()
 
@@ -218,14 +242,20 @@ func TestReconcile_UpdatesStatus(t *testing.T) {
 	if updated.Status.ActiveReplicas != 2 {
 		t.Errorf("ActiveReplicas = %d, want 2", updated.Status.ActiveReplicas)
 	}
-	if len(updated.Status.Conditions) != 1 {
-		t.Fatalf("Conditions length = %d, want 1", len(updated.Status.Conditions))
+	if len(updated.Status.Conditions) != 2 {
+		t.Fatalf("Conditions length = %d, want 2", len(updated.Status.Conditions))
 	}
 	if updated.Status.Conditions[0].Type != "Available" {
-		t.Errorf("Condition Type = %s, want Available", updated.Status.Conditions[0].Type)
+		t.Errorf("Condition[0] Type = %s, want Available", updated.Status.Conditions[0].Type)
 	}
 	if updated.Status.Conditions[0].Status != "True" {
-		t.Errorf("Condition Status = %s, want True", updated.Status.Conditions[0].Status)
+		t.Errorf("Condition[0] Status = %s, want True", updated.Status.Conditions[0].Status)
+	}
+	if updated.Status.Conditions[1].Type != "Progressing" {
+		t.Errorf("Condition[1] Type = %s, want Progressing", updated.Status.Conditions[1].Type)
+	}
+	if updated.Status.Conditions[1].Status != "True" {
+		t.Errorf("Condition[1] Status = %s, want True", updated.Status.Conditions[1].Status)
 	}
 }
 
@@ -353,3 +383,244 @@ func TestReconcile_OwnerReferencesSet(t *testing.T) {
 
 // Compile-time check: AgentDeploymentReconciler implements client.Object
 var _ client.Object = (*agentv1.AgentDeployment)(nil)
+
+func TestReconcile_DefaultProbesWhenNoHealthCheck(t *testing.T) {
+	scheme := newScheme()
+	ad := makeAgentDeployment("probe-agent", "default", 1)
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(ad).
+		WithStatusSubresource(&agentv1.AgentDeployment{}).
+		Build()
+
+	r := &AgentDeploymentReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	_, err := r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "probe-agent", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	deploy := &appsv1.Deployment{}
+	_ = fakeClient.Get(context.Background(), types.NamespacedName{Name: "probe-agent-agent", Namespace: "default"}, deploy)
+
+	agentContainer := deploy.Spec.Template.Spec.Containers[0]
+
+	// 验证默认 LivenessProbe
+	if agentContainer.LivenessProbe == nil {
+		t.Fatal("LivenessProbe should be set by default")
+	}
+	if agentContainer.LivenessProbe.HTTPGet == nil {
+		t.Fatal("Default LivenessProbe should use HTTPGet")
+	}
+	if agentContainer.LivenessProbe.HTTPGet.Path != "/healthz" {
+		t.Errorf("Default LivenessProbe path = %s, want /healthz", agentContainer.LivenessProbe.HTTPGet.Path)
+	}
+	if agentContainer.LivenessProbe.InitialDelaySeconds != 10 {
+		t.Errorf("Default LivenessProbe InitialDelaySeconds = %d, want 10", agentContainer.LivenessProbe.InitialDelaySeconds)
+	}
+
+	// 验证默认 ReadinessProbe
+	if agentContainer.ReadinessProbe == nil {
+		t.Fatal("ReadinessProbe should be set by default")
+	}
+	if agentContainer.ReadinessProbe.HTTPGet == nil {
+		t.Fatal("Default ReadinessProbe should use HTTPGet")
+	}
+	if agentContainer.ReadinessProbe.HTTPGet.Path != "/readyz" {
+		t.Errorf("Default ReadinessProbe path = %s, want /readyz", agentContainer.ReadinessProbe.HTTPGet.Path)
+	}
+	if agentContainer.ReadinessProbe.InitialDelaySeconds != 5 {
+		t.Errorf("Default ReadinessProbe InitialDelaySeconds = %d, want 5", agentContainer.ReadinessProbe.InitialDelaySeconds)
+	}
+}
+
+func TestReconcile_CustomHealthCheckProbes(t *testing.T) {
+	scheme := newScheme()
+	ad := makeAgentDeployment("custom-probe-agent", "default", 1)
+	ad.Spec.HealthCheck = &agentv1.HealthCheckSpec{
+		LivenessProbe: &agentv1.ProbeSpec{
+			HTTPGet:             &agentv1.HTTPGetAction{Path: "/live", Port: 9090},
+			InitialDelaySeconds: 15,
+			TimeoutSeconds:      3,
+			PeriodSeconds:       20,
+			FailureThreshold:    5,
+		},
+		ReadinessProbe: &agentv1.ProbeSpec{
+			HTTPGet:             &agentv1.HTTPGetAction{Path: "/ready", Port: 9090},
+			InitialDelaySeconds: 5,
+			TimeoutSeconds:      2,
+			PeriodSeconds:       10,
+			FailureThreshold:    3,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(ad).
+		WithStatusSubresource(&agentv1.AgentDeployment{}).
+		Build()
+
+	r := &AgentDeploymentReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	_, err := r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "custom-probe-agent", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	deploy := &appsv1.Deployment{}
+	_ = fakeClient.Get(context.Background(), types.NamespacedName{Name: "custom-probe-agent-agent", Namespace: "default"}, deploy)
+
+	agentContainer := deploy.Spec.Template.Spec.Containers[0]
+
+	// 验证自定义 LivenessProbe
+	if agentContainer.LivenessProbe == nil {
+		t.Fatal("LivenessProbe should be set")
+	}
+	if agentContainer.LivenessProbe.HTTPGet.Path != "/live" {
+		t.Errorf("LivenessProbe path = %s, want /live", agentContainer.LivenessProbe.HTTPGet.Path)
+	}
+	if agentContainer.LivenessProbe.InitialDelaySeconds != 15 {
+		t.Errorf("LivenessProbe InitialDelaySeconds = %d, want 15", agentContainer.LivenessProbe.InitialDelaySeconds)
+	}
+	if agentContainer.LivenessProbe.FailureThreshold != 5 {
+		t.Errorf("LivenessProbe FailureThreshold = %d, want 5", agentContainer.LivenessProbe.FailureThreshold)
+	}
+
+	// 验证自定义 ReadinessProbe
+	if agentContainer.ReadinessProbe == nil {
+		t.Fatal("ReadinessProbe should be set")
+	}
+	if agentContainer.ReadinessProbe.HTTPGet.Path != "/ready" {
+		t.Errorf("ReadinessProbe path = %s, want /ready", agentContainer.ReadinessProbe.HTTPGet.Path)
+	}
+	if agentContainer.ReadinessProbe.InitialDelaySeconds != 5 {
+		t.Errorf("ReadinessProbe InitialDelaySeconds = %d, want 5", agentContainer.ReadinessProbe.InitialDelaySeconds)
+	}
+}
+
+func TestReconcile_ProgressingConditionWhenBelowTarget(t *testing.T) {
+	scheme := newScheme()
+	ad := makeAgentDeployment("prog-agent", "default", 3)
+	ad.ResourceVersion = "1"
+
+	replicas := int32(3)
+	existingDeploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "prog-agent-agent", Namespace: "default"},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "agentprimordia"}},
+		},
+	}
+
+	existingCM := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: "prog-agent-config", Namespace: "default"},
+		Data:       map[string]string{"ap.yaml": "test"},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(ad, existingDeploy, existingCM).
+		WithStatusSubresource(&agentv1.AgentDeployment{}).
+		Build()
+
+	r := &AgentDeploymentReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	_, err := r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "prog-agent", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	updated := &agentv1.AgentDeployment{}
+	_ = fakeClient.Get(context.Background(), types.NamespacedName{Name: "prog-agent", Namespace: "default"}, updated)
+
+	// 查找 Progressing 条件
+	var progressing *agentv1.AgentDeploymentCondition
+	for i := range updated.Status.Conditions {
+		if updated.Status.Conditions[i].Type == "Progressing" {
+			progressing = &updated.Status.Conditions[i]
+			break
+		}
+	}
+	if progressing == nil {
+		t.Fatal("Progressing condition should exist")
+	}
+	if progressing.Status != "False" {
+		t.Errorf("Progressing Status = %s, want False (no running pods)", progressing.Status)
+	}
+	if progressing.Reason != "ReplicaSetUpdateInProgress" {
+		t.Errorf("Progressing Reason = %s, want ReplicaSetUpdateInProgress", progressing.Reason)
+	}
+}
+
+func TestBuildProbe(t *testing.T) {
+	tests := []struct {
+		name     string
+		spec     *agentv1.ProbeSpec
+		wantPath string
+		wantPort int32
+		wantInit int32
+	}{
+		{
+			name: "HTTPGet probe",
+			spec: &agentv1.ProbeSpec{
+				HTTPGet:             &agentv1.HTTPGetAction{Path: "/healthz", Port: 8080},
+				InitialDelaySeconds: 10,
+				TimeoutSeconds:      5,
+				PeriodSeconds:       30,
+				FailureThreshold:    3,
+			},
+			wantPath: "/healthz",
+			wantPort: 8080,
+			wantInit: 10,
+		},
+		{
+			name: "probe without HTTPGet",
+			spec: &agentv1.ProbeSpec{
+				InitialDelaySeconds: 5,
+				TimeoutSeconds:      3,
+				PeriodSeconds:       10,
+			},
+			wantPath: "",
+			wantPort: 0,
+			wantInit: 5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			probe := buildProbe(tt.spec)
+			if probe.InitialDelaySeconds != tt.wantInit {
+				t.Errorf("InitialDelaySeconds = %d, want %d", probe.InitialDelaySeconds, tt.wantInit)
+			}
+			if tt.wantPath != "" {
+				if probe.HTTPGet == nil {
+					t.Fatal("HTTPGet should not be nil")
+				}
+				if probe.HTTPGet.Path != tt.wantPath {
+					t.Errorf("HTTPGet.Path = %s, want %s", probe.HTTPGet.Path, tt.wantPath)
+				}
+				if probe.HTTPGet.Port.IntValue() != int(tt.wantPort) {
+					t.Errorf("HTTPGet.Port = %d, want %d", probe.HTTPGet.Port.IntValue(), tt.wantPort)
+				}
+			} else if probe.HTTPGet != nil {
+				t.Error("HTTPGet should be nil when not specified")
+			}
+		})
+	}
+}

@@ -45,7 +45,7 @@ func main() {
 		Model:        provider,
 		MaxTurns:     20,
 		Toolkit:      registry,
-		Memory:       ap.NewMemoryAdapter(memory),
+		Memory:       memory,
 	})
 
 	prompt := "list files in the current directory"

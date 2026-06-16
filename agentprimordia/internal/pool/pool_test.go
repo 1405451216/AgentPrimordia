@@ -10,6 +10,7 @@ import (
 )
 
 func TestPool_DispatchSingleTask(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Task completed")
 
 	pool := NewPool(PoolConfig{
@@ -42,6 +43,7 @@ func TestPool_DispatchSingleTask(t *testing.T) {
 }
 
 func TestPool_DispatchMultipleTasks(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).
 		WithResponse("Result A").
 		WithResponse("Result B").
@@ -81,6 +83,7 @@ func TestPool_DispatchMultipleTasks(t *testing.T) {
 }
 
 func TestPool_ConcurrencyLimit(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithDelay(50 * time.Millisecond).
 		WithResponse("Done").
 		WithResponse("Done").
@@ -111,6 +114,7 @@ func TestPool_ConcurrencyLimit(t *testing.T) {
 }
 
 func TestPool_CancelTask(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithDelay(2 * time.Second).WithResponse("Done")
 
 	pool := NewPool(PoolConfig{
@@ -141,6 +145,7 @@ func TestPool_CancelTask(t *testing.T) {
 }
 
 func TestPool_CancelAll(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithDelay(2 * time.Second).
 		WithResponse("Done").
 		WithResponse("Done")
@@ -179,6 +184,7 @@ func TestPool_CancelAll(t *testing.T) {
 }
 
 func TestPool_Timeout(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithDelay(5 * time.Second).WithResponse("Done")
 
 	pool := NewPool(PoolConfig{
@@ -201,6 +207,7 @@ func TestPool_Timeout(t *testing.T) {
 }
 
 func TestPool_EmptyTasks(t *testing.T) {
+	t.Parallel()
 	pool := NewPool(PoolConfig{})
 	defer pool.Close()
 
@@ -215,6 +222,7 @@ func TestPool_EmptyTasks(t *testing.T) {
 }
 
 func TestPool_Stats(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Done")
 
 	pool := NewPool(PoolConfig{
@@ -247,6 +255,7 @@ func TestPool_Stats(t *testing.T) {
 }
 
 func TestPool_EventChannel(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Event test")
 
 	pool := NewPool(PoolConfig{
@@ -287,6 +296,7 @@ func TestPool_EventChannel(t *testing.T) {
 }
 
 func TestPool_RetryPolicy(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithDelay(10 * time.Millisecond).
 		WithError(errors.New("rate_limit_exceeded"))
 
@@ -323,6 +333,7 @@ func TestPool_RetryPolicy(t *testing.T) {
 }
 
 func TestPool_DefaultConfig(t *testing.T) {
+	t.Parallel()
 	pool := NewPool(PoolConfig{})
 	defer pool.Close()
 
@@ -335,6 +346,7 @@ func TestPool_DefaultConfig(t *testing.T) {
 }
 
 func TestEventBus_SubscribeUnsubscribe(t *testing.T) {
+	t.Parallel()
 	bus := NewEventBus()
 	defer bus.Close()
 
@@ -370,6 +382,7 @@ func TestEventBus_SubscribeUnsubscribe(t *testing.T) {
 }
 
 func TestEventBus_Watch(t *testing.T) {
+	t.Parallel()
 	bus := NewEventBus()
 	defer bus.Close()
 
@@ -397,6 +410,7 @@ func TestEventBus_Watch(t *testing.T) {
 }
 
 func TestEventCollector_CollectUntilCondition(t *testing.T) {
+	t.Parallel()
 	bus := NewEventBus()
 	defer bus.Close()
 

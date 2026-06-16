@@ -14,27 +14,8 @@ import (
 	"agentprimordia/internal/events"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
-	"agentprimordia/internal/metrics"
 	"agentprimordia/internal/tools/builtin"
 )
-
-// ===== 兼容性适配器（Deprecated）=====
-
-// NewMemoryAdapter 将 memory.Memory 适配为 agent.MemoryStore。
-//
-// Deprecated: memory.Memory 已直接满足 agent.MemoryStore 接口，无需适配器。
-// 直接传入 memory.Memory 即可，将在 v2.0.0 移除。
-func NewMemoryAdapter(store memory.Memory) agent.MemoryStore {
-	return store
-}
-
-// NewMetricsAdapter 将 metrics.AgentMetrics 适配为 agent.MetricsRecorder。
-//
-// Deprecated: metrics.AgentMetrics 已直接满足 agent.MetricsRecorder 接口，无需适配器。
-// 直接传入 *metrics.AgentMetrics 即可，将在 v2.0.0 移除。
-func NewMetricsAdapter(m *metrics.AgentMetrics) agent.MetricsRecorder {
-	return m
-}
 
 // ===== EventPublisher 适配器 =====
 

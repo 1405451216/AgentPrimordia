@@ -14,7 +14,6 @@ import (
 	"agentprimordia/internal/pool"
 	"agentprimordia/internal/tools"
 	"agentprimordia/internal/tools/builtin"
-	ap "agentprimordia/pkg"
 )
 
 func TestHelloAgent_BasicRun(t *testing.T) {
@@ -270,7 +269,7 @@ func TestProduction_FullWorkflow(t *testing.T) {
 		SystemPrompt: "You are a senior coding assistant.",
 		Model:        prodLLM,
 		Toolkit:      toolRegistry,
-		Memory:       ap.NewMemoryAdapter(memStore),
+		Memory:       memStore,
 		MaxTurns:     20,
 		Temperature:  0.7,
 		Lifecycle:    lifecycle,

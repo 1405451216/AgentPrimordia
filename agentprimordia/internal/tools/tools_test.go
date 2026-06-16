@@ -39,6 +39,7 @@ func (m *mockTool) Execute(ctx context.Context, args json.RawMessage) (*Result, 
 }
 
 func TestRegistry_RegisterAndGet(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	tool := &mockTool{name: "test_tool", description: "A test tool", response: "ok"}
 
@@ -57,6 +58,7 @@ func TestRegistry_RegisterAndGet(t *testing.T) {
 }
 
 func TestRegistry_DuplicateRegistration(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	tool := &mockTool{name: "dup", response: "ok"}
 
@@ -71,6 +73,7 @@ func TestRegistry_DuplicateRegistration(t *testing.T) {
 }
 
 func TestRegistry_ListAndCount(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.RegisterMultiple(
 		&mockTool{name: "a", response: "a"},
@@ -88,6 +91,7 @@ func TestRegistry_ListAndCount(t *testing.T) {
 }
 
 func TestRegistry_GetNonExistent(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_, exists := reg.Get("nonexistent")
 	if exists {
@@ -96,6 +100,7 @@ func TestRegistry_GetNonExistent(t *testing.T) {
 }
 
 func TestRegistry_Definitions(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "weather", description: "Get weather", response: "sunny"})
 
@@ -113,6 +118,7 @@ func TestRegistry_Definitions(t *testing.T) {
 }
 
 func TestRegistry_Permissions(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "secure", response: "ok"})
 
@@ -131,6 +137,7 @@ func TestRegistry_Permissions(t *testing.T) {
 }
 
 func TestExecutor_ExecuteSuccess(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "echo", description: "Echo", response: "hello!"})
 
@@ -151,6 +158,7 @@ func TestExecutor_ExecuteSuccess(t *testing.T) {
 }
 
 func TestExecutor_ExecuteNotFound(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	executor := NewExecutor(reg)
 
@@ -167,6 +175,7 @@ func TestExecutor_ExecuteNotFound(t *testing.T) {
 }
 
 func TestExecutor_ExecuteTimeout(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "slow", response: "ok", delay: 200 * time.Millisecond})
 
@@ -182,6 +191,7 @@ func TestExecutor_ExecuteTimeout(t *testing.T) {
 }
 
 func TestNewResultHelpers(t *testing.T) {
+	t.Parallel()
 	success := NewResult("good")
 	if success.IsError {
 		t.Error("should not be error")
@@ -195,6 +205,7 @@ func TestNewResultHelpers(t *testing.T) {
 // ===== 确认回调测试 =====
 
 func TestExecutor_ConfirmationRequired_Denied(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "dangerous", description: "Dangerous", response: "boom"})
 
@@ -215,6 +226,7 @@ func TestExecutor_ConfirmationRequired_Denied(t *testing.T) {
 }
 
 func TestExecutor_ConfirmationCallback_Accepted(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "safe_op", description: "Safe Op", response: "done"})
 
@@ -240,6 +252,7 @@ func TestExecutor_ConfirmationCallback_Accepted(t *testing.T) {
 }
 
 func TestExecutor_ConfirmationCallback_Rejected(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "risky_op", description: "Risky Op", response: "oops"})
 
@@ -265,6 +278,7 @@ func TestExecutor_ConfirmationCallback_Rejected(t *testing.T) {
 }
 
 func TestExecutor_ConfirmationConditional(t *testing.T) {
+	t.Parallel()
 	reg := NewRegistry()
 	_ = reg.Register(&mockTool{name: "cond_op", description: "Conditional Op", response: "ok"})
 

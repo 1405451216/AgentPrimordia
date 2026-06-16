@@ -200,7 +200,7 @@ func main() {
 回答时要引用知识来源，保持准确性和专业性。`,
 		Model:       demoLLM,
 		Toolkit:     toolRegistry,
-		Memory:      ap.NewMemoryAdapter(memStore),
+		Memory:      memStore,
 		MaxTurns:    15,
 		Temperature: 0.7,
 		SessionID:   "rag-demo-session",
@@ -214,7 +214,7 @@ func main() {
 		},
 		CheckpointStore: checkpointStore,
 		EventPublisher:  ap.NewEventBusAdapter(eventBus),
-		Metrics:         ap.NewMetricsAdapter(agentMetrics),
+		Metrics:         agentMetrics,
 	})
 
 	fmt.Println("  ✓ RAG 知识助手已创建")

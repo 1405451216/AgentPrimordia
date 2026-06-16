@@ -33,7 +33,7 @@ func main() {
 		SystemPrompt: "你是一个可以读写文件、执行命令和访问网页的助手。",
 		MaxTurns:     20,
 		Toolkit:      registry,
-		Memory:       ap.NewMemoryAdapter(memory),
+		Memory:       memory,
 		// 设置 Model 为你的 LLM Provider:
 		// Model: ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"}),
 	})

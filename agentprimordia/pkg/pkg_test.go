@@ -9,12 +9,14 @@ import (
 )
 
 func TestVersion(t *testing.T) {
+	t.Parallel()
 	if ap.Version == "" {
 		t.Fatal("Version should not be empty")
 	}
 }
 
 func TestErrorSentinels(t *testing.T) {
+	t.Parallel()
 	sentinelTests := []struct {
 		name string
 		err  error
@@ -45,6 +47,7 @@ func TestErrorSentinels(t *testing.T) {
 }
 
 func TestAgentTypes(t *testing.T) {
+	t.Parallel()
 	msg := ap.UserMessage("hello")
 	if msg.Role != ap.RoleUser {
 		t.Errorf("expected RoleUser, got %s", msg.Role)
@@ -57,6 +60,7 @@ func TestAgentTypes(t *testing.T) {
 }
 
 func TestHookManager(t *testing.T) {
+	t.Parallel()
 	hm := ap.NewHookManager()
 	if hm == nil {
 		t.Fatal("NewHookManager returned nil")
@@ -70,6 +74,7 @@ func TestHookManager(t *testing.T) {
 }
 
 func TestLifecycle(t *testing.T) {
+	t.Parallel()
 	lc := ap.NewLifecycle()
 	if lc == nil {
 		t.Fatal("NewLifecycle returned nil")
@@ -80,6 +85,7 @@ func TestLifecycle(t *testing.T) {
 }
 
 func TestToolRegistry(t *testing.T) {
+	t.Parallel()
 	reg := ap.NewToolRegistry()
 	if reg == nil {
 		t.Fatal("NewToolRegistry returned nil")
@@ -87,6 +93,7 @@ func TestToolRegistry(t *testing.T) {
 }
 
 func TestMemoryStore(t *testing.T) {
+	t.Parallel()
 	store, err := ap.WithInMemory()
 	if err != nil {
 		t.Fatalf("WithInMemory failed: %v", err)
@@ -98,6 +105,7 @@ func TestMemoryStore(t *testing.T) {
 }
 
 func TestVectorStore(t *testing.T) {
+	t.Parallel()
 	vs := ap.NewVectorStore(3)
 	if vs == nil {
 		t.Fatal("NewVectorStore returned nil")
@@ -108,6 +116,7 @@ func TestVectorStore(t *testing.T) {
 }
 
 func TestEventBus(t *testing.T) {
+	t.Parallel()
 	bus := ap.NewBus(16)
 	if bus == nil {
 		t.Fatal("NewBus returned nil")
@@ -116,6 +125,7 @@ func TestEventBus(t *testing.T) {
 }
 
 func TestMetrics(t *testing.T) {
+	t.Parallel()
 	m := ap.NewMetrics()
 	if m == nil {
 		t.Fatal("NewMetrics returned nil")
@@ -123,6 +133,7 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestSecurity(t *testing.T) {
+	t.Parallel()
 	acl := ap.NewACL()
 	if acl == nil {
 		t.Fatal("NewACL returned nil")
@@ -134,6 +145,7 @@ func TestSecurity(t *testing.T) {
 }
 
 func TestCheckpointStore(t *testing.T) {
+	t.Parallel()
 	store, err := ap.InMemoryCheckpointStore()
 	if err != nil {
 		t.Fatalf("InMemoryCheckpointStore failed: %v", err)
@@ -145,6 +157,7 @@ func TestCheckpointStore(t *testing.T) {
 }
 
 func TestFileLockManager(t *testing.T) {
+	t.Parallel()
 	flm := ap.NewFileLockManager()
 	if flm == nil {
 		t.Fatal("NewFileLockManager returned nil")
@@ -152,6 +165,7 @@ func TestFileLockManager(t *testing.T) {
 }
 
 func TestContextWindowStrategy(t *testing.T) {
+	t.Parallel()
 	strategy := ap.NewDefaultStrategy(5)
 	if strategy == nil {
 		t.Fatal("NewDefaultStrategy returned nil")
@@ -159,6 +173,7 @@ func TestContextWindowStrategy(t *testing.T) {
 }
 
 func TestResilientConfig(t *testing.T) {
+	t.Parallel()
 	cfg := ap.DefaultResilientConfig()
 	if cfg.MaxRetries <= 0 {
 		t.Error("DefaultResilientConfig MaxRetries should be > 0")
@@ -166,6 +181,7 @@ func TestResilientConfig(t *testing.T) {
 }
 
 func TestFileScopePolicy(t *testing.T) {
+	t.Parallel()
 	policy := ap.NewFileScopePolicy()
 	if policy == nil {
 		t.Fatal("NewFileScopePolicy returned nil")
@@ -173,6 +189,7 @@ func TestFileScopePolicy(t *testing.T) {
 }
 
 func TestBuiltinTools(t *testing.T) {
+	t.Parallel()
 	fs, err := ap.NewFileSystem(".")
 	if err != nil {
 		t.Fatalf("NewFileSystem error: %v", err)
@@ -191,6 +208,7 @@ func TestBuiltinTools(t *testing.T) {
 }
 
 func TestErrorCodeMapping(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		err  error
 		code string
@@ -242,6 +260,7 @@ func TestErrorCodeMapping(t *testing.T) {
 }
 
 func TestErrorCodeUnknown(t *testing.T) {
+	t.Parallel()
 	code := ap.GetErrorCode(errors.New("some random error"))
 	if code != "UNKNOWN" {
 		t.Errorf("GetErrorCode(unknown) = %q, want UNKNOWN", code)
@@ -249,6 +268,7 @@ func TestErrorCodeUnknown(t *testing.T) {
 }
 
 func TestCodeError(t *testing.T) {
+	t.Parallel()
 	ce := ap.WithCode("CUSTOM_001", "custom error")
 	if ce.Code != "CUSTOM_001" {
 		t.Errorf("Code = %q, want CUSTOM_001", ce.Code)

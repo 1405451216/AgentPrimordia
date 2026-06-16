@@ -288,44 +288,42 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 		},
 	}
 
-	// Inject health check probes from spec into the agent container
+	// 注入健康检查探针：优先使用 spec 配置，未配置时使用默认探针
+	agentContainer := &deploy.Spec.Template.Spec.Containers[0]
 	if agentDeploy.Spec.HealthCheck != nil {
-		agentContainer := &deploy.Spec.Template.Spec.Containers[0]
 		if agentDeploy.Spec.HealthCheck.LivenessProbe != nil {
 			lp := agentDeploy.Spec.HealthCheck.LivenessProbe
-			agentContainer.LivenessProbe = &corev1.Probe{
-				InitialDelaySeconds: lp.InitialDelaySeconds,
-				TimeoutSeconds:      lp.TimeoutSeconds,
-				PeriodSeconds:       lp.PeriodSeconds,
-				SuccessThreshold:    lp.SuccessThreshold,
-				FailureThreshold:    lp.FailureThreshold,
-			}
-			if lp.HTTPGet != nil {
-				agentContainer.LivenessProbe.ProbeHandler = corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: lp.HTTPGet.Path,
-						Port: intstr.FromInt32(lp.HTTPGet.Port),
-					},
-				}
-			}
+			agentContainer.LivenessProbe = buildProbe(lp)
 		}
 		if agentDeploy.Spec.HealthCheck.ReadinessProbe != nil {
 			rp := agentDeploy.Spec.HealthCheck.ReadinessProbe
-			agentContainer.ReadinessProbe = &corev1.Probe{
-				InitialDelaySeconds: rp.InitialDelaySeconds,
-				TimeoutSeconds:      rp.TimeoutSeconds,
-				PeriodSeconds:       rp.PeriodSeconds,
-				SuccessThreshold:    rp.SuccessThreshold,
-				FailureThreshold:    rp.FailureThreshold,
-			}
-			if rp.HTTPGet != nil {
-				agentContainer.ReadinessProbe.ProbeHandler = corev1.ProbeHandler{
-					HTTPGet: &corev1.HTTPGetAction{
-						Path: rp.HTTPGet.Path,
-						Port: intstr.FromInt32(rp.HTTPGet.Port),
-					},
-				}
-			}
+			agentContainer.ReadinessProbe = buildProbe(rp)
+		}
+	} else {
+		// 默认探针：agent 容器暴露 /healthz 端点
+		agentContainer.LivenessProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/healthz",
+					Port: intstr.FromInt32(8080),
+				},
+			},
+			InitialDelaySeconds: 10,
+			TimeoutSeconds:      5,
+			PeriodSeconds:       30,
+			FailureThreshold:    3,
+		}
+		agentContainer.ReadinessProbe = &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path: "/readyz",
+					Port: intstr.FromInt32(8080),
+				},
+			},
+			InitialDelaySeconds: 5,
+			TimeoutSeconds:      3,
+			PeriodSeconds:       10,
+			FailureThreshold:    3,
 		}
 	}
 
@@ -462,6 +460,26 @@ func resourcePtr(q resource.Quantity) *resource.Quantity {
 	return &q
 }
 
+// buildProbe 从 CRD ProbeSpec 构建 K8s Probe 对象
+func buildProbe(ps *agentv1.ProbeSpec) *corev1.Probe {
+	probe := &corev1.Probe{
+		InitialDelaySeconds: ps.InitialDelaySeconds,
+		TimeoutSeconds:      ps.TimeoutSeconds,
+		PeriodSeconds:       ps.PeriodSeconds,
+		SuccessThreshold:    ps.SuccessThreshold,
+		FailureThreshold:    ps.FailureThreshold,
+	}
+	if ps.HTTPGet != nil {
+		probe.ProbeHandler = corev1.ProbeHandler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Path: ps.HTTPGet.Path,
+				Port: intstr.FromInt32(ps.HTTPGet.Port),
+			},
+		}
+	}
+	return probe
+}
+
 // updateStatus 更新 AgentDeployment 的状态
 func (r *AgentDeploymentReconciler) updateStatus(ctx context.Context, agentDeploy *agentv1.AgentDeployment) error {
 	deployName := fmt.Sprintf("%s-agent", agentDeploy.Name)
@@ -549,7 +567,22 @@ func (r *AgentDeploymentReconciler) updateStatus(ctx context.Context, agentDeplo
 		condition.Reason = "MinimumReplicasUnavailable"
 	}
 
-	agentDeploy.Status.Conditions = []agentv1.AgentDeploymentCondition{condition}
+	// Progressing 条件：反映 Deployment 是否正在进行滚动更新
+	progressing := agentv1.AgentDeploymentCondition{
+		Type:               "Progressing",
+		Status:             "True",
+		LastTransitionTime: metav1.Now(),
+		Reason:             "NewReplicaSetAvailable",
+		Message:            fmt.Sprintf("ReplicaSet %q has successfully progressed", deployName),
+	}
+
+	if activeReplicas < *deploy.Spec.Replicas {
+		progressing.Status = "False"
+		progressing.Reason = "ReplicaSetUpdateInProgress"
+		progressing.Message = fmt.Sprintf("ReplicaSet %q is progressing (%d/%d replicas)", deployName, activeReplicas, *deploy.Spec.Replicas)
+	}
+
+	agentDeploy.Status.Conditions = []agentv1.AgentDeploymentCondition{condition, progressing}
 
 	return r.Status().Update(ctx, agentDeploy)
 }

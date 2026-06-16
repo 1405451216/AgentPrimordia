@@ -3,9 +3,35 @@ package agent
 import (
 	"agentprimordia/internal/llm"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 )
+
+// ===== 请求 ID 关联 =====
+
+// requestIDKey 是 context 中存储请求 ID 的 key
+type requestIDKey struct{}
+
+// NewRequestID 生成唯一的请求 ID（16 字节随机 hex）
+func NewRequestID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// WithRequestID 将请求 ID 注入 context
+func WithRequestID(ctx context.Context, reqID string) context.Context {
+	return context.WithValue(ctx, requestIDKey{}, reqID)
+}
+
+// RequestIDFromCtx 从 context 中提取请求 ID，若不存在返回空字符串
+func RequestIDFromCtx(ctx context.Context) string {
+	v, _ := ctx.Value(requestIDKey{}).(string)
+	return v
+}
 
 // ===== RAG 接口 =====
 
@@ -219,11 +245,26 @@ type Thought struct {
 
 // Response represents the final response from an Agent
 type Response struct {
+	RequestID string     `json:"request_id"`
 	Content   string     `json:"content"`
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 	Usage     Usage      `json:"usage"`
 	Metrics   Metrics    `json:"metrics"`
 	Error     error      `json:"-"`
+}
+
+// ErrorCode 返回结构化错误码，若无错误返回空字符串
+// 使用 pkg.GetErrorCode 的映射规则，支持 sentinel 错误和 CodeError 接口
+func (r *Response) ErrorCode() string {
+	if r.Error == nil {
+		return ""
+	}
+	type coded interface{ Code() string }
+	var c coded
+	if errors.As(r.Error, &c) {
+		return c.Code()
+	}
+	return "UNKNOWN"
 }
 
 // Usage tracks token usage
@@ -258,6 +299,7 @@ const (
 // AgentStats provides runtime statistics about an agent
 type AgentStats struct {
 	Status        AgentStatus    `json:"status"`
+	RequestID     string         `json:"request_id,omitempty"`
 	CurrentTurn   int            `json:"current_turn"`
 	TotalMessages int            `json:"total_messages"`
 	ToolsCalled   map[string]int `json:"tools_called"`
@@ -278,7 +320,8 @@ const (
 
 // StreamEvent 是流式输出的事件
 type StreamEvent struct {
-	Type    StreamEventType `json:"type"`
-	Content string          `json:"content,omitempty"`
-	Data    any             `json:"data,omitempty"`
+	Type      StreamEventType `json:"type"`
+	RequestID string          `json:"request_id,omitempty"`
+	Content   string          `json:"content,omitempty"`
+	Data      any             `json:"data,omitempty"`
 }

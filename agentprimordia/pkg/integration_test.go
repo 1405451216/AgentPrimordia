@@ -30,6 +30,7 @@ func getOpenAIKey(t *testing.T) string {
 
 // TestIntegration_NewAgent_Run 验证 ap.NewAgent + ap.NewOpenAIProvider 端到端跑通
 func TestIntegration_NewAgent_Run(t *testing.T) {
+	t.Parallel()
 	apiKey := getOpenAIKey(t)
 
 	provider, err := ap.NewOpenAIProvider(ap.Config{
@@ -65,6 +66,7 @@ func TestIntegration_NewAgent_Run(t *testing.T) {
 
 // TestIntegration_NewAgent_Stream 验证 agent.StreamRun 流式输出
 func TestIntegration_NewAgent_Stream(t *testing.T) {
+	t.Parallel()
 	apiKey := getOpenAIKey(t)
 
 	provider, err := ap.NewOpenAIProvider(ap.Config{
@@ -133,7 +135,7 @@ func TestIntegration_NewAgent_WithMemory(t *testing.T) {
 		provider,
 		ap.WithMaxTurns(3),
 		ap.WithTemperature(0),
-	).WithMemory(ap.NewMemoryAdapter(memStore))
+	).WithMemory(memStore)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -164,6 +166,7 @@ func TestIntegration_NewAgent_WithMemory(t *testing.T) {
 
 // TestIntegration_NewSession_Ask 验证 ap.NewSession 多轮对话便利 API
 func TestIntegration_NewSession_Ask(t *testing.T) {
+	t.Parallel()
 	apiKey := getOpenAIKey(t)
 
 	provider, err := ap.NewOpenAIProvider(ap.Config{

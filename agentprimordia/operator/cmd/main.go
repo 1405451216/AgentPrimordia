@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,6 +29,7 @@ func init() {
 
 func main() {
 	metricsAddr := flag.String("metrics-addr", ":8080", "Metrics 服务器监听地址")
+	healthAddr := flag.String("health-addr", ":8081", "健康检查服务器监听地址（healthz/readyz）")
 	enableLeaderElection := flag.Bool("leader-elect", false, "启用 Leader 选举")
 	flag.Parse()
 
@@ -39,13 +41,28 @@ func main() {
 	}
 
 	mgr, err := manager.New(cfg, manager.Options{
-		Scheme:           scheme,
-		Metrics:          server.Options{BindAddress: *metricsAddr},
-		LeaderElection:   *enableLeaderElection,
-		LeaderElectionID: "agentprimordia-operator",
+		Scheme:                 scheme,
+		Metrics:                server.Options{BindAddress: *metricsAddr},
+		HealthProbeBindAddress: *healthAddr,
+		LeaderElection:         *enableLeaderElection,
+		LeaderElectionID:       "agentprimordia-operator",
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "创建 Manager 失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 注册健康检查端点
+	if err := mgr.AddHealthzCheck("healthz", func(req *http.Request) error {
+		return nil
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "注册 healthz 检查失败: %v\n", err)
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", func(req *http.Request) error {
+		return nil
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "注册 readyz 检查失败: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -60,6 +77,7 @@ func main() {
 
 	fmt.Println("AgentPrimordia Operator 启动...")
 	fmt.Printf("Metrics: %s\n", *metricsAddr)
+	fmt.Printf("Health:  %s\n", *healthAddr)
 
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		fmt.Fprintf(os.Stderr, "Operator 运行失败: %v\n", err)
