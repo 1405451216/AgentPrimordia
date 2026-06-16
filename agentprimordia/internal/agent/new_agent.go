@@ -14,10 +14,10 @@ type AgentOption = Option
 
 // NewAgent 是创建 Agent 的推荐入口（v0.7.0 起）。
 //
-// 只暴露核心必填字段（名称、系统提示词、模型），能力通过 Functional Options 注入。
+// 只暴露核心字段（名称、系统提示词、模型），能力通过 Functional Options 注入。
 // 构造后核心能力不可变，消除了 ReActConfig 中 14 个已废弃字段的直接使用。
 //
-// 必填参数：
+// 参数：
 //   - name: Agent 名称（不能为空）
 //   - systemPrompt: 系统提示词（可为空）
 //   - model: LLM Provider（不能为 nil）
@@ -51,6 +51,7 @@ func NewAgent(name, systemPrompt string, model llm.Provider, opts ...Option) (*C
 
 // buildAgent 从 AgentConfig 构建 Agent，通过链式 API 注入所有能力。
 // 这是 NewAgent 的内部实现，将分组配置转换为链式调用。
+// 当前实现不会返回 error，保留 error 返回值供未来扩展（如能力组合冲突校验）。
 func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 	// 构造 ReActAgent（复用现有逻辑，只传递核心标量字段）
 	reactCfg := ReActConfig{

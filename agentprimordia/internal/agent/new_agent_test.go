@@ -163,22 +163,43 @@ func TestNewAgent_ValidationError(t *testing.T) {
 	if err == nil {
 		t.Fatal("nil model 应返回错误")
 	}
+
+	// MaxTurns <= 0（需通过 WithMaxTurns 覆盖默认值 50）
+	_, err = NewAgent("test", "prompt", mock, WithMaxTurns(0))
+	if err == nil {
+		t.Fatal("MaxTurns=0 应返回错误")
+	}
+
+	_, err = NewAgent("test", "prompt", mock, WithMaxTurns(-1))
+	if err == nil {
+		t.Fatal("MaxTurns=-1 应返回错误")
+	}
 }
 
 func TestNewAgent_CapabilityInjection(t *testing.T) {
-	// 验证能力注入不 panic
+	// 验证能力注入不 panic 且通过 Getter 可取回注入的值
 	mock := llm.NewMockLLM(t).WithResponse("ok")
 	reg := tools.NewRegistry()
+	hooks := NewHookManager()
+	tracer := NewNoopTracer()
 
 	agent, err := NewAgent("cap-bot", "prompt", mock,
 		WithToolkit(reg),
-		WithHooks(NewHookManager()),
-		WithTracer(NewNoopTracer()),
+		WithHooks(hooks),
+		WithTracer(tracer),
 	)
 	if err != nil {
 		t.Fatalf("NewAgent error: %v", err)
 	}
 	if agent == nil {
 		t.Fatal("agent 不应为 nil")
+	}
+
+	// 通过 Getter 验证能力是否真正注入
+	if agent.GetHooks() == nil {
+		t.Error("Hooks 未被注入")
+	}
+	if agent.GetTracer() == nil {
+		t.Error("Tracer 未被注入")
 	}
 }
