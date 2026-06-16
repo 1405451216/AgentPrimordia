@@ -2,6 +2,28 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [Unreleased]
+
+### Added — API 稳定化（分组 Functional Options）
+
+- `AgentConfig` 分组配置 struct（Memory / RAG / Observability / Resilience / Tools），构造后不可变
+- 22 个 Functional Options：4 标量 + 14 顶层快捷注入 + 4 分组注入
+- `AgentConfig.Validate()` 集中校验（Name / Model / MaxTurns）
+- `NewAgent` 返回 `(*CapabilityAgent, error)`，通过 `buildAgent()` 一次性注入所有能力
+- `pkg/` 导出 `AgentConfig`、5 个分组 struct、`HITLConfig`、全部 22 个 `WithXxx` Option 函数
+
+### Changed
+
+- `NewAgent` 签名变更：返回值从 `*CapabilityAgent` 变为 `(*CapabilityAgent, error)`（破坏性变更）
+- `internal/pool/dispatcher.go` 从 Deprecated `Toolkit` 字段迁移为链式 API
+- `cmd/example/production/main.go` 从 `ReActConfig` 字面量迁移为 `NewAgent` + Options API
+- `cmd/ap/scaffold/with-tools` 和 `ecosystem/templates/with-tools` 迁移为 NewAgent / 链式 API
+- 17 处 `NewAgent` 调用点适配新签名（pkg 测试 + ecosystem 示例 + 脚手架）
+
+### Deprecated
+
+- `AgentOption` 类型别名保留为 `Option` 的别名，后续版本将标记 Deprecated
+
 ## [0.7.0] - 2026-06-05
 
 ### Added
