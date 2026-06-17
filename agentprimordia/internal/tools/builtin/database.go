@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	defaultMaxRows       = 1000
-	defaultQueryTimeout  = 30 * time.Second
-	maxResultContentLen  = 1 << 20 // 1MB 结果内容上限
+	defaultMaxRows      = 1000
+	defaultQueryTimeout = 30 * time.Second
+	maxResultContentLen = 1 << 20 // 1MB 结果内容上限
 )
 
 // writeSQLKeywords 写操作相关的 SQL 关键字
@@ -199,8 +199,8 @@ func (d *Database) doQuery(ctx context.Context, queryStr string, params []any) (
 	}
 
 	metadata := map[string]any{
-		"columns":      columns,
-		"rows_count":   len(results),
+		"columns":       columns,
+		"rows_count":    len(results),
 		"columns_count": len(columns),
 	}
 	if truncated {
@@ -232,9 +232,9 @@ func (d *Database) doExecute(ctx context.Context, queryStr string, params []any)
 	affected, _ := result.RowsAffected()
 
 	output := map[string]any{
-		"success":       true,
+		"success":        true,
 		"last_insert_id": lastID,
-		"rows_affected": affected,
+		"rows_affected":  affected,
 	}
 	outputJSON, _ := json.MarshalIndent(output, "", "  ")
 

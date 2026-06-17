@@ -81,15 +81,19 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 	}
 
 	action := ""
-	_ = json.Unmarshal(params["action"], &action)
+	if err := unmarshalRaw(params["action"], &action); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'action': %v", err)), nil
+	}
 
 	if action != "fetch" {
 		return tools.NewErrorResult(fmt.Sprintf("unknown action: %s", action)), nil
 	}
 
 	rawURL := ""
-	if raw, ok := params["url"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &rawURL)
+	if raw, ok := params["url"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &rawURL); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'url': %v", err)), nil
+		}
 	}
 	if strings.TrimSpace(rawURL) == "" {
 		return tools.NewErrorResult("url is required"), nil
@@ -99,30 +103,38 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 	// 不再使用预验证，避免 DNS rebinding 攻击
 
 	method := "GET"
-	if raw, ok := params["method"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &method)
+	if raw, ok := params["method"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &method); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'method': %v", err)), nil
+		}
 	}
 	if method == "" {
 		method = "GET"
 	}
 
 	timeoutSec := int(w.timeout.Seconds())
-	if raw, ok := params["timeout"]; ok && raw != nil {
+	if raw, ok := params["timeout"]; ok && len(raw) > 0 {
 		var v float64
-		_ = json.Unmarshal(raw, &v)
+		if err := unmarshalRaw(raw, &v); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'timeout': %v", err)), nil
+		}
 		if v > 0 {
 			timeoutSec = int(v)
 		}
 	}
 
 	var customHeaders map[string]string
-	if raw, ok := params["headers"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &customHeaders)
+	if raw, ok := params["headers"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &customHeaders); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'headers': %v", err)), nil
+		}
 	}
 
 	bodyStr := ""
-	if raw, ok := params["body"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &bodyStr)
+	if raw, ok := params["body"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &bodyStr); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'body': %v", err)), nil
+		}
 	}
 
 	reqCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)

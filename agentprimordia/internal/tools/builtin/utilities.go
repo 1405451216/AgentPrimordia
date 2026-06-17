@@ -108,22 +108,35 @@ func (d *DateTimeTool) Execute(ctx context.Context, args json.RawMessage) (*tool
 	}
 
 	action := "now"
-	if raw, ok := params["action"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &action)
+	if raw, ok := params["action"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &action); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'action': %v", err)), nil
+		}
 	}
 
 	switch action {
 	case "now":
 		format := time.RFC3339
-		if raw, ok := params["format"]; ok && raw != nil {
+		if raw, ok := params["format"]; ok && len(raw) > 0 {
 			var f string
-			_ = json.Unmarshal(raw, &f)
+			if err := unmarshalRaw(raw, &f); err != nil {
+				return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'format': %v", err)), nil
+			}
 			format = getLayout(f)
 		}
 		return tools.NewResult(time.Now().Format(format)), nil
 	default:
 		return tools.NewErrorResult(fmt.Sprintf("unknown action: %s", action)), nil
 	}
+}
+
+// unmarshalRaw 从 JSON RawMessage 解析参数值
+// 参数不存在（nil 或空）时使用零值，参数存在但格式错误时返回错误
+func unmarshalRaw(raw json.RawMessage, target any) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	return json.Unmarshal(raw, target)
 }
 
 func parseNumber(v any) (float64, error) {

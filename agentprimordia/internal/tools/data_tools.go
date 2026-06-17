@@ -255,7 +255,9 @@ func (t *CSVTool) writeCSV(params map[string]any) (*Result, error) {
 	dataBytes, _ := json.Marshal(params["data"])
 
 	var data []map[string]any
-	_ = json.Unmarshal(dataBytes, &data)
+	if err := json.Unmarshal(dataBytes, &data); err != nil {
+		return nil, fmt.Errorf("invalid 'data' parameter: %w", err)
+	}
 
 	file, err := os.Create(filePath)
 	if err != nil {

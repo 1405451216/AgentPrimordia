@@ -159,15 +159,19 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	}
 
 	action := ""
-	_ = json.Unmarshal(params["action"], &action)
+	if err := unmarshalRaw(params["action"], &action); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'action': %v", err)), nil
+	}
 
 	if action != "execute" {
 		return tools.NewErrorResult(fmt.Sprintf("unknown action: %s", action)), nil
 	}
 
 	command := ""
-	if raw, ok := params["command"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &command)
+	if raw, ok := params["command"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &command); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'command': %v", err)), nil
+		}
 	}
 	if strings.TrimSpace(command) == "" {
 		return tools.NewErrorResult("command is required"), nil
@@ -210,17 +214,21 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	}
 
 	timeoutSec := int(s.defaultTimeout.Seconds())
-	if raw, ok := params["timeout"]; ok && raw != nil {
+	if raw, ok := params["timeout"]; ok && len(raw) > 0 {
 		var v float64
-		_ = json.Unmarshal(raw, &v)
+		if err := unmarshalRaw(raw, &v); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'timeout': %v", err)), nil
+		}
 		if v > 0 {
 			timeoutSec = int(v)
 		}
 	}
 
 	workdir := ""
-	if raw, ok := params["workdir"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &workdir)
+	if raw, ok := params["workdir"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &workdir); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'workdir': %v", err)), nil
+		}
 	}
 
 	// 验证 workdir 是否在允许范围内

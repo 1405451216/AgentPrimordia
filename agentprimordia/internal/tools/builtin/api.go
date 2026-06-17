@@ -15,16 +15,16 @@ import (
 )
 
 const (
-	apiDefaultTimeout       = 30 * time.Second
-	apiDefaultMaxBodySize   = 1 * 1024 * 1024 // 1MB
-	apiDefaultUserAgent     = "AgentPrimordia/1.0 (API Tool)"
-	apiDefaultMaxRedirects  = 10
+	apiDefaultTimeout      = 30 * time.Second
+	apiDefaultMaxBodySize  = 1 * 1024 * 1024 // 1MB
+	apiDefaultUserAgent    = "AgentPrimordia/1.0 (API Tool)"
+	apiDefaultMaxRedirects = 10
 )
 
 // API 是 REST API 调用工具，支持 GET/POST/PUT/DELETE/PATCH 方法
 type API struct {
-	timeout     time.Duration
-	maxBodySize int64
+	timeout      time.Duration
+	maxBodySize  int64
 	allowPrivate bool
 }
 
