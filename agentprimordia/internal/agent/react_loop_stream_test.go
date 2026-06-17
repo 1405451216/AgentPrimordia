@@ -97,9 +97,8 @@ func TestReActAgent_StreamRun_BasicCompletion(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-basic",
 		Model:    mock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("Hi"))
 	if err != nil {
@@ -155,9 +154,8 @@ func TestReActAgent_StreamRun_WithToolCall(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-tool",
 		Model:    mock,
-		Toolkit:  registry,
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("What time?"))
 	if err != nil {
@@ -198,9 +196,8 @@ func TestReActAgent_StreamRun_MaxTurnsExceeded(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-max-turns",
 		Model:    loopMock,
-		Toolkit:  registry,
 		MaxTurns: 3,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("Loop"))
 	if err != nil {
@@ -228,9 +225,8 @@ func TestReActAgent_StreamRun_ContextCancelled(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-cancel",
 		Model:    slowMock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -257,9 +253,8 @@ func TestReActAgent_StreamRun_StreamErrorFallback(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-fallback",
 		Model:    mock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("test"))
 	if err != nil {
@@ -294,10 +289,8 @@ func TestReActAgent_StreamRun_WithMetrics(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-metrics",
 		Model:    mock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		Metrics:  recorder,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithMetrics(recorder)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("test"))
 	if err != nil {
@@ -327,12 +320,10 @@ func TestReActAgent_StreamRun_WithEventPublisher(t *testing.T) {
 	pub := &mockEventPublisher{}
 
 	agent := NewReActAgent(ReActConfig{
-		Name:           "stream-events",
-		Model:          mock,
-		Toolkit:        tools.NewRegistry(),
-		MaxTurns:       10,
-		EventPublisher: pub,
-	})
+		Name:     "stream-events",
+		Model:    mock,
+		MaxTurns: 10,
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithEvents(pub)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("test"))
 	if err != nil {

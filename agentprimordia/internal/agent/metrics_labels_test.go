@@ -17,7 +17,7 @@ import (
 type echoTool struct{}
 
 func (e echoTool) Name() string        { return "echo" }
-func (e echoTool) Description() string  { return "Echo back the input" }
+func (e echoTool) Description() string { return "Echo back the input" }
 func (e echoTool) Parameters() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{"text":{"type":"string"}},"required":["text"]}`)
 }
@@ -80,12 +80,11 @@ func TestReActAgent_LabeledMetricsWithToolCall(t *testing.T) {
 	)
 
 	agent := NewReActAgent(ReActConfig{
-		Name:        "ToolAgent",
+		Name:         "ToolAgent",
 		SystemPrompt: "你使用工具",
 		Model:        llm,
 		MaxTurns:     3,
-		Toolkit:      registry,
-	}).WithMetrics(m)
+	}).AsCapability().WithToolkit(registry).WithMetrics(m)
 
 	_, err := agent.Run(context.Background(), UserMessage("用 echo 工具说 hello"))
 	if err != nil {

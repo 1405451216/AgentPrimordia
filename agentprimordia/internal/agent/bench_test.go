@@ -32,7 +32,6 @@ func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "bench-simple",
 		Model:    mockLLM,
-		Toolkit:  nil,
 		MaxTurns: 10,
 	})
 
@@ -71,9 +70,8 @@ func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
 		agent := NewReActAgent(ReActConfig{
 			Name:     "bench-tool",
 			Model:    mockLLM,
-			Toolkit:  registry,
 			MaxTurns: 10,
-		})
+		}).AsCapability().WithToolkit(registry)
 
 		_, err := agent.Run(context.Background(), UserMessage("use tool"))
 		if err != nil {
@@ -103,9 +101,8 @@ func BenchmarkReActAgent_MaxTurns(b *testing.B) {
 		agent := NewReActAgent(ReActConfig{
 			Name:     "bench-maxturns",
 			Model:    mockLLM,
-			Toolkit:  registry,
 			MaxTurns: 10,
-		})
+		}).AsCapability().WithToolkit(registry)
 
 		_, err := agent.Run(context.Background(), UserMessage("multi-turn"))
 		if err != nil {

@@ -74,15 +74,15 @@ func TestAgentIntegration_WithMemoryEventBusMetrics(t *testing.T) {
 
 	// 创建 Agent，集成所有模块
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:           "IntegrationAgent",
-		SystemPrompt:   "You are a helpful assistant.",
-		Model:          mockLLM,
-		Toolkit:        ap.NewToolRegistry(),
-		Memory:         memStore,
-		EventPublisher: ap.NewEventBusAdapter(bus),
-		Metrics:        m,
-		MaxTurns:       10,
-	})
+		Name:         "IntegrationAgent",
+		SystemPrompt: "You are a helpful assistant.",
+		Model:        mockLLM,
+		MaxTurns:     10,
+	}).AsCapability().
+		WithToolkit(ap.NewToolRegistry()).
+		WithMemory(memStore).
+		WithEvents(ap.NewEventBusAdapter(bus)).
+		WithMetrics(m)
 
 	// 运行 Agent
 	resp, err := a.Run(context.Background(), ap.UserMessage("Hello!"))
@@ -140,13 +140,13 @@ func TestAgentIntegration_WithCheckpoint(t *testing.T) {
 
 	// 创建 Agent with Checkpoint
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:            "CheckpointAgent",
-		Model:           mockLLM,
-		Toolkit:         ap.NewToolRegistry(),
-		CheckpointStore: cpStore,
-		SessionID:       "session-checkpoint-1",
-		MaxTurns:        10,
-	})
+		Name:      "CheckpointAgent",
+		Model:     mockLLM,
+		SessionID: "session-checkpoint-1",
+		MaxTurns:  10,
+	}).AsCapability().
+		WithToolkit(ap.NewToolRegistry()).
+		WithCheckpointStore(cpStore)
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Do something"))
 	if err != nil {
@@ -180,12 +180,12 @@ func TestAgentIntegration_WithContextWindow(t *testing.T) {
 	strategy := ap.NewDefaultStrategy(3) // 只保留最后3条
 
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:          "ContextWindowAgent",
-		Model:         mockLLM,
-		Toolkit:       ap.NewToolRegistry(),
-		ContextWindow: strategy,
-		MaxTurns:      10,
-	})
+		Name:     "ContextWindowAgent",
+		Model:    mockLLM,
+		MaxTurns: 10,
+	}).AsCapability().
+		WithToolkit(ap.NewToolRegistry()).
+		WithContextWindow(strategy)
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Test"))
 	if err != nil {
@@ -203,9 +203,8 @@ func TestAgentIntegration_Stop(t *testing.T) {
 	a := ap.NewReActAgent(ap.ReActConfig{
 		Name:     "StopAgent",
 		Model:    mockLLM,
-		Toolkit:  ap.NewToolRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(ap.NewToolRegistry())
 
 	// 在另一个 goroutine 中停止
 	go func() {

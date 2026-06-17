@@ -79,9 +79,8 @@ func TestHelloAgent_WithTools(t *testing.T) {
 		Name:         "TestToolAgent",
 		SystemPrompt: "You are a file reading assistant.",
 		Model:        demoLLM,
-		Toolkit:      toolRegistry,
 		MaxTurns:     10,
-	})
+	}).AsCapability().WithToolkit(toolRegistry)
 
 	resp, err := a.Run(context.Background(), agent.UserMessage("读取 test.txt 的内容"))
 	if err != nil {
@@ -125,9 +124,8 @@ func TestHelloAgent_MultiTurn(t *testing.T) {
 		Name:         "TestMultiTurnAgent",
 		SystemPrompt: "You are a data analysis assistant. Read files before answering.",
 		Model:        multiLLM,
-		Toolkit:      toolRegistry,
 		MaxTurns:     10,
-	})
+	}).AsCapability().WithToolkit(toolRegistry)
 
 	resp, err := a.Run(context.Background(), agent.UserMessage("分析 data.json 文件"))
 	if err != nil {
@@ -268,13 +266,13 @@ func TestProduction_FullWorkflow(t *testing.T) {
 		Name:         "FullWorkflowAgent",
 		SystemPrompt: "You are a senior coding assistant.",
 		Model:        prodLLM,
-		Toolkit:      toolRegistry,
-		Memory:       memStore,
 		MaxTurns:     20,
 		Temperature:  0.7,
 		Lifecycle:    lifecycle,
-		Hooks:        hooks,
-	})
+	}).AsCapability().
+		WithToolkit(toolRegistry).
+		WithMemory(memStore).
+		WithHooks(hooks)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

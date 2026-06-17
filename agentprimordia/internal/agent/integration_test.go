@@ -131,8 +131,7 @@ func TestIntegration_ReActAgent_ToolCall(t *testing.T) {
 		SystemPrompt: "You are a helpful assistant. Use the calculator tool when asked to perform arithmetic.",
 		MaxTurns:     5,
 		Temperature:  0,
-		Toolkit:      registry,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

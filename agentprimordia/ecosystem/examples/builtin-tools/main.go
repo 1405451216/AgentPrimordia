@@ -180,9 +180,8 @@ func demonstrateAgentWithTools() {
 		Name:         "ToolBot",
 		SystemPrompt: "你可以使用计算器和日期时间工具来帮助用户完成任务。",
 		Model:        demoLLM,
-		Toolkit:      registry,
 		MaxTurns:     5,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	ctx := context.Background()
 

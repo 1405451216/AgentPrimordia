@@ -19,15 +19,13 @@ func TestPipeline_SimpleSequence(t *testing.T) {
 	agent1 := NewReActAgent(ReActConfig{
 		Name:     "step1-agent",
 		Model:    mock1,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 	agent2 := NewReActAgent(ReActConfig{
 		Name:     "step2-agent",
 		Model:    mock2,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	pipeline := NewPipeline(
 		PipelineStep{Name: "step1", Agent: agent1},
@@ -55,9 +53,8 @@ func TestPipeline_StepFailure(t *testing.T) {
 	agent1 := NewReActAgent(ReActConfig{
 		Name:     "fail-agent",
 		Model:    failMock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	pipeline := NewPipeline(
 		PipelineStep{Name: "fail-step", Agent: agent1},
@@ -77,9 +74,8 @@ func TestHandoff_SingleAgent(t *testing.T) {
 	agent1 := NewReActAgent(ReActConfig{
 		Name:     "handler-agent",
 		Model:    mock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	handoff := NewHandoff(HandoffConfig{
 		Agents: []Agent{agent1},
@@ -120,15 +116,13 @@ func TestParallelRun(t *testing.T) {
 	agent1 := NewReActAgent(ReActConfig{
 		Name:     "parallel-agent-1",
 		Model:    mock1,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 	agent2 := NewReActAgent(ReActConfig{
 		Name:     "parallel-agent-2",
 		Model:    mock2,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	result, err := ParallelRun(context.Background(), []Agent{agent1, agent2}, "Test input", nil)
 	if err != nil {
@@ -153,9 +147,8 @@ func TestStreamRun_SimpleCompletion(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stream-agent",
 		Model:    mock,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("Hi"))
 	if err != nil {
