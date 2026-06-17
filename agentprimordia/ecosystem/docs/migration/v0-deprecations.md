@@ -105,7 +105,7 @@ agent := ap.NewAgent("my-agent", "你是一个智能助手", provider,
 adapter := ap.NewEmbeddingAdapter(provider, 1536)
 ragStore := ap.NewRAGStore(memory, adapter)
 ragProvider := ap.NewRAGProviderAdapter(ragStore)
-agent := ap.NewReActAgent(ap.ReActConfig{Model: provider, RAG: &ap.RAGConfig{Provider: ragProvider}})
+agent := ap.NewReActAgent(ap.ReActConfig{Model: provider}).WithRAG(ap.RAGConfig{Provider: ragProvider})
 
 // 新（2 步）
 agent := ap.NewAgent("my-agent", "你是一个智能助手", provider).

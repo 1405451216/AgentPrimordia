@@ -65,19 +65,19 @@ func main() {
 	})
 
 	// 5. 创建 Agent
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name: "CodeReviewer",
-		SystemPrompt: `你是一个代码审查助手。工作流程：
+	agent, err := ap.NewAgent("CodeReviewer", `你是一个代码审查助手。工作流程：
 1. 用 FileSystem 读取变更的源码文件
 2. 用 Shell 运行 go vet / go test 检查问题
 3. 分析代码质量，给出具体改进建议
-4. 用中文输出审查报告`,
-		MaxTurns: 25,
-		Model:    newProvider(),
-		Toolkit:  registry,
-		Memory:   ap.NewMemoryAdapter(memory),
-		Hooks:    hooks,
-	})
+4. 用中文输出审查报告`, newProvider(),
+		ap.WithMaxTurns(25),
+		ap.WithToolkit(registry),
+		ap.WithMemory(ap.NewMemoryAdapter(memory)),
+		ap.WithHooks(hooks),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// 6. 运行审查
 	prompt := "审查当前目录下所有 .go 文件的代码质量"
