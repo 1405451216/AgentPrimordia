@@ -107,6 +107,7 @@ cover2
 cover_metrics
 cover_tools
 coverage_tools
+coverage
 
 # ---------- Wiki / Generated ----------
 CODE_WIKI*.md
