@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -463,7 +464,7 @@ func (s *Supervisor) Execute(ctx context.Context, task *Task) (*TaskResult, erro
 	return result, nil
 }
 
-// selectWorker 通过策略选择 worker（读锁内收集列表）
+// selectWorker 通过策略选择 worker（读锁内收集列表，按 ID 排序确保确定性）
 func (s *Supervisor) selectWorker(task *Task) (*WorkerState, error) {
 	s.mu.RLock()
 	strategy := s.strategy
@@ -476,6 +477,12 @@ func (s *Supervisor) selectWorker(task *Task) (*WorkerState, error) {
 	if len(workers) == 0 {
 		return nil, fmt.Errorf("no workers registered")
 	}
+
+	// 按 ID 排序，确保 map 随机迭代不影响策略的确定性
+	sort.Slice(workers, func(i, j int) bool {
+		return workers[i].ID < workers[j].ID
+	})
+
 	return strategy.Select(task, workers)
 }
 
