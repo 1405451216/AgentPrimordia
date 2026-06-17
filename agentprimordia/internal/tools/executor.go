@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -173,20 +174,66 @@ func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*
 
 // extractPathFromArgs 从工具调用参数中提取 path 字段
 // 用于 ScopePolicy 权限检查
+// 优化（Task 9）：使用 json.Decoder 替代 Unmarshal，按需查找常见路径字段；
+// 第一个匹配字段后立即返回，减少 JSON 解析开销。
 func extractPathFromArgs(args string) string {
-	var params map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(args), &params); err != nil {
+	if args == "" {
 		return ""
 	}
-	// 尝试多个常见的路径参数名
-	pathKeys := []string{"path", "file_path", "target_dir", "workdir", "directory", "output_path"}
-	for _, key := range pathKeys {
-		if raw, ok := params[key]; ok {
-			var val string
-			if json.Unmarshal(raw, &val) == nil && val != "" {
-				return val
-			}
+	dec := json.NewDecoder(bytes.NewReader([]byte(args)))
+	dec.UseNumber()
+	// 流式解析：直到找到第一个 path 字段
+	for {
+		tok, err := dec.Token()
+		if err != nil {
+			return ""
 		}
+		// 在对象开始时进入键值对循环
+		if delim, ok := tok.(json.Delim); ok && delim == '{' {
+			// 优化：不再解析整个 map，而是逐个键查找
+			for dec.More() {
+				// 读取 key
+				keyTok, err := dec.Token()
+				if err != nil {
+					return ""
+				}
+				key, ok := keyTok.(string)
+				if !ok {
+					// 跳过 value
+					var skip json.RawMessage
+					if err := dec.Decode(&skip); err != nil {
+						return ""
+					}
+					continue
+				}
+				// 检查是否为常见路径字段
+				if isPathKey(key) {
+					var val string
+					if err := dec.Decode(&val); err == nil && val != "" {
+						return val
+					}
+					// value 不是 string，继续扫描
+					var skip json.RawMessage
+					_ = dec.Decode(&skip)
+					continue
+				}
+				// 跳过 value
+				var skip json.RawMessage
+				if err := dec.Decode(&skip); err != nil {
+					return ""
+				}
+			}
+			return ""
+		}
+		// 跳过非对象起始 token
 	}
-	return ""
+}
+
+// isPathKey 判断 key 是否为常见的路径参数名
+func isPathKey(key string) bool {
+	switch key {
+	case "path", "file_path", "target_dir", "workdir", "directory", "output_path":
+		return true
+	}
+	return false
 }
