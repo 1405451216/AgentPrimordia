@@ -19,9 +19,21 @@ var ErrBudgetExceeded = errors.New("budget exceeded")
 
 var ErrNoToolkit = errors.New("no toolkit configured")
 
+// getOrInitExecutor 懒加载返回缓存的 Executor。优化（Task 1.5）：避免每轮工具调用都 NewExecutor。
+func (a *ReActAgent) getOrInitExecutor() *tools.Executor {
+	a.toolExecutorOnce.Do(func() {
+		tk := a.getToolkit()
+		if tk == nil {
+			return
+		}
+		a.toolExecutor = tools.NewExecutor(tk)
+	})
+	return a.toolExecutor
+}
+
 // executeTool runs a single tool call
 func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult, error) {
-	if a.config.Toolkit == nil {
+	if a.getToolkit() == nil {
 		return &ToolResult{
 			ToolCallID: tc.ID,
 			Content:    "error: no toolkit configured",
@@ -29,7 +41,15 @@ func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult,
 		}, ErrNoToolkit
 	}
 
-	executor := tools.NewExecutor(a.config.Toolkit)
+	executor := a.getOrInitExecutor()
+	if executor == nil {
+		return &ToolResult{
+			ToolCallID: tc.ID,
+			Content:    "error: failed to initialize tool executor",
+			IsError:    true,
+		}, ErrNoToolkit
+	}
+
 	fc := tools.FunctionCall{
 		ID:   tc.ID,
 		Name: tc.Name,
@@ -53,30 +73,9 @@ func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult,
 }
 
 // callToolsWithRetry calls LLM with function calling support, with retry on transient errors
-func (a *ReActAgent) callToolsWithRetry(ctx context.Context, messages []llm.ChatMessage, toolDefs []map[string]any) (*llm.ToolCallResponse, error) {
-	definitions := make([]llm.ToolDefinition, 0, len(toolDefs))
-	for _, def := range toolDefs {
-		fn, ok := def["function"].(map[string]any)
-		if !ok {
-			continue
-		}
-		typ, _ := def["type"].(string)
-		name, _ := fn["name"].(string)
-		desc, _ := fn["description"].(string)
-		params, _ := fn["parameters"].(map[string]any)
-		if name == "" {
-			continue
-		}
-		definitions = append(definitions, llm.ToolDefinition{
-			Type: typ,
-			Function: llm.FunctionDefinition{
-				Name:        name,
-				Description: desc,
-				Parameters:  params,
-			},
-		})
-	}
-
+// 优化（Task 2.5）：直接接受 []llm.ToolDefinition 而非 []map[string]any，
+// 由调用方使用 convertToolDefsToLLMDefinitions 一次性转换，避免每轮重复反解。
+func (a *ReActAgent) callToolsWithRetry(ctx context.Context, messages []llm.ChatMessage, definitions []llm.ToolDefinition) (*llm.ToolCallResponse, error) {
 	req := &llm.ToolCallRequest{
 		Messages: messages,
 		Tools:    definitions,

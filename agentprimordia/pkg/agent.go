@@ -209,7 +209,7 @@ var (
 	//
 	// Deprecated: 使用 NewAgent 代替。NewReActAgent 暴露了 14 个已废弃的 ReActConfig 字段，
 	// 容易导致误用。NewAgent 通过 Functional Options 注入能力，构造后不可变。
-	// NewReActAgent 将在 v2.0.0 移除。
+	// Removed in v2.0.0.
 	// 迁移指南: ecosystem/docs/migration/v0-deprecations.md
 	NewReActAgent = agent.NewReActAgent
 	// NewPromptTemplate 创建支持变量注入的提示词模板

@@ -10,6 +10,7 @@ import (
 //
 // Deprecated: 使用 Option 代替。保留为类型别名以维持向后兼容，
 // v0.7.0 起 NewAgent 直接接受 Option 类型。
+// Removed in v2.0.0.
 type AgentOption = Option
 
 // NewAgent 是创建 Agent 的推荐入口（v0.7.0 起）。

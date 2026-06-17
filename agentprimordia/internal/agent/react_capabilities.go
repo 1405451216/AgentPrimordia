@@ -8,6 +8,7 @@ import (
 
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
+	"agentprimordia/internal/tools"
 )
 
 // initSelf 初始化自引用，必须在构造后调用（因为需要返回值赋值后再设置）
@@ -20,36 +21,36 @@ func (a *ReActAgent) initSelf() {
 // ===== 协议式微内核：接口发现辅助方法 =====
 // 引擎通过 a.self.(XxxCapable) 检测能力，优先使用接口发现，回退到 config 字段
 
-// getMemoryStore 获取记忆存储，优先通过 MemoryCapable 接口发现
+// getMemoryStore 获取记忆存储，通过 MemoryCapable 接口发现
 func (a *ReActAgent) getMemoryStore() MemoryStore {
-	if c, ok := a.self.(MemoryCapable); ok && c.GetMemoryStore() != nil {
+	if c, ok := a.self.(MemoryCapable); ok {
 		return c.GetMemoryStore()
 	}
-	return a.config.Memory
+	return nil
 }
 
-// getRAGConfig 获取 RAG 配置，优先通过 RAGCapable 接口发现
+// getRAGConfig 获取 RAG 配置，通过 RAGCapable 接口发现
 func (a *ReActAgent) getRAGConfig() *RAGConfig {
-	if c, ok := a.self.(RAGCapable); ok && c.GetRAGConfig() != nil {
+	if c, ok := a.self.(RAGCapable); ok {
 		return c.GetRAGConfig()
 	}
-	return a.config.RAG
+	return nil
 }
 
-// getEventPublisher 获取事件发布器，优先通过 EventCapable 接口发现
+// getEventPublisher 获取事件发布器，通过 EventCapable 接口发现
 func (a *ReActAgent) getEventPublisher() EventPublisher {
-	if c, ok := a.self.(EventCapable); ok && c.GetEventPublisher() != nil {
+	if c, ok := a.self.(EventCapable); ok {
 		return c.GetEventPublisher()
 	}
-	return a.config.EventPublisher
+	return nil
 }
 
-// getMetricsRecorder 获取指标记录器，优先通过 MetricsCapable 接口发现
+// getMetricsRecorder 获取指标记录器，通过 MetricsCapable 接口发现
 func (a *ReActAgent) getMetricsRecorder() MetricsRecorder {
-	if c, ok := a.self.(MetricsCapable); ok && c.GetMetricsRecorder() != nil {
+	if c, ok := a.self.(MetricsCapable); ok {
 		return c.GetMetricsRecorder()
 	}
-	return a.config.Metrics
+	return nil
 }
 
 // getLabeledRecorder 尔回带标签维度的 MetricsRecorder（可能为 nil）
@@ -63,7 +64,12 @@ func (a *ReActAgent) getLabeledRecorder() LabeledMetricsRecorder {
 }
 
 // recordLLM 记录 LLM 调用，优先使用带标签的记录器（内部已调用 RecordLLMCall）
+// 优化（Task 2）：当 capCache 可用时使用缓存的 provider/model，避免重复 Model.Info() 调用。
 func (a *ReActAgent) recordLLM(duration time.Duration, err error) {
+	if a.capCache != nil && a.capCache.labeledRecorder != nil {
+		a.capCache.labeledRecorder.RecordLLMCallWithLabels(duration, err, a.capCache.provider, a.capCache.model)
+		return
+	}
 	if lm := a.getLabeledRecorder(); lm != nil {
 		provider, model := "", ""
 		if info := a.config.Model.Info(); info.Name != "" {
@@ -77,7 +83,12 @@ func (a *ReActAgent) recordLLM(duration time.Duration, err error) {
 }
 
 // recordTool 记录工具调用，优先使用带标签的记录器（内部已调用 RecordToolCall）
+// 优化（Task 2）：使用缓存的 labeledRecorder。
 func (a *ReActAgent) recordTool(duration time.Duration, err error, toolName string) {
+	if a.capCache != nil && a.capCache.labeledRecorder != nil {
+		a.capCache.labeledRecorder.RecordToolCallWithLabels(duration, err, toolName)
+		return
+	}
 	if lm := a.getLabeledRecorder(); lm != nil {
 		lm.RecordToolCallWithLabels(duration, err, toolName)
 	} else if m := a.getMetricsRecorder(); m != nil {
@@ -86,7 +97,12 @@ func (a *ReActAgent) recordTool(duration time.Duration, err error, toolName stri
 }
 
 // recordTurn 记录 Turn 耗时，优先使用带标签的记录器（内部已调用 RecordTurn）
+// 优化（Task 2）：使用缓存的 labeledRecorder。
 func (a *ReActAgent) recordTurn(duration time.Duration) {
+	if a.capCache != nil && a.capCache.labeledRecorder != nil {
+		a.capCache.labeledRecorder.RecordTurnWithAgent(duration, a.config.Name)
+		return
+	}
 	if lm := a.getLabeledRecorder(); lm != nil {
 		lm.RecordTurnWithAgent(duration, a.config.Name)
 	} else if m := a.getMetricsRecorder(); m != nil {
@@ -94,52 +110,60 @@ func (a *ReActAgent) recordTurn(duration time.Duration) {
 	}
 }
 
-// getTracer 获取追踪器，优先通过 TraceCapable 接口发现
+// getTracer 获取追踪器，通过 TraceCapable 接口发现
 func (a *ReActAgent) getTracer() Tracer {
-	if c, ok := a.self.(TraceCapable); ok && c.GetTracer() != nil {
+	if c, ok := a.self.(TraceCapable); ok {
 		return c.GetTracer()
 	}
-	return a.config.Tracer
+	return nil
 }
 
-// getCostTracker 获取成本追踪器，优先通过 CostCapable 接口发现
+// getCostTracker 获取成本追踪器，通过 CostCapable 接口发现
 func (a *ReActAgent) getCostTracker() *CostTracker {
-	if c, ok := a.self.(CostCapable); ok && c.GetCostTracker() != nil {
+	if c, ok := a.self.(CostCapable); ok {
 		return c.GetCostTracker()
 	}
-	return a.config.CostTracker
+	return nil
 }
 
-// getCheckpointStore 获取检查点存储，优先通过 CheckpointCapable 接口发现
+// getCheckpointStore 获取检查点存储，通过 CheckpointCapable 接口发现
 func (a *ReActAgent) getCheckpointStore() persist.CheckpointStore {
-	if c, ok := a.self.(CheckpointCapable); ok && c.GetCheckpointStore() != nil {
+	if c, ok := a.self.(CheckpointCapable); ok {
 		return c.GetCheckpointStore()
 	}
-	return a.config.CheckpointStore
+	return nil
 }
 
-// getContextWindowStrategy 获取上下文窗口策略，优先通过 ContextWindowCapable 接口发现
+// getContextWindowStrategy 获取上下文窗口策略，通过 ContextWindowCapable 接口发现
 func (a *ReActAgent) getContextWindowStrategy() ContextWindowStrategy {
-	if c, ok := a.self.(ContextWindowCapable); ok && c.GetContextWindowStrategy() != nil {
+	if c, ok := a.self.(ContextWindowCapable); ok {
 		return c.GetContextWindowStrategy()
 	}
-	return a.config.ContextWindow
+	return nil
 }
 
-// getSummarizer 获取摘要提取器，优先通过 SummarizerCapable 接口发现
+// getSummarizer 获取摘要提取器，通过 SummarizerCapable 接口发现
 func (a *ReActAgent) getSummarizer() memory.SummaryExtractor {
-	if c, ok := a.self.(SummarizerCapable); ok && c.GetSummarizer() != nil {
+	if c, ok := a.self.(SummarizerCapable); ok {
 		return c.GetSummarizer()
 	}
-	return a.config.Summarizer
+	return nil
 }
 
-// getFileScope 获取文件作用域，优先通过 FileScopeCapable 接口发现
+// getFileScope 获取文件作用域，通过 FileScopeCapable 接口发现
 func (a *ReActAgent) getFileScope() []string {
-	if c, ok := a.self.(FileScopeCapable); ok && c.GetFileScope() != nil {
+	if c, ok := a.self.(FileScopeCapable); ok {
 		return c.GetFileScope()
 	}
-	return a.config.FileScope
+	return nil
+}
+
+// getToolkit 获取工具注册表，通过 ToolkitCapable 接口发现
+func (a *ReActAgent) getToolkit() *tools.Registry {
+	if c, ok := a.self.(ToolkitCapable); ok {
+		return c.GetToolkit()
+	}
+	return nil
 }
 
 func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
@@ -167,17 +191,43 @@ func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	return nil
 }
 
+// hasEventSubscriber 快速检查是否有事件订阅者，用于避免在热点路径上构造 payload map。
+// 优化（Task 3）：通过 capCache 直接检查，避免接口断言和 map 分配。
+func (a *ReActAgent) hasEventSubscriber() bool {
+	if a.capCache != nil {
+		return a.capCache.eventPublisher != nil
+	}
+	return a.getEventPublisher() != nil
+}
+
 // publishEvent 向 EventPublisher 发布事件，自动注入 request_id
+// 优化（Task 3）：在确认订阅者存在前不做任何工作；通过 capCache 缓存 EventPublisher
+// 以避免每次重复类型断言。
 func (a *ReActAgent) publishEvent(eventType string, payload any) {
-	if ep := a.getEventPublisher(); ep != nil {
-		// 如果 payload 是 map[string]string，注入 request_id
-		if m, ok := payload.(map[string]string); ok {
+	// 优先使用 capCache 中的 EventPublisher（一次 Run 期间不变）
+	ep := EventPublisher(nil)
+	if a.capCache != nil {
+		ep = a.capCache.eventPublisher
+	} else {
+		ep = a.getEventPublisher()
+	}
+	if ep == nil {
+		return
+	}
+	// 如果 payload 是 map[string]string，注入 request_id
+	// 优化：避免在调用前预先构造大 map；当订阅者存在时才构造
+	if m, ok := payload.(map[string]string); ok {
+		// 仅当存在订阅者时填充 request_id（已通过 ep != nil 短路）
+		if a.capCache != nil {
+			m["request_id"] = a.capCache.requestID
+		} else {
 			a.mu.Lock()
-			m["request_id"] = a.currentRequestID
+			reqID := a.currentRequestID
 			a.mu.Unlock()
+			m["request_id"] = reqID
 		}
-		if err := ep.PublishAsync(eventType, a.config.Name, payload); err != nil {
-			a.logger.Warn("发布事件失败", "error", err, "type", eventType)
-		}
+	}
+	if err := ep.PublishAsync(eventType, a.config.Name, payload); err != nil {
+		a.logger.Warn("发布事件失败", "error", err, "type", eventType)
 	}
 }

@@ -10,7 +10,13 @@ import (
 	"agentprimordia/internal/persist"
 )
 
-// saveMemory 将消息保存到 Memory
+// saveMemoryChBuffer 是异步 saveMemory 队列容量。
+// 高吞吐场景下消息数远大于此值时会触发丢弃，但持久化路径不应阻塞主循环。
+const saveMemoryChBuffer = 256
+
+// saveMemory 将消息保存到 Memory。
+// 优化（Task 1）：将 mem.Add() 写入异步化到独立的 goroutine 中，
+// 避免 SQLite 同步写入阻塞 ReAct 主循环。
 func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 	mem := a.getMemoryStore()
 	if mem == nil {
@@ -26,8 +32,19 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 	if ep.SessionID == "" {
 		ep.SessionID = a.config.Name
 	}
-	if err := mem.Add(ctx, ep); err != nil {
-		a.logger.Warn("保存记忆失败", "error", err, "role", msg.Role)
+
+	// 非阻塞提交到当前 Run 的异步写入 channel。
+	// 优化（Task 1）：channel 满时丢弃并记录告警，避免阻塞主循环。
+	// 注意：不要在 a 上保存 WaitGroup，因为 flushMemoryWriter 与 saveMemory 的并发
+	// 访问同一字段会引发 TOCTOU 竞态。WaitGroup 由 consume goroutine 内部维护，
+	// flushMemoryWriter 通过 doneCh 等待。
+	submitCh := a.getMemoryWriterCh(mem)
+
+	select {
+	case submitCh <- ep:
+	default:
+		a.logger.Warn("异步记忆队列已满，丢弃写入", "role", msg.Role)
+		return
 	}
 
 	// 异步提取摘要（绑定到 agent 的 hookCtx 防止泄漏）
@@ -59,6 +76,58 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 				a.logger.Warn("异步摘要存储失败", "id", epID, "error", err)
 			}
 		}()
+	}
+}
+
+// getMemoryWriterCh 返回当前 Run() 期间的异步写入 channel。
+// 优化（Task 1）：每个 Run 都有自己的 channel 和 goroutine，关闭后随 Run 退出，
+// 下次 Run 重新创建。这样可以安全支持同一个 agent 的多次连续 Run() 调用。
+//
+// 闭包内的 wg 和 doneCh 不与 agent 字段共享，避免与 flushMemoryWriter 的并发 race。
+func (a *ReActAgent) getMemoryWriterCh(mem MemoryStore) chan *memory.Episode {
+	a.memorySetupMu.Lock()
+	defer a.memorySetupMu.Unlock()
+	if a.memoryCh == nil {
+		ch := make(chan *memory.Episode, saveMemoryChBuffer)
+		a.memoryCh = ch
+		// 启动 consume goroutine
+		doneCh := make(chan struct{})
+		a.memoryDoneCh = doneCh
+		go func() {
+			defer close(doneCh)
+			for ep := range ch {
+				// 使用独立的 context，避免 ctx 取消导致最后一次写入丢失
+				writeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				if err := mem.Add(writeCtx, ep); err != nil {
+					a.logger.Warn("保存记忆失败", "error", err, "role", ep.Role)
+				}
+				cancel()
+			}
+		}()
+	}
+	return a.memoryCh
+}
+
+// flushMemoryWriter 关闭异步写入队列并等待所有待写入完成。
+// 应在 agent 运行结束（reactLoopEngine 的 defer）时调用。
+// 关闭后下次 saveMemory 会重新创建 channel 和 goroutine。
+func (a *ReActAgent) flushMemoryWriter() {
+	a.memorySetupMu.Lock()
+	ch := a.memoryCh
+	doneCh := a.memoryDoneCh
+	// 清空字段：下次 saveMemory 触发重新创建
+	a.memoryCh = nil
+	a.memoryDoneCh = nil
+	a.memorySetupMu.Unlock()
+
+	if ch == nil {
+		return
+	}
+	// 关闭 channel，使 consume goroutine 退出 range 循环
+	close(ch)
+	// 等待 consume goroutine 退出（确保所有 mem.Add() 完成）
+	if doneCh != nil {
+		<-doneCh
 	}
 }
 

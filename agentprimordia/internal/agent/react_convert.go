@@ -32,7 +32,7 @@ func convertToLLMMessages(history []Message) []llm.ChatMessage {
 				}
 			}
 		}
-		if m.Role == RoleTool {
+		if m.Role == RoleTool && len(m.Metadata.Extra) > 0 {
 			if id, ok := m.Metadata.Extra["tool_call_id"]; ok {
 				msg.ToolCallID = id
 			}
@@ -43,6 +43,76 @@ func convertToLLMMessages(history []Message) []llm.ChatMessage {
 		msgs = append(msgs, msg)
 	}
 	return msgs
+}
+
+// convertToOpenAIMessages 直接将 Message 切片转换为 OpenAI 兼容的 []map[string]any。
+// 优化（Task 2.5）：消除历史中的双重转换（Message -> ChatMessage -> map[string]any），
+// 在长对话（20+ 轮）中显著降低分配开销。
+func convertToOpenAIMessages(history []Message) []map[string]any {
+	msgs := make([]map[string]any, 0, len(history))
+	for _, m := range history {
+		content := m.Content
+		if m.HasMultimodal() {
+			content = buildMultimodalContent(m.ContentParts)
+		}
+
+		msg := map[string]any{
+			"role":    string(m.Role),
+			"content": content,
+		}
+
+		if m.Role == RoleAssistant && len(m.ToolCalls) > 0 {
+			toolCalls := make([]map[string]any, len(m.ToolCalls))
+			for j, tc := range m.ToolCalls {
+				toolCalls[j] = map[string]any{
+					"id":   tc.ID,
+					"type": "function",
+					"function": map[string]any{
+						"name":      tc.Name,
+						"arguments": tc.Args,
+					},
+				}
+			}
+			msg["tool_calls"] = toolCalls
+		}
+
+		if m.Role == RoleTool {
+			if id, ok := m.Metadata.Extra["tool_call_id"]; ok {
+				msg["tool_call_id"] = id
+			}
+		}
+
+		msgs = append(msgs, msg)
+	}
+	return msgs
+}
+
+// convertToolDefsToLLMDefinitions 将 []map[string]any 形式的工具定义反解为 []llm.ToolDefinition。
+// 优化（Task 2.5）：调用点直接持有 []llm.ToolDefinition 避免重复反解。
+func convertToolDefsToLLMDefinitions(toolDefs []map[string]any) []llm.ToolDefinition {
+	definitions := make([]llm.ToolDefinition, 0, len(toolDefs))
+	for _, def := range toolDefs {
+		fn, ok := def["function"].(map[string]any)
+		if !ok {
+			continue
+		}
+		typ, _ := def["type"].(string)
+		name, _ := fn["name"].(string)
+		desc, _ := fn["description"].(string)
+		params, _ := fn["parameters"].(map[string]any)
+		if name == "" {
+			continue
+		}
+		definitions = append(definitions, llm.ToolDefinition{
+			Type: typ,
+			Function: llm.FunctionDefinition{
+				Name:        name,
+				Description: desc,
+				Parameters:  params,
+			},
+		})
+	}
+	return definitions
 }
 
 // buildMultimodalContent 将 ContentParts 转换为 OpenAI 兼容的多模态 content JSON 字符串

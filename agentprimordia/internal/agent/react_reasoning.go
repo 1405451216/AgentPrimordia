@@ -4,13 +4,16 @@ package agent
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"agentprimordia/internal/llm"
 )
 
 // syncReasoning 非流式推理阶段
-func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMessage, toolDefs []map[string]any, llmStart time.Time) (Thought, error) {
+// 优化（Task 2.5）：toolDefs 一次性转换为 []llm.ToolDefinition 并在内部复用，
+// 避免每轮 LLM 调用都进行 map 反解。
+func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMessage, toolDefs []llm.ToolDefinition, llmStart time.Time) (Thought, error) {
 	var thought Thought
 
 	if len(toolDefs) > 0 {
@@ -48,15 +51,22 @@ func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMe
 }
 
 // streamReasoning 流式推理阶段
-// 先尝试 Stream 接口，失败则回退到非流式调用
-func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMessages []llm.ChatMessage, toolDefs []map[string]any, llmStart time.Time) Thought {
+// 先尝试 Stream 接口，失败则回退到非流式调用。
+// 优化（Task 1.5 / Task 2.5）：
+//   - 流式拼接改用 strings.Builder，避免 O(n^2) 的字符串拼接
+//   - toolDefs 一次性转换，复用传入的 []llm.ToolDefinition，不再重复 tk.Definitions()
+func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMessages []llm.ChatMessage, toolDefs []llm.ToolDefinition, llmStart time.Time) Thought {
 	streamCh, streamErr := a.config.Model.Stream(ctx, &llm.CompletionRequest{
 		Messages:    llmMessages,
 		Temperature: llm.Float64Ptr(a.config.Temperature),
 	})
 
 	if streamErr == nil {
-		var fullContent string
+		// 优化（Task 1.5）：使用 strings.Builder 拼接流式内容，O(n) 复杂度
+		var contentBuilder strings.Builder
+		// 预分配容量以减少 realloc（典型 4K 流式响应）
+		contentBuilder.Grow(4096)
+
 		for chunk := range streamCh {
 			if ctx.Err() != nil {
 				_ = a.lifecycle.SetStatus(StatusCancelled)
@@ -64,24 +74,22 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 				return Thought{}
 			}
 			if chunk.Content != "" {
-				fullContent += chunk.Content
+				contentBuilder.WriteString(chunk.Content)
 				a.emitStream(cfg, StreamEvent{Type: StreamEventToken, Content: chunk.Content})
 			}
 			if chunk.Done {
 				break
 			}
 		}
-		thought := Thought{Content: fullContent}
+		thought := Thought{Content: contentBuilder.String()}
 
-		if a.config.Toolkit != nil {
-			td := a.config.Toolkit.Definitions()
-			if len(td) > 0 {
-				resp, err := a.callToolsWithRetry(ctx, llmMessages, td)
-				if err == nil && len(resp.ToolCalls) > 0 {
-					thought = Thought{
-						Content:   resp.Content,
-						ToolCalls: convertToToolCalls(resp.ToolCalls),
-					}
+		// 优化（Task 2.5）：直接复用外层传入的 toolDefs，不再调用 tk.Definitions()
+		if len(toolDefs) > 0 {
+			resp, err := a.callToolsWithRetry(ctx, llmMessages, toolDefs)
+			if err == nil && len(resp.ToolCalls) > 0 {
+				thought = Thought{
+					Content:   resp.Content,
+					ToolCalls: convertToToolCalls(resp.ToolCalls),
 				}
 			}
 		}

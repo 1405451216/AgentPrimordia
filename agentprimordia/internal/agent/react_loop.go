@@ -6,21 +6,26 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/persist"
+	"agentprimordia/internal/tools"
 )
 
 // memoryIDCounter 用于生成唯一 MemoryEpisode ID
 var memoryIDCounter int64
 
-// nextMemoryID 生成唯一的记忆 ID
+// nextMemoryID 生成唯一的记忆 ID（优化：避免 fmt.Sprintf）
 func nextMemoryID() string {
 	n := atomic.AddInt64(&memoryIDCounter, 1)
-	return fmt.Sprintf("msg_%d_%d", time.Now().UnixNano(), n)
+	// 使用固定格式，避免运行时格式化
+	ts := time.Now().UnixNano()
+	return "msg_" + strconv.FormatInt(ts, 10) + "_" + strconv.FormatInt(n, 10)
 }
 
 // ===== 集成接口 =====
@@ -34,7 +39,8 @@ type MemoryStore interface {
 
 // MemoryEpisode 是 Agent 使用的一集记忆（已废弃，使用 memory.Episode）
 //
-// Deprecated: 使用 memory.Episode 代替，将在 v2.0.0 移除。
+// Deprecated: 使用 memory.Episode 代替。
+// Removed in v2.0.0.
 type MemoryEpisode = memory.Episode
 
 // EventPublisher 是 Agent 所需的事件发布接口
@@ -96,6 +102,9 @@ type ReActAgent struct {
 	// currentRequestID 当前运行的请求 ID，用于可观测性关联
 	currentRequestID string
 
+	// memWg 追踪异步记忆写入 goroutine，agent 结束时等待刷盘
+	memWg sync.WaitGroup
+
 	// hookCtx 用于 fireHook 调用，绑定到当前运行的 context
 	// 确保 agent 取消时 hook 也能被取消
 	hookCtx context.Context
@@ -104,11 +113,29 @@ type ReActAgent struct {
 	// 用于协议式微内核的接口发现：引擎通过 a.self.(XxxCapable) 检测能力
 	// 默认指向自身；WithXxx 链式调用时更新为 CapabilityAgent
 	self Agent
+
+	// ===== Task 1: saveMemory 异步化 =====
+	// 每个 Run() 都有独立的 channel + goroutine + doneCh
+	// flushMemoryWriter 关闭 channel 后等待 doneCh，下次 Run 重新创建
+	memoryCh      chan *memory.Episode
+	memoryDoneCh  chan struct{}
+	memorySetupMu sync.Mutex
+
+	// ===== Task 1.5: Executor 复用 =====
+	// 缓存的 *tools.Executor，避免每轮工具调用时重新分配
+	toolExecutor     *tools.Executor
+	toolExecutorOnce sync.Once
+
+	// ===== Task 2: 能力查找缓存 =====
+	// 单次 Run() 期间不变的能力引用，reactLoopEngine 入口处一次性查找
+	// runLoop 内通过 capCache 访问，避免每轮重复类型断言
+	capCache *capabilityCache
 }
 
 // NewReActAgent creates a new ReAct-based agent
 //
 // Deprecated: 使用 NewAgent 代替。NewReActAgent 仅接受标量配置，能力通过链式 API 注入。
+// Removed in v2.0.0.
 // NewAgent 通过 Functional Options 注入能力，构造后不可变。
 // 迁移指南: ecosystem/docs/migration/v0-deprecations.md
 func NewReActAgent(cfg ReActConfig) *ReActAgent {
@@ -143,6 +170,58 @@ type loopConfig struct {
 	streamCh  chan StreamEvent
 	streamCtx context.Context
 	requestID string
+}
+
+// capabilityCache 缓存单次 Run() 期间不变的能力查找结果。
+// 优化（Task 2）：ReAct 循环中每轮调用的 getTracer/getCostTracker/getMemoryStore 等
+// 在 Run() 入口一次性查找并缓存到此处，避免每轮重复类型断言。
+type capabilityCache struct {
+	requestID        string
+	tracer           Tracer
+	costTracker      *CostTracker
+	memoryStore      MemoryStore
+	metricsRecorder  MetricsRecorder
+	labeledRecorder  LabeledMetricsRecorder
+	eventPublisher   EventPublisher
+	checkpointStore  persist.CheckpointStore
+	contextWindow    ContextWindowStrategy
+	summarizer       memory.SummaryExtractor
+	fileScope        []string
+	toolkit          *tools.Registry
+	systemInfoCached bool
+	provider         string
+	model            string
+}
+
+// resolveCapabilities 一次性查找所有能力并填充到 capabilityCache。
+// 必须在 reactLoopEngine 入口处调用，且只在 Run() 期间使用。
+func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
+	c := &capabilityCache{
+		requestID:       requestID,
+		tracer:          a.getTracer(),
+		costTracker:     a.getCostTracker(),
+		memoryStore:     a.getMemoryStore(),
+		metricsRecorder: a.getMetricsRecorder(),
+		eventPublisher:  a.getEventPublisher(),
+		checkpointStore: a.getCheckpointStore(),
+		contextWindow:   a.getContextWindowStrategy(),
+		summarizer:      a.getSummarizer(),
+		fileScope:       a.getFileScope(),
+		toolkit:         a.getToolkit(),
+	}
+	// 缓存 labeled 记录器
+	if c.metricsRecorder != nil {
+		if lm, ok := c.metricsRecorder.(LabeledMetricsRecorder); ok {
+			c.labeledRecorder = lm
+		}
+	}
+	// 缓存模型信息（用于 recordLLM）
+	if info := a.config.Model.Info(); info.Name != "" {
+		c.systemInfoCached = true
+		c.provider = info.Provider
+		c.model = info.Name
+	}
+	return c
 }
 
 // emitStream 在流式模式下向通道发送事件
@@ -205,6 +284,13 @@ func (a *ReActAgent) StreamRun(ctx context.Context, input Message) (<-chan Strea
 // runLoop ReAct 循环核心体，被 reactLoopEngine 和 ResumeFromCheckpoint 共享
 // 封装从 startTurn 开始的主循环逻辑，包括 LLM 调用、工具执行、checkpoint 保存等
 func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn int, cfg loopConfig, totalLLMLatency time.Duration, totalToolLatency time.Duration, toolCount int) (*Response, error) {
+	// 优化（Task 2）：从 capCache 一次性取所有能力引用；capCache 由 reactLoopEngine 在 Run 入口处填充
+	tracer := Tracer(nil)
+	costTracker := (*CostTracker)(nil)
+	if a.capCache != nil {
+		tracer = a.capCache.tracer
+		costTracker = a.capCache.costTracker
+	}
 	for turn := startTurn; turn < a.config.MaxTurns; turn++ {
 		turnStart := time.Now()
 
@@ -226,10 +312,15 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		a.statsMu.Unlock()
 
 		_ = a.fireHook(HookBeforeTurn, &HookContext{Turn: turn})
-		a.publishEvent("turn.start", map[string]int{"turn": turn})
+		// 优化（Task 3）：仅在存在订阅者时构造 payload map，避免热点路径上的堆分配
+		if a.hasEventSubscriber() {
+			a.publishEvent("turn.start", map[string]int{"turn": turn})
+		}
+
+		// 优化（Task 2）：使用外层 capCache 缓存的 tracer，避免每轮重复类型断言
 
 		var turnSpan Span = &NoopSpan{}
-		if tracer := a.getTracer(); tracer != nil {
+		if tracer != nil {
 			turnSpan = tracer.Start(
 				fmt.Sprintf("turn.%d", turn),
 				SpanKindInternal,
@@ -237,7 +328,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			)
 		}
 
-		if ct := a.getCostTracker(); ct != nil && ct.CheckBudget() {
+		if costTracker != nil && costTracker.CheckBudget() {
 			a.logger.Warn("Agent 超出预算", "name", a.config.Name)
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			return &Response{RequestID: cfg.requestID, Error: ErrBudgetExceeded}, ErrBudgetExceeded
@@ -267,16 +358,27 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		trimmedHistory := a.trimContext(history, 0)
 		llmMessages := convertToLLMMessages(trimmedHistory)
 
+		// 优化（Task 2 / Task 2.5）：使用 capCache.toolkit 替代每轮 getToolkit() 调用；
+		// 一次性将 map 形式的 toolDefs 转换为 llm.ToolDefinition，避免下游重复反解
 		var toolDefs []map[string]any
-		if tk := a.getToolkit(); tk != nil {
-			toolDefs = tk.Definitions()
+		var toolkit *tools.Registry
+		if a.capCache != nil {
+			toolkit = a.capCache.toolkit
+		} else {
+			toolkit = a.getToolkit()
 		}
+		if toolkit != nil {
+			toolDefs = toolkit.Definitions()
+		}
+		toolDefinitions := convertToolDefsToLLMDefinitions(toolDefs)
 
 		llmStart := time.Now()
-		a.publishEvent("llm.call", map[string]int{"turn": turn})
+		if a.hasEventSubscriber() {
+			a.publishEvent("llm.call", map[string]int{"turn": turn})
+		}
 
 		var llmSpan Span = &NoopSpan{}
-		if tracer := a.getTracer(); tracer != nil {
+		if tracer != nil {
 			llmSpan = tracer.Start(
 				"llm.call",
 				SpanKindClient,
@@ -288,13 +390,13 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		var thought Thought
 
 		if cfg.stream {
-			thought = a.streamReasoning(ctx, cfg, llmMessages, toolDefs, llmStart)
+			thought = a.streamReasoning(ctx, cfg, llmMessages, toolDefinitions, llmStart)
 			if thought.Content == "" && len(thought.ToolCalls) == 0 {
 				return &Response{RequestID: cfg.requestID, Error: fmt.Errorf("stream reasoning failed")}, fmt.Errorf("stream reasoning failed")
 			}
 		} else {
 			var err error
-			thought, err = a.syncReasoning(ctx, llmMessages, toolDefs, llmStart)
+			thought, err = a.syncReasoning(ctx, llmMessages, toolDefinitions, llmStart)
 			if err != nil {
 				a.handleOnError(ctx, err)
 				_ = a.lifecycle.SetStatus(StatusFailed)
@@ -318,7 +420,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		a.saveMemory(ctx, assistantMsg)
 
 		_ = a.fireHook(HookAfterLLM, &HookContext{Turn: turn})
-		a.publishEvent("llm.response", map[string]int{"turn": turn})
+		if a.hasEventSubscriber() {
+			a.publishEvent("llm.response", map[string]int{"turn": turn})
+		}
 
 		if len(thought.ToolCalls) == 0 {
 			duration := time.Since(a.startTime)
@@ -341,7 +445,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			turnSpan.End()
 			_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
 			a.recordTurn(time.Since(turnStart))
-			a.publishEvent("turn.end", map[string]int{"turn": turn})
+			if a.hasEventSubscriber() {
+				a.publishEvent("turn.end", map[string]int{"turn": turn})
+			}
 
 			a.emitStream(cfg, StreamEvent{Type: StreamEventComplete, Content: thought.Content, Data: response})
 
@@ -358,7 +464,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		for _, tc := range thought.ToolCalls {
 			a.emitStream(cfg, StreamEvent{Type: StreamEventToolCall, Content: tc.Name, Data: tc})
 			_ = a.fireHook(HookBeforeTool, &HookContext{ToolCall: &tc, Turn: turn})
-			a.publishEvent("tool.call", map[string]string{"tool": tc.Name, "turn": fmt.Sprintf("%d", turn)})
+			if a.hasEventSubscriber() {
+				a.publishEvent("tool.call", map[string]string{"tool": tc.Name, "turn": fmt.Sprintf("%d", turn)})
+			}
 
 			if a.hitlMgr != nil && a.hitlMgr.ShouldInterrupt(tc.Name, InterruptToolConfirm) {
 				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] 工具 %s 需要人类确认", tc.Name)})
@@ -405,7 +513,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			toolStart := time.Now()
 
 			var toolSpan Span = &NoopSpan{}
-			if tracer := a.getTracer(); tracer != nil {
+			if tracer != nil {
 				toolSpan = tracer.Start(
 					fmt.Sprintf("tool.%s", tc.Name),
 					SpanKindClient,
@@ -428,7 +536,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			if err != nil {
 				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: fmt.Sprintf("tool %s error: %v", tc.Name, err)})
 				_ = a.fireHook(HookOnError, &HookContext{Error: err, Turn: turn})
-				a.publishEvent("agent.error", map[string]string{"tool": tc.Name, "error": err.Error()})
+				if a.hasEventSubscriber() {
+					a.publishEvent("agent.error", map[string]string{"tool": tc.Name, "error": err.Error()})
+				}
 			} else {
 				a.emitStream(cfg, StreamEvent{Type: StreamEventToolResult, Content: result.Content, Data: result})
 			}
@@ -439,7 +549,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 				}
 			} else {
 				_ = a.fireHook(HookAfterTool, &HookContext{ToolResult: result, Turn: turn})
-				a.publishEvent("tool.result", map[string]string{"tool": tc.Name})
+				if a.hasEventSubscriber() {
+					a.publishEvent("tool.result", map[string]string{"tool": tc.Name})
+				}
 			}
 
 			toolCount++
@@ -454,7 +566,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		turnSpan.End()
 		_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
 		a.recordTurn(time.Since(turnStart))
-		a.publishEvent("turn.end", map[string]int{"turn": turn})
+		if a.hasEventSubscriber() {
+			a.publishEvent("turn.end", map[string]int{"turn": turn})
+		}
 
 		if a.lifecycle.IsGracefulShutdown() {
 			a.logger.Info("Agent 优雅关闭：当前 turn 已完成，退出循环", "name", a.config.Name, "turn", turn+1)
@@ -517,6 +631,10 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 			err = fmt.Errorf("agent panic recovered: %v", r)
 			resp = &Response{RequestID: cfg.requestID, Error: err}
 		}
+		// 优化（Task 1）：flush 异步记忆写入队列，确保所有 saveMemory 调用完成
+		a.flushMemoryWriter()
+		// 清理 capCache，避免下次 Run() 误用旧引用
+		a.capCache = nil
 	}()
 
 	a.startTime = time.Now()
@@ -526,6 +644,9 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	_ = a.lifecycle.SetStatus(StatusRunning)
 	a.stats.Status = StatusRunning
 
+	// 优化（Task 2）：Run() 入口处一次性查找所有能力引用，避免每轮重复类型断言
+	a.capCache = a.resolveCapabilities(cfg.requestID)
+
 	if cfg.stream {
 		a.logger.Info("Agent 流式启动", "name", a.config.Name, "session", a.config.SessionID)
 	} else {
@@ -534,9 +655,9 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	a.publishEvent("agent.start", map[string]string{"name": a.config.Name})
 	_ = a.fireHook(HookBeforeRun, &HookContext{})
 
-	if m := a.getMetricsRecorder(); m != nil {
-		m.IncActiveAgents()
-		defer m.DecActiveAgents()
+	if a.capCache.metricsRecorder != nil {
+		a.capCache.metricsRecorder.IncActiveAgents()
+		defer a.capCache.metricsRecorder.DecActiveAgents()
 	}
 
 	defer func() {
@@ -545,6 +666,8 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 			a.lifecycle.Status() != StatusCancelled {
 			_ = a.lifecycle.SetStatus(StatusCompleted)
 		}
+		// 等待所有异步记忆写入完成，避免 agent 退出后 goroutine 悬空
+		a.memWg.Wait()
 		a.publishEvent("agent.stop", map[string]string{
 			"name":   a.config.Name,
 			"status": string(a.lifecycle.Status()),
