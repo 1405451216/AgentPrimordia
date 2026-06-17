@@ -33,11 +33,11 @@ type Worker interface {
 type Task struct {
 	ID             string         `json:"id"`
 	Name           string         `json:"name"`
-	Type           string         `json:"type"`                       // 任务类型，用于技能匹配
-	Payload        map[string]any `json:"payload"`                    // 任务载荷
-	RequiredSkills []string       `json:"required_skills,omitempty"`  // 所需技能标签
-	Priority       int            `json:"priority"`                   // 优先级（0-10）
-	Timeout        time.Duration  `json:"timeout,omitempty"`          // 单任务超时
+	Type           string         `json:"type"`                      // 任务类型，用于技能匹配
+	Payload        map[string]any `json:"payload"`                   // 任务载荷
+	RequiredSkills []string       `json:"required_skills,omitempty"` // 所需技能标签
+	Priority       int            `json:"priority"`                  // 优先级（0-10）
+	Timeout        time.Duration  `json:"timeout,omitempty"`         // 单任务超时
 }
 
 // TaskStatus 任务状态

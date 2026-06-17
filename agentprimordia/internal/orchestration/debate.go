@@ -37,26 +37,26 @@ type Debater interface {
 
 // Argument 单个论点
 type Argument struct {
-	ID           string    `json:"id"`            // 论点唯一标识
-	DebaterID    string    `json:"debater_id"`    // 提出者ID
-	DebaterName  string    `json:"debater_name"`  // 提出者名称
-	Content      string    `json:"content"`       // 论点内容
-	Round        int       `json:"round"`         // 所属轮次
-	Type         string    `json:"type"`          // 类型: "initial" 或 "response"
-	RespondsTo   string    `json:"responds_to"`   // 回应的论点ID（仅对回应类型有效）
-	Timestamp    time.Time `json:"timestamp"`     // 时间戳
+	ID          string    `json:"id"`           // 论点唯一标识
+	DebaterID   string    `json:"debater_id"`   // 提出者ID
+	DebaterName string    `json:"debater_name"` // 提出者名称
+	Content     string    `json:"content"`      // 论点内容
+	Round       int       `json:"round"`        // 所属轮次
+	Type        string    `json:"type"`         // 类型: "initial" 或 "response"
+	RespondsTo  string    `json:"responds_to"`  // 回应的论点ID（仅对回应类型有效）
+	Timestamp   time.Time `json:"timestamp"`    // 时间戳
 }
 
 // DebateResult 辩论结果
 type DebateResult struct {
-	Topic      string      `json:"topic"`       // 辩论主题
-	Arguments  []Argument  `json:"arguments"`   // 所有论点
-	Consensus  string      `json:"consensus"`   // 共识总结
-	Rounds     int         `json:"rounds"`      // 辩论轮数
-	Agreement  float64     `json:"agreement"`   // 共识度 0-1
-	StartTime  time.Time   `json:"start_time"`  // 开始时间
-	EndTime    time.Time   `json:"end_time"`    // 结束时间
-	Duration   time.Duration `json:"duration"`  // 持续时间
+	Topic     string        `json:"topic"`      // 辩论主题
+	Arguments []Argument    `json:"arguments"`  // 所有论点
+	Consensus string        `json:"consensus"`  // 共识总结
+	Rounds    int           `json:"rounds"`     // 辩论轮数
+	Agreement float64       `json:"agreement"`  // 共识度 0-1
+	StartTime time.Time     `json:"start_time"` // 开始时间
+	EndTime   time.Time     `json:"end_time"`   // 结束时间
+	Duration  time.Duration `json:"duration"`   // 持续时间
 }
 
 // DebateConfig 辩论配置
@@ -171,8 +171,8 @@ func (d *Debate) Execute(ctx context.Context, topic string) (*DebateResult, erro
 		}
 
 		d.emitEvent("round_completed", map[string]any{
-			"round":       round,
-			"total_args":  len(result.Arguments),
+			"round":      round,
+			"total_args": len(result.Arguments),
 		})
 	}
 

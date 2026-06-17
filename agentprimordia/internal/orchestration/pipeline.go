@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	defaultPipelineTimeout   = 10 * time.Minute
-	defaultStageTimeout      = 2 * time.Minute
-	defaultMaxStageRetries   = 3
-	pipelineEventBufferSize  = 50
+	defaultPipelineTimeout  = 10 * time.Minute
+	defaultStageTimeout     = 2 * time.Minute
+	defaultMaxStageRetries  = 3
+	pipelineEventBufferSize = 50
 )
 
 // ErrorStrategy 错误处理策略
@@ -44,43 +44,43 @@ type StageHandler func(ctx context.Context, input string) (output string, err er
 
 // Stage 流水线阶段定义
 type Stage struct {
-	Name       string        `json:"name"`                 // 阶段名称
-	Handler    StageHandler  `json:"-"`                    // 处理函数
-	Timeout    time.Duration `json:"timeout"`              // 阶段超时时间
-	OnError    ErrorStrategy `json:"on_error"`             // 错误处理策略
+	Name       string        `json:"name"`                  // 阶段名称
+	Handler    StageHandler  `json:"-"`                     // 处理函数
+	Timeout    time.Duration `json:"timeout"`               // 阶段超时时间
+	OnError    ErrorStrategy `json:"on_error"`              // 错误处理策略
 	MaxRetries int           `json:"max_retries,omitempty"` // 最大重试次数（仅当 OnError=ErrorRetry 时有效）
 }
 
 // StageResult 单个阶段的执行结果
 type StageResult struct {
-	StageName  string        `json:"stage_name"`           // 阶段名称
-	Status     StepStatus    `json:"status"`               // 执行状态
-	Input      string        `json:"input"`                // 输入数据
-	Output     string        `json:"output,omitempty"`     // 输出数据
-	Error      error         `json:"error,omitempty"`      // 错误信息
-	Duration   time.Duration `json:"duration"`             // 执行耗时
-	StartTime  time.Time     `json:"start_time"`           // 开始时间
-	EndTime    time.Time     `json:"end_time"`             // 结束时间
-	RetryCount int           `json:"retry_count"`          // 重试次数
+	StageName  string        `json:"stage_name"`       // 阶段名称
+	Status     StepStatus    `json:"status"`           // 执行状态
+	Input      string        `json:"input"`            // 输入数据
+	Output     string        `json:"output,omitempty"` // 输出数据
+	Error      error         `json:"error,omitempty"`  // 错误信息
+	Duration   time.Duration `json:"duration"`         // 执行耗时
+	StartTime  time.Time     `json:"start_time"`       // 开始时间
+	EndTime    time.Time     `json:"end_time"`         // 结束时间
+	RetryCount int           `json:"retry_count"`      // 重试次数
 }
 
 // PipelineResult 流水线执行结果
 type PipelineResult struct {
-	StageResults []StageResult  `json:"stage_results"`      // 各阶段结果
-	Duration     time.Duration  `json:"duration"`           // 总执行耗时
-	Status       PipelineStatus `json:"status"`             // 流水线状态
-	StartTime    time.Time      `json:"start_time"`         // 开始时间
-	EndTime      time.Time      `json:"end_time"`           // 结束时间
+	StageResults []StageResult  `json:"stage_results"`          // 各阶段结果
+	Duration     time.Duration  `json:"duration"`               // 总执行耗时
+	Status       PipelineStatus `json:"status"`                 // 流水线状态
+	StartTime    time.Time      `json:"start_time"`             // 开始时间
+	EndTime      time.Time      `json:"end_time"`               // 结束时间
 	FinalOutput  string         `json:"final_output,omitempty"` // 最终输出
-	Error        error          `json:"error,omitempty"`    // 错误信息
+	Error        error          `json:"error,omitempty"`        // 错误信息
 }
 
 // PipelineEvent 流水线事件
 type PipelineEvent struct {
-	Type      string    `json:"type"`               // 事件类型
-	Timestamp time.Time `json:"timestamp"`          // 时间戳
+	Type      string    `json:"type"`                 // 事件类型
+	Timestamp time.Time `json:"timestamp"`            // 时间戳
 	StageName string    `json:"stage_name,omitempty"` // 阶段名称
-	Data      any       `json:"data,omitempty"`     // 事件数据
+	Data      any       `json:"data,omitempty"`       // 事件数据
 }
 
 // Pipeline 流水线协作模式
