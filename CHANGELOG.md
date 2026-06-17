@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-17
+
+### Changed — 强制迁移（破坏性变更）
+
+- `NewReActAgent` 在 ReActConfig 的 14 个 Deprecated 字段任一非 nil 时 **panic**
+- 纯标量配置（Name/SystemPrompt/Model/MaxTurns/Temperature/SessionID/Lifecycle/Logger）仍可用
+- 迁移了 59 处 .go 代码和 11 处 .md 文档中的 Deprecated 字段使用
+- 项目内零处通过 ReActConfig 设置 Deprecated 字段
+
+### Added — v1.0.0 panic 检查
+
+- `internal/agent/deprecated_check.go` — `checkDeprecatedFields` 函数，检查 14 个字段
+- 统一的 panic 消息，包含字段名、迁移建议和指南链接
+
+## [Unreleased] — v0.7.0 API 稳定化 + Deprecated 标记
+
 ### Deprecated — 正式标记旧 API 为 Deprecated
 
 - `NewReActAgent` 函数（internal/agent 和 pkg/）标记 `// Deprecated:` godoc，

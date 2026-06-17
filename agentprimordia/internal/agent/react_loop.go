@@ -197,7 +197,14 @@ type ReActAgent struct {
 // 容易导致误用。NewAgent 通过 Functional Options 注入能力，构造后不可变。
 // NewReActAgent 将在 v2.0.0 移除。
 // 迁移指南: ecosystem/docs/migration/v0-deprecations.md
+//
+// v1.0.0 起：如果 cfg 的 14 个 Deprecated 字段任一非 nil/非零，将 panic。
+// 纯标量配置（Name/SystemPrompt/Model/MaxTurns/Temperature/SessionID/Lifecycle/Logger）
+// 仍可使用，不会 panic。
 func NewReActAgent(cfg ReActConfig) *ReActAgent {
+	// v1.0.0: 强制迁移 — Deprecated 字段非 nil 时 panic
+	checkDeprecatedFields(cfg)
+
 	if cfg.MaxTurns == 0 {
 		cfg.MaxTurns = 50
 	}
