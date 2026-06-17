@@ -52,7 +52,7 @@ func TestPlanCreation(t *testing.T) {
 // TestTaskStatus 测试任务状态
 func TestTaskStatus(t *testing.T) {
 	statuses := []TaskStatus{TaskPending, TaskRunning, TaskCompleted, TaskFailed}
-	
+
 	for _, status := range statuses {
 		if status == "" {
 			t.Errorf("Status should not be empty")
@@ -73,7 +73,7 @@ func TestLLMPlannerDecompose(t *testing.T) {
 	}
 
 	planner := NewLLMPlanner(mockProvider)
-	
+
 	subtasks, err := planner.Decompose(context.Background(), "完成一个复杂任务")
 	if err != nil {
 		t.Fatalf("Decompose failed: %v", err)
@@ -95,7 +95,7 @@ func TestLLMPlannerGeneratePlan(t *testing.T) {
 	}
 
 	planner := NewLLMPlanner(mockProvider)
-	
+
 	plan, err := planner.GeneratePlan(context.Background(), "测试任务")
 	if err != nil {
 		t.Fatalf("GeneratePlan failed: %v", err)

@@ -29,9 +29,9 @@ type SubTask struct {
 
 // Plan 表示执行计划
 type Plan struct {
-	Goal      string     `json:"goal"`
-	SubTasks  []SubTask  `json:"subtasks"`
-	CreatedAt time.Time  `json:"created_at"`
+	Goal      string    `json:"goal"`
+	SubTasks  []SubTask `json:"subtasks"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // TaskStatus 任务状态

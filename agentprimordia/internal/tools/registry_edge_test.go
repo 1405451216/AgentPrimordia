@@ -200,3 +200,71 @@ func TestRegistry_ConcurrentAccess(t *testing.T) {
 		<-done
 	}
 }
+
+func TestRegistry_Definitions_CacheOverwrite(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&mockTool{name: "cached", description: "first", response: "ok"})
+
+	defs1 := reg.Definitions()
+	if len(defs1) != 1 {
+		t.Fatalf("expected 1 def, got %d", len(defs1))
+	}
+
+	// 覆盖注册，验证缓存更新
+	_ = reg.Register(&mockTool{name: "cached", description: "second", response: "ok"})
+	defs2 := reg.Definitions()
+	fn, ok := defs2[0]["function"].(map[string]any)
+	if !ok {
+		t.Fatal("function should be map")
+	}
+	if fn["description"] != "second" {
+		t.Errorf("expected description 'second' after overwrite, got '%v'", fn["description"])
+	}
+
+	// 验证返回的是深拷贝：修改 defs1 不影响 defs2
+	defs1[0]["type"] = "modified"
+	if defs2[0]["type"] != "function" {
+		t.Error("Definitions 应该返回深拷贝，避免调用者污染缓存")
+	}
+}
+
+func TestRegistry_Definitions_CacheIsolation(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&mockTool{
+		name:        "iso",
+		description: "iso tool",
+		params:      json.RawMessage(`{"type":"object","properties":{"x":{"type":"number"}}}`),
+		response:    "ok",
+	})
+
+	defs := reg.Definitions()
+	fn, _ := defs[0]["function"].(map[string]any)
+	params, _ := fn["parameters"].(map[string]any)
+	params["type"] = "modified"
+
+	defs2 := reg.Definitions()
+	fn2, _ := defs2[0]["function"].(map[string]any)
+	params2, _ := fn2["parameters"].(map[string]any)
+	if params2["type"] != "object" {
+		t.Error("parameters 也应该被深拷贝")
+	}
+}
+
+func BenchmarkRegistry_Definitions(b *testing.B) {
+	reg := NewRegistry()
+	for i := 0; i < 20; i++ {
+		name := "tool_" + string(rune('a'+i%26))
+		_ = reg.Register(&mockTool{
+			name:        name,
+			description: "benchmark tool",
+			params:      json.RawMessage(`{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`),
+			response:    "ok",
+		})
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = reg.Definitions()
+	}
+}

@@ -743,9 +743,9 @@ func TestFilterAvailable(t *testing.T) {
 
 func TestSkillMatchScore(t *testing.T) {
 	tests := []struct {
-		workerSkills  []string
+		workerSkills   []string
 		requiredSkills []string
-		expected      int
+		expected       int
 	}{
 		{[]string{"python", "ml"}, []string{"python"}, 1},
 		{[]string{"python", "ml"}, []string{"python", "ml"}, 2},

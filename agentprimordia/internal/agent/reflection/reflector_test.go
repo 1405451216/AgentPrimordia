@@ -52,7 +52,7 @@ func TestCritiqueCreation(t *testing.T) {
 // TestSeverityValues 测试严重程度值
 func TestSeverityValues(t *testing.T) {
 	severities := []Severity{SeverityLow, SeverityMedium, SeverityHigh, SeverityCritical}
-	
+
 	for _, severity := range severities {
 		if severity == "" {
 			t.Errorf("Severity should not be empty")
@@ -76,7 +76,7 @@ func TestLLMReflectorReflect(t *testing.T) {
 	}
 
 	reflector := NewLLMReflector(mockProvider)
-	
+
 	reflection, err := reflector.Reflect(context.Background(), "测试输入", "测试输出")
 	if err != nil {
 		t.Fatalf("Reflect failed: %v", err)
@@ -102,7 +102,7 @@ func TestLLMReflectorCritique(t *testing.T) {
 	}
 
 	reflector := NewLLMReflector(mockProvider)
-	
+
 	critique, err := reflector.Critique(context.Background(), "测试输出")
 	if err != nil {
 		t.Fatalf("Critique failed: %v", err)
@@ -126,7 +126,7 @@ func TestLLMReflectorImprove(t *testing.T) {
 	}
 
 	reflector := NewLLMReflector(mockProvider)
-	
+
 	feedback := &Critique{
 		Corrections: []Correction{
 			{Original: "错误内容", Corrected: "正确内容", Reason: "事实更正"},
@@ -151,7 +151,7 @@ func TestLLMReflectorImproveNoFeedback(t *testing.T) {
 	mockProvider := &mockLLMProvider{}
 
 	reflector := NewLLMReflector(mockProvider)
-	
+
 	output, err := reflector.Improve(context.Background(), "原始输出", nil)
 	if err != nil {
 		t.Fatalf("Improve with nil feedback failed: %v", err)
