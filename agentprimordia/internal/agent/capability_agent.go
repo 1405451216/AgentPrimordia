@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -37,6 +40,9 @@ type CapabilityAgent struct {
 	fileScope   []string
 	cache       llm.LLMCache
 	toolkit     *tools.Registry
+	planner     planning.Planner
+	reflector   reflection.Reflector
+	toolLearner tool_learning.ToolLearner
 }
 
 // ===== Agent 接口委托 =====
@@ -232,4 +238,37 @@ func (c *CapabilityAgent) WithCache(cache llm.LLMCache) *CapabilityAgent {
 func (c *CapabilityAgent) WithToolkit(t *tools.Registry) *CapabilityAgent {
 	c.toolkit = t
 	return c
+}
+
+// WithPlanner 注入任务规划器
+func (c *CapabilityAgent) WithPlanner(p planning.Planner) *CapabilityAgent {
+	c.planner = p
+	return c
+}
+
+// GetPlanner 返回任务规划器
+func (c *CapabilityAgent) GetPlanner() planning.Planner {
+	return c.planner
+}
+
+// WithReflector 注入反思器
+func (c *CapabilityAgent) WithReflector(r reflection.Reflector) *CapabilityAgent {
+	c.reflector = r
+	return c
+}
+
+// GetReflector 返回反思器
+func (c *CapabilityAgent) GetReflector() reflection.Reflector {
+	return c.reflector
+}
+
+// WithToolLearner 注入工具学习器
+func (c *CapabilityAgent) WithToolLearner(tl tool_learning.ToolLearner) *CapabilityAgent {
+	c.toolLearner = tl
+	return c
+}
+
+// GetToolLearner 返回工具学习器
+func (c *CapabilityAgent) GetToolLearner() tool_learning.ToolLearner {
+	return c.toolLearner
 }

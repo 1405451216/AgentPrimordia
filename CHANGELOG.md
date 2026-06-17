@@ -4,6 +4,96 @@
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-06-17
+
+### Added — 新增 3 个 Capable 接口
+
+#### PlanningCapable — 任务规划能力
+- 新增 `PlanningCapable` 接口，支持任务分解和计划生成
+- 实现 `LLMPlanner`，使用 LLM 将复杂任务分解为子任务
+- 支持任务依赖关系（DAG）和状态管理
+- 通过 `WithPlanner()` 链式 API 注入
+
+#### ReflectionCapable — 自我反思能力
+- 新增 `ReflectionCapable` 接口，支持输出反思、批评和改进
+- 实现 `LLMReflector`，多维度评估输出质量
+- 支持问题识别、严重程度分级和自动纠正
+- 通过 `WithReflector()` 链式 API 注入
+
+#### ToolLearningCapable — 工具学习能力
+- 新增 `ToolLearningCapable` 接口，支持工具使用经验学习
+- 实现 `MemoryToolLearner`，基于记忆存储记录工具使用历史
+- 支持最佳实践提取和改进建议生成
+- 通过 `WithToolLearner()` 链式 API 注入
+
+### Added — 新增 3 个内置工具
+
+#### database 工具
+- 支持 SQLite 数据库操作（使用 modernc.org/sqlite 纯 Go 驱动）
+- 支持 query（SELECT）和 execute（INSERT/UPDATE/DELETE）操作
+- 安全措施：只读模式、查询超时、结果集大小限制、SQL 注入防护
+- 参数化查询支持
+
+#### api 工具
+- 支持 REST API 调用（GET/POST/PUT/DELETE/PATCH）
+- 支持 JSON 请求和响应
+- 自动重试机制（可配置）
+- 超时控制、响应缓存、认证支持（Bearer Token、API Key、OAuth）
+- 安全限制：禁止私有 IP、URL 白名单、响应大小限制
+
+#### code_execution 工具
+- 支持 Python、JavaScript、Go 代码安全执行
+- 使用临时文件和进程隔离
+- 资源限制：CPU 时间、内存、网络访问控制
+- 输出截断、环境变量隔离
+- 运行时不可用时返回友好错误
+
+### Added — 新增 3 个协作模式
+
+#### supervisor 模式
+- 主从式任务分配，支持动态添加/移除 Worker
+- 3 种分配策略：RoundRobin（轮询）、LoadBalanced（负载均衡）、SkillBased（技能匹配）
+- 任务重试机制（可配置）
+- 事件发布和统计信息
+
+#### debate 模式
+- 多 Agent 辩论达成共识
+- 支持多轮辩论和共识度计算
+- 参与者管理（添加/移除）
+- 事件发布和辩论结果导出
+
+#### pipeline 模式
+- 流水线式任务处理，支持阶段串联
+- 3 种错误处理策略：Abort（中止）、Skip（跳过）、Retry（重试）
+- 阶段超时控制和重试机制
+- 事件发布和执行结果导出
+
+### Migration Guide
+
+**v2.0.0 → v3.0.0 迁移**：
+
+新功能为可选能力，无需修改现有代码。按需注入：
+
+```go
+// 使用新能力
+agent, _ := NewAgent("bot", "prompt", provider,
+    WithPlanner(planning.NewLLMPlanner(llmProvider)),
+    WithReflector(reflection.NewLLMReflector(llmProvider)),
+    WithToolLearner(tool_learning.NewMemoryToolLearner(mem)),
+)
+
+// 使用新工具
+registry := tools.NewRegistry()
+registry.Register(builtin.NewDatabase())
+registry.Register(builtin.NewAPI())
+registry.Register(builtin.NewCodeExecution())
+
+// 使用新协作模式
+sup := orchestration.NewSupervisor(config, strategy)
+debate := orchestration.NewDebate(config)
+pipeline := orchestration.NewPipeline(config)
+```
+
 ## [2.0.0] - 2026-06-17
 
 ### Removed — 移除 ReActConfig 14 个 Deprecated 字段（破坏性变更）
