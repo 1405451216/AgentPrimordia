@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"agentprimordia/internal/pool"
+	"agentprimordia/internal/tools"
 )
 
 func newTestHandler(t *testing.T) *AdminHandler {
 	t.Helper()
 	p := pool.NewPool(pool.PoolConfig{MaxConcurrency: 5})
 	t.Cleanup(func() { p.Close() })
-	return NewAdminHandler(p)
+	return NewAdminHandler(p, tools.NewRegistry())
 }
 
 func doRequest(t *testing.T, handler http.Handler, method, path string) *httptest.ResponseRecorder {

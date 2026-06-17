@@ -1,0 +1,134 @@
+site_name: AgentPrimordia Documentation
+site_description: Go AI Agent 开发框架官方文档
+site_url: https://docs.agentprimordia.dev
+site_author: AgentPrimordia Team
+
+repo_name: AgentPrimordia/agentprimordia
+repo_url: https://github.com/AgentPrimordia/agentprimordia
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2026 AgentPrimordia Team
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: 切换到暗色模式
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: 切换到亮色模式
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+plugins:
+  - search:
+      separator: '[\s\-\.]+'
+      lang:
+        - zh
+        - en
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - tags
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/AgentPrimordia/agentprimordia
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/agentprimordia
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/AgentPrimordia
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+  alternate:
+    - name: 中文
+      link: /zh/
+      lang: zh
+    - name: English
+      link: /en/
+      lang: en
+
+nav:
+  - 首页: index.md
+  - 快速开始:
+    - 安装指南: getting-started/installation.md
+    - 5分钟入门: getting-started/quickstart.md
+    - 第一个Agent: getting-started/first-agent.md
+  - 核心概念:
+    - Agent架构: concepts/agent.md
+    - ReAct循环: concepts/react-loop.md
+    - 工具系统: concepts/tools.md
+    - 记忆系统: concepts/memory.md
+    - 多Agent编排: concepts/orchestration.md
+  - 使用指南:
+    - 创建Agent: guides/create-agent.md
+    - 添加工具: guides/add-tools.md
+    - 配置记忆: guides/configure-memory.md
+    - 多Agent协作: guides/multi-agent.md
+    - 部署到生产: guides/deployment.md
+  - API参考:
+    - Agent API: api/agent.md
+    - LLM API: api/llm.md
+    - Tools API: api/tools.md
+    - Memory API: api/memory.md
+  - 进阶主题:
+    - 性能优化: advanced/performance.md
+    - 安全最佳实践: advanced/security.md
+    - 自定义Provider: advanced/custom-provider.md
+    - 插件开发: advanced/plugin-development.md
+  - 示例:
+    - 基础示例: examples/basic.md
+    - 工具使用: examples/tools.md
+    - 多Agent: examples/multi-agent.md
+    - 生产案例: examples/production.md
+  - 社区:
+    - 贡献指南: community/contributing.md
+    - 行为准则: community/code-of-conduct.md
+    - 路线图: community/roadmap.md

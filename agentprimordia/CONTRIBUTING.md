@@ -1,375 +1,294 @@
-# 🤝 贡献指南
+# 贡献指南
 
-感谢你对 AgentPrimordia 的关注！我们欢迎所有形式的贡献，包括但不限于：
+感谢您对 AgentPrimordia 项目的关注！我们欢迎各种形式的贡献，包括代码、文档、问题报告和社区支持。
 
-- 🐛 Bug 修复
-- ✨ 新功能
-- 📝 文档改进
-- 🧪 测试用例
-- 💡 建议/想法
-- 🌍 国际化翻译
+## 目录
 
-## 📋 贡献流程
+- [行为准则](#行为准则)
+- [如何贡献](#如何贡献)
+- [开发环境设置](#开发环境设置)
+- [代码规范](#代码规范)
+- [提交规范](#提交规范)
+- [Pull Request 流程](#pull-request-流程)
+- [Issue 报告](#issue-报告)
+- [社区支持](#社区支持)
 
-### 1. 准备工作
+## 行为准则
+
+本项目遵循 [Contributor Covenant](https://www.contributor-covenant.org/) 行为准则。参与贡献即表示您同意遵守此准则，共同维护一个友好、包容的社区环境。
+
+## 如何贡献
+
+### 报告 Bug
+
+1. 首先检查 [现有 Issue](https://github.com/AgentPrimordia/agentprimordia/issues) 是否已报告该问题
+2. 如果没有，创建新的 Issue 并选择 "Bug Report" 模板
+3. 提供清晰的描述、复现步骤和环境信息
+
+### 提出新功能
+
+1. 先在 [Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions) 中讨论您的想法
+2. 获得社区反馈后，创建 Feature Request Issue
+3. 等待维护者确认方向后再开始开发
+
+### 贡献代码
+
+1. Fork 仓库
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 编写代码和测试
+4. 提交更改 (`git commit -m 'feat: add amazing feature'`)
+5. 推送到分支 (`git push origin feature/amazing-feature`)
+6. 创建 Pull Request
+
+### 改进文档
+
+文档同样重要！您可以帮助：
+- 修正拼写和语法错误
+- 改进示例代码
+- 添加教程和指南
+- 翻译文档
+
+## 开发环境设置
+
+### 前置要求
+
+- Go 1.22 或更高版本
+- Git
+- 推荐的 IDE：VS Code、GoLand
+
+### 克隆和设置
 
 ```bash
-# Fork 仓库到你的 GitHub 账户
-# 克隆你的 Fork
-git clone https://github.com/YOUR_USERNAME/agentprimordia.git
+# 克隆仓库
+git clone https://github.com/AgentPrimordia/agentprimordia.git
 cd agentprimordia
 
-# 添加上游仓库（可选）
-git remote add upstream https://github.com/original/agentprimordia.git
+# 安装依赖
+go mod download
 
-# 创建功能分支
-git checkout -b feature/your-feature-name
+# 运行测试
+go test ./...
+
+# 运行示例
+go run cmd/example/hello-agent/main.go
 ```
 
-### 2. 开发规范
+### 项目结构
 
-#### 代码风格
+```
+agentprimordia/
+├── internal/           # 内部实现
+│   ├── agent/         # Agent 核心（ReAct 引擎、工作流、编排、传输、A2A 协议）
+│   ├── llm/           # LLM 提供者（OpenAI/Anthropic/Gemini/Ollama/DeepSeek 等）
+│   ├── memory/        # 记忆系统（SQLite + FTS5 + 向量检索）
+│   ├── tools/         # 工具系统（注册、权限、MCP、插件）
+│   ├── pool/          # Agent 池（多 Agent 调度）
+│   ├── orchestration/ # 工作流编排（DAG/条件/并行/状态机）
+│   ├── persist/       # 状态持久化
+│   ├── prompt/        # 提示词模板
+│   ├── admin/         # 管理面板
+│   ├── debugger/      # 调试工具（Inspector、可视化编辑器）
+│   ├── guardrail/     # 安全护栏
+│   ├── otel/          # OpenTelemetry 集成
+│   ├── metrics/       # 指标导出
+│   ├── concurrency/   # 并发原语
+│   ├── config/        # 配置管理
+│   ├── events/        # 事件系统
+│   └── security/      # 安全工具
+├── pkg/               # 公共 API（类型别名导出）
+├── cmd/               # 命令行工具
+│   ├── ap/           # CLI 工具
+│   ├── admin/        # 管理面板服务
+│   └── example/      # 示例程序
+├── ecosystem/         # 生态系统
+│   ├── plugins/      # 官方插件
+│   ├── examples/     # 完整示例
+│   └── templates/    # 项目模板
+├── operator/          # Kubernetes Operator
+└── docs/              # 文档
+```
 
-- **语言**: Go 1.22+
-- **格式化**: 使用 `gofmt` 或 `go fmt`
-- **注释**: 中文注释（代码注释使用中文）
-- **命名**: 遵循 Go 官方命名规范
+## 代码规范
+
+### Go 代码风格
+
+- 遵循 [Effective Go](https://go.dev/doc/effective_go) 指南
+- 使用 `gofmt` 格式化代码
+- 使用 `golangci-lint` 检查代码质量
+
+```bash
+# 格式化代码
+gofmt -w .
+
+# 运行 linter
+golangci-lint run
+```
+
+### 注释规范
+
+- 所有公共 API 必须有文档注释
+- 使用中文注释解释复杂的业务逻辑
+- 函数注释应说明功能、参数和返回值
 
 ```go
-// ✅ 好的命名和注释
-type MemoryStore struct {
-    db *sql.DB // 数据库连接
-}
-
-// Add 添加一条新的记忆记录
-func (s *MemoryStore) Add(ctx context.Context, episode *Episode) error {
-    // 实现...
+// NewReActAgent 创建一个新的 ReAct Agent 实例
+// 
+// 参数:
+//   - config: Agent 配置，包含名称、系统提示词、模型等
+//
+// 返回:
+//   - *ReActAgent: 配置好的 Agent 实例
+func NewReActAgent(config ReActConfig) *ReActAgent {
+    // ...
 }
 ```
 
-#### TDD 开发模式
+### 测试要求
 
-**强制要求：先写测试！**
+- 所有新功能必须包含单元测试
+- 测试覆盖率目标：80% 以上
+- 使用表驱动测试（table-driven tests）
 
 ```go
-// 步骤1: 先写测试（Red）
-func TestNewFeature(t *testing.T) {
-    result := NewFeature()
-    if result == nil {
-        t.Error("expected non-nil result")
-    }
-}
-
-// 步骤2: 实现功能（Green）
-func NewFeature() *Feature {
-    return &Feature{}
-}
-
-// 步骤3: 重构优化（Refactor）
-```
-
-#### 模块边界
-
-> **2026-06 更新**: Phase 6 起 `agent/` 实际处于依赖顶层（依赖 llm/memory/persist/tools），
-> 旧的"不依赖 pool/memory"描述已不准。详见 `docs/plans/2026-06-04-phase6-implementation.md` §模块边界更新。
-
-```
-internal/
-├── agent/      — ReActLoop 引擎 + 协议式微内核（顶层，依赖 llm/memory/persist/tools）
-├── pool/       — 多 Agent 调度（依赖 agent, tools）
-├── tools/      — 工具系统（独立模块，被 agent/pool 依赖）
-├── memory/     — 记忆存储（独立模块，被 agent 依赖）
-├── llm/        — LLM 抽象层（最底层，被 agent 依赖）
-└── persist/    — 状态持久化（独立模块，被 agent 依赖）
-```
-
-实际依赖图：
-
-```
-        ┌────────────────────────────────────────┐
-        │           agent/  (顶层)               │
-        │   引用 llm, memory, persist, tools    │
-        └────┬───────┬───────┬───────────┬──────┘
-             │       │       │           │
-        ┌────▼─┐ ┌───▼──┐ ┌──▼───┐ ┌────▼────┐
-        │ llm  │ │memory│ │persist│ │  tools  │
-        └──────┘ └──────┘ └───────┘ └────┬────┘
-                                          │
-                                     ┌────▼────┐
-                                     │  pool   │
-                                     └─────────┘
-```
-
-- `internal/*` 之间：`agent/` 处于顶层，可引用下层；下层（llm/memory/persist/tools）不能反向引用 `agent/`
-- `pkg/` 只做类型导出和 re-export，不含业务逻辑
-- `ecosystem/` 与 `internal/` 互不依赖：`ecosystem/plugins/*` 等通过 `tools.Plugin` 协议与核心解耦
-
-#### 流程约束（2026-06 强化）
-
-任何新 Phase 必须先有 `docs/plans/YYYY-MM-DD-phaseN-implementation.md` 才有 commit。Phase 6 是反例（代码先行、文档后补），后续严禁重蹈。
-
-`// Deprecated:` 标注必须包含 `// Removed in vX.Y.`。
-
-#### 提交信息规范
-
-使用 Conventional Commits 格式：
-
-```
-feat: 添加新的 LLM Provider 支持
-fix: 修复 SQLite 并发写入问题
-refactor: 重构工具注册机制
-docs: 更新 API 文档
-test: 添加 Memory 模块集成测试
-chore: 升级依赖版本
-```
-
-### 3. 测试要求
-
-#### 单元测试
-
-每个新功能必须有对应测试：
-
-```go
-func TestYourFunction_EdgeCases(t *testing.T) {
+func TestNewReActAgent(t *testing.T) {
     tests := []struct {
-        name     string
-        input    InputType
-        expected ExpectedType
-        wantErr  bool
+        name    string
+        config  ReActConfig
+        wantErr bool
     }{
-        {"正常情况", normalInput, normalResult, false},
-        {"边界条件", edgeInput, edgeResult, false},
-        {"错误输入", badInput, nil, true},
+        {
+            name: "valid config",
+            config: ReActConfig{
+                Name: "test-agent",
+                Model: mockLLM,
+            },
+            wantErr: false,
+        },
+        // 更多测试用例...
     }
 
-    for _, tc := range tests {
-        t.Run(tc.name, func(t *testing.T) {
-            result, err := YourFunction(tc.input)
-            if (err != nil) != tc.wantErr {
-                t.Errorf("error = %v, wantErr %v", err, tc.wantErr)
-            }
-            if !reflect.DeepEqual(result, tc.expected) {
-                t.Errorf("result = %v, expected %v", result, tc.expected)
-            }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            agent := NewReActAgent(tt.config)
+            // 断言...
         })
     }
 }
 ```
 
-#### 使用临时目录
+## 提交规范
 
-文件相关测试必须使用 `t.TempDir()`：
+我们使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 
-```go
-func TestFileOperation(t *testing.T) {
-    tmpDir := t.TempDir() // 自动清理
-    filePath := filepath.Join(tmpDir, "test.txt")
+### 提交消息格式
 
-    err := WriteFile(filePath, "content")
-    if err != nil {
-        t.Fatalf("WriteFile failed: %v", err)
-    }
+```
+<type>(<scope>): <subject>
 
-    // 测试完成后，tmpDir 会自动删除
-}
+<body>
+
+<footer>
 ```
 
-#### Mock LLM 用于 Agent/Pool 测试
+### Type 类型
 
-```go
-func TestAgentWithMockLLM(t *testing.T) {
-    mockLLM := llm.NewMockLLM()
-    mockLLM.SetResponse("测试响应")
-    mockLLM.SetError(nil)
+- `feat`: 新功能
+- `fix`: Bug 修复
+- `docs`: 文档更新
+- `style`: 代码格式（不影响代码运行）
+- `refactor`: 代码重构
+- `perf`: 性能优化
+- `test`: 测试相关
+- `chore`: 构建过程或辅助工具变动
 
-    agent := agent.NewReActAgent(agent.ReActConfig{
-        Name:  "TestAgent",
-        Model: mockLLM,
-    })
+### 示例
 
-    resp, err := agent.Run(context.Background(), agent.UserMessage("测试"))
-    // 断言...
-}
+```
+feat(agent): 添加流式响应支持
+
+- 实现 StreamRun 方法
+- 支持 SSE 协议
+- 添加流式测试用例
+
+Closes #123
 ```
 
-### 4. PR 流程
+```
+fix(memory): 修复并发访问时的竞态条件
 
-#### 提交 PR 前
+使用 sync.RWMutex 保护共享状态，避免数据竞争。
 
-- [ ] 代码通过 `go build ./...` 编译
-- [ ] 所有测试通过 `go test ./... -v`
-- [ ] 代码格式化 `go fmt ./...`
-- [ ] 无 lint 错误 `golangci-lint run`（如果有配置）
-- [ ] 新功能有对应测试
-- [ ] 文档已更新（如果涉及 API 变更）
-- [ ] Commit message 符合规范
-
-#### PR 模板
-
-```markdown
-## 📝 变更描述
-简要描述这个 PR 做了什么改动
-
-## 🔗 相关 Issue
-Fixes #123
-
-## 📸 截图/演示（如适用）
-[添加截图或 GIF]
-
-## ✅ 变更类型
-- [ ] Bug 修复
-- [ ] 新功能
-- [ ] 破坏性变更
-- [ ] 文档更新
-
-## 🧪 测试说明
-描述如何测试这些变更
-
-## 📚 补充说明
-其他需要审查者注意的信息
+Fixes #456
 ```
 
-## 🎯 贡献方向
+## Pull Request 流程
 
-### 高优先级（欢迎贡献）
+### 创建 PR
 
-1. **新 LLM Provider**
-   - Claude 3.5 Sonnet
-   - Mistral Large
-   - 本地模型支持（llama.cpp）
-   - 更多国内模型（文心一言、讯飞星火等）
+1. 确保所有测试通过：`go test ./...`
+2. 确保代码已格式化：`gofmt -w .`
+3. 更新相关文档
+4. 填写 PR 模板，说明更改内容
+5. 关联相关 Issue
 
-2. **内置工具扩展**
-   - 数据库操作工具（MySQL、PostgreSQL）
-   - Git 操作工具
-   - Docker/K8s 管理工具
-   - Email 发送工具
+### PR 审查
 
-3. **文档和示例**
-   - 视频教程
-   - 博客文章
-   - 最佳实践案例
-   - 多语言文档
+- 至少需要 1 位维护者审查
+- 所有 CI 检查必须通过
+- 解决所有审查意见
 
-4. **性能优化**
-   - 连接池优化
-   - 缓存策略
-   - 批量操作优化
+### 合并策略
 
-### 中等优先级
+- 使用 Squash and Merge 保持提交历史清晰
+- 合并后删除特性分支
 
-5. **UI/可视化**
-   - Web Dashboard
-   - CLI 工具增强
-   - Grafana Dashboard 模板
+## Issue 报告
 
-6. **集成生态**
-   - LangChain 兼容层
-   - OpenAI Plugins 适配器
-   - MCP (Model Context Protocol) 支持
+### Bug Report
 
-7. **安全增强**
-   - RBAC 权限系统
-   - 审计日志
-   - 敏感数据加密
+使用 Bug Report 模板，包含：
+- 清晰的标题和描述
+- 复现步骤
+- 期望行为 vs 实际行为
+- 环境信息（Go 版本、操作系统等）
+- 相关日志或截图
 
-## 🛠️ Pre-commit Hook (Phase 8.4)
+### Feature Request
 
-为强制流程改进（gofmt、Deprecated 标注完整性、CHANGELOG [Unreleased]
-节内容），仓库提供 pre-commit hook：
+使用 Feature Request 模板，包含：
+- 功能描述
+- 使用场景
+- 建议的实现方案（可选）
+- 替代方案（可选）
 
-```bash
-# 方式 1：单仓库使用
-cp scripts/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+## 社区支持
 
-# 方式 2：设为 core.hooksPath（推荐，多 hook 时统一管理）
-git config core.hooksPath .githooks
-```
+### 讨论区
 
-Hook 检查 5 项：
-1. `gofmt -l` 通过
-2. `// Deprecated:` 标注必含 `// Removed in vX.Y.`
-3. `pkg/` 文件 `// Stability:` 块覆盖
-4. 改动 internal/pkg 时建议同步 plan 文档
-5. CHANGELOG `[Unreleased]` 节有内容
+- [GitHub Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions)
+  - 提问和答疑
+  - 功能讨论
+  - 展示项目
+  -  general 交流
 
-跳过方式（紧急情况）：`git commit --no-verify`
+### 即时通讯
 
-CI 镜像（Linux）跑同样检查，确保 PR 合入前流程合规。
-Windows Git Bash 有 `grep -r` 静默丢结果的 bug，hook 在 Windows
-上仅跑 gofmt/CHANGELOG 检查，完整 Deprecated 检查依赖 CI。
+- Discord: [加入服务器](https://discord.gg/agentprimordia)
+- 微信群: 扫码加入（见文档底部）
 
-## 💡 贡献建议
+### 社交媒体
 
-### 初学者友好任务
+- Twitter: [@AgentPrimordia](https://twitter.com/AgentPrimordia)
+- 知乎: [AgentPrimordia](https://www.zhihu.com/org/agentprimordia)
 
-标记为 `good first issue` 的任务适合首次贡献者：
-- 文档错别字修复
-- 示例代码改进
-- 简单的 Bug 修复
-- 测试覆盖率提升
+## 贡献者感谢
 
-### 如何选择任务
+所有贡献者都会出现在 [CONTRIBUTORS.md](./CONTRIBUTORS.md) 中。
 
-1. 查看 [Issues](https://github.com/your-org/agentprimordia/issues)
-2. 筛选标签：`good first issue`, `help wanted`, `documentation`
-3. 评论表示你要处理该 Issue
-4. 等待 Maintainer 分配后开始工作
+## 许可证
 
-## 🏆 贡献者认可
-
-### 贡献者列表
-
-所有贡献者都会被添加到 [CONTRIBUTORS.md](./CONTRIBUTORS.md)。
-
-### 贡献等级
-
-| 等级 | 要求 | 徽章 |
-|------|------|------|
-| 🥉 Bronze | 1+ 合并 PR | Contributor |
-| 🥈 Silver | 5+ 合并 PR | Active Contributor |
-| 🥇 Gold | 10+ 合并 PR + Reviewer | Core Contributor |
-| 💎 Diamond | 20+ PR + 核心维护 | Maintainer |
-
-## 📞 联系方式
-
-- **Discord**: [加入我们的 Discord](https://discord.gg/xxxxx)
-- **微信群**: 扫码加入（在 README 中找二维码）
-- **Email**: contributors@agentprimordia.dev
-- **Issue**: 在 GitHub 提交 Issue
-
-## ⚖️ 行为准则
-
-我们的社区遵循 **Contributor Covenant** 行为准则：
-
-- ✅ 尊重他人
-- ✅ 接受建设性批评
-- ✅ 关注对社区最有利的事情
-- ✅ 对其他社区成员展现同理心
-
-❌ 不容忍的行为：
-- 性别歧视、性化语言
-- 人身攻击或政治攻击
-- 公开或私下的骚扰
-- 未经许可发布他人的私人信息
-
-## ❓ 常见问题
-
-### Q: 我可以提交大型重构吗？
-A: 可以，但建议先提 Issue 讨论，获得维护者同意后再开始。
-
-### Q: 我的 PR 多久会被 review？
-A: 通常 1-3 个工作日。如果是紧急修复会更快速。
-
-### Q: 可以同时提交多个 PR 吗？
-A: 可以，但建议每个 PR 只做一件事，便于 review 和合并。
-
-### Q: 如何成为 Maintainer？
-A: 持续高质量贡献，参与代码 review，帮助社区成员。当达到一定活跃度后，现有 Maintainer 会邀请你加入。
+通过贡献代码，您同意您的贡献将遵循项目的 MIT 许可证。
 
 ---
 
-**🙏 再次感谢你的贡献！让我们一起打造最好的 AI Agent 框架！**
-
-💖 **Star 这个项目** 如果你觉得它有用的话！
+**有问题？** 欢迎在 [Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions) 中提问，或联系维护者。

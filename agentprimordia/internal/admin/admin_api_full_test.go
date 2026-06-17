@@ -13,12 +13,13 @@ import (
 
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/pool"
+	"agentprimordia/internal/tools"
 )
 
 // doRequestWithPool 使用指定 pool 创建 handler 并发起请求
 func doRequestWithPool(t *testing.T, p *pool.Pool, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	handler := NewAdminHandler(p)
+	handler := NewAdminHandler(p, tools.NewRegistry())
 	req := httptest.NewRequest(method, path, nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -38,12 +39,14 @@ func TestAdminAPI_GetAgent_Existing(t *testing.T) {
 		tasks := []pool.TaskConfig{
 			{ID: agentID, Title: "存在性验证任务", Prompt: "执行任务"},
 		}
-		_, _ = p.Dispatch(context.Background(), tasks)
+		if _, err := p.Dispatch(context.Background(), tasks); err != nil {
+			t.Logf("Dispatch failed (acceptable in test): %v", err)
+		}
 	}()
 
 	time.Sleep(50 * time.Millisecond)
 
-	handler := NewAdminHandler(p)
+	handler := NewAdminHandler(p, tools.NewRegistry())
 	rec := doRequest(t, handler, http.MethodGet, "/api/agents/"+agentID)
 
 	if rec.Code != http.StatusOK {
@@ -762,7 +765,7 @@ func TestAdminAPI_ConcurrentDispatchAndQuery(t *testing.T) {
 	p.SetModel(mockLLM)
 	t.Cleanup(func() { p.Close() })
 
-	handler := NewAdminHandler(p)
+	handler := NewAdminHandler(p, tools.NewRegistry())
 	var wg sync.WaitGroup
 	errCh := make(chan error, 30)
 
@@ -772,7 +775,9 @@ func TestAdminAPI_ConcurrentDispatchAndQuery(t *testing.T) {
 		tasks := []pool.TaskConfig{
 			{ID: "concurrent-1", Title: "并发任务1", Prompt: "执行"},
 		}
-		_, _ = p.Dispatch(context.Background(), tasks)
+		if _, err := p.Dispatch(context.Background(), tasks); err != nil {
+			t.Logf("Dispatch failed (acceptable in test): %v", err)
+		}
 	}()
 
 	for i := 0; i < 10; i++ {
