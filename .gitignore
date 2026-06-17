@@ -100,6 +100,13 @@ metrics_cover
 tools_cover
 pkg_cov*
 internal_cov
+cov
+cov_tools
+cover
+cover2
+cover_metrics
+cover_tools
+coverage_tools
 
 # ---------- Wiki / Generated ----------
 CODE_WIKI*.md
