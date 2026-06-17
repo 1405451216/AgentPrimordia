@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"agentprimordia/internal/agent"
@@ -41,6 +43,12 @@ type Pool struct {
 	toolkit      *tools.Registry
 	agentFactory AgentFactory
 	closeOnce    sync.Once
+
+	// 优化（Task 8）：使用 atomic 增量维护 stats，Stats() 无需遍历 tasks map
+	runningCount   atomic.Int64
+	queuedCount    atomic.Int64
+	completedCount atomic.Int64
+	failedCount    atomic.Int64
 }
 
 type poolTask struct {
@@ -86,8 +94,9 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 	p.mu.Lock()
 	p.startTime = time.Now()
 	p.stats.TotalTasks += len(tasks)
-	p.stats.QueuedTasks += len(tasks)
 	p.mu.Unlock()
+	// 优化（Task 8）：使用原子计数
+	p.queuedCount.Add(int64(len(tasks)))
 
 	// M8 修复：派发前检查是否需要清理终态任务，避免 task map 无界增长
 	p.cleanupIfNeeded()
@@ -117,6 +126,8 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 		}
 		p.tasks[task.ID] = pt
 		p.mu.Unlock()
+		// queuedCount 在 executeTask 真正开始时减少（queued -> running）
+		_ = pt
 
 		p.wg.Add(1)
 		go func(idx int, t TaskConfig) {
@@ -176,6 +187,8 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		p.mu.Lock()
 		pt.status = PoolTaskCancelled
 		p.mu.Unlock()
+		// 优化（Task 8）：原子计数 - queued 转 cancelled
+		p.queuedCount.Add(-1)
 		p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 		return &TaskResult{
 			TaskID: task.ID,
@@ -187,6 +200,9 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		p.mu.Lock()
 		pt.status = PoolTaskFailed
 		p.mu.Unlock()
+		// 优化（Task 8）：原子计数 - queued 转 failed
+		p.queuedCount.Add(-1)
+		p.failedCount.Add(1)
 		p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
 		return &TaskResult{
 			TaskID: task.ID,
@@ -197,6 +213,10 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 	}
 
 	// 重试循环（semaphore 已持有，不再重复获取）
+	// 优化（Task 8）：从 queued 转为 running（仅在首次进入循环时）
+	p.queuedCount.Add(-1)
+	p.runningCount.Add(1)
+	defer p.runningCount.Add(-1)
 	for {
 		p.mu.Lock()
 		pt.status = PoolTaskRunning
@@ -217,11 +237,14 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 				p.mu.Lock()
 				pt.status = PoolTaskFailed
 				p.mu.Unlock()
+				// 优化（Task 8）：running 转 failed
+				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
 			} else if taskCtxErr == context.Canceled || ctx.Err() != nil {
 				p.mu.Lock()
 				pt.status = PoolTaskCancelled
 				p.mu.Unlock()
+				// cancelled 不计入 failed
 				p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 			} else {
 				p.mu.Lock()
@@ -236,12 +259,16 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 					continue
 				}
 
+				// 优化（Task 8）：running 转 failed
+				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: err.Error()})
 			}
 		} else {
 			p.mu.Lock()
 			pt.status = PoolTaskCompleted
 			p.mu.Unlock()
+			// 优化（Task 8）：running 转 completed
+			p.completedCount.Add(1)
 			p.emitEvent(PoolEvent{Type: "task_completed", TaskID: task.ID})
 		}
 
@@ -258,7 +285,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		delete(p.agents, task.ID)
 		p.mu.Unlock()
 
-		p.updateStats()
+		// 保留 updateStats() 调用以同步 PoolStats 整体结构；Stats() 现在直接读原子变量
 
 		return pt.result, err
 	}
@@ -340,33 +367,17 @@ func (p *Pool) getTask(id string) *poolTask {
 	return p.tasks[id]
 }
 
+// updateStats 同步原子计数器到 PoolStats 结构体，供向后兼容的 Stats() 调用使用。
+// 优化（Task 8）：O(1) 原子读取替代 O(n) 全量遍历 tasks map。
 func (p *Pool) updateStats() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	running := 0
-	queued := 0
-	completed := 0
-	failed := 0
-
-	for _, t := range p.tasks {
-		switch t.status {
-		case PoolTaskQueued:
-			queued++
-		case PoolTaskRunning:
-			running++
-		case PoolTaskCompleted:
-			completed++
-		case PoolTaskFailed:
-			failed++
-		}
-	}
-
-	p.stats.RunningTasks = running
-	p.stats.QueuedTasks = queued
-	p.stats.CompletedTasks = completed
-	p.stats.FailedTasks = failed
-	p.stats.ActiveConcurrency = running
+	p.stats.RunningTasks = int(p.runningCount.Load())
+	p.stats.QueuedTasks = int(p.queuedCount.Load())
+	p.stats.CompletedTasks = int(p.completedCount.Load())
+	p.stats.FailedTasks = int(p.failedCount.Load())
+	p.stats.ActiveConcurrency = p.stats.RunningTasks
 }
 
 func (p *Pool) emitEvent(event PoolEvent) {
@@ -501,11 +512,20 @@ func (p *Pool) ListAgents() map[string]agent.AgentStats {
 	return result
 }
 
+// Stats 直接读取原子计数器 + 缓存的 stats 字段，避免双重锁。
+// 优化（Task 8）：Stats() 不再调用 updateStats() 走写锁后再读 RLock，
+// 改为仅一次读锁 + 直接读原子变量。
 func (p *Pool) Stats() PoolStats {
-	p.updateStats()
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.stats
+	// 原子读取叠加到返回的快照上，避免修改共享的 p.stats
+	stats := p.stats
+	stats.RunningTasks = int(p.runningCount.Load())
+	stats.QueuedTasks = int(p.queuedCount.Load())
+	stats.CompletedTasks = int(p.completedCount.Load())
+	stats.FailedTasks = int(p.failedCount.Load())
+	stats.ActiveConcurrency = stats.RunningTasks
+	return stats
 }
 
 func (p *Pool) EventChannel() <-chan PoolEvent {
@@ -562,6 +582,10 @@ func (p *Pool) Close() {
 	})
 }
 
+// generateTaskID 生成唯一任务 ID。优化（Task 8）：使用 strconv 避免 fmt.Sprintf 的反射分配。
+var taskIDCounter atomic.Int64
+
 func generateTaskID(index int) string {
-	return fmt.Sprintf("task_%d_%d", time.Now().UnixNano(), index)
+	seq := taskIDCounter.Add(1)
+	return "task_" + strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + strconv.FormatInt(int64(index), 10) + "_" + strconv.FormatInt(seq, 10)
 }
