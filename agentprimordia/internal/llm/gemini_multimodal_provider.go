@@ -608,7 +608,10 @@ func (p *GeminiMultimodalProvider) buildChatContents(msgs []ChatMessage) ([]map[
 			// Gemini 的 function call 处理
 			for _, tc := range m.ToolCalls {
 				args := map[string]any{}
-				_ = json.Unmarshal([]byte(tc.Arguments), &args)
+				if err := json.Unmarshal([]byte(tc.Arguments), &args); err != nil {
+					// 工具调用参数解析失败，使用原始字符串作为参数
+					args = map[string]any{"raw": tc.Arguments}
+				}
 				parts = append(parts, map[string]any{
 					"functionCall": map[string]any{
 						"name": tc.Name,
