@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Deprecated — 正式标记旧 API 为 Deprecated
+
+- `NewReActAgent` 函数（internal/agent 和 pkg/）标记 `// Deprecated:` godoc，
+  IDE 悬浮提示和 `go doc` 将显示废弃警告
+- 配合已有的 `ReActConfig` 14 个字段 Deprecated 标记，形成完整的废弃提示链
+- 迁移路径：`NewReActAgent(ReActConfig{...})` → `NewAgent(name, prompt, model, opts...)`
+- 废弃时间表：当前版本编译期 warning → v1.0.0 panic if non-nil → v2.0.0 移除
+
 ### Added — API 稳定化（分组 Functional Options）
 
 - `AgentConfig` 分组配置 struct（Memory / RAG / Observability / Resilience / Tools），构造后不可变
