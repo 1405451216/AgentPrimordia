@@ -10,33 +10,51 @@ func ResolveModel(reqModel, configModel string) string {
 
 // BuildOpenAIMessages 构建 OpenAI 兼容格式的消息列表
 // 包含 tool_calls 和 tool_call_id 的处理，适用于 OpenAI/Qwen/Cohere/Mistral 等 Provider
+// 优化（Task 7）：预分配切片容量，并对只有 role+content 的简单消息使用紧凑的 map 分配路径。
 func BuildOpenAIMessages(msgs []ChatMessage) []map[string]any {
 	result := make([]map[string]any, 0, len(msgs))
 	for _, m := range msgs {
+		// 优化（Task 7）：根据消息类型选择不同的分配路径
+		// 简单消息（仅 role+content 或 role+content+tool_call_id）走紧凑路径
+		// 复杂消息（assistant 含 tool_calls）保留独立 map 分配
+		isSimple := true
+		if m.Role == "assistant" && len(m.ToolCalls) > 0 {
+			isSimple = false
+		}
+
+		if isSimple {
+			// 紧凑路径：预估容量，减少 rehash
+			msg := make(map[string]any, 3)
+			msg["role"] = m.Role
+			msg["content"] = m.Content
+			if m.Role == "tool" && m.ToolCallID != "" {
+				msg["tool_call_id"] = m.ToolCallID
+			}
+			result = append(result, msg)
+			continue
+		}
+
+		// 复杂路径：assistant with tool_calls
 		msg := map[string]any{
 			"role":    m.Role,
 			"content": m.Content,
 		}
 
-		if m.Role == "assistant" && len(m.ToolCalls) > 0 {
-			toolCalls := make([]map[string]any, len(m.ToolCalls))
-			for j, tc := range m.ToolCalls {
-				toolCalls[j] = map[string]any{
-					"id":   tc.ID,
-					"type": "function",
-					"function": map[string]any{
-						"name":      tc.Name,
-						"arguments": tc.Arguments,
-					},
-				}
+		toolCalls := make([]map[string]any, len(m.ToolCalls))
+		for j, tc := range m.ToolCalls {
+			toolCalls[j] = map[string]any{
+				"id":   tc.ID,
+				"type": "function",
+				"function": map[string]any{
+					"name":      tc.Name,
+					"arguments": tc.Arguments,
+				},
 			}
-			msg["tool_calls"] = toolCalls
 		}
+		msg["tool_calls"] = toolCalls
 
-		if m.Role == "tool" {
-			if m.ToolCallID != "" {
-				msg["tool_call_id"] = m.ToolCallID
-			}
+		if m.Role == "tool" && m.ToolCallID != "" {
+			msg["tool_call_id"] = m.ToolCallID
 		}
 
 		result = append(result, msg)

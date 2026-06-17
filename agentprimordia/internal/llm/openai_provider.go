@@ -85,9 +85,27 @@ func NewOpenAIProvider(cfg Config) (*OpenAIProvider, error) {
 		cfg.Model = "gpt-4o-mini"
 	}
 
+	// 优化（Task 6）：使用自定义 http.Transport 配置连接池，
+	// 在高并发 Agent 场景下复用 TCP 连接，避免每个请求都新建 TCP+TLS 握手。
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   10,
+		MaxConnsPerHost:       0, // 0 表示无限制
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		DisableKeepAlives:     false,
+		DisableCompression:    false,
+		ForceAttemptHTTP2:     true,
+	}
+
 	return &OpenAIProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: &http.Client{
+			Timeout:   defaultTimeout,
+			Transport: transport,
+		},
 	}, nil
 }
 
