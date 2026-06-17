@@ -12,8 +12,6 @@ import (
 
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
-	"agentprimordia/internal/persist"
-	"agentprimordia/internal/tools"
 )
 
 // memoryIDCounter 用于生成唯一 MemoryEpisode ID
@@ -75,94 +73,11 @@ type ReActConfig struct {
 	Temperature    float64
 	SessionID      string
 
-	// ===== 可选能力（推荐使用链式 API 注入） =====
-	// 使用 WithXxx 链式方法替代直接设置这些字段：
-	//   agent := NewReActAgent(ReActConfig{...}).WithMemory(mem).WithRAG(ragCfg)
-	//
-	// 直接设置字段仍然有效（向后兼容），但链式 API 提供更好的类型安全和接口发现。
-	//
-	// 废弃时间表：
-	//   v0.6.0（当前）— Deprecated 标注生效，编译期 warning
-	//   v0.7.0         — 升级为编译期 warning + 文档强提示
-	//   v1.0.0         — panic if non-nil，强制迁移
-	//   v2.0.0         — 字段移除（见 // Removed in v2.0.）
-	// 详细迁移指南：docs/migration/v0-deprecations.md
-
-	// Toolkit 工具注册表
-	// Deprecated: 使用 .WithToolkit(registry) 链式方法注入
-	// Removed in v2.0.
-	Toolkit *tools.Registry
-
-	// Memory 存储对话和记忆片段
-	// Deprecated: 使用 .WithMemory(store) 链式方法注入
-	// Removed in v2.0.
-	Memory MemoryStore
-
-	// EventPublisher 发布 Agent 生命周期事件
-	// Deprecated: 使用 .WithEvents(publisher) 链式方法注入
-	// Removed in v2.0.
-	EventPublisher EventPublisher
-
-	// Metrics 指标收集器
-	// Deprecated: 使用 .WithMetrics(recorder) 链式方法注入
-	// Removed in v2.0.
-	Metrics MetricsRecorder
-
-	// ContextWindow 上下文窗口裁剪策略
-	// Deprecated: 使用 .WithContextWindow(strategy) 链式方法注入
-	// Removed in v2.0.
-	ContextWindow ContextWindowStrategy
-
-	// CheckpointStore 状态持久化
-	// Deprecated: 使用 .WithCheckpointStore(store) 链式方法注入
-	// Removed in v2.0.
-	CheckpointStore persist.CheckpointStore
-
-	// RAG 知识库检索配置，启用后 Agent 在推理前自动查询知识库
-	// Deprecated: 使用 .WithRAG(config) 链式方法注入
-	// Removed in v2.0.
-	RAG *RAGConfig
-
-	// Hooks Hook 管理器
-	// Deprecated: 使用 .WithHooks(hooks) 链式方法注入
-	// Removed in v2.0.
-	Hooks Hooks
-
 	// Lifecycle 生命周期管理器（默认自动创建）
 	Lifecycle *Lifecycle
 
 	// Logger 结构化日志，默认使用 slog.Default()
 	Logger *slog.Logger
-
-	// Summarizer 记忆摘要生成器
-	// Deprecated: 使用 .WithSummarizer(summarizer) 链式方法注入
-	// Removed in v2.0.
-	Summarizer memory.SummaryExtractor
-
-	// FileScope 文件范围限制，指定 Agent 可操作的文件或目录列表
-	// Deprecated: 使用 .WithFileScope(scopes) 链式方法注入
-	// Removed in v2.0.
-	FileScope []string
-
-	// HITL 人机协作配置，启用后 Agent 在指定中断点暂停等待人类确认
-	// Deprecated: 使用 .WithHITL(config) 链式方法注入
-	// Removed in v2.0.
-	HITL *HITLConfig
-
-	// CostTracker 成本追踪器，启用后自动记录每轮 LLM Usage 并追踪成本
-	// Deprecated: 使用 .WithCostTracker(tracker) 链式方法注入
-	// Removed in v2.0.
-	CostTracker *CostTracker
-
-	// Tracer 分布式追踪器，启用后自动在 ReAct Loop 关键点创建 Span
-	// Deprecated: 使用 .WithTracer(tracer) 链式方法注入
-	// Removed in v2.0.
-	Tracer Tracer
-
-	// Cache LLM 响应缓存，启用后自动缓存 Complete 调用结果以减少重复请求
-	// Deprecated: 使用 .WithCache(cache) 链式方法注入
-	// Removed in v2.0.
-	Cache llm.LLMCache
 }
 
 // ReActAgent implements the ReAct (Reasoning + Acting) pattern
@@ -193,18 +108,10 @@ type ReActAgent struct {
 
 // NewReActAgent creates a new ReAct-based agent
 //
-// Deprecated: 使用 NewAgent 代替。NewReActAgent 暴露了 14 个已废弃的 ReActConfig 字段，
-// 容易导致误用。NewAgent 通过 Functional Options 注入能力，构造后不可变。
-// NewReActAgent 将在 v2.0.0 移除。
+// Deprecated: 使用 NewAgent 代替。NewReActAgent 仅接受标量配置，能力通过链式 API 注入。
+// NewAgent 通过 Functional Options 注入能力，构造后不可变。
 // 迁移指南: ecosystem/docs/migration/v0-deprecations.md
-//
-// v1.0.0 起：如果 cfg 的 14 个 Deprecated 字段任一非 nil/非零，将 panic。
-// 纯标量配置（Name/SystemPrompt/Model/MaxTurns/Temperature/SessionID/Lifecycle/Logger）
-// 仍可使用，不会 panic。
 func NewReActAgent(cfg ReActConfig) *ReActAgent {
-	// v1.0.0: 强制迁移 — Deprecated 字段非 nil 时 panic
-	checkDeprecatedFields(cfg)
-
 	if cfg.MaxTurns == 0 {
 		cfg.MaxTurns = 50
 	}
@@ -215,28 +122,16 @@ func NewReActAgent(cfg ReActConfig) *ReActAgent {
 		cfg.Logger = slog.Default()
 	}
 
-	if cfg.Cache != nil {
-		cached, err := llm.NewCachedProvider(cfg.Model, cfg.Cache, 0.8)
-		if err == nil {
-			cfg.Model = cached
-		}
-	}
-
 	a := &ReActAgent{
 		config:    cfg,
 		lifecycle: cfg.Lifecycle,
-		hooks:     cfg.Hooks,
+		hooks:     nil, // 通过链式 API WithHooks 注入
 		logger:    cfg.Logger,
 		stats: AgentStats{
 			Status:      StatusIdle,
 			ToolsCalled: make(map[string]int),
 		},
-		hitlMgr: func() *HITLManager {
-			if cfg.HITL != nil {
-				return NewHITLManager(*cfg.HITL)
-			}
-			return nil
-		}(),
+		hitlMgr: nil, // 通过链式 API WithHITL 注入
 	}
 	a.initSelf()
 	return a
@@ -373,8 +268,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		llmMessages := convertToLLMMessages(trimmedHistory)
 
 		var toolDefs []map[string]any
-		if a.config.Toolkit != nil {
-			toolDefs = a.config.Toolkit.Definitions()
+		if tk := a.getToolkit(); tk != nil {
+			toolDefs = tk.Definitions()
 		}
 
 		llmStart := time.Now()

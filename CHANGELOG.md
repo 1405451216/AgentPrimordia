@@ -4,6 +4,46 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-17
+
+### Removed — 移除 ReActConfig 14 个 Deprecated 字段（破坏性变更）
+
+- **完全移除** `ReActConfig` 中的 14 个 Deprecated 字段：
+  - Toolkit, Memory, EventPublisher, Metrics, ContextWindow
+  - CheckpointStore, RAG, Hooks, Summarizer, FileScope
+  - HITL, CostTracker, Tracer, Cache
+- 编译期阻止误用：`ReActConfig{Toolkit: reg}` 现在编译失败
+- 删除 `internal/agent/deprecated_check.go`（不再需要 panic 检查）
+
+### Changed — 能力注入方式
+
+- `NewReActAgent` 仅接受标量配置（Name/SystemPrompt/Model/MaxTurns/Temperature/SessionID/Lifecycle/Logger）
+- 所有能力通过链式 API 注入：`NewReActAgent(cfg).WithToolkit(reg).WithMemory(mem)`
+- 或使用 `NewAgent` + Functional Options：`NewAgent(name, prompt, model, WithToolkit(reg), WithMemory(mem))`
+
+### Migration Guide
+
+**v1.0.0 → v2.0.0 迁移**：
+
+```go
+// v1.0.0（运行时 panic）
+agent := NewReActAgent(ReActConfig{
+    Name: "bot", Model: provider,
+    Toolkit: reg, Memory: mem,  // ❌ panic
+})
+
+// v2.0.0（编译失败，必须迁移）
+// 方式 1：链式 API
+agent := NewReActAgent(ReActConfig{
+    Name: "bot", Model: provider,
+}).AsCapability().WithToolkit(reg).WithMemory(mem)
+
+// 方式 2：NewAgent + Options（推荐）
+agent, err := NewAgent("bot", "prompt", provider,
+    WithToolkit(reg), WithMemory(mem),
+)
+```
+
 ## [1.0.0] - 2026-06-17
 
 ### Changed — 强制迁移（破坏性变更）
