@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -85,20 +86,24 @@ func (s *Session) Ask(ctx context.Context, userMessage string) (*Response, error
 	// 持久化到记忆存储
 	if s.mem != nil {
 		now := time.Now().UTC().Format(time.RFC3339)
-		_ = s.mem.Add(ctx, &memory.Episode{
+		if err := s.mem.Add(ctx, &memory.Episode{
 			ID:        nextMemoryID(),
 			SessionID: s.sessionID,
 			Role:      string(RoleUser),
 			Content:   userMessage,
 			CreatedAt: now,
-		})
-		_ = s.mem.Add(ctx, &memory.Episode{
+		}); err != nil {
+			slog.Warn("Session: 保存用户消息到记忆失败", "sessionID", s.sessionID, "error", err)
+		}
+		if err := s.mem.Add(ctx, &memory.Episode{
 			ID:        nextMemoryID(),
 			SessionID: s.sessionID,
 			Role:      string(RoleAssistant),
 			Content:   resp.Content,
 			CreatedAt: now,
-		})
+		}); err != nil {
+			slog.Warn("Session: 保存助手回复到记忆失败", "sessionID", s.sessionID, "error", err)
+		}
 	}
 
 	s.lastResponse = resp
