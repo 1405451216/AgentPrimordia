@@ -1,6 +1,7 @@
 package debugger
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -56,6 +57,14 @@ func (d *DebugServer) Start() error {
 		}
 	}()
 	return nil
+}
+
+// Stop 优雅关闭调试服务器
+func (d *DebugServer) Stop(ctx context.Context) error {
+	if d.server == nil {
+		return nil
+	}
+	return d.server.Shutdown(ctx)
 }
 
 func (d *DebugServer) AddEvent(eventType, message string) {
