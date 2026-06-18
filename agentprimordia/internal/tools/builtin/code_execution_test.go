@@ -3,6 +3,7 @@ package builtin
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -10,6 +11,14 @@ import (
 
 	"agentprimordia/internal/tools"
 )
+
+func TestMain(m *testing.M) {
+	// 测试期间显式启用 code_execution（本身不是沙箱，仅用于验证超时/输出限制）
+	os.Setenv("AP_ALLOW_CODE_EXECUTION", "true")
+	code := m.Run()
+	os.Unsetenv("AP_ALLOW_CODE_EXECUTION")
+	os.Exit(code)
+}
 
 func TestCodeExecution_Name(t *testing.T) {
 	ce := NewCodeExecution()
@@ -60,6 +69,25 @@ func TestCodeExecution_Parameters(t *testing.T) {
 	}
 	if _, ok := props["timeout"]; !ok {
 		t.Error("properties should contain 'timeout'")
+	}
+}
+
+func TestCodeExecution_DisabledByDefault(t *testing.T) {
+	t.Setenv("AP_ALLOW_CODE_EXECUTION", "")
+	ce := NewCodeExecution()
+	args, _ := json.Marshal(map[string]any{
+		"language": "python",
+		"code":     "print('hello')",
+	})
+	result, err := ce.Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatal("code_execution should be disabled by default")
+	}
+	if !strings.Contains(result.Content, "AP_ALLOW_CODE_EXECUTION") {
+		t.Errorf("error should mention AP_ALLOW_CODE_EXECUTION, got: %s", result.Content)
 	}
 }
 

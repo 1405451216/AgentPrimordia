@@ -47,7 +47,10 @@ func (c *CodeExecution) WithMaxOutputSize(size int) *CodeExecution {
 func (c *CodeExecution) Name() string { return "code_execution" }
 
 func (c *CodeExecution) Description() string {
-	return "Execute code in a safe sandbox. Supports Python, JavaScript, and Go. Returns stdout/stderr output with timeout control and output truncation (max 10KB)."
+	return "Execute code with timeout and output limits. Supports Python, JavaScript, and Go. " +
+		"WARNING: This is NOT a security sandbox. Code runs directly on the host with the privileges " +
+		"of the AgentPrimordia process and can access the filesystem, network, and environment. " +
+		"Enable only in trusted environments by setting AP_ALLOW_CODE_EXECUTION=true."
 }
 
 func (c *CodeExecution) Parameters() json.RawMessage {
@@ -55,7 +58,7 @@ func (c *CodeExecution) Parameters() json.RawMessage {
   "type": "object",
   "properties": {
     "language": {"type": "string", "enum": ["python", "javascript", "go"], "description": "Programming language: python, javascript, or go"},
-    "code": {"type": "string", "description": "Source code to execute"},
+    "code": {"type": "string", "description": "Source code to execute. WARNING: arbitrary code execution can compromise this system."},
     "timeout": {"type": "number", "description": "Execution timeout in seconds (default: 10)"}
   },
   "required": ["language", "code"]
@@ -63,6 +66,14 @@ func (c *CodeExecution) Parameters() json.RawMessage {
 }
 
 func (c *CodeExecution) Execute(ctx context.Context, args json.RawMessage) (*tools.Result, error) {
+	if os.Getenv("AP_ALLOW_CODE_EXECUTION") != "true" {
+		return tools.NewErrorResult(
+			"code_execution is disabled by default for security reasons. " +
+				"It is NOT a sandbox and runs arbitrary code on the host. " +
+				"Set AP_ALLOW_CODE_EXECUTION=true to enable it only in trusted environments.",
+		), nil
+	}
+
 	var params map[string]json.RawMessage
 	if err := json.Unmarshal(args, &params); err != nil {
 		return tools.NewErrorResult(fmt.Sprintf("invalid arguments: %v", err)), nil
