@@ -21,8 +21,9 @@ echo "🔍 Pre-commit checks..."
 
 # ===== 检查 1: Deprecated 标注完整性 =====
 # grep 所有 // Deprecated: 标注, 验证每个下面有 // Removed in vX.Y.
-deprecated_count=$(grep -rn "^// Deprecated:" --include="*.go" agentprimordia/ 2>/dev/null | wc -l)
-removed_in_count=$(grep -rn "Removed in v" --include="*.go" agentprimordia/ 2>/dev/null | wc -l)
+# 排除 protobuf 生成文件，其 Deprecated 标注由 protoc 生成且不应手动修改。
+deprecated_count=$(grep -rn "^// Deprecated:" --include="*.go" --exclude="*.pb.go" --exclude="*_grpc.pb.go" agentprimordia/ 2>/dev/null | wc -l)
+removed_in_count=$(grep -rn "Removed in v" --include="*.go" --exclude="*.pb.go" --exclude="*_grpc.pb.go" agentprimordia/ 2>/dev/null | wc -l)
 if [ "$deprecated_count" -gt 0 ]; then
     if [ "$removed_in_count" -lt "$deprecated_count" ]; then
         echo "  ❌ Deprecated 标注不完整: $deprecated_count 个 // Deprecated: 但仅 $removed_in_count 个 // Removed in vX.Y."
