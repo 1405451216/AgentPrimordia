@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
 
+![Architecture](agentprimordia/docs/ap-architecture.png)
+
 ## 特性
 
 - **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子
