@@ -30,6 +30,7 @@ type Registry struct {
 	defsCache    atomic.Pointer[[]map[string]any]
 	defsValid    atomic.Bool
 	defsCacheLen atomic.Int64
+	defsMu       sync.Mutex // 保证缓存只被一个 goroutine 重建
 }
 
 // NewRegistry creates an empty tool registry
@@ -160,7 +161,12 @@ func (r *Registry) Count() int {
 func (r *Registry) Definitions() []map[string]any {
 	// 快路径：缓存命中且长度未变
 	if !r.defsValid.Load() {
-		r.rebuildDefsCache()
+		// 双检锁：只有一个 goroutine 重建缓存，其他等待后读取。
+		r.defsMu.Lock()
+		if !r.defsValid.Load() {
+			r.rebuildDefsCache()
+		}
+		r.defsMu.Unlock()
 	}
 	cached := r.defsCache.Load()
 	if cached == nil {
