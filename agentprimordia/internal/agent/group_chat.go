@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -101,7 +102,7 @@ func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChat
 
 		if g.bus != nil {
 			busMsg := &BusMessage{
-				ID:        fmt.Sprintf("groupchat-%d-%s", round, speaker.Name()),
+				ID:        "groupchat-" + strconv.Itoa(round) + "-" + speaker.Name(),
 				From:      speaker.Name(),
 				Type:      BusMsgBroadcast,
 				Content:   resp.Content,

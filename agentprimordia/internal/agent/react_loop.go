@@ -175,6 +175,7 @@ type loopConfig struct {
 // capabilityCache 缓存单次 Run() 期间不变的能力查找结果。
 // 优化（Task 2）：ReAct 循环中每轮调用的 getTracer/getCostTracker/getMemoryStore 等
 // 在 Run() 入口一次性查找并缓存到此处，避免每轮重复类型断言。
+// 优化（perf-v2）：新增 toolDefinitions 缓存，避免每轮重复转换工具定义。
 type capabilityCache struct {
 	requestID        string
 	tracer           Tracer
@@ -188,6 +189,7 @@ type capabilityCache struct {
 	summarizer       memory.SummaryExtractor
 	fileScope        []string
 	toolkit          *tools.Registry
+	toolDefinitions  []llm.ToolDefinition // 优化（perf-v2）：缓存转换后的工具定义
 	systemInfoCached bool
 	provider         string
 	model            string
@@ -220,6 +222,12 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		c.systemInfoCached = true
 		c.provider = info.Provider
 		c.model = info.Name
+	}
+	// 优化（perf-v2）：预转换工具定义，避免每轮重复转换
+	if c.toolkit != nil {
+		if defs := c.toolkit.Definitions(); len(defs) > 0 {
+			c.toolDefinitions = convertToolDefsToLLMDefinitions(defs)
+		}
 	}
 	return c
 }
@@ -322,7 +330,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		var turnSpan Span = &NoopSpan{}
 		if tracer != nil {
 			turnSpan = tracer.Start(
-				fmt.Sprintf("turn.%d", turn),
+				"turn."+strconv.Itoa(turn),
 				SpanKindInternal,
 				WithAttributes(map[string]any{"agent": a.config.Name, "turn": turn}),
 			)
@@ -358,19 +366,24 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		trimmedHistory := a.trimContext(history, 0)
 		llmMessages := convertToLLMMessages(trimmedHistory)
 
-		// 优化（Task 2 / Task 2.5）：使用 capCache.toolkit 替代每轮 getToolkit() 调用；
-		// 一次性将 map 形式的 toolDefs 转换为 llm.ToolDefinition，避免下游重复反解
-		var toolDefs []map[string]any
-		var toolkit *tools.Registry
-		if a.capCache != nil {
-			toolkit = a.capCache.toolkit
+		// 优化（Task 2 / Task 2.5 / perf-v2）：使用 capCache.toolkit 和预转换的 toolDefinitions，
+		// 避免每轮重复获取 toolkit 和反解工具定义
+		var toolDefinitions []llm.ToolDefinition
+		if a.capCache != nil && a.capCache.toolDefinitions != nil {
+			toolDefinitions = a.capCache.toolDefinitions
 		} else {
-			toolkit = a.getToolkit()
+			var toolDefs []map[string]any
+			var toolkit *tools.Registry
+			if a.capCache != nil {
+				toolkit = a.capCache.toolkit
+			} else {
+				toolkit = a.getToolkit()
+			}
+			if toolkit != nil {
+				toolDefs = toolkit.Definitions()
+			}
+			toolDefinitions = convertToolDefsToLLMDefinitions(toolDefs)
 		}
-		if toolkit != nil {
-			toolDefs = toolkit.Definitions()
-		}
-		toolDefinitions := convertToolDefsToLLMDefinitions(toolDefs)
 
 		llmStart := time.Now()
 		if a.hasEventSubscriber() {
@@ -465,7 +478,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			a.emitStream(cfg, StreamEvent{Type: StreamEventToolCall, Content: tc.Name, Data: tc})
 			_ = a.fireHook(HookBeforeTool, &HookContext{ToolCall: &tc, Turn: turn})
 			if a.hasEventSubscriber() {
-				a.publishEvent("tool.call", map[string]string{"tool": tc.Name, "turn": fmt.Sprintf("%d", turn)})
+				a.publishEvent("tool.call", map[string]string{"tool": tc.Name, "turn": strconv.Itoa(turn)})
 			}
 
 			if a.hitlMgr != nil && a.hitlMgr.ShouldInterrupt(tc.Name, InterruptToolConfirm) {
@@ -515,7 +528,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			var toolSpan Span = &NoopSpan{}
 			if tracer != nil {
 				toolSpan = tracer.Start(
-					fmt.Sprintf("tool.%s", tc.Name),
+					"tool."+tc.Name,
 					SpanKindClient,
 					WithParent(turnSpan.SpanContext()),
 					WithAttributes(map[string]any{"tool": tc.Name, "agent": a.config.Name}),

@@ -168,10 +168,39 @@ func (a *ReActAgent) saveCheckpoint(ctx context.Context, history []Message, turn
 	}
 }
 
+// defaultMaxHistoryMessages 默认历史消息保留上限（perf-v4 Task 11）
+// 默认场景下 history 不再无界增长，同时减少 LLM token 消耗
+const defaultMaxHistoryMessages = 100
+
 // trimContext 应用上下文窗口策略裁剪历史
+// perf-v4 Task 11：当未配置自定义策略时，默认使用滑动窗口
+// （保留系统提示词 + 最近 N 条消息），避免长对话无界增长
 func (a *ReActAgent) trimContext(history []Message, maxMessages int) []Message {
 	if cw := a.getContextWindowStrategy(); cw != nil {
 		return cw.Trim(history, maxMessages)
 	}
-	return history
+	// 默认滑动窗口策略
+	if maxMessages <= 0 {
+		maxMessages = defaultMaxHistoryMessages
+	}
+	if len(history) <= maxMessages {
+		return history
+	}
+	// 保留第一条系统消息（如果有）+ 最近 N-1 条
+	result := make([]Message, 0, maxMessages)
+	start := 0
+	if len(history) > 0 && history[0].Role == RoleSystem {
+		result = append(result, history[0])
+		start = 1
+	}
+	tail := maxMessages - len(result)
+	if tail < 0 {
+		tail = 0
+	}
+	nonSystem := history[start:]
+	if len(nonSystem) > tail {
+		nonSystem = nonSystem[len(nonSystem)-tail:]
+	}
+	result = append(result, nonSystem...)
+	return result
 }

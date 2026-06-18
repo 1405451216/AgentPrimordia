@@ -1,7 +1,8 @@
 package metrics
 
 import (
-	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -37,9 +38,8 @@ type AgentMetrics struct {
 }
 
 type labeledCounter struct {
-	mu     sync.Mutex
-	calls  int64
-	errors int64
+	calls  atomic.Int64
+	errors atomic.Int64
 }
 
 type TokenUsageStats struct {
@@ -77,7 +77,6 @@ func NewHistogram(buckets []float64) *Histogram {
 
 func (h *Histogram) Record(valueMs int64) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
 	h.sum += valueMs
 	h.count++
@@ -89,12 +88,13 @@ func (h *Histogram) Record(valueMs int64) {
 		h.max = valueMs
 	}
 
-	for i, bucket := range h.buckets {
-		if float64(valueMs) <= bucket {
-			h.counts[i]++
-			break
-		}
+	// 优化（perf-v3）：二分查找桶位置，O(log n) 替代 O(n) 线性扫描
+	idx := sort.SearchFloat64s(h.buckets, float64(valueMs))
+	if idx < len(h.counts) {
+		h.counts[idx]++
 	}
+
+	h.mu.Unlock()
 }
 
 func (h *Histogram) Snapshot() HistogramSnapshot {
@@ -191,12 +191,10 @@ func (m *AgentMetrics) RecordLLMCallWithLabels(duration time.Duration, err error
 		m.mu.Unlock()
 	}
 
-	counter.mu.Lock()
-	counter.calls++
+	counter.calls.Add(1)
 	if err != nil {
-		counter.errors++
+		counter.errors.Add(1)
 	}
-	counter.mu.Unlock()
 }
 
 func (m *AgentMetrics) RecordToolCall(duration time.Duration, err error) {
@@ -228,12 +226,10 @@ func (m *AgentMetrics) RecordToolCallWithLabels(duration time.Duration, err erro
 		m.mu.Unlock()
 	}
 
-	counter.mu.Lock()
-	counter.calls++
+	counter.calls.Add(1)
 	if err != nil {
-		counter.errors++
+		counter.errors.Add(1)
 	}
-	counter.mu.Unlock()
 }
 
 // RecordTurnWithAgent 记录带 agent_name 标签的 Turn
@@ -257,9 +253,7 @@ func (m *AgentMetrics) RecordTurnWithAgent(duration time.Duration, agentName str
 		m.mu.Unlock()
 	}
 
-	counter.mu.Lock()
-	counter.calls++
-	counter.mu.Unlock()
+	counter.calls.Add(1)
 }
 
 func (m *AgentMetrics) RecordTurn(duration time.Duration) {
@@ -347,10 +341,14 @@ func (m *AgentMetrics) String() string {
 	snap := m.Snapshot()
 
 	var sb strings.Builder
+	// 优化（perf-v3）：预分配 builder 容量，减少底层 []byte 扩容
+	sb.Grow(2048)
 
 	sb.WriteString("# HELP ap_llm_total_calls Total LLM API calls\n")
 	sb.WriteString("# TYPE ap_llm_total_calls counter\n")
-	sb.WriteString(fmt.Sprintf("ap_llm_total_calls %d\n", snap.LLMTotalCalls))
+	sb.WriteString("ap_llm_total_calls ")
+	sb.WriteString(strconv.FormatInt(snap.LLMTotalCalls, 10))
+	sb.WriteByte('\n')
 
 	// 按 provider/model 维度输出
 	m.mu.RLock()
@@ -368,71 +366,100 @@ func (m *AgentMetrics) String() string {
 	}
 	m.mu.RUnlock()
 
-	if len(llmLabels) > 0 {
-		for key, counter := range llmLabels {
-			parts := strings.SplitN(key, "|", 2)
-			provider, model := parts[0], ""
-			if len(parts) > 1 {
-				model = parts[1]
-			}
-			counter.mu.Lock()
-			calls, errors := counter.calls, counter.errors
-			counter.mu.Unlock()
-			sb.WriteString(fmt.Sprintf("ap_llm_calls_by_provider{provider=\"%s\",model=\"%s\"} %d\n", provider, model, calls))
-			if errors > 0 {
-				sb.WriteString(fmt.Sprintf("ap_llm_errors_by_provider{provider=\"%s\",model=\"%s\"} %d\n", provider, model, errors))
-			}
+	for key, counter := range llmLabels {
+		parts := strings.SplitN(key, "|", 2)
+		provider, model := parts[0], ""
+		if len(parts) > 1 {
+			model = parts[1]
+		}
+		// 优化（perf-v3）：atomic 加载替代 mutex
+		calls := counter.calls.Load()
+		errors := counter.errors.Load()
+		sb.WriteString(`ap_llm_calls_by_provider{provider="`)
+		sb.WriteString(provider)
+		sb.WriteString(`",model="`)
+		sb.WriteString(model)
+		sb.WriteString(`"} `)
+		sb.WriteString(strconv.FormatInt(calls, 10))
+		sb.WriteByte('\n')
+		if errors > 0 {
+			sb.WriteString(`ap_llm_errors_by_provider{provider="`)
+			sb.WriteString(provider)
+			sb.WriteString(`",model="`)
+			sb.WriteString(model)
+			sb.WriteString(`"} `)
+			sb.WriteString(strconv.FormatInt(errors, 10))
+			sb.WriteByte('\n')
 		}
 	}
 
 	sb.WriteString("# HELP ap_llm_total_errors Total LLM API errors\n")
 	sb.WriteString("# TYPE ap_llm_total_errors counter\n")
-	sb.WriteString(fmt.Sprintf("ap_llm_total_errors %d\n", snap.LLMTotalErrors))
+	sb.WriteString("ap_llm_total_errors ")
+	sb.WriteString(strconv.FormatInt(snap.LLMTotalErrors, 10))
+	sb.WriteByte('\n')
 
 	sb.WriteString("# HELP ap_tool_total_calls Total tool calls\n")
 	sb.WriteString("# TYPE ap_tool_total_calls counter\n")
-	sb.WriteString(fmt.Sprintf("ap_tool_total_calls %d\n", snap.ToolTotalCalls))
+	sb.WriteString("ap_tool_total_calls ")
+	sb.WriteString(strconv.FormatInt(snap.ToolTotalCalls, 10))
+	sb.WriteByte('\n')
 
-	if len(toolLabels) > 0 {
-		for toolName, counter := range toolLabels {
-			counter.mu.Lock()
-			calls, errors := counter.calls, counter.errors
-			counter.mu.Unlock()
-			sb.WriteString(fmt.Sprintf("ap_tool_calls{tool_name=\"%s\"} %d\n", toolName, calls))
-			if errors > 0 {
-				sb.WriteString(fmt.Sprintf("ap_tool_errors{tool_name=\"%s\"} %d\n", toolName, errors))
-			}
+	for toolName, counter := range toolLabels {
+		calls := counter.calls.Load()
+		errors := counter.errors.Load()
+		sb.WriteString(`ap_tool_calls{tool_name="`)
+		sb.WriteString(toolName)
+		sb.WriteString(`"} `)
+		sb.WriteString(strconv.FormatInt(calls, 10))
+		sb.WriteByte('\n')
+		if errors > 0 {
+			sb.WriteString(`ap_tool_errors{tool_name="`)
+			sb.WriteString(toolName)
+			sb.WriteString(`"} `)
+			sb.WriteString(strconv.FormatInt(errors, 10))
+			sb.WriteByte('\n')
 		}
 	}
 
 	sb.WriteString("# HELP ap_tool_total_errors Total tool errors\n")
 	sb.WriteString("# TYPE ap_tool_total_errors counter\n")
-	sb.WriteString(fmt.Sprintf("ap_tool_total_errors %d\n", snap.ToolTotalErrors))
+	sb.WriteString("ap_tool_total_errors ")
+	sb.WriteString(strconv.FormatInt(snap.ToolTotalErrors, 10))
+	sb.WriteByte('\n')
 
 	sb.WriteString("# HELP ap_total_turns Total agent turns\n")
 	sb.WriteString("# TYPE ap_total_turns counter\n")
-	sb.WriteString(fmt.Sprintf("ap_total_turns %d\n", snap.TotalTurns))
+	sb.WriteString("ap_total_turns ")
+	sb.WriteString(strconv.FormatInt(snap.TotalTurns, 10))
+	sb.WriteByte('\n')
 
-	if len(agentTurns) > 0 {
-		for agentName, counter := range agentTurns {
-			counter.mu.Lock()
-			calls := counter.calls
-			counter.mu.Unlock()
-			sb.WriteString(fmt.Sprintf("ap_turns{agent_name=\"%s\"} %d\n", agentName, calls))
-		}
+	for agentName, counter := range agentTurns {
+		calls := counter.calls.Load()
+		sb.WriteString(`ap_turns{agent_name="`)
+		sb.WriteString(agentName)
+		sb.WriteString(`"} `)
+		sb.WriteString(strconv.FormatInt(calls, 10))
+		sb.WriteByte('\n')
 	}
 
 	sb.WriteString("# HELP ap_active_agents Currently active agents\n")
 	sb.WriteString("# TYPE ap_active_agents gauge\n")
-	sb.WriteString(fmt.Sprintf("ap_active_agents %d\n", snap.ActiveAgents))
+	sb.WriteString("ap_active_agents ")
+	sb.WriteString(strconv.FormatInt(snap.ActiveAgents, 10))
+	sb.WriteByte('\n')
 
 	sb.WriteString("# HELP ap_pool_queue_length Current pool queue length\n")
 	sb.WriteString("# TYPE ap_pool_queue_length gauge\n")
-	sb.WriteString(fmt.Sprintf("ap_pool_queue_length %d\n", snap.PoolQueueLength))
+	sb.WriteString("ap_pool_queue_length ")
+	sb.WriteString(strconv.FormatInt(snap.PoolQueueLength, 10))
+	sb.WriteByte('\n')
 
 	sb.WriteString("# HELP ap_memory_size_bytes Memory store size in bytes\n")
 	sb.WriteString("# TYPE ap_memory_size_bytes gauge\n")
-	sb.WriteString(fmt.Sprintf("ap_memory_size_bytes %d\n", snap.MemorySizeBytes))
+	sb.WriteString("ap_memory_size_bytes ")
+	sb.WriteString(strconv.FormatInt(snap.MemorySizeBytes, 10))
+	sb.WriteByte('\n')
 
 	writeHistogram(&sb, "ap_llm_latency_ms", snap.LLMLatencyMs)
 	writeHistogram(&sb, "ap_tool_latency_ms", snap.ToolLatencyMs)
@@ -441,18 +468,37 @@ func (m *AgentMetrics) String() string {
 	return sb.String()
 }
 
+// writeHistogram 输出 Prometheus histogram 格式
+// 优化（perf-v3）：使用 strconv + strings.Builder 替代 fmt.Sprintf
 func writeHistogram(sb *strings.Builder, name string, h HistogramSnapshot) {
-	sb.WriteString(fmt.Sprintf("# HELP %s %s histogram\n", name, name))
-	sb.WriteString(fmt.Sprintf("# TYPE %s histogram\n", name))
+	sb.WriteString("# HELP ")
+	sb.WriteString(name)
+	sb.WriteByte(' ')
+	sb.WriteString(name)
+	sb.WriteString(" histogram\n")
+	sb.WriteString("# TYPE ")
+	sb.WriteString(name)
+	sb.WriteString(" histogram\n")
 
 	for i, bucket := range h.Buckets {
+		sb.WriteString(name)
 		if i == len(h.Buckets)-1 {
-			sb.WriteString(fmt.Sprintf("%s_bucket{le=\"+Inf\"} %d\n", name, h.Counts[i]))
+			sb.WriteString(`_bucket{le="+Inf"} `)
 		} else {
-			sb.WriteString(fmt.Sprintf("%s_bucket{le=\"%g\"} %d\n", name, bucket, h.Counts[i]))
+			sb.WriteString(`_bucket{le="`)
+			sb.WriteString(strconv.FormatFloat(bucket, 'g', -1, 64))
+			sb.WriteString(`"} `)
 		}
+		sb.WriteString(strconv.FormatInt(h.Counts[i], 10))
+		sb.WriteByte('\n')
 	}
 
-	sb.WriteString(fmt.Sprintf("%s_sum %d\n", name, h.Sum))
-	sb.WriteString(fmt.Sprintf("%s_count %d\n", name, h.Count))
+	sb.WriteString(name)
+	sb.WriteString("_sum ")
+	sb.WriteString(strconv.FormatInt(h.Sum, 10))
+	sb.WriteByte('\n')
+	sb.WriteString(name)
+	sb.WriteString("_count ")
+	sb.WriteString(strconv.FormatInt(h.Count, 10))
+	sb.WriteByte('\n')
 }

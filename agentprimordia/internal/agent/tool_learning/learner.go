@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -89,7 +90,7 @@ func (l *MemoryToolLearner) RecordSuccess(ctx context.Context, toolName string, 
 	}
 
 	episode := &Episode{
-		ID:        fmt.Sprintf("tool_usage_%s_%d", toolName, time.Now().UnixNano()),
+		ID:        "tool_usage_" + toolName + "_" + strconv.FormatInt(time.Now().UnixNano(), 10),
 		SessionID: "tool_learning",
 		Role:      "tool_usage",
 		Content:   string(recordJSON),
@@ -119,7 +120,7 @@ func (l *MemoryToolLearner) RecordFailure(ctx context.Context, toolName string, 
 	}
 
 	episode := &Episode{
-		ID:        fmt.Sprintf("tool_usage_%s_%d", toolName, time.Now().UnixNano()),
+		ID:        "tool_usage_" + toolName + "_" + strconv.FormatInt(time.Now().UnixNano(), 10),
 		SessionID: "tool_learning",
 		Role:      "tool_usage",
 		Content:   string(recordJSON),
@@ -160,7 +161,7 @@ func (l *MemoryToolLearner) SuggestImprovement(ctx context.Context, toolName str
 	return &Suggestion{
 		OriginalArgs: args,
 		ImprovedArgs: bestExample,
-		Reason:       fmt.Sprintf("基于历史成功记录（成功率 %.2f）", practices[0].SuccessRate),
+		Reason:       "基于历史成功记录（成功率 " + strconv.FormatFloat(practices[0].SuccessRate, 'f', 2, 64) + "）",
 		Confidence:   practices[0].SuccessRate,
 	}, nil
 }

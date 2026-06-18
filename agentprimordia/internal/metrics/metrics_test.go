@@ -266,26 +266,22 @@ func TestRecordLLMCallWithLabels(t *testing.T) {
 	if !ok {
 		t.Fatal("expected LLMCallsByLabel to contain 'openai|gpt-4'")
 	}
-	counter.mu.Lock()
-	if counter.calls != 1 {
-		t.Errorf("expected calls=1, got %d", counter.calls)
+	if counter.calls.Load() != 1 {
+		t.Errorf("expected calls=1, got %d", counter.calls.Load())
 	}
-	if counter.errors != 0 {
-		t.Errorf("expected errors=0, got %d", counter.errors)
+	if counter.errors.Load() != 0 {
+		t.Errorf("expected errors=0, got %d", counter.errors.Load())
 	}
-	counter.mu.Unlock()
 
 	// 测试错误调用
 	m.RecordLLMCallWithLabels(200*time.Millisecond, errTest, "openai", "gpt-4")
 
-	counter.mu.Lock()
-	if counter.calls != 2 {
-		t.Errorf("expected calls=2, got %d", counter.calls)
+	if counter.calls.Load() != 2 {
+		t.Errorf("expected calls=2, got %d", counter.calls.Load())
 	}
-	if counter.errors != 1 {
-		t.Errorf("expected errors=1, got %d", counter.errors)
+	if counter.errors.Load() != 1 {
+		t.Errorf("expected errors=1, got %d", counter.errors.Load())
 	}
-	counter.mu.Unlock()
 
 	// 测试多个不同标签
 	m.RecordLLMCallWithLabels(150*time.Millisecond, nil, "anthropic", "claude-3")
@@ -297,11 +293,9 @@ func TestRecordLLMCallWithLabels(t *testing.T) {
 	if !ok {
 		t.Fatal("expected LLMCallsByLabel to contain 'anthropic|claude-3'")
 	}
-	counter2.mu.Lock()
-	if counter2.calls != 1 {
-		t.Errorf("expected calls=1, got %d", counter2.calls)
+	if counter2.calls.Load() != 1 {
+		t.Errorf("expected calls=1, got %d", counter2.calls.Load())
 	}
-	counter2.mu.Unlock()
 
 	// 验证全局计数器也被更新
 	snap := m.Snapshot()
@@ -348,26 +342,22 @@ func TestRecordToolCallWithLabels(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ToolCallsByLabel to contain 'search'")
 	}
-	counter.mu.Lock()
-	if counter.calls != 1 {
-		t.Errorf("expected calls=1, got %d", counter.calls)
+	if counter.calls.Load() != 1 {
+		t.Errorf("expected calls=1, got %d", counter.calls.Load())
 	}
-	if counter.errors != 0 {
-		t.Errorf("expected errors=0, got %d", counter.errors)
+	if counter.errors.Load() != 0 {
+		t.Errorf("expected errors=0, got %d", counter.errors.Load())
 	}
-	counter.mu.Unlock()
 
 	// 测试错误调用
 	m.RecordToolCallWithLabels(100*time.Millisecond, errTest, "search")
 
-	counter.mu.Lock()
-	if counter.calls != 2 {
-		t.Errorf("expected calls=2, got %d", counter.calls)
+	if counter.calls.Load() != 2 {
+		t.Errorf("expected calls=2, got %d", counter.calls.Load())
 	}
-	if counter.errors != 1 {
-		t.Errorf("expected errors=1, got %d", counter.errors)
+	if counter.errors.Load() != 1 {
+		t.Errorf("expected errors=1, got %d", counter.errors.Load())
 	}
-	counter.mu.Unlock()
 
 	// 测试多个不同工具
 	m.RecordToolCallWithLabels(75*time.Millisecond, nil, "execute")
@@ -379,11 +369,9 @@ func TestRecordToolCallWithLabels(t *testing.T) {
 	if !ok {
 		t.Fatal("expected ToolCallsByLabel to contain 'execute'")
 	}
-	counter2.mu.Lock()
-	if counter2.calls != 1 {
-		t.Errorf("expected calls=1, got %d", counter2.calls)
+	if counter2.calls.Load() != 1 {
+		t.Errorf("expected calls=1, got %d", counter2.calls.Load())
 	}
-	counter2.mu.Unlock()
 
 	// 验证全局计数器也被更新
 	snap := m.Snapshot()
@@ -409,11 +397,9 @@ func TestRecordTurnWithAgent(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TurnsByAgent to contain 'agent-1'")
 	}
-	counter.mu.Lock()
-	if counter.calls != 1 {
-		t.Errorf("expected calls=1, got %d", counter.calls)
+	if counter.calls.Load() != 1 {
+		t.Errorf("expected calls=1, got %d", counter.calls.Load())
 	}
-	counter.mu.Unlock()
 
 	// 测试多个不同 agent
 	m.RecordTurnWithAgent(600*time.Millisecond, "agent-2")
@@ -426,17 +412,13 @@ func TestRecordTurnWithAgent(t *testing.T) {
 	if !ok {
 		t.Fatal("expected TurnsByAgent to contain 'agent-2'")
 	}
-	counter2.mu.Lock()
-	if counter2.calls != 1 {
-		t.Errorf("expected calls=1, got %d", counter2.calls)
+	if counter2.calls.Load() != 1 {
+		t.Errorf("expected calls=1, got %d", counter2.calls.Load())
 	}
-	counter2.mu.Unlock()
 
-	counter.mu.Lock()
-	if counter.calls != 2 {
-		t.Errorf("expected agent-1 calls=2, got %d", counter.calls)
+	if counter.calls.Load() != 2 {
+		t.Errorf("expected agent-1 calls=2, got %d", counter.calls.Load())
 	}
-	counter.mu.Unlock()
 
 	// 验证全局 TotalTurns 也被更新
 	snap := m.Snapshot()
@@ -736,9 +718,7 @@ func TestRecordLLMCallWithLabels_Concurrent(t *testing.T) {
 	m.mu.RLock()
 	totalFromLabels := int64(0)
 	for _, counter := range m.LLMCallsByLabel {
-		counter.mu.Lock()
-		totalFromLabels += counter.calls
-		counter.mu.Unlock()
+		totalFromLabels += counter.calls.Load()
 	}
 	m.mu.RUnlock()
 

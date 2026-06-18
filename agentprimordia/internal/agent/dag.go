@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -71,22 +72,24 @@ type DAGWorkflow struct {
 }
 
 // DAGMetrics DAG 执行指标
+// perf-v4 Task 3：NodeStats map 注册仍需锁保护（首次写入），记录更新已无锁
 type DAGMetrics struct {
 	mu              sync.RWMutex
-	TotalExecutions int64
-	TotalDuration   time.Duration
+	TotalExecutions atomic.Int64
+	TotalDuration   atomic.Int64 // 纳秒累加，Snapshot() 转 Duration
 	NodeStats       map[string]*NodeExecutionStats
 }
 
 // NodeExecutionStats 单节点执行统计
+// perf-v4 Task 3：所有计数器字段改为 atomic.Int64，record() 无锁化
 type NodeExecutionStats struct {
-	TotalRuns    int64
-	Successes    int64
-	Failures     int64
-	AvgDuration  time.Duration
-	MaxDuration  time.Duration
-	MinDuration  time.Duration
-	TotalRetries int64
+	TotalRuns    atomic.Int64
+	Successes    atomic.Int64
+	Failures     atomic.Int64
+	AvgDuration  atomic.Int64 // 纳秒，读取时转 Duration
+	MaxDuration  atomic.Int64 // 纳秒
+	MinDuration  atomic.Int64 // 纳秒
+	TotalRetries atomic.Int64
 }
 
 func newDAGMetrics() *DAGMetrics {
@@ -95,53 +98,93 @@ func newDAGMetrics() *DAGMetrics {
 	}
 }
 
+// record 记录节点执行统计（perf-v4 Task 3：无锁原子更新）
+// 仅在节点首次注册时获取写锁；已存在节点的更新全部使用 atomic 操作
 func (m *DAGMetrics) record(nodeID string, dur time.Duration, success bool, retries int) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	stats, ok := m.NodeStats[nodeID]
 	if !ok {
-		stats = &NodeExecutionStats{}
-		m.NodeStats[nodeID] = stats
+		m.mu.Lock()
+		// double-check：避免并发首次写入时覆盖
+		stats, ok = m.NodeStats[nodeID]
+		if !ok {
+			stats = &NodeExecutionStats{}
+			m.NodeStats[nodeID] = stats
+		}
+		m.mu.Unlock()
 	}
-	stats.TotalRuns++
-	if success {
-		stats.Successes++
-	} else {
-		stats.Failures++
-	}
-	stats.TotalRetries += int64(retries)
 
-	if stats.TotalRuns == 1 || dur > stats.MaxDuration {
-		stats.MaxDuration = dur
+	// 后续更新全部无锁（perf-v4 Task 3：原子操作）
+	stats.TotalRuns.Add(1)
+	if success {
+		stats.Successes.Add(1)
+	} else {
+		stats.Failures.Add(1)
 	}
-	if stats.TotalRuns == 1 || dur < stats.MinDuration {
-		stats.MinDuration = dur
+	if retries > 0 {
+		stats.TotalRetries.Add(int64(retries))
 	}
-	totalDur := stats.AvgDuration*time.Duration(stats.TotalRuns-1) + dur
-	stats.AvgDuration = totalDur / time.Duration(stats.TotalRuns)
+
+	// MaxDuration 使用 CAS 循环更新（perf-v4 Task 3）
+	durNanos := int64(dur)
+	for {
+		old := stats.MaxDuration.Load()
+		if old != 0 && durNanos <= old {
+			break
+		}
+		if stats.MaxDuration.CompareAndSwap(old, durNanos) {
+			break
+		}
+	}
+	// MinDuration CAS 循环（首条记录时为 0，直接 Store）
+	for {
+		old := stats.MinDuration.Load()
+		if old != 0 && durNanos >= old {
+			break
+		}
+		if stats.MinDuration.CompareAndSwap(old, durNanos) {
+			break
+		}
+	}
+
+	// AvgDuration：running sum / count，sum 通过 CAS 累加
+	for {
+		oldSum := stats.AvgDuration.Load()
+		newSum := oldSum + durNanos
+		if stats.AvgDuration.CompareAndSwap(oldSum, newSum) {
+			break
+		}
+	}
 }
 
+// Snapshot 读取当前所有指标的快照（perf-v4 Task 3：原子读取）
 func (m *DAGMetrics) Snapshot() map[string]interface{} {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	result := map[string]interface{}{
-		"total_executions": m.TotalExecutions,
-		"total_duration":   m.TotalDuration.String(),
+		"total_executions": m.TotalExecutions.Load(),
+		"total_duration":   time.Duration(m.TotalDuration.Load()).String(),
 		"node_stats":       make(map[string]interface{}),
 	}
 	for id, s := range m.NodeStats {
 		result["node_stats"].(map[string]interface{})[id] = map[string]interface{}{
-			"total_runs":    s.TotalRuns,
-			"successes":     s.Successes,
-			"failures":      s.Failures,
-			"avg_duration":  s.AvgDuration.String(),
-			"max_duration":  s.MaxDuration.String(),
-			"min_duration":  s.MinDuration.String(),
-			"total_retries": s.TotalRetries,
+			"total_runs":    s.TotalRuns.Load(),
+			"successes":     s.Successes.Load(),
+			"failures":      s.Failures.Load(),
+			"avg_duration":  avgDurationFromSum(s.AvgDuration.Load(), s.TotalRuns.Load()).String(),
+			"max_duration":  time.Duration(s.MaxDuration.Load()).String(),
+			"min_duration":  time.Duration(s.MinDuration.Load()).String(),
+			"total_retries": s.TotalRetries.Load(),
 		}
 	}
 	return result
+}
+
+// avgDurationFromSum 根据累加总和和次数计算平均（perf-v4 Task 3 辅助函数）
+func avgDurationFromSum(sumNanos int64, count int64) time.Duration {
+	if count <= 0 {
+		return 0
+	}
+	return time.Duration(sumNanos / count)
 }
 
 // NewDAGWorkflow 创建 DAG 工作流
@@ -561,10 +604,9 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 	}
 
 	result.Duration = time.Since(start)
-	d.metrics.mu.Lock()
-	d.metrics.TotalExecutions++
-	d.metrics.TotalDuration += result.Duration
-	d.metrics.mu.Unlock()
+	// perf-v4 Task 3：TotalExecutions / TotalDuration 改为无锁原子累加
+	d.metrics.TotalExecutions.Add(1)
+	d.metrics.TotalDuration.Add(int64(result.Duration))
 
 	return result, nil
 }
