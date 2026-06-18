@@ -331,7 +331,8 @@ func (s *SQLiteStore) SearchAdvanced(ctx context.Context, opts SearchOptions) ([
 		keywordScore := normalizeFTS5Rank(cand.rawRank, maxRank)
 		semanticScore := 0.0
 		if opts.UseSemantic {
-			semanticScore = computeSemanticScore(queryTokens, cand.episode)
+			// 优化（perf-v3）：使用预计算的 contentTokens，避免重复 tokenize
+			semanticScore = computeSemanticScorePrecomputed(queryTokens, cand.contentTokens, cand.episode.Importance)
 		}
 		combinedScore := (1-opts.SemanticWeight)*keywordScore + opts.SemanticWeight*semanticScore
 
@@ -357,6 +358,8 @@ func (s *SQLiteStore) SearchAdvanced(ctx context.Context, opts SearchOptions) ([
 type ftsCandidate struct {
 	episode *Episode
 	rawRank float64
+	// 优化（perf-v3）：预计算的内容 token 集合，避免 scoring 时重复 tokenize
+	contentTokens map[string]struct{}
 }
 
 func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptions) ([]*ftsCandidate, error) {
@@ -414,6 +417,8 @@ func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptio
 	defer rows.Close()
 
 	var candidates []*ftsCandidate
+	// 优化（perf-v3）：语义打分时预计算 token，避免每个候选重复 tokenize
+	preTokenize := opts.UseSemantic
 	for rows.Next() {
 		var ep Episode
 		var metadataJSON sql.NullString
@@ -435,7 +440,11 @@ func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptio
 		if rawRank.Valid {
 			rank = rawRank.Float64
 		}
-		candidates = append(candidates, &ftsCandidate{episode: &ep, rawRank: rank})
+		cand := &ftsCandidate{episode: &ep, rawRank: rank}
+		if preTokenize {
+			cand.contentTokens = tokenize(ep.Content + " " + ep.Summary + " " + ep.Topics)
+		}
+		candidates = append(candidates, cand)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate candidate rows: %w", err)
@@ -467,6 +476,12 @@ func tokenize(text string) map[string]struct{} {
 
 func computeSemanticScore(queryTokens map[string]struct{}, ep *Episode) float64 {
 	contentTokens := tokenize(ep.Content + " " + ep.Summary + " " + ep.Topics)
+	return computeSemanticScorePrecomputed(queryTokens, contentTokens, ep.Importance)
+}
+
+// computeSemanticScorePrecomputed 使用预计算的 content token 集合计算语义分数
+// 优化（perf-v3）：避免搜索路径中重复 tokenize episode 内容
+func computeSemanticScorePrecomputed(queryTokens, contentTokens map[string]struct{}, importance float64) float64 {
 	if len(contentTokens) == 0 || len(queryTokens) == 0 {
 		return 0
 	}
@@ -481,7 +496,7 @@ func computeSemanticScore(queryTokens map[string]struct{}, ep *Episode) float64 
 		return 0
 	}
 	jaccard := float64(intersection) / float64(union)
-	importanceWeight := 1.0 + ep.Importance
+	importanceWeight := 1.0 + importance
 	return jaccard * importanceWeight
 }
 

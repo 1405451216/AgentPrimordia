@@ -62,6 +62,7 @@ func (b *tokenBucket) allow() bool {
 }
 
 // waitToken 等待获取令牌，支持上下文取消
+// perf-v4 Task 9：合并 deadline 检查与 waitDuration 比较，减少 time.Now() 系统调用
 func (b *tokenBucket) waitToken(ctx context.Context, maxWait time.Duration) error {
 	deadline := time.Now().Add(maxWait)
 	for {
@@ -77,10 +78,11 @@ func (b *tokenBucket) waitToken(ctx context.Context, maxWait time.Duration) erro
 		waitDuration := time.Duration(float64(time.Second) * deficit / b.refillRate)
 		b.mu.Unlock()
 
-		if time.Now().After(deadline) {
+		// 一次性检查：合并 deadline 过期与 waitDuration 超限逻辑（perf-v4 Task 9）
+		if waitDuration <= 0 {
 			return ErrRateLimited
 		}
-		// 限制等待时间不超过 deadline
+		// 限制等待时间不超过 deadline（同时检测 deadline 过期）
 		remaining := time.Until(deadline)
 		if waitDuration > remaining {
 			waitDuration = remaining

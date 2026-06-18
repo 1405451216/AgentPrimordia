@@ -122,14 +122,22 @@ func (r *Registry) Get(name string) (Tool, bool) {
 	if !exists {
 		return nil, false
 	}
-	return v.(Tool), true
+	tool, ok := v.(Tool)
+	if !ok {
+		return nil, false
+	}
+	return tool, true
 }
 
 // List returns all registered tool names
 func (r *Registry) List() []string {
 	names := make([]string, 0)
 	r.tools.Range(func(key, _ any) bool {
-		names = append(names, key.(string))
+		name, ok := key.(string)
+		if !ok {
+			return true
+		}
+		names = append(names, name)
 		return true
 	})
 	return names
@@ -171,7 +179,11 @@ func (r *Registry) Definitions() []map[string]any {
 func (r *Registry) rebuildDefsCache() {
 	cached := make([]map[string]any, 0)
 	r.toolDefs.Range(func(_, v any) bool {
-		cached = append(cached, v.(map[string]any))
+		def, ok := v.(map[string]any)
+		if !ok {
+			return true
+		}
+		cached = append(cached, def)
 		return true
 	})
 	r.defsCache.Store(&cached)
@@ -194,7 +206,11 @@ func (r *Registry) GetPermission(name string) (*Permission, bool) {
 	if !exists {
 		return nil, false
 	}
-	return v.(*Permission), true
+	perm, ok := v.(*Permission)
+	if !ok {
+		return nil, false
+	}
+	return perm, true
 }
 
 func (r *Registry) Unregister(name string) {
@@ -227,7 +243,10 @@ func (r *Registry) RegisterPlugin(plugin ToolPlugin) error {
 func (r *Registry) ToolsByCategory() map[string][]Tool {
 	categories := make(map[string][]Tool)
 	r.tools.Range(func(_, v any) bool {
-		tool := v.(Tool)
+		tool, ok := v.(Tool)
+		if !ok {
+			return true
+		}
 		cat := "default"
 		if ct, ok := tool.(CategorizedTool); ok {
 			cat = ct.Category()
@@ -242,7 +261,10 @@ func (r *Registry) ToolCategories() []string {
 	seen := make(map[string]bool)
 	var cats []string
 	r.tools.Range(func(_, v any) bool {
-		tool := v.(Tool)
+		tool, ok := v.(Tool)
+		if !ok {
+			return true
+		}
 		cat := "default"
 		if ct, ok := tool.(CategorizedTool); ok {
 			cat = ct.Category()

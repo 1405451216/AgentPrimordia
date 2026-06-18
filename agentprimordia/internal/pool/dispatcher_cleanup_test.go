@@ -54,27 +54,31 @@ func TestPool_AutoCleanupTaskMap(t *testing.T) {
 	}
 }
 
-// TestPool_NoAutoCleanupByDefault 验证默认配置（MaxRetainedTasks=0）不自动清理，
-// 保持向后兼容——GetTask 在 Dispatch 后仍能找到已完成的任务。
-func TestPool_NoAutoCleanupByDefault(t *testing.T) {
+// TestPool_DefaultRetainedTasks 验证默认 MaxRetainedTasks 被设置为 1000，
+// 在未超过阈值时保留终态任务，GetTask 仍可查询。
+func TestPool_DefaultRetainedTasks(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t).WithResponse("result")
 
 	pool := NewPool(PoolConfig{
 		MaxConcurrency: 5,
 		Timeout:        30 * time.Second,
-		// MaxRetainedTasks 不设置（默认 0）
+		// MaxRetainedTasks 不设置，应使用默认值 1000
 	})
 	pool.SetModel(mockLLM)
 	defer pool.Close()
+
+	if pool.config.MaxRetainedTasks != defaultMaxRetainedTasks {
+		t.Fatalf("MaxRetainedTasks default = %d, want %d", pool.config.MaxRetainedTasks, defaultMaxRetainedTasks)
+	}
 
 	_, _ = pool.Dispatch(context.Background(), []TaskConfig{
 		{ID: "retained-task", Title: "rt", Prompt: "do"},
 	})
 
-	// 默认不清理，任务应仍可查询
+	// 未达阈值不应清理，任务应仍可查询
 	result, found := pool.GetTask("retained-task")
 	if !found {
-		t.Fatal("默认配置（MaxRetainedTasks=0）不应清理，GetTask 应找到任务")
+		t.Fatal("默认配置在未超阈值时不应清理，GetTask 应找到任务")
 	}
 	if result.Status != PoolTaskCompleted {
 		t.Errorf("Status = %s, want Completed", result.Status)

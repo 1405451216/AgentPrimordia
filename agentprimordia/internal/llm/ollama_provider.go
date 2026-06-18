@@ -224,7 +224,10 @@ func (p *OllamaProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 	}
 
 	for _, tc := range resp.Message.ToolCalls {
-		argsJSON, _ := json.Marshal(tc.Function.Arguments)
+		argsJSON, err := json.Marshal(tc.Function.Arguments)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal Ollama function call args: %w", err)
+		}
 		result.ToolCalls = append(result.ToolCalls, FunctionCall{
 			ID:        fmt.Sprintf("ollama_%s_%d", tc.Function.Name, tc.ID),
 			Name:      tc.Function.Name,

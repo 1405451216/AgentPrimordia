@@ -15,7 +15,7 @@ func TestShell_OutputTruncation(t *testing.T) {
 
 	args, _ := json.Marshal(map[string]string{
 		"action":  "execute",
-		"command": "echo hello world this is a long output",
+		"command": "go version",
 		"workdir": dir,
 	})
 
@@ -36,7 +36,7 @@ func TestShell_OutputUnderLimit(t *testing.T) {
 
 	args, _ := json.Marshal(map[string]string{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": "go env GOROOT",
 		"workdir": t.TempDir(),
 	})
 

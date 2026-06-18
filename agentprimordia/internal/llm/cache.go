@@ -58,6 +58,9 @@ type InMemoryCache struct {
 	hits       int64
 	misses     int64
 	tokensSave int64
+
+	// 优化（perf-v3）：fingerprint -> entry 索引，精确匹配 O(1) 快路径
+	fpIndex map[string]*CacheEntry
 }
 
 // NewInMemoryCache 创建内存缓存
@@ -92,11 +95,31 @@ func NewInMemoryCacheWithFullConfig(cfg InMemoryCacheFullConfig) *InMemoryCache 
 		maxSize:  cfg.MaxSize,
 		minScore: cfg.MinScore,
 		ttl:      cfg.TTL,
+		fpIndex:  make(map[string]*CacheEntry),
 	}
 }
 
 // Get 查找缓存，similarity 为最低相似度阈值（0-1）
+// 优化（perf-v3）：先检查 fingerprint 精确匹配 O(1) fast-path，未命中再走向量相似度
 func (c *InMemoryCache) Get(ctx context.Context, query string, similarity float32) (*CompletionResponse, bool) {
+	// fast-path：精确匹配（O(1) hash map 查找）
+	fp := PromptFingerprint(query)
+	c.mu.RLock()
+	atomicAdd(&c.totalQuery, 1)
+	if entry, ok := c.fpIndex[fp]; ok {
+		if c.ttl <= 0 || time.Since(entry.CreatedAt) <= c.ttl {
+			entry.HitCount++
+			atomicAdd(&c.hits, 1)
+			if entry.Response != nil {
+				atomicAdd(&c.tokensSave, int64(entry.Response.Usage.TotalTokens))
+			}
+			c.mu.RUnlock()
+			return entry.Response, true
+		}
+	}
+	c.mu.RUnlock()
+
+	// slow-path：向量相似度搜索
 	var queryVec []float32
 	if c.embedder != nil {
 		v, err := c.embedder(ctx, query)
@@ -110,8 +133,6 @@ func (c *InMemoryCache) Get(ctx context.Context, query string, similarity float3
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-
-	atomicAdd(&c.totalQuery, 1)
 
 	var bestEntry *CacheEntry
 	var bestScore float32
@@ -153,23 +174,30 @@ func (c *InMemoryCache) Set(ctx context.Context, query string, resp *CompletionR
 		vec = fingerprintToVector(query)
 	}
 
+	fp := PromptFingerprint(query)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if len(c.entries) >= c.maxSize {
-		// 淘汰最旧的条目并创建新切片，释放底层数组内存
+		// 淘汰最旧的条目
+		evicted := c.entries[0]
+		delete(c.fpIndex, evicted.Key)
 		newEntries := make([]*CacheEntry, 0, c.maxSize)
 		newEntries = append(newEntries, c.entries[1:]...)
 		c.entries = newEntries
 	}
 
-	c.entries = append(c.entries, &CacheEntry{
+	entry := &CacheEntry{
+		Key:       fp,
 		Query:     query,
 		Response:  resp,
 		CreatedAt: time.Now(),
 		Model:     resp.Model,
 		vector:    vec,
-	})
+	}
+	c.entries = append(c.entries, entry)
+	c.fpIndex[fp] = entry
 
 	return nil
 }
@@ -203,6 +231,7 @@ func (c *InMemoryCache) Clear(_ context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.entries = make([]*CacheEntry, 0)
+	c.fpIndex = make(map[string]*CacheEntry)
 	c.totalQuery = 0
 	c.hits = 0
 	c.misses = 0
@@ -220,6 +249,8 @@ func (c *InMemoryCache) Invalidate(_ context.Context, key string) error {
 	for _, e := range c.entries {
 		if !strings.Contains(e.Query, key) && e.Key != key {
 			filtered = append(filtered, e)
+		} else {
+			delete(c.fpIndex, e.Key)
 		}
 	}
 	c.entries = filtered
@@ -227,19 +258,24 @@ func (c *InMemoryCache) Invalidate(_ context.Context, key string) error {
 }
 
 func (c *InMemoryCache) SetWithVector(query string, resp *CompletionResponse, vector []float32) error {
+	fp := PromptFingerprint(query)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if len(c.entries) >= c.maxSize {
-		// 淘汰最旧的条目并创建新切片，释放底层数组内存
+		evicted := c.entries[0]
+		delete(c.fpIndex, evicted.Key)
 		newEntries := make([]*CacheEntry, 0, c.maxSize)
 		newEntries = append(newEntries, c.entries[1:]...)
 		c.entries = newEntries
 	}
-	c.entries = append(c.entries, &CacheEntry{
-		Key: PromptFingerprint(query), Query: query, Response: resp,
+	entry := &CacheEntry{
+		Key: fp, Query: query, Response: resp,
 		CreatedAt: time.Now(), Model: resp.Model, vector: vector,
-	})
+	}
+	c.entries = append(c.entries, entry)
+	c.fpIndex[fp] = entry
 	return nil
 }
 

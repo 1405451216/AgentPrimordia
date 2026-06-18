@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,26 +43,30 @@ func DefaultResilientConfig() ResilientConfig {
 	}
 }
 
+// ResilientProvider 弹性 Provider（带重试 + Fallback + 熔断）
+// perf-v4 Task 10：state/failures/lastFail/halfOpenProbe 改为原子操作，
+// checkCircuit() 快速路径（closed 状态）零锁获取
 type ResilientProvider struct {
 	primary       Provider
 	fallbacks     []Provider
 	config        ResilientConfig
-	state         circuitState
-	failures      int
-	mu            sync.RWMutex
-	lastFail      time.Time
-	halfOpenProbe bool
+	state         atomic.Int32 // circuitState
+	failures      atomic.Int64
+	mu            sync.RWMutex // 仅保护 fallbacks slice
+	lastFail      atomic.Int64 // UnixNano 时间戳
+	halfOpenProbe atomic.Bool
 }
 
 func NewResilientProvider(primary Provider, cfg ResilientConfig) (*ResilientProvider, error) {
 	if primary == nil {
 		return nil, fmt.Errorf("primary provider must not be nil")
 	}
-	return &ResilientProvider{
+	r := &ResilientProvider{
 		primary: primary,
 		config:  cfg,
-		state:   circuitClosed,
-	}, nil
+	}
+	r.state.Store(int32(circuitClosed))
+	return r, nil
 }
 
 func (r *ResilientProvider) AddFallback(provider Provider) {
@@ -168,24 +173,33 @@ func (r *ResilientProvider) Info() ModelInfo {
 	return r.primary.Info()
 }
 
+// checkCircuit 检查熔断器状态（perf-v4 Task 10：快速路径零锁）
 func (r *ResilientProvider) checkCircuit() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	switch r.state {
+	state := circuitState(r.state.Load())
+	switch state {
+	case circuitClosed:
+		// 快速路径：closed 状态零锁直接返回（perf-v4 Task 10）
+		return nil
 	case circuitOpen:
-		if time.Since(r.lastFail) > r.config.CircuitRecoverAfter {
-			r.state = circuitHalfOpen
-			r.halfOpenProbe = false // 允许第一个试探请求通过
+		// open 状态：检查是否已过恢复时间（无锁读取 lastFail）
+		lastFailNanos := r.lastFail.Load()
+		if lastFailNanos == 0 {
+			return ErrCircuitOpen
+		}
+		if time.Since(time.Unix(0, lastFailNanos)) > r.config.CircuitRecoverAfter {
+			// 升级到 half-open：使用 CAS 避免并发升级
+			if r.state.CompareAndSwap(int32(circuitOpen), int32(circuitHalfOpen)) {
+				r.halfOpenProbe.Store(false)
+			}
 			return nil
 		}
 		return ErrCircuitOpen
 	case circuitHalfOpen:
 		// 半开状态只允许一个试探请求
-		if r.halfOpenProbe {
+		if r.halfOpenProbe.Load() {
 			return ErrCircuitOpen
 		}
-		r.halfOpenProbe = true
+		r.halfOpenProbe.Store(true)
 		return nil
 	default:
 		return nil
@@ -193,23 +207,20 @@ func (r *ResilientProvider) checkCircuit() error {
 }
 
 func (r *ResilientProvider) recordSuccess() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.failures = 0
-	r.state = circuitClosed
-	r.halfOpenProbe = false
+	// 成功直接重置为 closed（perf-v4 Task 10：无锁）
+	r.failures.Store(0)
+	r.state.Store(int32(circuitClosed))
+	r.halfOpenProbe.Store(false)
 }
 
 func (r *ResilientProvider) recordFailure() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	// 失败累加计数并记录时间戳（perf-v4 Task 10：无锁）
+	r.failures.Add(1)
+	r.lastFail.Store(time.Now().UnixNano())
+	r.halfOpenProbe.Store(false)
 
-	r.failures++
-	r.lastFail = time.Now()
-	r.halfOpenProbe = false
-
-	if r.failures >= r.config.CircuitThreshold {
-		r.state = circuitOpen
+	if r.failures.Load() >= int64(r.config.CircuitThreshold) {
+		r.state.Store(int32(circuitOpen))
 	}
 }
 

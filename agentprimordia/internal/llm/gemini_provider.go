@@ -260,7 +260,10 @@ func (p *GeminiProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 				result.Content = part.Text
 			}
 			if part.FunctionCall.Name != "" {
-				argsJSON, _ := json.Marshal(part.FunctionCall.Args)
+				argsJSON, err := json.Marshal(part.FunctionCall.Args)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal Gemini function call args: %w", err)
+				}
 				result.ToolCalls = append(result.ToolCalls, FunctionCall{
 					ID:        fmt.Sprintf("gemini_fc_%s", part.FunctionCall.Name),
 					Name:      part.FunctionCall.Name,

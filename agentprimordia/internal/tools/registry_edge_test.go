@@ -250,6 +250,55 @@ func TestRegistry_Definitions_CacheIsolation(t *testing.T) {
 	}
 }
 
+// TestRegistry_TypeAssertionSafety 验证 Registry 内部 sync.Map 若被异常值污染，
+// 各查询方法不会 panic，而是跳过或返回 false。
+func TestRegistry_TypeAssertionSafety(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&mockTool{name: "valid", response: "ok"})
+
+	// 模拟异常值污染
+	reg.tools.Store("bad-tool", "not a Tool")
+	reg.tools.Store(123, &mockTool{name: "int-key", response: "ok"}) // 非 string key
+	reg.toolDefs.Store("bad-def", "not a map")
+	reg.permissions.Store("bad-perm", "not a Permission")
+
+	// Get 应返回 false 而不是 panic
+	if _, exists := reg.Get("bad-tool"); exists {
+		t.Error("Get should return false for non-Tool value")
+	}
+	if _, exists := reg.GetPermission("bad-perm"); exists {
+		t.Error("GetPermission should return false for non-Permission value")
+	}
+
+	// List 应跳过非 string key（顺序不保证）
+	names := reg.List()
+	hasValid := false
+	for _, n := range names {
+		if n == "valid" {
+			hasValid = true
+		}
+	}
+	if !hasValid {
+		t.Errorf("List should include valid key, got %v", names)
+	}
+
+	// Definitions 应跳过异常 def
+	defs := reg.Definitions()
+	if len(defs) != 1 {
+		t.Errorf("Definitions should skip invalid defs, got %d", len(defs))
+	}
+
+	// ToolsByCategory / ToolCategories 应跳过异常 tool
+	byCat := reg.ToolsByCategory()
+	if len(byCat) != 1 {
+		t.Errorf("ToolsByCategory should skip invalid tools, got %v", byCat)
+	}
+	cats := reg.ToolCategories()
+	if len(cats) != 1 {
+		t.Errorf("ToolCategories should skip invalid tools, got %v", cats)
+	}
+}
+
 func BenchmarkRegistry_Definitions(b *testing.B) {
 	reg := NewRegistry()
 	for i := 0; i < 20; i++ {

@@ -244,7 +244,10 @@ func (a *API) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 		"truncated":    truncated,
 	}
 
-	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	resultJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("failed to marshal response: %v", err)), err
+	}
 
 	if resp.StatusCode >= 400 {
 		return tools.NewErrorResult(string(resultJSON)), fmt.Errorf("HTTP %d", resp.StatusCode)

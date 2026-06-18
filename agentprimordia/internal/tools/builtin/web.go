@@ -215,7 +215,10 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 		"truncated":    truncated,
 	}
 
-	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	resultJSON, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("failed to marshal response: %v", err)), err
+	}
 
 	if resp.StatusCode >= 400 {
 		return tools.NewErrorResult(string(resultJSON)), fmt.Errorf("HTTP %d", resp.StatusCode)
@@ -225,12 +228,13 @@ func (w *Web) Execute(ctx context.Context, args json.RawMessage) (*tools.Result,
 
 // validateIPNotInternal 检查 IP 地址是否为内网/私有地址
 func validateIPNotInternal(ip net.IP) error {
-	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() || ip.IsUnspecified() {
 		return fmt.Errorf("target resolves to internal/private address %s", ip)
 	}
 	// 检测 IPv4-mapped IPv6 地址（如 ::ffff:127.0.0.1）
 	if v4 := ip.To4(); v4 != nil {
-		if v4.IsLoopback() || v4.IsPrivate() || v4.IsLinkLocalUnicast() || v4.IsUnspecified() {
+		if v4.IsLoopback() || v4.IsPrivate() || v4.IsLinkLocalUnicast() || v4.IsMulticast() || v4.IsUnspecified() {
 			return fmt.Errorf("target resolves to internal/private address %s", ip)
 		}
 	}
