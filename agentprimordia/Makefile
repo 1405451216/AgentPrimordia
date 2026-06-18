@@ -1,20 +1,25 @@
-.PHONY: build test test-short test-integration lint lint-all lint-go lint-ts cover cover-html cover-check \
+.PHONY: build test test-race test-short test-integration lint lint-all lint-go lint-ts cover cover-html cover-check \
         deprecation-check benchmark api-diff cover-trend clean run-hello run-multi run-production \
         docker-build docker-run docker-clean
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS = -ldflags="-X main.Version=$(VERSION)"
 
+# 项目强制无 CGO（modernc.org/sqlite 为纯 Go 驱动），所有目标默认继承此设置。
+export CGO_ENABLED=0
+
 build:
 	go build $(LDFLAGS) -o ap ./cmd/ap/
 
 test:
-	@if go env CGO_ENABLED | grep -q 1 2>/dev/null; then \
-		go test -v -race -coverprofile=coverage.out ./...; \
-	else \
-		echo "CGO disabled, running without -race"; \
-		go test -v -coverprofile=coverage.out ./...; \
-	fi
+	go test -v -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+# race 检测需要 CGO，仅在已安装 C 编译器的环境显式调用：
+#   make test-race CGO_ENABLED=1
+# Windows 默认无 gcc，请勿在此平台启用。
+test-race:
+	go test -v -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 
 # 跨平台友好的测试（无 -race，Windows 无 gcc 也能跑）
