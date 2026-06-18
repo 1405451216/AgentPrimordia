@@ -86,7 +86,7 @@ func BenchmarkTools_Shell_Execute(b *testing.B) {
 
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": "go env GOROOT",
 	})
 
 	ctx := context.Background()
