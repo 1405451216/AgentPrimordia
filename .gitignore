@@ -95,6 +95,7 @@ out/
 *_cover
 *_cover.out
 coverage.out
+coverage.txt
 coverage_report.txt
 metrics_cover
 tools_cover
