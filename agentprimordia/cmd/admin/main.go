@@ -18,14 +18,19 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8080", "管理面板监听地址")
+	token := flag.String("token", "", "Admin API 访问令牌（必填，用于保护除 /api/health 外的所有管理端点）")
 	flag.Parse()
+
+	if *token == "" {
+		log.Fatal("必须提供 -token 参数以保护 Admin API")
+	}
 
 	poolCfg := pool.PoolConfig{MaxConcurrency: 10}
 	p := pool.NewPool(poolCfg)
 	defer p.Close()
 
 	registry := tools.NewRegistry()
-	handler := admin.NewAdminHandler(p, registry)
+	handler := admin.NewAdminHandler(p, registry, admin.WithAPIToken(*token))
 
 	server := &http.Server{
 		Addr:    *addr,

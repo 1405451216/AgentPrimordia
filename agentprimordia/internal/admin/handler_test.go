@@ -11,11 +11,13 @@ import (
 	"agentprimordia/internal/tools"
 )
 
+const testToken = "test-admin-token"
+
 func newTestHandler(t *testing.T) *AdminHandler {
 	t.Helper()
 	p := pool.NewPool(pool.PoolConfig{MaxConcurrency: 5})
 	t.Cleanup(func() { p.Close() })
-	return NewAdminHandler(p, tools.NewRegistry())
+	return NewAdminHandler(p, tools.NewRegistry(), WithAPIToken(testToken))
 }
 
 func doRequest(t *testing.T, handler http.Handler, method, path string) *httptest.ResponseRecorder {
@@ -26,9 +28,18 @@ func doRequest(t *testing.T, handler http.Handler, method, path string) *httptes
 	return rec
 }
 
+func doAuthorizedRequest(t *testing.T, handler http.Handler, method, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("Authorization", "Bearer "+testToken)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	return rec
+}
+
 func TestAdminHandler_ListAgents(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/agents")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -42,7 +53,7 @@ func TestAdminHandler_ListAgents(t *testing.T) {
 
 func TestAdminHandler_GetAgent_NotFound(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/agents/nonexistent")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents/nonexistent")
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("期望状态码 404，实际 %d", rec.Code)
@@ -59,7 +70,7 @@ func TestAdminHandler_GetAgent_NotFound(t *testing.T) {
 
 func TestAdminHandler_Stats(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/stats")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/stats")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -76,7 +87,7 @@ func TestAdminHandler_Stats(t *testing.T) {
 
 func TestAdminHandler_Tasks(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/tasks")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/tasks")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -204,7 +215,7 @@ func TestAdminHandler_Health(t *testing.T) {
 
 func TestAdminHandler_SystemInfo(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/system")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/system")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
@@ -224,5 +235,50 @@ func TestAdminHandler_SystemInfo(t *testing.T) {
 	}
 	if _, ok := result["mem_alloc_mb"]; !ok {
 		t.Error("expected mem_alloc_mb field")
+	}
+}
+
+func TestAdminHandler_AuthMissing(t *testing.T) {
+	handler := newTestHandler(t)
+	rec := doRequest(t, handler, http.MethodGet, "/api/agents")
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestAdminHandler_AuthInvalid(t *testing.T) {
+	handler := newTestHandler(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/agents", nil)
+	req.Header.Set("Authorization", "Bearer wrong-token")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestAdminHandler_AuthNoTokenConfigured(t *testing.T) {
+	p := pool.NewPool(pool.PoolConfig{MaxConcurrency: 5})
+	t.Cleanup(func() { p.Close() })
+	handler := NewAdminHandler(p, tools.NewRegistry())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/agents", nil)
+	req.Header.Set("Authorization", "Bearer "+testToken)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401", rec.Code)
+	}
+}
+
+func TestAdminHandler_HealthPublic(t *testing.T) {
+	handler := newTestHandler(t)
+	rec := doRequest(t, handler, http.MethodGet, "/api/health")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 }

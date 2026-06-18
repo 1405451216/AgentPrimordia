@@ -12,40 +12,62 @@ import (
 	"agentprimordia/internal/tools"
 )
 
+// AdminOption 用于配置 AdminHandler。
+type AdminOption func(*AdminHandler)
+
+// WithAPIToken 设置 Admin API 的访问令牌。
+// 设置后，除 /api/health 外的所有 /api/* 端点都需要在请求头中提供
+// Authorization: Bearer <token>。
+func WithAPIToken(token string) AdminOption {
+	return func(h *AdminHandler) {
+		h.apiToken = token
+	}
+}
+
 type AdminHandler struct {
 	pool     *pool.Pool
 	registry *tools.Registry
 	mux      *http.ServeMux
 	logger   *slog.Logger
+	apiToken string
 }
 
-func NewAdminHandler(p *pool.Pool, r *tools.Registry) *AdminHandler {
+func NewAdminHandler(p *pool.Pool, r *tools.Registry, opts ...AdminOption) *AdminHandler {
 	h := &AdminHandler{
 		pool:     p,
 		registry: r,
 		mux:      http.NewServeMux(),
 		logger:   slog.Default(),
 	}
+	for _, opt := range opts {
+		opt(h)
+	}
 
-	// 原有端点
-	h.mux.HandleFunc("GET /api/agents", h.listAgents)
-	h.mux.HandleFunc("GET /api/agents/{id}", h.getAgent)
-	h.mux.HandleFunc("GET /api/stats", h.stats)
-	h.mux.HandleFunc("GET /api/tasks", h.tasks)
+	if h.apiToken == "" {
+		h.logger.Error("Admin API 未配置访问令牌 (WithAPIToken)，所有管理端点将返回 401")
+	}
+
+	// 公开健康检查端点
 	h.mux.HandleFunc("GET /api/health", h.health)
-	h.mux.HandleFunc("GET /api/system", h.systemInfo)
+
+	// 受保护端点
+	h.mux.HandleFunc("GET /api/agents", h.requireAuth(h.listAgents))
+	h.mux.HandleFunc("GET /api/agents/{id}", h.requireAuth(h.getAgent))
+	h.mux.HandleFunc("GET /api/stats", h.requireAuth(h.stats))
+	h.mux.HandleFunc("GET /api/tasks", h.requireAuth(h.tasks))
+	h.mux.HandleFunc("GET /api/system", h.requireAuth(h.systemInfo))
 
 	// 新增工具管理端点
-	h.mux.HandleFunc("GET /api/tools", h.listTools)
-	h.mux.HandleFunc("GET /api/tools/{name}", h.getTool)
-	h.mux.HandleFunc("GET /api/tools/categories", h.toolCategories)
+	h.mux.HandleFunc("GET /api/tools", h.requireAuth(h.listTools))
+	h.mux.HandleFunc("GET /api/tools/{name}", h.requireAuth(h.getTool))
+	h.mux.HandleFunc("GET /api/tools/categories", h.requireAuth(h.toolCategories))
 
 	// 新增工作流监控端点
-	h.mux.HandleFunc("GET /api/workflows", h.listWorkflows)
-	h.mux.HandleFunc("GET /api/workflows/{id}", h.getWorkflow)
+	h.mux.HandleFunc("GET /api/workflows", h.requireAuth(h.listWorkflows))
+	h.mux.HandleFunc("GET /api/workflows/{id}", h.requireAuth(h.getWorkflow))
 
 	// 新增实时日志端点
-	h.mux.HandleFunc("GET /api/logs/stream", h.logStream)
+	h.mux.HandleFunc("GET /api/logs/stream", h.requireAuth(h.logStream))
 
 	h.mux.HandleFunc("GET /", h.index)
 
@@ -54,6 +76,38 @@ func NewAdminHandler(p *pool.Pool, r *tools.Registry) *AdminHandler {
 
 func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
+}
+
+// requireAuth 返回一个包装 handler，校验 Bearer Token。
+// 若未配置 apiToken，则直接拒绝所有请求。
+func (h *AdminHandler) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.apiToken == "" {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "Admin API 未配置访问令牌",
+			})
+			return
+		}
+
+		auth := r.Header.Get("Authorization")
+		const prefix = "Bearer "
+		if len(auth) < len(prefix) || auth[:len(prefix)] != prefix {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "缺少有效的 Authorization: Bearer <token> 请求头",
+			})
+			return
+		}
+
+		token := auth[len(prefix):]
+		if token != h.apiToken {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "访问令牌无效",
+			})
+			return
+		}
+
+		next(w, r)
+	}
 }
 
 func (h *AdminHandler) listAgents(w http.ResponseWriter, r *http.Request) {
