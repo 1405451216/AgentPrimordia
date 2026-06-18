@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"sort"
@@ -9,6 +10,17 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+)
+
+// perf-v6 round 4 Task 2：dag 静态错误用 errors.New（避免 fmt.Errorf 反射分配）
+var (
+	ErrDagNodeNil         = errors.New("dag: node cannot be nil")
+	ErrDagNodeIDEmpty     = errors.New("dag: node ID cannot be empty")
+	ErrDagEdgeEmpty       = errors.New("dag: edge From and To cannot be empty")
+	ErrDagSubDAGNameEmpty = errors.New("dag: sub-dag name cannot be empty")
+	ErrDagSubDAGNil       = errors.New("dag: sub-dag cannot be nil")
+	ErrDagCycle           = errors.New("dag: cycle detected")
+	ErrDagCycleTopo       = errors.New("dag: cycle detected during topological sort")
 )
 
 // DAGNode DAG 工作流节点
@@ -205,10 +217,10 @@ func (d *DAGWorkflow) WithName(name string) *DAGWorkflow {
 // AddNode 添加节点
 func (d *DAGWorkflow) AddNode(node *DAGNode) error {
 	if node == nil {
-		return fmt.Errorf("dag: node cannot be nil")
+		return ErrDagNodeNil // perf-v6 round 4 Task 2
 	}
 	if node.ID == "" {
-		return fmt.Errorf("dag: node ID cannot be empty")
+		return ErrDagNodeIDEmpty // perf-v6 round 4 Task 2
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -222,7 +234,7 @@ func (d *DAGWorkflow) AddNode(node *DAGNode) error {
 // AddEdge 添加边（含可选条件）
 func (d *DAGWorkflow) AddEdge(edge DAGEdge) error {
 	if edge.From == "" || edge.To == "" {
-		return fmt.Errorf("dag: edge From and To cannot be empty")
+		return ErrDagEdgeEmpty // perf-v6 round 4 Task 2
 	}
 	d.mu.RLock()
 	_, fromExists := d.nodes[edge.From]
@@ -255,10 +267,10 @@ func (d *DAGWorkflow) SetParent(parent *DAGWorkflow) {
 // AddSubDAG 添加子 DAG
 func (d *DAGWorkflow) AddSubDAG(name string, sub *DAGWorkflow) error {
 	if name == "" {
-		return fmt.Errorf("dag: sub-dag name cannot be empty")
+		return ErrDagSubDAGNameEmpty // perf-v6 round 4 Task 2
 	}
 	if sub == nil {
-		return fmt.Errorf("dag: sub-dag cannot be nil")
+		return ErrDagSubDAGNil // perf-v6 round 4 Task 2
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -282,7 +294,7 @@ func (d *DAGWorkflow) Validate() error {
 	}
 
 	if d.hasCycle() {
-		return fmt.Errorf("dag: cycle detected")
+		return ErrDagCycle // perf-v6 round 4 Task 2
 	}
 
 	orphaned := d.findOrphanedNodes()
@@ -403,7 +415,7 @@ func (d *DAGWorkflow) TopologicalSort() ([]string, error) {
 	}
 
 	if len(order) != len(d.nodes) {
-		return nil, fmt.Errorf("dag: cycle detected during topological sort")
+		return nil, ErrDagCycleTopo // perf-v6 round 4 Task 2
 	}
 	return order, nil
 }
@@ -518,22 +530,33 @@ func (d *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 				}()
 
 				// 评估条件边：仅统计"活跃"的入边
+				// perf-v5 Task 17：先锁内读取 srcResult 快照，锁外评估 edge.Condition 用户回调
 				stateMu.Lock()
-				activeCount := 0
+				type edgeSnapshot struct {
+					edge      *DAGEdge
+					srcResult *DAGNodeResult
+				}
+				snapshots := make([]edgeSnapshot, 0, len(incoming[nid]))
 				for _, edgeIdx := range incoming[nid] {
-					edge := edges[edgeIdx]
-					if edge.Condition == nil {
-						activeCount++
-					} else {
-						srcResult := result.NodeResults[edge.From]
-						// 仅当源节点实际执行成功（非跳过）时才评估条件
-						if srcResult != nil && !srcResult.Skipped && srcResult.Error == nil && edge.Condition(ctx, srcResult) {
-							activeCount++
-						}
+					edge := &edges[edgeIdx]
+					var src *DAGNodeResult
+					if edge.Condition != nil {
+						src = result.NodeResults[edge.From]
 					}
+					snapshots = append(snapshots, edgeSnapshot{edge: edge, srcResult: src})
 				}
 				hasIncoming := len(incoming[nid]) > 0
 				stateMu.Unlock()
+
+				// 锁外评估用户回调
+				activeCount := 0
+				for _, snap := range snapshots {
+					if snap.edge.Condition == nil {
+						activeCount++
+					} else if snap.srcResult != nil && !snap.srcResult.Skipped && snap.srcResult.Error == nil && snap.edge.Condition(ctx, snap.srcResult) {
+						activeCount++
+					}
+				}
 
 				// 所有活跃条件均为 false → 跳过此节点
 				if hasIncoming && activeCount == 0 {

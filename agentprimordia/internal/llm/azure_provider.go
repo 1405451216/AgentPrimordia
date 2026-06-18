@@ -13,6 +13,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 const (
@@ -88,7 +90,7 @@ func NewAzureOpenAIProvider(cfg AzureConfig) (*AzureOpenAIProvider, error) {
 
 	return &AzureOpenAIProvider{
 		config: cfg,
-		client: &http.Client{Timeout: azureDefaultTimeout},
+		client: NewDefaultLLMClient(azureDefaultTimeout),
 	}, nil
 }
 
@@ -152,7 +154,7 @@ func (p *AzureOpenAIProvider) Stream(ctx context.Context, req *CompletionRequest
 		body["max_tokens"] = p.config.MaxTokens
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -176,10 +178,9 @@ func (p *AzureOpenAIProvider) Stream(ctx context.Context, req *CompletionRequest
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
 		var apiErr APIError
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("Azure API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != ""
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("azure", resp.StatusCode, respBody, resp.Header, &apiErr, parsed)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -211,7 +212,8 @@ func (p *AzureOpenAIProvider) Stream(ctx context.Context, req *CompletionRequest
 			}
 
 			var sseResp openaiChatResponse
-			if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &sseResp); err != nil {
 				continue
 			}
 			if sseResp.Error != nil {
@@ -389,7 +391,7 @@ func (p *AzureOpenAIProvider) setHeaders(req *http.Request) {
 
 // doRequest 执行 HTTP 请求
 func (p *AzureOpenAIProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -417,10 +419,9 @@ func (p *AzureOpenAIProvider) doRequest(ctx context.Context, path string, body a
 		var errResp struct {
 			Error *APIError `json:"error"`
 		}
-		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil {
-			return nil, errResp.Error
-		}
-		return nil, fmt.Errorf("Azure API returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("azure", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
 	}
 
 	return respBody, nil

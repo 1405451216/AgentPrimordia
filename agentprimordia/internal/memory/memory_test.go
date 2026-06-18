@@ -93,6 +93,91 @@ func TestAdd_MultipleEpisodes(t *testing.T) {
 	}
 }
 
+// perf-v6 round 5 Task 3：批量 Add 测试
+func TestAddBatch(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	episodes := []*Episode{
+		MustEpisode("session-1", "user", "First batch"),
+		MustEpisode("session-1", "assistant", "Second batch"),
+		MustEpisode("session-2", "user", "Third batch"),
+	}
+
+	if err := store.AddBatch(ctx, episodes); err != nil {
+		t.Fatalf("AddBatch() error = %v", err)
+	}
+
+	count, _ := store.Count(ctx, "")
+	if count != 3 {
+		t.Errorf("Count = %d, want %d", count, 3)
+	}
+
+	// 空 batch 应成功
+	if err := store.AddBatch(ctx, nil); err != nil {
+		t.Errorf("AddBatch(nil) error = %v", err)
+	}
+
+	// nil episode 应报错
+	invalid := []*Episode{nil}
+	if err := store.AddBatch(ctx, invalid); err == nil {
+		t.Error("AddBatch with nil should return error")
+	}
+}
+
+// perf-v6 round 5 Task 3：批量 Get 测试
+func TestGetBatch(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	ep1 := MustEpisode("session-1", "user", "Episode 1")
+	ep2 := MustEpisode("session-1", "user", "Episode 2")
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
+
+	result, err := store.GetBatch(ctx, []string{ep1.ID, ep2.ID, "nonexistent"})
+	if err != nil {
+		t.Fatalf("GetBatch() error = %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("len(result) = %d, want 2", len(result))
+	}
+	if result[ep1.ID] == nil || result[ep2.ID] == nil {
+		t.Error("GetBatch missing expected episodes")
+	}
+
+	// 空 ids
+	r, _ := store.GetBatch(ctx, nil)
+	if len(r) != 0 {
+		t.Errorf("GetBatch(nil) = %d, want 0", len(r))
+	}
+}
+
+// perf-v6 round 5 Task 3：批量 Delete 测试
+func TestDeleteBatch(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	ep1 := MustEpisode("session-1", "user", "Episode 1")
+	ep2 := MustEpisode("session-1", "user", "Episode 2")
+	ep3 := MustEpisode("session-1", "user", "Episode 3")
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep3)
+
+	if err := store.DeleteBatch(ctx, []string{ep1.ID, ep2.ID}); err != nil {
+		t.Fatalf("DeleteBatch() error = %v", err)
+	}
+
+	count, _ := store.Count(ctx, "")
+	if count != 1 {
+		t.Errorf("Count after DeleteBatch = %d, want %d", count, 1)
+	}
+}
+
 func TestGet_ByID(t *testing.T) {
 	store, _ := WithInMemory()
 	defer store.Close()

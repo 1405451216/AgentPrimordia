@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
-	"time"
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 const defaultGeminiMultimodalMaxTokens = 8192
@@ -41,7 +41,7 @@ func NewGeminiMultimodalProvider(cfg Config) (*GeminiMultimodalProvider, error) 
 
 	return &GeminiMultimodalProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -112,7 +112,7 @@ func (p *GeminiMultimodalProvider) StreamMultimodal(ctx context.Context, req *Co
 	url := fmt.Sprintf("%s/v1beta/models/%s:streamGenerateContent?key=%s",
 		p.config.BaseURL, model, p.config.APIKey)
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -133,18 +133,8 @@ func (p *GeminiMultimodalProvider) StreamMultimodal(ctx context.Context, req *Co
 		defer resp.Body.Close()
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		var geminiErr struct {
-			Error *struct {
-				Code    int    `json:"code"`
-				Message string `json:"message"`
-				Status  string `json:"status"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &geminiErr) == nil && geminiErr.Error != nil {
-			return nil, fmt.Errorf("gemini API error (HTTP %d): %s - %s",
-				resp.StatusCode, geminiErr.Error.Status, geminiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("Gemini Multimodal API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("gemini_multimodal", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -168,7 +158,8 @@ func (p *GeminiMultimodalProvider) StreamMultimodal(ctx context.Context, req *Co
 			}
 
 			var streamResp geminiStreamResponse
-			if err := json.Unmarshal([]byte(line), &streamResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配 + []byte 拷贝
+			if err := jsonutil.DecodeString(line, &streamResp); err != nil {
 				continue
 			}
 
@@ -271,8 +262,8 @@ func (p *GeminiMultimodalProvider) convertToGeminiFormat(content *MultimodalCont
 			return nil
 		}
 
-		client := &http.Client{Timeout: 30 * time.Second}
-		resp, err := client.Get(imageURL)
+		// perf-v5 Task 6：复用 Provider 共享 client（连接池 + Transport 调优）
+		resp, err := p.client.Get(imageURL)
 		if err != nil {
 			slog.Warn("下载图片失败", "url", imageURL, "error", err)
 			return nil
@@ -398,7 +389,7 @@ func (p *GeminiMultimodalProvider) doRequest(ctx context.Context, model, endpoin
 	url := fmt.Sprintf("%s/v1beta/models/%s%s?key=%s",
 		p.config.BaseURL, model, endpoint, p.config.APIKey)
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -420,18 +411,8 @@ func (p *GeminiMultimodalProvider) doRequest(ctx context.Context, model, endpoin
 	if resp.StatusCode != http.StatusOK {
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		var geminiErr struct {
-			Error *struct {
-				Code    int    `json:"code"`
-				Message string `json:"message"`
-				Status  string `json:"status"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &geminiErr) == nil && geminiErr.Error != nil {
-			return nil, fmt.Errorf("gemini API error (HTTP %d): %s - %s",
-				resp.StatusCode, geminiErr.Error.Status, geminiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("Gemini Multimodal API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("gemini_multimodal", resp.StatusCode, respBody, resp.Header)
 	}
 
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)

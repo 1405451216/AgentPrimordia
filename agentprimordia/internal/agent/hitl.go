@@ -2,9 +2,13 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 )
+
+// perf-v6 round 4 Task 2：HITL 静态错误
+var ErrHumanChannelClosed = errors.New("人类输入通道已关闭")
 
 // InterruptReason 中断原因
 type InterruptReason string
@@ -108,7 +112,7 @@ func (m *HITLManager) RequestInterrupt(ctx context.Context, req *InterruptReques
 	select {
 	case r, ok := <-m.config.HumanInputChan:
 		if !ok {
-			return nil, fmt.Errorf("人类输入通道已关闭")
+			return nil, ErrHumanChannelClosed // perf-v6 round 4 Task 2
 		}
 		resp = r
 	case r, ok := <-m.responseCh:

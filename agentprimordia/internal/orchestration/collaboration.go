@@ -1000,35 +1000,48 @@ func similarityScorePrecomputed(tokensA map[string]int, lenA int, tokensB map[st
 }
 
 // ===== Prompt 构建函数 =====
+// perf-v5 Task 7：使用 strings.Builder 替代 parts []string + strings.Join，
+// 减少热路径上的 fmt.Sprintf 反射分配与中间 slice 分配
 
 func buildDebatePrompt(topic, perspective string, round int, history []*CollaborationStatement) string {
-	parts := []string{
-		fmt.Sprintf("[辩论 - 第%d轮]", round),
-		fmt.Sprintf("\n主题: %s", topic),
-	}
+	var sb strings.Builder
+	sb.Grow(1024 + 200*min(len(history), 10))
+	sb.WriteString("[辩论 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n主题: ")
+	sb.WriteString(topic)
 
 	if perspective != "" {
-		parts = append(parts, fmt.Sprintf("\n你的视角/立场: %s", perspective))
+		sb.WriteString("\n你的视角/立场: ")
+		sb.WriteString(perspective)
 	}
 
 	if round > 1 && len(history) > 0 {
-		parts = append(parts, "\n\n前几轮的论点:")
+		sb.WriteString("\n\n前几轮的论点:")
 		count := min(len(history), 10)
 		for i := len(history) - count; i < len(history); i++ {
-			parts = append(parts, fmt.Sprintf("- [%s]: %s", history[i].CollaboratorID, history[i].Content[:min(len(history[i].Content), 200)]))
+			sb.WriteString("\n- [")
+			sb.WriteString(history[i].CollaboratorID)
+			sb.WriteString("]: ")
+			content := history[i].Content
+			if len(content) > 200 {
+				content = content[:200]
+			}
+			sb.WriteString(content)
 		}
 	}
 
-	instruction := "请提出你的论点和证据。"
+	sb.WriteString("\n\n")
 	if round > 1 {
-		instruction = "请针对其他人的论点进行反驳或补充你的观点。"
+		sb.WriteString("请针对其他人的论点进行反驳或补充你的观点。")
+	} else {
+		sb.WriteString("请提出你的论点和证据。")
 	}
-
-	parts = append(parts, fmt.Sprintf("\n\n%s", instruction))
-	return strings.Join(parts, "\n")
+	return sb.String()
 }
 
 func buildReviewPrompt(content, perspective string) string {
+	// 模板字符串保留 fmt.Sprintf（仅 1 次调用且模板固定）
 	return fmt.Sprintf(`[评审任务]
 请从%s的角度审查以下内容：
 
@@ -1044,52 +1057,72 @@ func buildReviewPrompt(content, perspective string) string {
 }
 
 func buildConsensusPrompt(topic string, round int, history []*CollaborationStatement) string {
-	parts := []string{
-		fmt.Sprintf("[共识讨论 - 第%d轮]", round),
-		fmt.Sprintf("\n主题: %s", topic),
-	}
+	var sb strings.Builder
+	sb.Grow(512 + 150*min(len(history), 5))
+	sb.WriteString("[共识讨论 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n主题: ")
+	sb.WriteString(topic)
 
 	if round > 1 && len(history) > 0 {
-		parts = append(parts, "\n\n当前讨论进展:")
+		sb.WriteString("\n\n当前讨论进展:")
 		count := min(len(history), 5)
 		for i := len(history) - count; i < len(history); i++ {
-			parts = append(parts, fmt.Sprintf("- %s", history[i].Content[:min(len(history[i].Content), 150)]))
+			content := history[i].Content
+			if len(content) > 150 {
+				content = content[:150]
+			}
+			sb.WriteString("\n- ")
+			sb.WriteString(content)
 		}
 	}
 
-	parts = append(parts, "\n\n请明确提出你对这个主题的建议或方案。")
-	return strings.Join(parts, "\n")
+	sb.WriteString("\n\n请明确提出你对这个主题的建议或方案。")
+	return sb.String()
 }
 
 func buildVotingPrompt(options []*ConsensusOption, round int) string {
-	parts := []string{
-		fmt.Sprintf("[投票 - 第%d轮]", round),
-		"\n请选择你最支持的方案:",
-	}
+	var sb strings.Builder
+	sb.Grow(256 + 100*len(options))
+	sb.WriteString("[投票 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n请选择你最支持的方案:")
 
 	for i, opt := range options {
-		parts = append(parts, fmt.Sprintf("%d. %s (当前支持率: %.1f%%)", i+1, opt.Description, opt.Score))
+		sb.WriteByte('\n')
+		sb.WriteString(strconv.Itoa(i + 1))
+		sb.WriteString(". ")
+		sb.WriteString(opt.Description)
+		sb.WriteString(" (当前支持率: ")
+		sb.WriteString(strconv.FormatFloat(opt.Score, 'f', 1, 64))
+		sb.WriteString("%)")
 	}
 
-	parts = append(parts, "\n\n请回复你选择的方案编号及理由。")
-	return strings.Join(parts, "\n")
+	sb.WriteString("\n\n请回复你选择的方案编号及理由。")
+	return sb.String()
 }
 
 func buildDiscussionPrompt(options []*ConsensusOption, votes []*Vote, round int) string {
-	parts := []string{
-		fmt.Sprintf("[讨论 - 第%d轮]", round),
-		"\n当前投票情况:",
-	}
+	var sb strings.Builder
+	sb.Grow(256 + 60*len(options))
+	sb.WriteString("[讨论 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n当前投票情况:")
 
 	for _, opt := range options {
-		parts = append(parts, fmt.Sprintf("- %s (%.1f%% 支持)", opt.Description, opt.Score))
+		sb.WriteString("\n- ")
+		sb.WriteString(opt.Description)
+		sb.WriteString(" (")
+		sb.WriteString(strconv.FormatFloat(opt.Score, 'f', 1, 64))
+		sb.WriteString("% 支持)")
 	}
 
-	parts = append(parts, "\n\n基于以上投票结果，请说明你是否改变主意，或者尝试说服其他人。")
-	return strings.Join(parts, "\n")
+	sb.WriteString("\n\n基于以上投票结果，请说明你是否改变主意，或者尝试说服其他人。")
+	return sb.String()
 }
 
 func buildBrainstormPrompt(topic, perspective string) string {
+	// 模板字符串保留 fmt.Sprintf（仅 1 次调用且模板固定）
 	return fmt.Sprintf(`[头脑风暴]
 主题: %s
 视角: %s

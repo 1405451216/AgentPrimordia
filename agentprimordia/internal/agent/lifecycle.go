@@ -91,22 +91,32 @@ func (l *Lifecycle) SetStatus(status AgentStatus) error {
 }
 
 // SetStatusWithReason 更新状态并附带原因
+// perf-v5 Task 16：listener/hook 回调移出锁外，避免用户代码长时间持锁
 func (l *Lifecycle) SetStatusWithReason(status AgentStatus, reason string) error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	if l.status == status {
+		l.mu.Unlock()
 		return nil
 	}
 
 	if !isValidTransition(l.status, status) {
-		return fmt.Errorf("%w: from %q to %q", ErrInvalidTransition, l.status, status)
+		err := fmt.Errorf("%w: from %q to %q", ErrInvalidTransition, l.status, status)
+		l.mu.Unlock()
+		return err
 	}
 
+	guardBlocked := false
 	for _, guard := range l.guards {
 		if !guard(l.status, status) {
-			return fmt.Errorf("%w: transition from %q to %q blocked by guard", ErrInvalidTransition, l.status, status)
+			guardBlocked = true
+			break
 		}
+	}
+	if guardBlocked {
+		err := fmt.Errorf("%w: transition from %q to %q blocked by guard", ErrInvalidTransition, l.status, status)
+		l.mu.Unlock()
+		return err
 	}
 
 	now := time.Now()
@@ -116,8 +126,9 @@ func (l *Lifecycle) SetStatusWithReason(status AgentStatus, reason string) error
 		l.totalRunning += duration
 	}
 
+	from := l.status
 	transition := StateTransition{
-		From:      l.status,
+		From:      from,
 		To:        status,
 		Timestamp: now,
 		Duration:  duration,
@@ -130,14 +141,22 @@ func (l *Lifecycle) SetStatusWithReason(status AgentStatus, reason string) error
 	l.manageTimeoutTimer(status)
 	l.manageRunningDone(status)
 
-	for _, listener := range l.listeners {
+	// 锁内复制 listener/hook 列表
+	listeners := make([]func(AgentStatus), len(l.listeners))
+	copy(listeners, l.listeners)
+	var statusHooks []StateHook
+	if hooks, ok := l.hooks[status]; ok {
+		statusHooks = make([]StateHook, len(hooks))
+		copy(statusHooks, hooks)
+	}
+	l.mu.Unlock()
+
+	// 锁外调用 listener/hook（perf-v5 Task 16：避免用户回调持锁）
+	for _, listener := range listeners {
 		listener(status)
 	}
-
-	if hooks, ok := l.hooks[status]; ok {
-		for _, hook := range hooks {
-			hook(transition.From, transition.To)
-		}
+	for _, hook := range statusHooks {
+		hook(transition.From, transition.To)
 	}
 	return nil
 }

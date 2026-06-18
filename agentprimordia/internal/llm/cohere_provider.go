@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 const (
@@ -41,7 +42,7 @@ func NewCohereProvider(cfg Config) (*CohereProvider, error) {
 
 	return &CohereProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -108,7 +109,7 @@ func (p *CohereProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 		p.injectResponseFormat(body, req.ResponseFormat)
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -127,7 +128,8 @@ func (p *CohereProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
-		return nil, fmt.Errorf("Cohere API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("cohere", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -151,7 +153,8 @@ func (p *CohereProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 			data := strings.TrimPrefix(line, "data: ")
 
 			var evt cohereStreamEvent
-			if err := json.Unmarshal([]byte(data), &evt); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &evt); err != nil {
 				continue
 			}
 
@@ -198,14 +201,20 @@ func (p *CohereProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 		model = req.Model
 	}
 
-	tools := make([]map[string]any, len(req.Tools))
+	tools := make([]openaiTool, len(req.Tools)) // perf-v6 Task 3：复用 openai typed struct
 	for i, t := range req.Tools {
-		tools[i] = map[string]any{
-			"type": t.Type,
-			"function": map[string]any{
-				"name":        t.Function.Name,
-				"description": t.Function.Description,
-				"parameters":  t.Function.Parameters,
+		var paramsRaw json.RawMessage
+		if t.Function.Parameters != nil {
+			if b, err := json.Marshal(t.Function.Parameters); err == nil {
+				paramsRaw = b
+			}
+		}
+		tools[i] = openaiTool{
+			Type: t.Type,
+			Function: openaiToolFunction{
+				Name:        t.Function.Name,
+				Description: t.Function.Description,
+				Parameters:  paramsRaw,
 			},
 		}
 	}
@@ -289,7 +298,7 @@ func (p *CohereProvider) setHeaders(req *http.Request) {
 }
 
 func (p *CohereProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -316,10 +325,9 @@ func (p *CohereProvider) doRequest(ctx context.Context, path string, body any) (
 		var errResp struct {
 			Error *APIError `json:"error"`
 		}
-		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil {
-			return nil, errResp.Error
-		}
-		return nil, fmt.Errorf("Cohere API returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("cohere", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
 	}
 
 	return respBody, nil

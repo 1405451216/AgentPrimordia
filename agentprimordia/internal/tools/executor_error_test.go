@@ -22,6 +22,47 @@ func (e *errorTool) Execute(ctx context.Context, args json.RawMessage) (*Result,
 	return NewErrorResult("tool execution failed"), ErrToolExecution
 }
 
+// panicTool 执行时 panic 的工具（用于测试 perf-v5 Task 1 的 panic recover）
+type panicTool struct {
+	name string
+}
+
+func (p *panicTool) Name() string        { return p.name }
+func (p *panicTool) Description() string { return "panics on execute" }
+func (p *panicTool) Parameters() json.RawMessage {
+	return json.RawMessage(`{"type":"object"}`)
+}
+func (p *panicTool) Execute(ctx context.Context, args json.RawMessage) (*Result, error) {
+	panic("intentional tool panic for testing")
+}
+
+// perf-v5 Task 1：测试 Execute panic recover
+func TestExecutor_Execute_PanicRecover(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&panicTool{name: "panic_tool"})
+	executor := NewExecutor(reg)
+
+	result, err := executor.Execute(context.Background(), &FunctionCall{
+		ID:   "call_panic",
+		Name: "panic_tool",
+		Args: `{}`,
+	})
+
+	// panic 应被捕获并转为 error 返回
+	if err == nil {
+		t.Fatal("expected error from panic recovery, got nil")
+	}
+	if result == nil {
+		t.Fatal("result should not be nil after panic recovery")
+	}
+	if !result.IsError {
+		t.Error("result should be marked as error")
+	}
+	if result.Content == "" {
+		t.Error("error result should have content describing the panic")
+	}
+}
+
 func TestExecutor_Execute_UnknownTool(t *testing.T) {
 	reg := NewRegistry()
 	executor := NewExecutor(reg)

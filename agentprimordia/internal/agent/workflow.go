@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -200,16 +201,17 @@ type WorkflowResult struct {
 }
 
 // WorkflowMetrics 工作流指标
+// perf-v6 Task 9：所有 int 计数器改 atomic.Int64（无锁累加），Duration 字段保留
 type WorkflowMetrics struct {
-	TotalNodes       int           `json:"total_nodes"`
-	ExecutedNodes    int           `json:"executed_nodes"`
-	FailedNodes      int           `json:"failed_nodes"`
-	SkippedNodes     int           `json:"skipped_nodes"`
-	TotalDuration    time.Duration `json:"total_duration"`
+	TotalNodes       atomic.Int64  `json:"total_nodes"`
+	ExecutedNodes    atomic.Int64  `json:"executed_nodes"`
+	FailedNodes      atomic.Int64  `json:"failed_nodes"`
+	SkippedNodes     atomic.Int64  `json:"skipped_nodes"`
+	TotalDurationNs  atomic.Int64  `json:"-"`
 	AvgNodeDuration  time.Duration `json:"avg_node_duration"`
-	Iterations       int           `json:"iterations"`
-	BranchesTaken    int           `json:"branches_taken"`
-	RetriesAttempted int           `json:"retries_attempted"`
+	Iterations       atomic.Int64  `json:"iterations"`
+	BranchesTaken    atomic.Int64  `json:"branches_taken"`
+	RetriesAttempted atomic.Int64  `json:"retries_attempted"`
 }
 
 // WorkflowEvent 工作流事件
@@ -462,7 +464,7 @@ func (w *WorkflowExecution) executeConditional(ctx context.Context, input map[st
 			if trans.Condition == nil || trans.Condition.Type == "always" ||
 				w.evaluateTransitionCondition(trans, currentInput) {
 				nextID = trans.To
-				w.result.Metrics.BranchesTaken++
+				w.result.Metrics.BranchesTaken.Add(1)
 				break
 			}
 		}
@@ -525,7 +527,7 @@ func (w *WorkflowExecution) executeLoop(ctx context.Context, input map[string]an
 		currentID = nextID
 	}
 
-	w.result.Metrics.Iterations = loopCount
+	w.result.Metrics.Iterations.Store(int64(loopCount))
 	return nil
 }
 
@@ -862,7 +864,7 @@ func (w *WorkflowExecution) retryNodeExecution(ctx context.Context, node *Workfl
 
 		output, err := w.executeTaskNode(ctx, node, input)
 		if err == nil {
-			w.result.Metrics.RetriesAttempted += i + 1
+			w.result.Metrics.RetriesAttempted.Add(int64(i + 1))
 			return output, nil
 		}
 		lastErr = err
@@ -870,7 +872,7 @@ func (w *WorkflowExecution) retryNodeExecution(ctx context.Context, node *Workfl
 		time.Sleep(time.Duration(i+1) * 100 * time.Millisecond)
 	}
 
-	w.result.Metrics.RetriesAttempted += maxRetries
+	w.result.Metrics.RetriesAttempted.Add(int64(maxRetries))
 	return nil, lastErr
 }
 
@@ -1032,20 +1034,21 @@ func (w *WorkflowExecution) updateMetrics(record *ExecutionRecord) {
 	}
 
 	metrics := w.result.Metrics
-	metrics.TotalNodes++
+	metrics.TotalNodes.Add(1)
 
 	switch record.Status {
 	case NodeCompleted:
-		metrics.ExecutedNodes++
-		metrics.TotalDuration += record.Duration
+		metrics.ExecutedNodes.Add(1)
+		metrics.TotalDurationNs.Add(int64(record.Duration))
 	case NodeFailed:
-		metrics.FailedNodes++
+		metrics.FailedNodes.Add(1)
 	case NodeSkipped:
-		metrics.SkippedNodes++
+		metrics.SkippedNodes.Add(1)
 	}
 
-	if metrics.ExecutedNodes > 0 {
-		metrics.AvgNodeDuration = metrics.TotalDuration / time.Duration(metrics.ExecutedNodes)
+	executed := metrics.ExecutedNodes.Load()
+	if executed > 0 {
+		metrics.AvgNodeDuration = time.Duration(metrics.TotalDurationNs.Load() / executed)
 	}
 }
 

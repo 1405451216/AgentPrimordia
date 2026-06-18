@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"agentprimordia/internal/agent"
@@ -113,14 +114,39 @@ type HandoffEvent struct {
 }
 
 // HandoffStats 统计信息
+// perf-v6 Task 6：所有 int 计数器改 atomic.Int64，无锁累加
 type HandoffStats struct {
-	TotalHandoffs int           `json:"total_handoffs"`
-	Successful    int           `json:"successful"`
-	Failed        int           `json:"failed"`
-	Rejected      int           `json:"rejected"`
-	Pending       int           `json:"pending"`
-	AvgDuration   time.Duration `json:"avg_duration"`
-	TotalDuration time.Duration `json:"total_duration"`
+	TotalHandoffs    atomic.Int64  `json:"total_handoffs"`
+	Successful       atomic.Int64  `json:"successful"`
+	Failed           atomic.Int64  `json:"failed"`
+	Rejected         atomic.Int64  `json:"rejected"`
+	Pending          atomic.Int64  `json:"pending"`
+	AvgDurationNs    atomic.Int64  `json:"-"`
+	TotalDurationNs  atomic.Int64  `json:"-"`
+}
+
+// HandoffStatsSnapshot 导出用快照（按原 JSON tag）
+type HandoffStatsSnapshot struct {
+	TotalHandoffs   int64         `json:"total_handoffs"`
+	Successful      int64         `json:"successful"`
+	Failed          int64         `json:"failed"`
+	Rejected        int64         `json:"rejected"`
+	Pending         int64         `json:"pending"`
+	AvgDuration     time.Duration `json:"avg_duration"`
+	TotalDuration   time.Duration `json:"total_duration"`
+}
+
+// Snapshot 返回当前指标快照（perf-v6 Task 6）
+func (s *HandoffStats) Snapshot() HandoffStatsSnapshot {
+	return HandoffStatsSnapshot{
+		TotalHandoffs: s.TotalHandoffs.Load(),
+		Successful:    s.Successful.Load(),
+		Failed:        s.Failed.Load(),
+		Rejected:      s.Rejected.Load(),
+		Pending:       s.Pending.Load(),
+		AvgDuration:   time.Duration(s.AvgDurationNs.Load()),
+		TotalDuration: time.Duration(s.TotalDurationNs.Load()),
+	}
 }
 
 // NewHandoffProtocol 创建新的交接协议实例
@@ -161,15 +187,15 @@ func (p *HandoffProtocol) InitiateHandoff(ctx context.Context, sourceAgent, targ
 
 	if p.config.EnableValidation {
 		if err := p.validateHandoff(record); err != nil {
-			p.stats.Failed++
+			p.stats.Failed.Add(1)
 			return nil, fmt.Errorf("validation failed: %w", err)
 		}
 	}
 
 	p.handoffs[id] = record
 	p.history = append(p.history, record)
-	p.stats.TotalHandoffs++
-	p.stats.Pending++
+	p.stats.TotalHandoffs.Add(1)
+	p.stats.Pending.Add(1)
 
 	p.emitEvent("initiated", id, map[string]any{
 		"source": sourceAgent,
@@ -198,7 +224,7 @@ func (p *HandoffProtocol) AcceptHandoff(handoffID, acceptedBy string) error {
 	record.Acknowledged = true
 	record.AcknowledgedBy = acceptedBy
 
-	p.stats.Pending--
+	p.stats.Pending.Add(-1)
 	p.emitEvent("accepted", handoffID, map[string]any{
 		"accepted_by": acceptedBy,
 	})
@@ -223,8 +249,8 @@ func (p *HandoffProtocol) RejectHandoff(handoffID, reason string) error {
 	record.Status = HandoffRejected
 	record.Error = fmt.Errorf("rejected: %s", reason)
 
-	p.stats.Pending--
-	p.stats.Rejected++
+	p.stats.Pending.Add(-1)
+	p.stats.Rejected.Add(1)
 
 	p.emitEvent("rejected", handoffID, map[string]any{
 		"reason": reason,
@@ -252,15 +278,15 @@ func (p *HandoffProtocol) CompleteHandoff(handoffID string) error {
 	record.CompletedAt = now
 	record.Duration = now.Sub(record.CreatedAt)
 
-	p.stats.Successful++
-	p.stats.Pending--
+	p.stats.Successful.Add(1)
+	p.stats.Pending.Add(-1)
 
-	totalDuration := p.stats.TotalDuration + record.Duration
-	count := p.stats.Successful
+	totalDuration := p.stats.TotalDurationNs.Load() + int64(record.Duration)
+	count := p.stats.Successful.Load()
 	if count > 0 {
-		p.stats.AvgDuration = totalDuration / time.Duration(count)
+		p.stats.AvgDurationNs.Store(totalDuration / count)
 	}
-	p.stats.TotalDuration = totalDuration
+	p.stats.TotalDurationNs.Store(totalDuration)
 
 	p.emitEvent("completed", handoffID, map[string]any{
 		"duration": record.Duration,
@@ -283,8 +309,8 @@ func (p *HandoffProtocol) FailHandoff(handoffID string, err error) error {
 	record.Error = err
 	record.CompletedAt = time.Now()
 
-	p.stats.Pending--
-	p.stats.Failed++
+	p.stats.Pending.Add(-1)
+	p.stats.Failed.Add(1)
 
 	p.emitEvent("failed", handoffID, map[string]any{
 		"error": err.Error(),
@@ -329,11 +355,11 @@ func (p *HandoffProtocol) GetHistory() []*HandoffRecord {
 	return history
 }
 
-// GetStats 获取统计信息
-func (p *HandoffProtocol) GetStats() HandoffStats {
+// GetStats 获取统计信息（返回指针避免 atomic.Int64 拷贝）
+func (p *HandoffProtocol) GetStats() *HandoffStats {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.stats
+	return &p.stats
 }
 
 // Events 返回事件通道
@@ -341,17 +367,17 @@ func (p *HandoffProtocol) Events() <-chan *HandoffEvent {
 	return p.handoffCh
 }
 
-// Export 导出为JSON
+// Export 导出为JSON（perf-v5 Task 5：锁内只快照，锁外 marshal）
 func (p *HandoffProtocol) Export() ([]byte, error) {
 	p.mu.RLock()
-	defer p.mu.RUnlock()
-
+	statsSnap := p.stats.Snapshot()
 	data := map[string]any{
 		"config":  p.config,
-		"stats":   p.stats,
+		"stats":   statsSnap,
 		"active":  len(p.GetActiveHandoffs()), // 安全：Go RWMutex 允许同一 goroutine 多次 RLock，不会死锁
 		"history": p.history,
 	}
+	p.mu.RUnlock()
 	return json.MarshalIndent(data, "", "  ")
 }
 

@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1：统一 JSON 序列化
 )
 
 const (
@@ -43,7 +45,8 @@ func NewAnthropicProvider(cfg Config) (*AnthropicProvider, error) {
 
 	return &AnthropicProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		// perf-v5 Task 6：使用共享 transport（连接池复用 + HTTP/2）
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -51,24 +54,26 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *CompletionRequest
 	model := p.resolveModel(req)
 	messages, systemMsg := p.convertMessages(req.Messages)
 
-	body := map[string]any{
-		"model":      model,
-		"messages":   messages,
-		"max_tokens": p.resolveMaxTokens(req),
-	}
-	if systemMsg != "" {
-		body["system"] = systemMsg
+	// perf-v6 round 4 Task 1：typed struct 减少反射
+	anthReq := anthropicRequest{
+		Model:     model,
+		Messages:  messages,
+		MaxTokens: p.resolveMaxTokens(req),
+		System:    systemMsg,
 	}
 	if temp := ResolveTemperature(req.Temperature, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		f32 := float32(*temp)
+		anthReq.Temperature = &f32
 	}
 
 	// 结构化输出：Anthropic 通过 tool_choice + 单工具注入实现
 	if req.ResponseFormat != nil {
-		p.injectStructuredOutput(body, req.ResponseFormat)
+		tool, choice := p.buildStructuredOutput(req.ResponseFormat)
+		anthReq.Tools = append(anthReq.Tools, tool)
+		anthReq.ToolChoice = &choice
 	}
 
-	raw, err := p.doRequest(ctx, "/v1/messages", body)
+	raw, err := p.doRequest(ctx, "/v1/messages", anthReq)
 	if err != nil {
 		return nil, err
 	}
@@ -100,20 +105,20 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req *CompletionRequest) 
 	model := p.resolveModel(req)
 	messages, systemMsg := p.convertMessages(req.Messages)
 
-	body := map[string]any{
-		"model":      model,
-		"messages":   messages,
-		"max_tokens": p.resolveMaxTokens(req),
-		"stream":     true,
-	}
-	if systemMsg != "" {
-		body["system"] = systemMsg
+	// perf-v6 round 4 Task 1：typed struct 减少反射
+	anthReq := anthropicRequest{
+		Model:     model,
+		Messages:  messages,
+		MaxTokens: p.resolveMaxTokens(req),
+		System:    systemMsg,
+		Stream:    true,
 	}
 	if temp := ResolveTemperature(req.Temperature, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		f32 := float32(*temp)
+		anthReq.Temperature = &f32
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(anthReq) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -132,7 +137,8 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req *CompletionRequest) 
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
-		return nil, fmt.Errorf("Anthropic API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("anthropic", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -156,7 +162,8 @@ func (p *AnthropicProvider) Stream(ctx context.Context, req *CompletionRequest) 
 			data := strings.TrimPrefix(line, "data: ")
 
 			var sseEvt anthropicSSEEvent
-			if err := json.Unmarshal([]byte(data), &sseEvt); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &sseEvt); err != nil {
 				continue
 			}
 
@@ -293,7 +300,7 @@ func (p *AnthropicProvider) setHeaders(req *http.Request) {
 }
 
 func (p *AnthropicProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -320,10 +327,9 @@ func (p *AnthropicProvider) doRequest(ctx context.Context, path string, body any
 		var errResp struct {
 			Error *APIError `json:"error"`
 		}
-		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil {
-			return nil, errResp.Error
-		}
-		return nil, fmt.Errorf("Anthropic API returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("anthropic", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
 	}
 
 	return respBody, nil
@@ -331,24 +337,23 @@ func (p *AnthropicProvider) doRequest(ctx context.Context, path string, body any
 
 // convertMessages 将通用 ChatMessage 转换为 Anthropic 格式
 // Anthropic 要求 system 消息不在 messages 数组中，而是单独的 system 参数
-func (p *AnthropicProvider) convertMessages(msgs []ChatMessage) ([]map[string]any, string) {
+// convertMessages 转换 ChatMessage 列表为 Anthropic 消息格式（perf-v6 round 5 Task 2）
+// 返回 typed []anthropicMessage 而非 []map[string]any
+func (p *AnthropicProvider) convertMessages(msgs []ChatMessage) ([]anthropicMessage, string) {
 	var systemMsg string
-	var result []map[string]any
+	result := make([]anthropicMessage, 0, len(msgs))
 
 	for _, m := range msgs {
 		if m.Role == "system" {
 			systemMsg = m.Content
 			continue
 		}
-		result = append(result, map[string]any{
-			"role":    m.Role,
-			"content": m.Content,
+		result = append(result, anthropicMessage{
+			Role:    m.Role,
+			Content: m.Content,
 		})
 	}
 
-	if len(result) == 0 {
-		result = []map[string]any{}
-	}
 	return result, systemMsg
 }
 
@@ -396,6 +401,25 @@ func (p *AnthropicProvider) injectStructuredOutput(body map[string]any, rf *Resp
 	}
 }
 
+// buildStructuredOutput 构建结构化输出工具（perf-v6 round 4 Task 1）
+// 替代 injectStructuredOutput 直接操作 map 的做法
+func (p *AnthropicProvider) buildStructuredOutput(rf *ResponseFormat) (anthropicTool, anthropicToolChoice) {
+	schemaName := rf.JSONSchema.Name
+	if schemaName == "" {
+		schemaName = "structured_output"
+	}
+	tool := anthropicTool{
+		Name:        schemaName,
+		Description: rf.JSONSchema.Description,
+		InputSchema: rf.JSONSchema.Schema,
+	}
+	choice := anthropicToolChoice{
+		Type: "tool",
+		Name: schemaName,
+	}
+	return tool, choice
+}
+
 // ===== Anthropic API 响应类型 =====
 
 type anthropicMessagesResponse struct {
@@ -421,6 +445,30 @@ type anthropicTool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"input_schema"`
+}
+
+// anthropicMessage 单条消息 typed struct（perf-v6 round 5 Task 2）
+type anthropicMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// anthropicRequest 完整请求 typed struct（perf-v6 round 4 Task 1）
+// 替代 map[string]any 反射序列化
+type anthropicRequest struct {
+	Model       string               `json:"model"`
+	Messages    []anthropicMessage   `json:"messages"`
+	MaxTokens   int                  `json:"max_tokens"`
+	System      string               `json:"system,omitempty"`
+	Temperature *float32             `json:"temperature,omitempty"`
+	Stream      bool                 `json:"stream,omitempty"`
+	Tools       []anthropicTool      `json:"tools,omitempty"`
+	ToolChoice  *anthropicToolChoice `json:"tool_choice,omitempty"`
+}
+
+type anthropicToolChoice struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
 }
 
 type anthropicSSEEvent struct {

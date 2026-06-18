@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -477,6 +478,36 @@ func TestHookStats_Snapshot(t *testing.T) {
 	}
 	if snap["total_errors"].(int64) != 2 {
 		t.Errorf("total_errors 应为 2")
+	}
+}
+
+// perf-v5 Task 11 验证：HookStats.Record 并发安全（atomic.Int64 数组）
+func TestHookStats_ConcurrentRecord(t *testing.T) {
+	t.Parallel()
+	s := newHookStats()
+	const goroutines = 50
+	const perGoroutine = 100
+
+	var wg sync.WaitGroup
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < perGoroutine; j++ {
+				s.Record(HookBeforeLLM, nil)
+			}
+		}()
+	}
+	wg.Wait()
+
+	snap := s.Snapshot()
+	totalFired := snap["total_fired"].(int64)
+	expected := int64(goroutines * perGoroutine)
+	if totalFired != expected {
+		t.Errorf("并发 Record 后 total_fired 失真: got=%d, want=%d", totalFired, expected)
+	}
+	if snap["total_errors"].(int64) != 0 {
+		t.Errorf("total_errors 应为 0，got=%d", snap["total_errors"].(int64))
 	}
 }
 

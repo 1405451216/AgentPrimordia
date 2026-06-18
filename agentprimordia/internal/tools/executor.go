@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
+	"regexp"
 	"sync"
 	"time"
 
@@ -25,9 +27,11 @@ type FunctionCall struct {
 }
 
 // Executor handles tool execution with logging, timing, and error handling
+// perf-v5 Task 20：内部新增 slogLogger 字段（结构化日志）；保留 logger *log.Logger 兼容旧 API
 type Executor struct {
 	registry    *Registry
 	logger      *log.Logger
+	slogger     *slog.Logger // perf-v5 Task 20：结构化日志（slog），优先使用
 	timeout     time.Duration
 	scopePolicy ScopePolicy
 	scopeAgent  string
@@ -39,8 +43,15 @@ func NewExecutor(registry *Registry) *Executor {
 	return &Executor{
 		registry: registry,
 		logger:   log.Default(),
+		slogger:  slog.Default(), // perf-v5 Task 20：默认 slog
 		timeout:  defaultToolTimeout,
 	}
+}
+
+// WithSlogLogger 注入自定义 *slog.Logger（perf-v5 Task 20）
+func (e *Executor) WithSlogLogger(l *slog.Logger) *Executor {
+	e.slogger = l
+	return e
 }
 
 // WithTimeout sets the execution timeout for all tools
@@ -68,7 +79,15 @@ func (e *Executor) WithFileLock(fl *concurrency.FileLockManager) *Executor {
 func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, error) {
 	start := time.Now()
 
-	e.logger.Printf("[TOOL] Executing: %s(%s)", tc.Name, tc.Args)
+	// perf-v5 Task 20：对参数做脱敏后再记录，避免 password/token 等敏感字段泄漏到日志
+	e.logger.Printf("[TOOL] Executing: %s(args_len=%d)", tc.Name, len(tc.Args))
+	if e.slogger != nil {
+		e.slogger.Debug("tool executing",
+			"tool", tc.Name,
+			"args_len", len(tc.Args),
+			"args_preview", redactSensitiveArgs(tc.Args),
+		)
+	}
 
 	tool, exists := e.registry.Get(tc.Name)
 	if !exists {
@@ -109,7 +128,8 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	execCtx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 
-	result, err := tool.Execute(execCtx, args)
+	// perf-v5 Task 1：工具 panic recover，避免任意工具 panic 杀死整个 agent 进程
+	result, err := e.safeExecute(execCtx, tool, args)
 
 	duration := time.Since(start)
 
@@ -130,6 +150,22 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	result.Metadata["tool_name"] = tc.Name
 
 	return result, nil
+}
+
+// safeExecute 包装工具调用并捕获 panic（perf-v5 Task 1）
+// 任意工具 panic 转为 error 返回，避免杀死 agent 进程
+func (e *Executor) safeExecute(ctx context.Context, tool Tool, args json.RawMessage) (result *Result, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			e.logger.Printf("[TOOL] panic recovered in %s: %v", tool.Name(), r)
+			if e.slogger != nil {
+				e.slogger.Error("tool panic recovered", "tool", tool.Name(), "panic", r)
+			}
+			result = NewErrorResult(fmt.Sprintf("tool %s panic: %v", tool.Name(), r))
+			err = fmt.Errorf("tool %s panic: %v", tool.Name(), r)
+		}
+	}()
+	return tool.Execute(ctx, args)
 }
 
 // ExecuteBatch executes multiple tool calls concurrently
@@ -155,6 +191,17 @@ func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*
 		go func(idx int, call *FunctionCall) {
 			defer wg.Done()
 			defer func() { <-sem }()
+			// perf-v5 Task 1：goroutine 顶层 panic recover
+			defer func() {
+				if r := recover(); r != nil {
+					e.logger.Printf("[TOOL] panic in batch goroutine: %v", r)
+				if e.slogger != nil {
+					e.slogger.Error("tool batch panic", "panic", r)
+				}
+					results[idx] = NewErrorResult(fmt.Sprintf("tool panic: %v", r))
+					errs[idx] = fmt.Errorf("tool panic: %v", r)
+				}
+			}()
 			result, err := e.Execute(ctx, call)
 			results[idx] = result
 			errs[idx] = err
@@ -236,4 +283,45 @@ func isPathKey(key string) bool {
 		return true
 	}
 	return false
+}
+
+// redactSensitiveArgs 扫描 JSON 参数，将敏感字段值替换为 "***REDACTED***"
+// 返回脱敏后的 JSON 字符串（截断到 256 字符）
+// perf-v5 Task 20：避免 password / token / api_key 等敏感字段泄漏到日志
+//
+// 实现说明：使用正则匹配常见 flat JSON 的 "key":"value" 模式。
+// 对嵌套对象的深度不在本函数覆盖范围（只脱敏顶层 key），
+// 复杂场景可改用 json.Decoder + 递归遍历。
+func redactSensitiveArgs(args string) string {
+	if args == "" {
+		return ""
+	}
+	// 截断：避免极长 args 拖慢日志
+	if len(args) > 1024 {
+		args = args[:1024] + "...(truncated)"
+	}
+
+	redacted := args
+	sensitiveKeys := []string{
+		"password", "passwd", "secret", "token", "api_key", "apikey",
+		"access_key", "secret_key", "authorization", "auth", "credential",
+		"private_key", "session_token", "cookie",
+	}
+	for _, key := range sensitiveKeys {
+		// 匹配 "key":"value" 或 "key": "value" 模式（大小写不敏感）
+		// 用 ReplaceAllStringFunc 保留原 key 的大小写
+		pattern := regexp.MustCompile(`(?i)("` + regexp.QuoteMeta(key) + `"\s*:\s*)"[^"]*"`)
+		redacted = pattern.ReplaceAllStringFunc(redacted, func(match string) string {
+			// match 形如 "PASSWORD":"hunter2" → 保留 "PASSWORD": 部分
+			submatch := pattern.FindStringSubmatch(match)
+			if len(submatch) >= 2 {
+				return submatch[1] + `"***REDACTED***"`
+			}
+			return match
+		})
+	}
+	if len(redacted) > 256 {
+		return redacted[:256] + "...(truncated)"
+	}
+	return redacted
 }

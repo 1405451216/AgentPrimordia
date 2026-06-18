@@ -11,7 +11,10 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 5 Task 1：JSON 池化
 )
 
 const (
@@ -21,6 +24,9 @@ const (
 	userAgent       = "AgentPrimordia/1.0"
 
 	defaultOpenAIMaxContext = 128000
+
+	// perf-v6 Task D：requestBodyPool 初始 buffer 大小
+	defaultRequestBodyPoolSize = 8 * 1024
 )
 
 var (
@@ -179,7 +185,7 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 		body["response_format"] = p.buildResponseFormat(req.ResponseFormat)
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.Marshal(body) // perf-v6 round 5 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -202,10 +208,9 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
 		var apiErr APIError
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("OpenAI API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != ""
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("openai", resp.StatusCode, respBody, resp.Header, &apiErr, parsed)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -236,8 +241,9 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 				return
 			}
 
+			// perf-v6 round 8 Task 1：使用 pooled *bytes.Reader 避免每条 SSE 消息分配
 			var sseResp openaiChatResponse
-			if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			if err := jsonutil.DecodeString(data, &sseResp); err != nil {
 				continue
 			}
 			if sseResp.Error != nil {
@@ -283,14 +289,22 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 func (p *OpenAIProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	model := p.resolveModel(req.Model)
 
-	tools := make([]map[string]any, len(req.Tools))
+	// perf-v6 Task C：typed struct 减少反射
+	tools := make([]openaiTool, len(req.Tools))
 	for i, t := range req.Tools {
-		tools[i] = map[string]any{
-			"type": t.Type,
-			"function": map[string]any{
-				"name":        t.Function.Name,
-				"description": t.Function.Description,
-				"parameters":  t.Function.Parameters,
+		// 将 map[string]any 转 json.RawMessage
+		var paramsRaw json.RawMessage
+		if t.Function.Parameters != nil {
+			if b, err := json.Marshal(t.Function.Parameters); err == nil {
+				paramsRaw = b
+			}
+		}
+		tools[i] = openaiTool{
+			Type: t.Type,
+			Function: openaiToolFunction{
+				Name:        t.Function.Name,
+				Description: t.Function.Description,
+				Parameters:  paramsRaw,
 			},
 		}
 	}
@@ -391,7 +405,7 @@ func (p *OpenAIProvider) Info() ModelInfo {
 }
 
 func (p *OpenAIProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.Marshal(body) // perf-v6 round 5 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -420,10 +434,9 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, path string, body any) (
 		var errResp struct {
 			Error *APIError `json:"error"`
 		}
-		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil {
-			return nil, errResp.Error
-		}
-		return nil, fmt.Errorf("OpenAI API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("openai", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
 	}
 
 	return respBody, nil
@@ -431,6 +444,14 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, path string, body any) (
 
 func (p *OpenAIProvider) resolveModel(reqModel string) string {
 	return ResolveModel(reqModel, p.config.Model)
+}
+
+// requestBodyPool 复用 LLM 请求体 []byte buffer（perf-v6 Task D）
+var requestBodyPool = sync.Pool{
+	New: func() any {
+		b := make([]byte, 0, defaultRequestBodyPoolSize)
+		return &b
+	},
 }
 
 func (p *OpenAIProvider) buildMessages(msgs []ChatMessage) []map[string]any {
@@ -476,6 +497,19 @@ type openaiEmbedResponse struct {
 		PromptTokens int `json:"prompt_tokens"`
 		TotalTokens  int `json:"total_tokens"`
 	} `json:"usage"`
+}
+
+// openaiTool 工具定义 typed struct（perf-v6 Task C：减少反射）
+type openaiTool struct {
+	Type     string             `json:"type"`
+	Function openaiToolFunction `json:"function"`
+}
+
+// openaiToolFunction 工具函数定义
+type openaiToolFunction struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters,omitempty"`
 }
 
 type openaiChatResponse struct {

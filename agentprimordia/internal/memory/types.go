@@ -5,6 +5,8 @@ import "context"
 // MemoryReader 只读操作接口
 type MemoryReader interface {
 	Get(ctx context.Context, id string) (*Episode, error)
+	// perf-v6 round 5 Task 3：批量获取
+	GetBatch(ctx context.Context, ids []string) (map[string]*Episode, error)
 	Search(ctx context.Context, query string, opts *SearchOptions) ([]*Episode, error)
 	List(ctx context.Context, opts *ListOptions) ([]*Episode, error)
 	Count(ctx context.Context, sessionID string) (int64, error)
@@ -14,7 +16,11 @@ type MemoryReader interface {
 // MemoryWriter 写入操作接口
 type MemoryWriter interface {
 	Add(ctx context.Context, episode *Episode) error
+	// perf-v6 round 5 Task 3：批量写入
+	AddBatch(ctx context.Context, episodes []*Episode) error
 	Delete(ctx context.Context, id string) error
+	// perf-v6 round 5 Task 3：批量删除
+	DeleteBatch(ctx context.Context, ids []string) error
 	UpdateSummary(ctx context.Context, id string, summary, topics string) error
 	SetImportance(ctx context.Context, episodeID string, importance float64) error
 }

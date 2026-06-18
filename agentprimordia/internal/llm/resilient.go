@@ -93,7 +93,7 @@ func (r *ResilientProvider) Complete(ctx context.Context, req *CompletionRequest
 		return p.Complete(ctx, req)
 	})
 	if err != nil {
-		r.recordFailure()
+		r.recordFailure(err)
 		return nil, err
 	}
 
@@ -107,9 +107,10 @@ func (r *ResilientProvider) Stream(ctx context.Context, req *CompletionRequest) 
 	}
 
 	// 尝试主 Provider（带一次重试）
+	var lastErr error
 	for attempt := 0; attempt <= 1; attempt++ {
 		if attempt > 0 {
-			backoff := r.calculateBackoff(attempt)
+			backoff := r.computeRetryBackoff(attempt, lastErr)
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
@@ -121,10 +122,15 @@ func (r *ResilientProvider) Stream(ctx context.Context, req *CompletionRequest) 
 			r.recordSuccess()
 			return ch, nil
 		}
+		lastErr = err
+
+		// perf-v6 round 8 Task 3：FatalError 不重试
+		if re := AsRetryableError(err); re != nil && !re.IsRetryable() {
+			return nil, err
+		}
 	}
 
 	// 主 Provider 失败，尝试 Fallback
-	var lastErr error
 	fallbacks := r.getFallbacks()
 	for _, fb := range fallbacks {
 		fbCh, fbErr := fb.Stream(ctx, req)
@@ -135,7 +141,7 @@ func (r *ResilientProvider) Stream(ctx context.Context, req *CompletionRequest) 
 		lastErr = fbErr
 	}
 
-	r.recordFailure()
+	r.recordFailure(lastErr)
 	return nil, fmt.Errorf("%w: stream failed on all providers: %v", ErrFallbackFailed, lastErr)
 }
 
@@ -148,7 +154,7 @@ func (r *ResilientProvider) CallTools(ctx context.Context, req *ToolCallRequest)
 		return p.CallTools(ctx, req)
 	})
 	if err != nil {
-		r.recordFailure()
+		r.recordFailure(err)
 		return nil, err
 	}
 
@@ -160,7 +166,7 @@ func (r *ResilientProvider) Embeddings(ctx context.Context, texts []string) ([][
 	if embedder, ok := r.primary.(Embedder); ok {
 		resp, err := embedder.Embeddings(ctx, texts)
 		if err != nil {
-			r.recordFailure()
+			r.recordFailure(err)
 			return nil, err
 		}
 		r.recordSuccess()
@@ -173,7 +179,7 @@ func (r *ResilientProvider) Info() ModelInfo {
 	return r.primary.Info()
 }
 
-// checkCircuit 检查熔断器状态（perf-v4 Task 10：快速路径零锁）
+// checkCircuit 检查熔断器状态（perf-v4 Task 10：快速路径零锁；perf-v5 Task 3：修复 CAS 失败方 race）
 func (r *ResilientProvider) checkCircuit() error {
 	state := circuitState(r.state.Load())
 	switch state {
@@ -190,8 +196,10 @@ func (r *ResilientProvider) checkCircuit() error {
 			// 升级到 half-open：使用 CAS 避免并发升级
 			if r.state.CompareAndSwap(int32(circuitOpen), int32(circuitHalfOpen)) {
 				r.halfOpenProbe.Store(false)
+				return nil
 			}
-			return nil
+			// perf-v5 Task 3：CAS 失败方应返回 ErrCircuitOpen，避免错误放行
+			return ErrCircuitOpen
 		}
 		return ErrCircuitOpen
 	case circuitHalfOpen:
@@ -213,7 +221,13 @@ func (r *ResilientProvider) recordSuccess() {
 	r.halfOpenProbe.Store(false)
 }
 
-func (r *ResilientProvider) recordFailure() {
+func (r *ResilientProvider) recordFailure(err error) {
+	// perf-v6 round 8 Task 3：客户端错误（4xx 除 429）和认证错误不计入熔断失败计数
+	// 因为这些错误不会因 provider 不健康而恢复，触发熔断无意义
+	if re := AsRetryableError(err); re != nil && !re.CountsAsFailure() {
+		return
+	}
+
 	// 失败累加计数并记录时间戳（perf-v4 Task 10：无锁）
 	r.failures.Add(1)
 	r.lastFail.Store(time.Now().UnixNano())
@@ -225,13 +239,15 @@ func (r *ResilientProvider) recordFailure() {
 }
 
 // executeWithRetry 泛型重试方法，统一 Complete 和 CallTools 的重试逻辑
+// perf-v6 round 8 Task 3：识别 RetryableError 并尊重 Retry-After；
+// FatalError（不可重试）立即停止；429/5xx 优先使用 Retry-After 而非指数退避
 func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(Provider) (T, error)) (T, error) {
 	var lastErr error
 	var zero T
 
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
 		if attempt > 0 {
-			backoff := r.calculateBackoff(attempt)
+			backoff := r.computeRetryBackoff(attempt, lastErr)
 			select {
 			case <-time.After(backoff):
 			case <-ctx.Done():
@@ -244,6 +260,11 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 			return resp, nil
 		}
 		lastErr = err
+
+		// perf-v6 round 8 Task 3：FatalError 不重试
+		if re := AsRetryableError(err); re != nil && !re.IsRetryable() {
+			return zero, err
+		}
 	}
 
 	fallbacks := r.getFallbacks()
@@ -255,7 +276,7 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 		// Fallback 也使用重试，默认重试 1 次
 		for attempt := 0; attempt <= 1; attempt++ {
 			if attempt > 0 {
-				backoff := r.calculateBackoff(attempt)
+				backoff := r.computeRetryBackoff(attempt, lastErr)
 				select {
 				case <-time.After(backoff):
 				case <-ctx.Done():
@@ -267,10 +288,29 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 				return resp, nil
 			}
 			lastErr = err
+
+			// perf-v6 round 8 Task 3：Fallback 路径同样尊重错误分类
+			if re := AsRetryableError(err); re != nil && !re.IsRetryable() {
+				return zero, err
+			}
 		}
 	}
 
 	return zero, fmt.Errorf("%w: %v", ErrFallbackFailed, lastErr)
+}
+
+// computeRetryBackoff 计算重试退避时间（perf-v6 round 8 Task 3）
+// 优先使用 Retry-After（如果合理且不超过 MaxBackoff），否则使用指数退避 + jitter
+func (r *ResilientProvider) computeRetryBackoff(attempt int, lastErr error) time.Duration {
+	if re := AsRetryableError(lastErr); re != nil && re.RetryAfter > 0 {
+		// 限流场景：尊重服务器 Retry-After
+		// 但要 cap 在 MaxBackoff 之内，避免服务器给个 1 小时导致永远卡住
+		if re.RetryAfter > r.config.MaxBackoff {
+			return r.config.MaxBackoff
+		}
+		return re.RetryAfter
+	}
+	return r.calculateBackoff(attempt)
 }
 
 func (r *ResilientProvider) calculateBackoff(attempt int) time.Duration {

@@ -1,9 +1,16 @@
 package a2a
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+)
+
+// perf-v6 round 4 Task 2：a2a auth 静态错误
+var (
+	ErrAuthHeaderMissing   = errors.New("缺少 Authorization 头")
+	ErrAuthBearerRequired  = errors.New("Authorization 格式错误，需要 Bearer token")
 )
 
 // Principal 已认证主体
@@ -66,7 +73,7 @@ func (a *APIKeyAuthenticator) Authenticate(r *http.Request) (*Principal, error) 
 	}
 	principalID, ok := a.keys[key]
 	if !ok {
-		return nil, fmt.Errorf("无效 API Key")
+		return nil, errors.New("无效 API Key") // perf-v6 Task G：静态文案用 errors.New
 	}
 	return &Principal{ID: principalID, Scopes: []string{"*"}}, nil
 }
@@ -86,10 +93,10 @@ func NewBearerTokenAuthenticator(validate BearerTokenValidator) *BearerTokenAuth
 func (b *BearerTokenAuthenticator) Authenticate(r *http.Request) (*Principal, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return nil, fmt.Errorf("缺少 Authorization 头")
+		return nil, ErrAuthHeaderMissing // perf-v6 round 4 Task 2
 	}
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return nil, fmt.Errorf("Authorization 格式错误，需要 Bearer token")
+		return nil, ErrAuthBearerRequired // perf-v6 round 4 Task 2
 	}
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 	return b.validate(token)

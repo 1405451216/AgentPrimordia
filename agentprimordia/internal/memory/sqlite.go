@@ -254,6 +254,68 @@ func (s *SQLiteStore) BatchAdd(ctx context.Context, episodes []*Episode) error {
 	return nil
 }
 
+// AddBatch 是 BatchAdd 的别名（perf-v6 round 5 Task 3：统一接口名）
+func (s *SQLiteStore) AddBatch(ctx context.Context, episodes []*Episode) error {
+	return s.BatchAdd(ctx, episodes)
+}
+
+// GetBatch 批量获取（perf-v6 round 5 Task 3）
+// 单次查询使用 IN(?,?,?) 优化
+func (s *SQLiteStore) GetBatch(ctx context.Context, ids []string) (map[string]*Episode, error) {
+	if len(ids) == 0 {
+		return map[string]*Episode{}, nil
+	}
+
+	// 预构建 IN 子句的占位符
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
+		FROM episodes WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]*Episode, len(ids))
+	for rows.Next() {
+		ep, err := scanRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		result[ep.ID] = ep
+	}
+	return result, rows.Err()
+}
+
+// DeleteBatch 批量删除（perf-v6 round 5 Task 3）
+// 单次 DELETE 使用 IN 子句
+func (s *SQLiteStore) DeleteBatch(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	query := `DELETE FROM episodes WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
 func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOptions) ([]*Episode, error) {
 	if opts == nil {
 		opts = &SearchOptions{Limit: defaultSearchLimit}

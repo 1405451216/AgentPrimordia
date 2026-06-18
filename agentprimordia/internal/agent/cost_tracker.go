@@ -2,7 +2,9 @@ package agent
 
 import (
 	"agentprimordia/internal/llm"
+	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -44,11 +46,20 @@ type ModelCost struct {
 }
 
 // CostTracker 成本追踪器
+// perf-v5 Task 13：累计字段改 atomic，CheckBudget 改 O(1)
 type CostTracker struct {
 	pricing map[string]llm.ModelPricing
 	budget  *BudgetConfig
 	records []CostRecord
 	mu      sync.RWMutex
+
+	// 原子累加字段（O(1) 预算检查）
+	totalCostBits    atomic.Uint64 // math.Float64bits 后的位模式
+	totalPromptTokens atomic.Int64
+	totalCompTokens   atomic.Int64
+	totalTokens      atomic.Int64
+	callCount        atomic.Int64
+	lastTokens       atomic.Int64 // 最近一次调用的 token 数（用于 MaxTokensPerCall）
 }
 
 // NewCostTracker 创建成本追踪器
@@ -80,6 +91,21 @@ func (t *CostTracker) Record(model, sessionID, agentName string, usage llm.Usage
 	t.records = append(t.records, record)
 	exceeded := t.checkBudgetLocked()
 	t.mu.Unlock()
+
+	// 原子累加（锁外）
+	for {
+		oldBits := t.totalCostBits.Load()
+		oldCost := math.Float64frombits(oldBits)
+		newBits := math.Float64bits(oldCost + cost)
+		if t.totalCostBits.CompareAndSwap(oldBits, newBits) {
+			break
+		}
+	}
+	t.totalPromptTokens.Add(int64(usage.PromptTokens))
+	t.totalCompTokens.Add(int64(usage.CompletionTokens))
+	t.totalTokens.Add(int64(usage.TotalTokens))
+	t.callCount.Add(1)
+	t.lastTokens.Store(int64(usage.TotalTokens))
 
 	if exceeded && t.budget != nil && t.budget.OnBudgetExceed != nil {
 		t.budget.OnBudgetExceed(t.Summary())
@@ -117,18 +143,37 @@ func (t *CostTracker) Summary() *CostSummary {
 	return summary
 }
 
-// CheckBudget 检查是否超出预算
+// CheckBudget 检查是否超出预算（perf-v5 Task 13：O(1) 读取原子累加字段）
 func (t *CostTracker) CheckBudget() bool {
 	if t.budget == nil {
 		return false
 	}
 
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.checkBudgetLocked()
+	if t.budget.MaxTotalCostUSD > 0 {
+		totalCost := math.Float64frombits(t.totalCostBits.Load())
+		if totalCost > t.budget.MaxTotalCostUSD {
+			return true
+		}
+	}
+
+	if t.budget.MaxTokensPerSession > 0 {
+		if t.totalTokens.Load() > int64(t.budget.MaxTokensPerSession) {
+			return true
+		}
+	}
+
+	// 检查单次调用 Token 上限
+	if t.budget.MaxTokensPerCall > 0 {
+		if t.lastTokens.Load() > int64(t.budget.MaxTokensPerCall) {
+			return true
+		}
+	}
+
+	return false
 }
 
-// checkBudgetLocked 在已持有锁的情况下检查预算（调用方必须持有 t.mu）
+// checkBudgetLocked 兼容旧 API（perf-v5 Task 13：保留但不再被 Record 路径调用）
+// 调用方必须持有 t.mu
 func (t *CostTracker) checkBudgetLocked() bool {
 	if t.budget == nil {
 		return false
@@ -154,7 +199,6 @@ func (t *CostTracker) checkBudgetLocked() bool {
 		}
 	}
 
-	// 检查单次调用 Token 上限
 	if t.budget.MaxTokensPerCall > 0 && len(t.records) > 0 {
 		last := t.records[len(t.records)-1]
 		if last.TotalTokens > t.budget.MaxTokensPerCall {
@@ -170,4 +214,10 @@ func (t *CostTracker) Reset() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.records = make([]CostRecord, 0)
+	t.totalCostBits.Store(0)
+	t.totalPromptTokens.Store(0)
+	t.totalCompTokens.Store(0)
+	t.totalTokens.Store(0)
+	t.callCount.Store(0)
+	t.lastTokens.Store(0)
 }

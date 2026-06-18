@@ -4,6 +4,7 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -11,6 +12,12 @@ import (
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
+)
+
+// perf-v6 round 4 Task 2：config 静态错误
+var (
+	ErrAgentNameRequired   = errors.New("agent name is required")
+	ErrAgentModelRequired  = errors.New("agent model (LLM Provider) is required")
 )
 
 // MemoryConfig 记忆能力分组配置
@@ -118,10 +125,10 @@ func defaultConfig() AgentConfig {
 //   - MaxTurns 必须为正数
 func (c *AgentConfig) Validate() error {
 	if c.Name == "" {
-		return fmt.Errorf("agent name is required")
+		return ErrAgentNameRequired
 	}
 	if c.Model == nil {
-		return fmt.Errorf("agent model (LLM Provider) is required")
+		return ErrAgentModelRequired
 	}
 	if c.MaxTurns <= 0 {
 		return fmt.Errorf("MaxTurns must be positive, got %d", c.MaxTurns)

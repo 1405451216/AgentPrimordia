@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 // AnthropicVisionProvider Anthropic Claude 视觉多模态 Provider
@@ -35,7 +37,7 @@ func NewAnthropicVisionProvider(cfg Config) (*AnthropicVisionProvider, error) {
 
 	return &AnthropicVisionProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -108,7 +110,7 @@ func (p *AnthropicVisionProvider) StreamMultimodal(ctx context.Context, req *Com
 		body["temperature"] = *temp
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -129,16 +131,8 @@ func (p *AnthropicVisionProvider) StreamMultimodal(ctx context.Context, req *Com
 		defer resp.Body.Close()
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		var apiErr struct {
-			Error *struct {
-				Type    string `json:"type"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error != nil {
-			return nil, fmt.Errorf("anthropic API error (%s): %s", apiErr.Error.Type, apiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("Anthropic Vision API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("anthropic_vision", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -175,7 +169,8 @@ func (p *AnthropicVisionProvider) StreamMultimodal(ctx context.Context, req *Com
 					} `json:"usage"`
 				} `json:"message,omitempty"`
 			}
-			if err := json.Unmarshal([]byte(data), &event); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &event); err != nil {
 				continue
 			}
 
@@ -333,7 +328,7 @@ func (p *AnthropicVisionProvider) setHeaders(req *http.Request) {
 
 // doRequest 发送 HTTP 请求
 func (p *AnthropicVisionProvider) doRequest(ctx context.Context, body any) ([]byte, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -355,16 +350,8 @@ func (p *AnthropicVisionProvider) doRequest(ctx context.Context, body any) ([]by
 	if resp.StatusCode != http.StatusOK {
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		var apiErr struct {
-			Error *struct {
-				Type    string `json:"type"`
-				Message string `json:"message"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error != nil {
-			return nil, fmt.Errorf("anthropic API error (%s): %s", apiErr.Error.Type, apiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("Anthropic Vision API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("anthropic_vision", resp.StatusCode, respBody, resp.Header)
 	}
 
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)

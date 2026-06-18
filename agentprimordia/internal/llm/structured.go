@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 8 Task 1：统一 JSON 序列化
 )
 
 // ResponseFormatType LLM 响应格式类型
@@ -132,7 +134,8 @@ func ExtractInto[T any](e *StructuredExtractor, ctx context.Context, prompt stri
 	}
 
 	var result T
-	if err := json.Unmarshal(raw, &result); err != nil {
+	// perf-v6 round 8 Task 1：使用 pooled reader
+	if err := jsonutil.Unmarshal(raw, &result); err != nil {
 		return nil, fmt.Errorf("反序列化结构化输出失败: %w", err)
 	}
 	return &result, nil
@@ -154,7 +157,7 @@ func ExtractStructInto[T any](e *StructuredExtractor, ctx context.Context, promp
 
 // structuredSystemPrompt 生成结构化提取的系统提示词
 func structuredSystemPrompt(schema *SchemaDef) string {
-	schemaBytes, _ := json.Marshal(schema.Schema)
+	schemaBytes, _ := jsonutil.Marshal(schema.Schema)
 	desc := ""
 	if schema.Description != "" {
 		desc = "\n描述: " + schema.Description

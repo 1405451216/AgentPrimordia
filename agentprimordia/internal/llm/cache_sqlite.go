@@ -6,7 +6,6 @@ package llm
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -15,6 +14,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 8 Task 1：统一 JSON 序列化
 )
 
 const (
@@ -156,7 +157,8 @@ func (c *SQLiteCache) Get(ctx context.Context, query string, similarity float32)
 		resp := &CompletionResponse{ID: respID, Content: content}
 		if usageJSON != "" {
 			var u Usage
-			if err := json.Unmarshal([]byte(usageJSON), &u); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled reader
+			if err := jsonutil.Unmarshal([]byte(usageJSON), &u); err != nil {
 				slog.Warn("缓存 usage 反序列化失败", "error", err)
 			}
 			resp.Usage = u
@@ -216,7 +218,8 @@ func (c *SQLiteCache) semanticSearch(ctx context.Context, query string, similari
 
 		var entryVec []float32
 		if vecJSON != "" {
-			if err := json.Unmarshal([]byte(vecJSON), &entryVec); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled reader
+			if err := jsonutil.Unmarshal([]byte(vecJSON), &entryVec); err != nil {
 				slog.Warn("语义搜索向量反序列化失败", "error", err)
 			}
 		}
@@ -230,7 +233,8 @@ func (c *SQLiteCache) semanticSearch(ctx context.Context, query string, similari
 			resp := &CompletionResponse{ID: respID, Content: content}
 			if usageJSON != "" {
 				var u Usage
-				if err := json.Unmarshal([]byte(usageJSON), &u); err != nil {
+				// perf-v6 round 8 Task 1：使用 pooled reader
+				if err := jsonutil.Unmarshal([]byte(usageJSON), &u); err != nil {
 					slog.Warn("语义搜索 usage 反序列化失败", "error", err)
 				}
 				resp.Usage = u
@@ -255,7 +259,8 @@ func (c *SQLiteCache) semanticSearch(ctx context.Context, query string, similari
 
 func (c *SQLiteCache) Set(ctx context.Context, query string, resp *CompletionResponse) error {
 	fp := PromptFingerprint(query)
-	usageJSON, err := json.Marshal(resp.Usage)
+	// perf-v6 round 8 Task 1：使用 pooled buffer 序列化
+	usageJSON, err := jsonutil.Marshal(resp.Usage)
 	if err != nil {
 		slog.Warn("缓存 usage 序列化失败", "error", err)
 	}
@@ -263,7 +268,8 @@ func (c *SQLiteCache) Set(ctx context.Context, query string, resp *CompletionRes
 	var vecJSON string
 	if c.enableSem {
 		vec := fingerprintToVector(query)
-		vj, err := json.Marshal(vec)
+		// perf-v6 round 8 Task 1：使用 pooled buffer 序列化
+		vj, err := jsonutil.Marshal(vec)
 		if err != nil {
 			slog.Warn("缓存向量序列化失败", "error", err)
 		}

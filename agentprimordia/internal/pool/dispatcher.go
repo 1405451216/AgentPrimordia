@@ -16,10 +16,12 @@ import (
 )
 
 const (
-	defaultMaxConcurrency   = 10
-	defaultPoolTimeout      = 5 * time.Minute
-	poolEventBufferSize     = 100
-	defaultMaxTurns         = 50
+	// perf-v6 Task H：默认 maxConcurrency 提升到 2 * NumCPU（最少 16）
+	// 老值 10 在多核机器上明显不足
+	defaultMaxConcurrency = 16
+	defaultPoolTimeout    = 5 * time.Minute
+	poolEventBufferSize   = 100
+	defaultMaxTurns       = 50
 	defaultMaxRetainedTasks = 1000
 )
 
@@ -58,12 +60,26 @@ type Pool struct {
 type poolTask struct {
 	config     TaskConfig
 	sessionID  string
-	status     PoolTaskStatus
+	status     atomic.Value // PoolTaskStatus string (perf-v6 Task A：atomic.Value 无锁读)
 	result     *TaskResult
 	startTime  time.Time
 	retryCount int
 	cancelCtx  context.Context
 	cancelFunc context.CancelFunc
+}
+
+// loadStatus 从 atomic.Value 安全读取 PoolTaskStatus（perf-v6 Task A）
+func (pt *poolTask) loadStatus() PoolTaskStatus {
+	v := pt.status.Load()
+	if v == nil {
+		return PoolTaskQueued
+	}
+	return v.(PoolTaskStatus)
+}
+
+// storeStatus 安全写 PoolTaskStatus 到 atomic.Value（perf-v6 Task A）
+func (pt *poolTask) storeStatus(s PoolTaskStatus) {
+	pt.status.Store(s)
 }
 
 func NewPool(cfg PoolConfig) *Pool {
@@ -130,11 +146,11 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 		pt := &poolTask{
 			config:     task,
 			sessionID:  task.SessionID,
-			status:     PoolTaskQueued,
 			startTime:  time.Now(),
 			cancelCtx:  taskCtx,
 			cancelFunc: taskCancel,
 		}
+		pt.storeStatus(PoolTaskQueued) // perf-v6 Task A
 
 		p.mu.Lock()
 		if _, exists := p.tasks[task.ID]; exists {
@@ -222,7 +238,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		defer func() { <-p.semaphore }()
 	case <-ctx.Done():
 		p.mu.Lock()
-		pt.status = PoolTaskCancelled
+		pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 		p.mu.Unlock()
 		// 优化（Task 8）：原子计数 - queued 转 cancelled
 		p.queuedCount.Add(-1)
@@ -235,7 +251,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		}, ctx.Err()
 	case <-time.After(p.config.Timeout):
 		p.mu.Lock()
-		pt.status = PoolTaskFailed
+		pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 		p.mu.Unlock()
 		// 优化（Task 8）：原子计数 - queued 转 failed
 		p.queuedCount.Add(-1)
@@ -256,7 +272,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 	defer p.runningCount.Add(-1)
 	for {
 		p.mu.Lock()
-		pt.status = PoolTaskRunning
+		pt.storeStatus(PoolTaskRunning) // perf-v6 Task A
 		p.mu.Unlock()
 		p.emitEvent(PoolEvent{Type: "task_started", TaskID: task.ID, Data: task.Title})
 
@@ -272,20 +288,20 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		if err != nil {
 			if taskCtxErr == context.DeadlineExceeded {
 				p.mu.Lock()
-				pt.status = PoolTaskFailed
+				pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 				p.mu.Unlock()
 				// 优化（Task 8）：running 转 failed
 				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
 			} else if taskCtxErr == context.Canceled || ctx.Err() != nil {
 				p.mu.Lock()
-				pt.status = PoolTaskCancelled
+				pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 				p.mu.Unlock()
 				// cancelled 不计入 failed
 				p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 			} else {
 				p.mu.Lock()
-				pt.status = PoolTaskFailed
+				pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 				p.mu.Unlock()
 
 				if p.isRetryable(err) && pt.retryCount < p.config.RetryPolicy.MaxRetries {
@@ -302,7 +318,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			}
 		} else {
 			p.mu.Lock()
-			pt.status = PoolTaskCompleted
+			pt.storeStatus(PoolTaskCompleted) // perf-v6 Task A
 			p.mu.Unlock()
 			// 优化（Task 8）：running 转 completed
 			p.completedCount.Add(1)
@@ -315,7 +331,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			Response: result,
 			Error:    err,
 			Duration: duration,
-			Status:   pt.status,
+			Status:   pt.loadStatus(),
 		}
 
 		p.mu.Lock()
@@ -449,9 +465,9 @@ func (p *Pool) Cancel(taskID string) error {
 		return ErrTaskNotFound
 	}
 
-	if task.status == PoolTaskRunning {
+	if task.loadStatus() == PoolTaskRunning {
 		task.cancelFunc()
-		task.status = PoolTaskCancelled
+		task.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 	}
 
 	p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: taskID})
@@ -463,9 +479,9 @@ func (p *Pool) CancelAll() {
 	defer p.mu.Unlock()
 
 	for id, task := range p.tasks {
-		if task.status == PoolTaskQueued || task.status == PoolTaskRunning {
+		if task.loadStatus() == PoolTaskQueued || task.loadStatus() == PoolTaskRunning {
 			task.cancelFunc()
-			task.status = PoolTaskCancelled
+			task.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: id})
 		}
 	}
@@ -494,7 +510,7 @@ func (p *Pool) GetTasksBySession(sessionID string) []TaskResult {
 			results = append(results, TaskResult{
 				TaskID: pt.config.ID,
 				Task:   pt.config,
-				Status: pt.status,
+				Status: pt.loadStatus(),
 			})
 		}
 	}
@@ -517,9 +533,9 @@ func (p *Pool) CancelBySession(sessionID string) error {
 		if !exists {
 			continue
 		}
-		if pt.status == PoolTaskQueued || pt.status == PoolTaskRunning {
+		if pt.loadStatus() == PoolTaskQueued || pt.loadStatus() == PoolTaskRunning {
 			pt.cancelFunc()
-			pt.status = PoolTaskCancelled
+			pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: taskID})
 		}
 	}
@@ -550,7 +566,7 @@ func (p *Pool) ListTasks() []TaskResult {
 			results = append(results, TaskResult{
 				TaskID: pt.config.ID,
 				Task:   pt.config,
-				Status: pt.status,
+				Status: pt.loadStatus(),
 			})
 		}
 	}
@@ -607,7 +623,7 @@ func (p *Pool) Cleanup() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for id, t := range p.tasks {
-		if t.status == PoolTaskCompleted || t.status == PoolTaskFailed || t.status == PoolTaskCancelled {
+		if t.loadStatus() == PoolTaskCompleted || t.loadStatus() == PoolTaskFailed || t.loadStatus() == PoolTaskCancelled {
 			// 清理会话索引
 			if t.sessionID != "" {
 				if ids, ok := p.sessionIndex[t.sessionID]; ok {
@@ -634,7 +650,7 @@ func (p *Pool) cleanupIfNeeded() {
 		return
 	}
 	for id, t := range p.tasks {
-		if t.status == PoolTaskCompleted || t.status == PoolTaskFailed || t.status == PoolTaskCancelled {
+		if t.loadStatus() == PoolTaskCompleted || t.loadStatus() == PoolTaskFailed || t.loadStatus() == PoolTaskCancelled {
 			// 清理会话索引
 			if t.sessionID != "" {
 				if ids, ok := p.sessionIndex[t.sessionID]; ok {

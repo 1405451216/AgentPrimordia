@@ -580,17 +580,17 @@ func (s *Supervisor) Events() <-chan *SupervisorEvent {
 	return s.eventCh
 }
 
-// Export 导出为 JSON
+// Export 导出为 JSON（perf-v5 Task 5：锁内只快照，锁外做 JSON 序列化）
 func (s *Supervisor) Export() ([]byte, error) {
+	// 在持锁期间构造好 data（包含 stats 与 workers），锁外再 marshal
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	data := map[string]any{
 		"config":   s.config,
 		"strategy": s.strategy.Name(),
 		"stats":    s.Stats(),
 		"workers":  s.workerSnapshotLocked(),
 	}
+	s.mu.RUnlock()
 	return json.MarshalIndent(data, "", "  ")
 }
 

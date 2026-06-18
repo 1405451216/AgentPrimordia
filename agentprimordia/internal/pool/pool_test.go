@@ -337,8 +337,8 @@ func TestPool_DefaultConfig(t *testing.T) {
 	pool := NewPool(PoolConfig{})
 	defer pool.Close()
 
-	if pool.config.MaxConcurrency != 10 {
-		t.Errorf("default max_concurrency should be 10, got %d", pool.config.MaxConcurrency)
+	if pool.config.MaxConcurrency != 16 {
+		t.Errorf("default max_concurrency should be 16, got %d", pool.config.MaxConcurrency)
 	}
 	if pool.config.Timeout != 5*time.Minute {
 		t.Errorf("default timeout should be 5min, got %v", pool.config.Timeout)

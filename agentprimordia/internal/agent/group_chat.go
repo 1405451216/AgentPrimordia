@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -120,22 +121,17 @@ func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChat
 	return result, nil
 }
 
-// RoundRobinSelector 轮询选择器
+// RoundRobinSelector 轮询选择器（perf-v5 Task 28：atomic.Uint64 替代 Mutex）
 func RoundRobinSelector() SpeakerSelector {
-	var index int
-	var mu sync.Mutex
+	var index atomic.Uint64
 
 	return func(_ context.Context, _ []Message, agents []Agent) (Agent, error) {
-		mu.Lock()
-		defer mu.Unlock()
-
 		if len(agents) == 0 {
 			return nil, errors.New("no agents available")
 		}
 
-		agent := agents[index%len(agents)]
-		index++
-		return agent, nil
+		idx := index.Add(1) - 1
+		return agents[idx%uint64(len(agents))], nil
 	}
 }
 
@@ -150,18 +146,14 @@ func RandomSelector() SpeakerSelector {
 	}
 }
 
-// LastSpeakerSelector 选择上一位发言者的回复者（简单实现为轮询的变体）
+// LastSpeakerSelector 选择上一位发言者的回复者（perf-v5 Task 28：atomic 化 lastIndex）
 func LastSpeakerSelector() SpeakerSelector {
-	var lastIndex int
-	var mu sync.Mutex
+	var lastIndex atomic.Int64
 
 	return func(_ context.Context, messages []Message, agents []Agent) (Agent, error) {
 		if len(agents) == 0 {
 			return nil, errors.New("no agents available")
 		}
-
-		mu.Lock()
-		defer mu.Unlock()
 
 		if len(messages) >= 2 {
 			lastMsg := messages[len(messages)-1]
@@ -169,16 +161,18 @@ func LastSpeakerSelector() SpeakerSelector {
 				if agentName, ok := lastMsg.Metadata.Extra["agent"]; ok {
 					for i, a := range agents {
 						if a.Name() == agentName {
-							lastIndex = (i + 1) % len(agents)
-							return agents[lastIndex], nil
+							li := int64((i + 1) % len(agents))
+							lastIndex.Store(li)
+							return agents[li], nil
 						}
 					}
 				}
 			}
 		}
 
-		agent := agents[lastIndex%len(agents)]
-		lastIndex = (lastIndex + 1) % len(agents)
+		li := lastIndex.Load()
+		agent := agents[li%int64(len(agents))]
+		lastIndex.Store((li + 1) % int64(len(agents)))
 		return agent, nil
 	}
 }
@@ -196,6 +190,41 @@ type RoleBasedConfig struct {
 	Roles        map[string]AgentRole
 	DefaultRole  string
 	FallbackMode string // "round_robin" | "random"
+}
+
+// loweredRole 预计算 lowered 后的角色（perf-v5 Task 29：避免每轮 ToLower）
+type loweredRole struct {
+	Role            AgentRole
+	LoweredKeywords []string
+}
+
+// roleCache 简单的角色 lowered 缓存（避免每次 ToLower 关键词）
+// 注意：使用 string 作为 key 是为了 sync.Map 的 hashable 要求
+var roleCache sync.Map // map[string]*loweredRole
+
+// getLoweredRole 获取预 lowered 后的角色（perf-v5 Task 29）
+func getLoweredRole(agentName string, cfg RoleBasedConfig) (*loweredRole, bool) {
+	role, exists := cfg.Roles[agentName]
+	if !exists {
+		return nil, false
+	}
+	// 使用角色 + agent name 组合作为 key（不含 map）
+	cacheKey := agentName
+	if v, ok := roleCache.Load(cacheKey); ok {
+		// 验证缓存的角色是否仍然匹配
+		lr := v.(*loweredRole)
+		if lr.Role.Priority == role.Priority && len(lr.Role.Keywords) == len(role.Keywords) {
+			return lr, true
+		}
+	}
+	// 首次访问或失效：构建 lowered role
+	lr := &loweredRole{Role: role}
+	lr.LoweredKeywords = make([]string, len(role.Keywords))
+	for i, kw := range role.Keywords {
+		lr.LoweredKeywords[i] = strings.ToLower(kw)
+	}
+	roleCache.Store(cacheKey, lr)
+	return lr, true
 }
 
 // RoleBasedSelector 基于角色/关键词的发言者选择器
@@ -216,15 +245,24 @@ func RoleBasedSelector(cfg RoleBasedConfig) SpeakerSelector {
 		bestScore := 0
 
 		for i, a := range agents {
-			if role, exists := cfg.Roles[a.Name()]; exists {
-				score := 0
-				for _, kw := range role.Keywords {
-					if strings.Contains(content, strings.ToLower(kw)) {
-						score++
-					}
+			// perf-v5 Task 29：使用预 loweredKeywords，避免每次 ToLower
+			roleLower, exists := getLoweredRole(a.Name(), cfg)
+			if !exists {
+				continue
+			}
+			score := 0
+			for _, kw := range roleLower.LoweredKeywords {
+				if strings.Contains(content, kw) {
+					score++
 				}
-				if score > bestScore || (score > 0 && score == bestScore && role.Priority < cfg.Roles[agents[bestMatch].Name()].Priority) {
-					bestScore = score
+			}
+			if score > bestScore {
+				bestScore = score
+				bestMatch = i
+			} else if score == bestScore && score > 0 && bestMatch >= 0 {
+				// Tiebreaker: lower Priority wins
+				curRole, _ := getLoweredRole(agents[bestMatch].Name(), cfg)
+				if curRole != nil && roleLower.Role.Priority < curRole.Role.Priority {
 					bestMatch = i
 				}
 			}

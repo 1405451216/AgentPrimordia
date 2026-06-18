@@ -297,16 +297,15 @@ func (o *Orchestrator) Stats() map[string]any {
 	}
 }
 
-// Export 导出配置为JSON
+// Export 导出配置为JSON（perf-v5 Task 5：锁内只快照，锁外 marshal）
 func (o *Orchestrator) Export() ([]byte, error) {
 	o.mu.RLock()
-	defer o.mu.RUnlock()
-
 	data := map[string]any{
 		"config":    o.config,
 		"steps":     o.steps,
 		"dag_edges": o.dagEdges,
 	}
+	o.mu.RUnlock()
 	return json.MarshalIndent(data, "", "  ")
 }
 

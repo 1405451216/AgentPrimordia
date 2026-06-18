@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 // OpenAIMultimodalProvider OpenAI 多模态 Provider（支持 GPT-4o 视觉能力）
@@ -37,7 +38,7 @@ func NewOpenAIMultimodalProvider(cfg Config) (*OpenAIMultimodalProvider, error) 
 
 	return &OpenAIMultimodalProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -110,7 +111,7 @@ func (p *OpenAIMultimodalProvider) StreamMultimodal(ctx context.Context, req *Co
 		body["max_tokens"] = p.config.MaxTokens
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -133,10 +134,9 @@ func (p *OpenAIMultimodalProvider) StreamMultimodal(ctx context.Context, req *Co
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
 		var apiErr APIError
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("OpenAI Multimodal API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != ""
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("openai_multimodal", resp.StatusCode, respBody, resp.Header, &apiErr, parsed)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -168,7 +168,8 @@ func (p *OpenAIMultimodalProvider) StreamMultimodal(ctx context.Context, req *Co
 			}
 
 			var sseResp openaiChatResponse
-			if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &sseResp); err != nil {
 				continue
 			}
 			if sseResp.Error != nil {
@@ -347,7 +348,7 @@ func (p *OpenAIMultimodalProvider) resolveModel(model string) string {
 
 // doRequest 发送 HTTP 请求
 func (p *OpenAIMultimodalProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -373,10 +374,9 @@ func (p *OpenAIMultimodalProvider) doRequest(ctx context.Context, endpoint strin
 		respBody, _ := io.ReadAll(limitedReader)
 
 		var apiErr APIError
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("OpenAI Multimodal API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != ""
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("openai_multimodal", resp.StatusCode, respBody, resp.Header, &apiErr, parsed)
 	}
 
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
