@@ -111,11 +111,14 @@ func (r *ResilientProvider) Stream(ctx context.Context, req *CompletionRequest) 
 	for attempt := 0; attempt <= 1; attempt++ {
 		if attempt > 0 {
 			backoff := r.computeRetryBackoff(attempt, lastErr)
+			timer := time.NewTimer(backoff)
 			select {
-			case <-time.After(backoff):
+			case <-timer.C:
 			case <-ctx.Done():
+				timer.Stop()
 				return nil, ctx.Err()
 			}
+			timer.Stop()
 		}
 		ch, err := r.primary.Stream(ctx, req)
 		if err == nil {
@@ -248,11 +251,14 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 	for attempt := 0; attempt <= r.config.MaxRetries; attempt++ {
 		if attempt > 0 {
 			backoff := r.computeRetryBackoff(attempt, lastErr)
+			timer := time.NewTimer(backoff)
 			select {
-			case <-time.After(backoff):
+			case <-timer.C:
 			case <-ctx.Done():
+				timer.Stop()
 				return zero, ctx.Err()
 			}
+			timer.Stop()
 		}
 
 		resp, err := fn(r.primary)
@@ -277,11 +283,14 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 		for attempt := 0; attempt <= 1; attempt++ {
 			if attempt > 0 {
 				backoff := r.computeRetryBackoff(attempt, lastErr)
+				timer := time.NewTimer(backoff)
 				select {
-				case <-time.After(backoff):
+				case <-timer.C:
 				case <-ctx.Done():
+					timer.Stop()
 					return zero, ctx.Err()
 				}
+				timer.Stop()
 			}
 			resp, err := fn(fallback)
 			if err == nil {
