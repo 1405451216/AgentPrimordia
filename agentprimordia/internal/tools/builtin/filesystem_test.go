@@ -287,6 +287,25 @@ func TestPathTraversal_Blocked(t *testing.T) {
 	}
 }
 
+func TestPathTraversal_DotDotInFilenameAllowed(t *testing.T) {
+	tmpDir := t.TempDir()
+	path := filepath.Join(tmpDir, "..gitignore")
+	os.WriteFile(path, []byte("ignore"), 0644)
+
+	fs := mustNewFS(t, tmpDir)
+	args, _ := json.Marshal(map[string]string{
+		"action": "read",
+		"path":   "..gitignore",
+	})
+	result, err := fs.Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("filename containing '..' should not be rejected as traversal: %s", result.Content)
+	}
+}
+
 func TestSensitiveFile_Protected(t *testing.T) {
 	tmpDir := t.TempDir()
 	sensitivePath := filepath.Join(tmpDir, ".env")

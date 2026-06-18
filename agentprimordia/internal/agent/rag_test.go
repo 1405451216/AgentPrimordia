@@ -50,14 +50,12 @@ func TestReActAgent_RAG_AutoMode(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 10,
-		RAG: &RAGConfig{
-			Provider: ragProvider,
-			Mode:     RAGModeAuto,
-			TopK:     5,
-			MinScore: 0.3,
-		},
+	}).AsCapability().WithToolkit(registry).WithRAG(RAGConfig{
+		Provider: ragProvider,
+		Mode:     RAGModeAuto,
+		TopK:     5,
+		MinScore: 0.3,
 	})
 
 	resp, err := agent.Run(context.Background(), UserMessage("What is Go?"))
@@ -123,13 +121,11 @@ func TestReActAgent_RAG_FirstMode(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-first-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 10,
-		RAG: &RAGConfig{
-			Provider: ragProvider,
-			Mode:     RAGModeFirst,
-			TopK:     3,
-		},
+	}).AsCapability().WithToolkit(registry).WithRAG(RAGConfig{
+		Provider: ragProvider,
+		Mode:     RAGModeFirst,
+		TopK:     3,
 	})
 
 	resp, err := agent.Run(context.Background(), UserMessage("Search for something"))
@@ -158,12 +154,10 @@ func TestReActAgent_RAG_OnDemandMode(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-ondemand-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		RAG: &RAGConfig{
-			Provider: ragProvider,
-			Mode:     RAGModeOnDemand,
-		},
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+		Provider: ragProvider,
+		Mode:     RAGModeOnDemand,
 	})
 
 	resp, err := agent.Run(context.Background(), UserMessage("Test on demand"))
@@ -186,10 +180,8 @@ func TestReActAgent_RAG_NoProvider(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "no-rag-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		RAG:      nil,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	resp, err := agent.Run(context.Background(), UserMessage("Hello"))
 	if err != nil {
@@ -211,12 +203,10 @@ func TestReActAgent_RAG_ErrorHandling(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-error-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		RAG: &RAGConfig{
-			Provider: ragProvider,
-			Mode:     RAGModeAuto,
-		},
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+		Provider: ragProvider,
+		Mode:     RAGModeAuto,
 	})
 
 	resp, err := agent.Run(context.Background(), UserMessage("Test RAG error"))
@@ -242,13 +232,11 @@ func TestReActAgent_RAG_MinScore(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-minscore-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		RAG: &RAGConfig{
-			Provider: ragProvider,
-			Mode:     RAGModeAuto,
-			MinScore: 0.5,
-		},
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+		Provider: ragProvider,
+		Mode:     RAGModeAuto,
+		MinScore: 0.5,
 	})
 
 	resp, err := agent.Run(context.Background(), UserMessage("Test min score"))
@@ -296,14 +284,11 @@ func TestReActAgent_RAG_HooksFired(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "rag-hooks-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		RAG: &RAGConfig{
-			Provider: ragProvider,
-			Mode:     RAGModeAuto,
-		},
-		Hooks: hooks,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+		Provider: ragProvider,
+		Mode:     RAGModeAuto,
+	}).WithHooks(hooks)
 
 	_, err := agent.Run(context.Background(), UserMessage("Test RAG hooks"))
 	if err != nil {

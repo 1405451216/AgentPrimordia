@@ -16,7 +16,10 @@ func main() {
 	mock := testutil.NewMockProvider("你好！我是链式 API 创建的 Agent，有什么可以帮你的？")
 
 	// 只需 3 个必填参数即可创建 Agent
-	agent := ap.NewAgent("hello-agent", "", mock, ap.WithMaxTurns(3))
+	agent, err := ap.NewAgent("hello-agent", "", mock, ap.WithMaxTurns(3))
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
 	if err != nil {

@@ -56,18 +56,18 @@ func main() {
 	})
 
 	// 4. 创建 Agent
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name: "CustomerSupport",
-		SystemPrompt: `你是一个客服助手。
+	agent, err := ap.NewAgent("CustomerSupport", `你是一个客服助手。
 - 先从知识库检索相关信息再回答
 - 遇到退款、投诉等敏感问题，提示用户将转交人工处理
-- 用中文回复，态度友好专业`,
-		MaxTurns: 15,
-		Model:    newProvider(),
-		Toolkit:  registry,
-		Memory:   ap.NewMemoryAdapter(memory),
-		Hooks:    hooks,
-	})
+- 用中文回复，态度友好专业`, newProvider(),
+		ap.WithMaxTurns(15),
+		ap.WithToolkit(registry),
+		ap.WithMemory(ap.NewMemoryAdapter(memory)),
+		ap.WithHooks(hooks),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// 5. 运行对话
 	resp, err := agent.Run(context.Background(),

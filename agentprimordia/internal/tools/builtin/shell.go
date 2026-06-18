@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
+	"agentprimordia/internal/security"
 	"agentprimordia/internal/tools"
 )
 
@@ -36,31 +36,10 @@ var defaultWhitelist = []string{
 	"mkdir", "cp", "mv", "touch", "ln",
 }
 
-// containsShellMetacharacters 检查命令是否包含危险的 shell 元字符
-// 防止通过 /bin/sh -c 执行时的命令注入攻击
+// containsShellMetacharacters 检查命令是否包含危险的 shell 元字符。
+// 复用 security 包的统一规则，确保 Shell 工具与 Sandbox 校验一致。
 func containsShellMetacharacters(cmd string) (bool, string) {
-	dangerousPatterns := []struct {
-		pattern string
-		name    string
-	}{
-		{";", "semicolon"},
-		{"|", "pipe"},
-		{"&", "ampersand"},
-		{"$", "dollar"},
-		{"`", "backtick"},
-		{">", "redirect-out"},
-		{"<", "redirect-in"},
-		{"\n", "newline"},
-		{"\r", "carriage-return"},
-		{"(", "subshell"},
-		{")", "subshell-close"},
-	}
-	for _, p := range dangerousPatterns {
-		if strings.Contains(cmd, p.pattern) {
-			return true, p.name
-		}
-	}
-	return false, ""
+	return security.ContainsShellMetacharacter(cmd)
 }
 
 type Shell struct {
@@ -136,7 +115,7 @@ func (s *Shell) WithSandbox(sandbox SandboxChecker, agentID string) *Shell {
 func (s *Shell) Name() string { return "shell" }
 
 func (s *Shell) Description() string {
-	return "Shell command execution tool. Executes shell commands with timeout and security restrictions. Returns stdout, stderr, and exit code."
+	return "Command execution tool. Executes a single command with arguments directly (no shell interpreter). Supports quoted arguments and backslash escaping. Returns stdout, stderr, and exit code."
 }
 
 func (s *Shell) Parameters() json.RawMessage {
@@ -144,7 +123,8 @@ func (s *Shell) Parameters() json.RawMessage {
   "type": "object",
   "properties": {
     "action": {"type": "string", "enum": ["execute"], "description": "The operation to perform"},
-    "command": {"type": "string", "description": "Shell command to execute"},
+    "command": {"type": "string", "description": "Command to execute, including arguments (e.g. \"echo hello\"). No shell interpretation; pipes, redirections, and command substitution are not supported."},
+    "args": {"type": "array", "items": {"type": "string"}, "description": "Optional explicit argument list. If provided, command is treated as executable name only."},
     "timeout": {"type": "number", "description": "Timeout in seconds (default: 30)"},
     "workdir": {"type": "string", "description": "Working directory for command execution"}
   },
@@ -159,15 +139,19 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	}
 
 	action := ""
-	_ = json.Unmarshal(params["action"], &action)
+	if err := unmarshalRaw(params["action"], &action); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'action': %v", err)), nil
+	}
 
 	if action != "execute" {
 		return tools.NewErrorResult(fmt.Sprintf("unknown action: %s", action)), nil
 	}
 
 	command := ""
-	if raw, ok := params["command"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &command)
+	if raw, ok := params["command"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &command); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'command': %v", err)), nil
+		}
 	}
 	if strings.TrimSpace(command) == "" {
 		return tools.NewErrorResult("command is required"), nil
@@ -210,17 +194,21 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	}
 
 	timeoutSec := int(s.defaultTimeout.Seconds())
-	if raw, ok := params["timeout"]; ok && raw != nil {
+	if raw, ok := params["timeout"]; ok && len(raw) > 0 {
 		var v float64
-		_ = json.Unmarshal(raw, &v)
+		if err := unmarshalRaw(raw, &v); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'timeout': %v", err)), nil
+		}
 		if v > 0 {
 			timeoutSec = int(v)
 		}
 	}
 
 	workdir := ""
-	if raw, ok := params["workdir"]; ok && raw != nil {
-		_ = json.Unmarshal(raw, &workdir)
+	if raw, ok := params["workdir"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &workdir); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'workdir': %v", err)), nil
+		}
 	}
 
 	// 验证 workdir 是否在允许范围内
@@ -255,12 +243,26 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 	execCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(execCtx, "cmd", "/c", command)
+	var name string
+	var cmdArgs []string
+
+	// 如果显式提供 args 数组，command 只作为可执行文件名
+	if raw, ok := params["args"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &cmdArgs); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'args': %v", err)), nil
+		}
+		name = strings.TrimSpace(command)
+		cmdArgs = append([]string(nil), cmdArgs...)
 	} else {
-		cmd = exec.CommandContext(execCtx, "/bin/sh", "-c", command)
+		tokens, err := tokenizeCommand(command)
+		if err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("failed to parse command: %v", err)), nil
+		}
+		name = tokens[0]
+		cmdArgs = tokens[1:]
 	}
+
+	cmd := exec.CommandContext(execCtx, name, cmdArgs...)
 
 	// 环境变量隔离：仅传递必要的安全环境变量
 	cmd.Env = []string{
@@ -312,6 +314,56 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 		return tools.NewErrorResult(string(resultJSON)), fmt.Errorf("exit code %d", exitCode)
 	}
 	return tools.NewResult(string(resultJSON)), nil
+}
+
+// tokenizeCommand 将命令字符串拆分为 [name, args...]
+// 支持单引号、双引号和反斜杠转义，避免使用 shell 解释器
+func tokenizeCommand(cmd string) ([]string, error) {
+	var tokens []string
+	var current strings.Builder
+	var inSingleQuote, inDoubleQuote bool
+
+	flush := func() {
+		if current.Len() > 0 {
+			tokens = append(tokens, current.String())
+			current.Reset()
+		}
+	}
+
+	for i := 0; i < len(cmd); i++ {
+		c := cmd[i]
+		switch {
+		case c == '\\' && !inSingleQuote:
+			if i+1 < len(cmd) {
+				current.WriteByte(cmd[i+1])
+				i++
+			} else {
+				return nil, fmt.Errorf("trailing backslash")
+			}
+		case c == '\'' && !inDoubleQuote:
+			inSingleQuote = !inSingleQuote
+		case c == '"' && !inSingleQuote:
+			inDoubleQuote = !inDoubleQuote
+		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
+			if inSingleQuote || inDoubleQuote {
+				current.WriteByte(c)
+			} else {
+				flush()
+			}
+		default:
+			current.WriteByte(c)
+		}
+	}
+
+	if inSingleQuote || inDoubleQuote {
+		return nil, fmt.Errorf("unclosed quote")
+	}
+	flush()
+
+	if len(tokens) == 0 {
+		return nil, fmt.Errorf("empty command")
+	}
+	return tokens, nil
 }
 
 func splitOutput(combined string) (stdout, stderr string) {

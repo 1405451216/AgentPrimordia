@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"agentprimordia/internal/agent"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 )
@@ -159,7 +158,7 @@ func TestAdaptMemoryStore_Timeline(t *testing.T) {
 	adapter := store
 	ctx := context.Background()
 
-	ep1 := &agent.MemoryEpisode{
+	ep1 := &memory.Episode{
 		ID:         "ep-1",
 		SessionID:  "session-1",
 		Role:       "user",
@@ -168,7 +167,7 @@ func TestAdaptMemoryStore_Timeline(t *testing.T) {
 		Importance: 0.9,
 		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
 	}
-	ep2 := &agent.MemoryEpisode{
+	ep2 := &memory.Episode{
 		ID:         "ep-2",
 		SessionID:  "session-1",
 		Role:       "assistant",
@@ -312,6 +311,7 @@ func TestAdaptMemoryStore_Close(t *testing.T) {
 }
 
 func TestNewEmbeddingAdapter(t *testing.T) {
+	t.Parallel()
 	mockLLM := &integrationMockLLM{response: "test"}
 
 	adapter := NewEmbeddingAdapter(mockLLM, 768)
@@ -330,6 +330,7 @@ func TestNewEmbeddingAdapter(t *testing.T) {
 }
 
 func TestNewEmbeddingAdapter_DefaultDim(t *testing.T) {
+	t.Parallel()
 	mockLLM := &integrationMockLLM{response: "test"}
 	adapter := NewEmbeddingAdapter(mockLLM, 0)
 	if adapter.Dimensions() != 1536 {
@@ -440,5 +441,94 @@ func (m *integrationMockLLM) Info() llm.ModelInfo {
 		MaxContext:        4096,
 		SupportsTools:     true,
 		SupportsStreaming: true,
+	}
+}
+
+// ===== options.go 覆盖率测试 =====
+
+func TestWithTimeout(t *testing.T) {
+	t.Parallel()
+	opt := WithTimeout(5 * time.Second)
+	o := ApplyOptions(opt)
+	if o.timeout != 5*time.Second {
+		t.Errorf("timeout = %v, want %v", o.timeout, 5*time.Second)
+	}
+}
+
+func TestWithMaxIterations(t *testing.T) {
+	t.Parallel()
+	opt := WithMaxIterations(10)
+	o := ApplyOptions(opt)
+	if o.maxTurns != 10 {
+		t.Errorf("maxTurns = %d, want 10", o.maxTurns)
+	}
+}
+
+func TestWithTemp(t *testing.T) {
+	t.Parallel()
+	opt := WithTemp(0.7)
+	o := ApplyOptions(opt)
+	if o.temperature != 0.7 {
+		t.Errorf("temperature = %f, want 0.7", o.temperature)
+	}
+}
+
+func TestWithCheckpoint(t *testing.T) {
+	t.Parallel()
+	opt := WithCheckpoint("/tmp/checkpoint")
+	o := ApplyOptions(opt)
+	if o.checkpointDir != "/tmp/checkpoint" {
+		t.Errorf("checkpointDir = %q, want /tmp/checkpoint", o.checkpointDir)
+	}
+}
+
+func TestWithStreaming(t *testing.T) {
+	t.Parallel()
+	called := false
+	fn := func(chunk string) { called = true }
+	opt := WithStreaming(fn)
+	o := ApplyOptions(opt)
+	if o.streamingFn == nil {
+		t.Fatal("streamingFn should not be nil")
+	}
+	o.streamingFn("test")
+	if !called {
+		t.Error("streamingFn should have been called")
+	}
+}
+
+func TestWithMetadata(t *testing.T) {
+	t.Parallel()
+	md := Metadata{SessionID: "sess-1", Extra: map[string]string{"key": "value"}}
+	opt := WithMetadata(md)
+	o := ApplyOptions(opt)
+	if o.metadata.SessionID != "sess-1" {
+		t.Errorf("metadata.SessionID = %q, want sess-1", o.metadata.SessionID)
+	}
+}
+
+func TestApplyOptions(t *testing.T) {
+	t.Parallel()
+	o := ApplyOptions(
+		WithTimeout(3*time.Second),
+		WithMaxIterations(5),
+		WithTemp(0.5),
+	)
+	if o.timeout != 3*time.Second {
+		t.Errorf("timeout = %v, want 3s", o.timeout)
+	}
+	if o.maxTurns != 5 {
+		t.Errorf("maxTurns = %d, want 5", o.maxTurns)
+	}
+	if o.temperature != 0.5 {
+		t.Errorf("temperature = %f, want 0.5", o.temperature)
+	}
+}
+
+func TestApplyOptions_Empty(t *testing.T) {
+	t.Parallel()
+	o := ApplyOptions()
+	if o.timeout != 0 || o.maxTurns != 0 || o.temperature != 0 {
+		t.Error("empty ApplyOptions should yield zero-value options")
 	}
 }

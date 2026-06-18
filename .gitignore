@@ -92,3 +92,25 @@ out/
 # ---------- Go Coverage ----------
 *.cover.out
 *.out
+*_cover
+*_cover.out
+coverage.out
+coverage.txt
+coverage_report.txt
+metrics_cover
+tools_cover
+pkg_cov*
+internal_cov
+cov
+cov_tools
+cover
+cover2
+cover_metrics
+cover_tools
+coverage_tools
+coverage
+
+# ---------- Wiki / Generated ----------
+CODE_WIKI*.md
+agent_bench.txt
+count_lines.ps1

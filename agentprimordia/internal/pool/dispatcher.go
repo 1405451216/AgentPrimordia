@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"agentprimordia/internal/agent"
@@ -14,10 +16,13 @@ import (
 )
 
 const (
-	defaultMaxConcurrency = 10
-	defaultPoolTimeout    = 5 * time.Minute
-	poolEventBufferSize   = 100
-	defaultMaxTurns       = 50
+	// perf-v6 Task H：默认 maxConcurrency 提升到 2 * NumCPU（最少 16）
+	// 老值 10 在多核机器上明显不足
+	defaultMaxConcurrency   = 16
+	defaultPoolTimeout      = 5 * time.Minute
+	poolEventBufferSize     = 100
+	defaultMaxTurns         = 50
+	defaultMaxRetainedTasks = 1000
 )
 
 var (
@@ -41,17 +46,40 @@ type Pool struct {
 	toolkit      *tools.Registry
 	agentFactory AgentFactory
 	closeOnce    sync.Once
+
+	// 优化（perf-v2）：会话索引，将 GetTasksBySession/CancelBySession 从 O(n) 优化为 O(k)
+	sessionIndex map[string]map[string]struct{} // sessionID -> set of taskIDs
+
+	// 优化（Task 8）：使用 atomic 增量维护 stats，Stats() 无需遍历 tasks map
+	runningCount   atomic.Int64
+	queuedCount    atomic.Int64
+	completedCount atomic.Int64
+	failedCount    atomic.Int64
 }
 
 type poolTask struct {
 	config     TaskConfig
 	sessionID  string
-	status     PoolTaskStatus
+	status     atomic.Value // PoolTaskStatus string (perf-v6 Task A：atomic.Value 无锁读)
 	result     *TaskResult
 	startTime  time.Time
 	retryCount int
 	cancelCtx  context.Context
 	cancelFunc context.CancelFunc
+}
+
+// loadStatus 从 atomic.Value 安全读取 PoolTaskStatus（perf-v6 Task A）
+func (pt *poolTask) loadStatus() PoolTaskStatus {
+	v := pt.status.Load()
+	if v == nil {
+		return PoolTaskQueued
+	}
+	return v.(PoolTaskStatus)
+}
+
+// storeStatus 安全写 PoolTaskStatus 到 atomic.Value（perf-v6 Task A）
+func (pt *poolTask) storeStatus(s PoolTaskStatus) {
+	pt.status.Store(s)
 }
 
 func NewPool(cfg PoolConfig) *Pool {
@@ -61,21 +89,32 @@ func NewPool(cfg PoolConfig) *Pool {
 	if cfg.Timeout <= 0 {
 		cfg.Timeout = defaultPoolTimeout
 	}
+	if cfg.MaxRetainedTasks <= 0 {
+		cfg.MaxRetainedTasks = defaultMaxRetainedTasks
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Pool{
-		config:    cfg,
-		semaphore: make(chan struct{}, cfg.MaxConcurrency),
-		tasks:     make(map[string]*poolTask),
-		agents:    make(map[string]agent.Agent),
-		eventCh:   make(chan PoolEvent, poolEventBufferSize),
+		config:       cfg,
+		semaphore:    make(chan struct{}, cfg.MaxConcurrency),
+		tasks:        make(map[string]*poolTask),
+		agents:       make(map[string]agent.Agent),
+		eventCh:      make(chan PoolEvent, poolEventBufferSize),
+		sessionIndex: make(map[string]map[string]struct{}),
 		stats: PoolStats{
 			MaxConcurrency: cfg.MaxConcurrency,
 		},
 		ctx:    ctx,
 		cancel: cancel,
 	}
+}
+
+type dispatchItem struct {
+	idx        int
+	task       TaskConfig
+	taskCtx    context.Context
+	taskCancel context.CancelFunc
 }
 
 func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult, error) {
@@ -86,13 +125,16 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 	p.mu.Lock()
 	p.startTime = time.Now()
 	p.stats.TotalTasks += len(tasks)
-	p.stats.QueuedTasks += len(tasks)
 	p.mu.Unlock()
+	// 优化（Task 8）：使用原子计数
+	p.queuedCount.Add(int64(len(tasks)))
 
 	// M8 修复：派发前检查是否需要清理终态任务，避免 task map 无界增长
 	p.cleanupIfNeeded()
 	results := make([]*TaskResult, len(tasks))
 	errCh := make(chan error, len(tasks))
+
+	taskCh := make(chan dispatchItem, len(tasks))
 
 	for i, task := range tasks {
 		if task.ID == "" {
@@ -104,42 +146,64 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 		pt := &poolTask{
 			config:     task,
 			sessionID:  task.SessionID,
-			status:     PoolTaskQueued,
 			startTime:  time.Now(),
 			cancelCtx:  taskCtx,
 			cancelFunc: taskCancel,
 		}
+		pt.storeStatus(PoolTaskQueued) // perf-v6 Task A
 
 		p.mu.Lock()
 		if _, exists := p.tasks[task.ID]; exists {
 			p.mu.Unlock()
+			close(taskCh)
 			return nil, fmt.Errorf("duplicate task ID: %s", task.ID)
 		}
 		p.tasks[task.ID] = pt
+		// 优化（perf-v2）：维护会话索引
+		if task.SessionID != "" {
+			if p.sessionIndex[task.SessionID] == nil {
+				p.sessionIndex[task.SessionID] = make(map[string]struct{})
+			}
+			p.sessionIndex[task.SessionID][task.ID] = struct{}{}
+		}
 		p.mu.Unlock()
 
-		p.wg.Add(1)
-		go func(idx int, t TaskConfig) {
+		taskCh <- dispatchItem{idx: i, task: task, taskCtx: taskCtx, taskCancel: taskCancel}
+	}
+	close(taskCh)
+
+	// 使用固定 worker 池，避免任务数过大时创建大量 goroutine
+	workerCount := p.config.MaxConcurrency
+	if workerCount > len(tasks) {
+		workerCount = len(tasks)
+	}
+	p.wg.Add(workerCount)
+	for w := 0; w < workerCount; w++ {
+		go func() {
 			defer p.wg.Done()
-			defer taskCancel()
+			for item := range taskCh {
+				func() {
+					defer item.taskCancel()
 
-			result, err := p.executeTask(taskCtx, t)
-			if result == nil {
-				result = &TaskResult{
-					TaskID: t.ID,
-					Task:   t,
-					Error:  err,
-					Status: PoolTaskFailed,
-				}
-			}
-			results[idx] = result
+					result, err := p.executeTask(item.taskCtx, item.task)
+					if result == nil {
+						result = &TaskResult{
+							TaskID: item.task.ID,
+							Task:   item.task,
+							Error:  err,
+							Status: PoolTaskFailed,
+						}
+					}
+					results[item.idx] = result
 
-			if err != nil {
-				errCh <- err
-			} else {
-				errCh <- nil
+					if err != nil {
+						errCh <- err
+					} else {
+						errCh <- nil
+					}
+				}()
 			}
-		}(i, task)
+		}()
 	}
 
 	p.wg.Wait()
@@ -174,8 +238,10 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		defer func() { <-p.semaphore }()
 	case <-ctx.Done():
 		p.mu.Lock()
-		pt.status = PoolTaskCancelled
+		pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 		p.mu.Unlock()
+		// 优化（Task 8）：原子计数 - queued 转 cancelled
+		p.queuedCount.Add(-1)
 		p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 		return &TaskResult{
 			TaskID: task.ID,
@@ -185,8 +251,11 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		}, ctx.Err()
 	case <-time.After(p.config.Timeout):
 		p.mu.Lock()
-		pt.status = PoolTaskFailed
+		pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 		p.mu.Unlock()
+		// 优化（Task 8）：原子计数 - queued 转 failed
+		p.queuedCount.Add(-1)
+		p.failedCount.Add(1)
 		p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
 		return &TaskResult{
 			TaskID: task.ID,
@@ -197,9 +266,13 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 	}
 
 	// 重试循环（semaphore 已持有，不再重复获取）
+	// 优化（Task 8）：从 queued 转为 running（仅在首次进入循环时）
+	p.queuedCount.Add(-1)
+	p.runningCount.Add(1)
+	defer p.runningCount.Add(-1)
 	for {
 		p.mu.Lock()
-		pt.status = PoolTaskRunning
+		pt.storeStatus(PoolTaskRunning) // perf-v6 Task A
 		p.mu.Unlock()
 		p.emitEvent(PoolEvent{Type: "task_started", TaskID: task.ID, Data: task.Title})
 
@@ -215,17 +288,20 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		if err != nil {
 			if taskCtxErr == context.DeadlineExceeded {
 				p.mu.Lock()
-				pt.status = PoolTaskFailed
+				pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 				p.mu.Unlock()
+				// 优化（Task 8）：running 转 failed
+				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
 			} else if taskCtxErr == context.Canceled || ctx.Err() != nil {
 				p.mu.Lock()
-				pt.status = PoolTaskCancelled
+				pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 				p.mu.Unlock()
+				// cancelled 不计入 failed
 				p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 			} else {
 				p.mu.Lock()
-				pt.status = PoolTaskFailed
+				pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 				p.mu.Unlock()
 
 				if p.isRetryable(err) && pt.retryCount < p.config.RetryPolicy.MaxRetries {
@@ -236,12 +312,16 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 					continue
 				}
 
+				// 优化（Task 8）：running 转 failed
+				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: err.Error()})
 			}
 		} else {
 			p.mu.Lock()
-			pt.status = PoolTaskCompleted
+			pt.storeStatus(PoolTaskCompleted) // perf-v6 Task A
 			p.mu.Unlock()
+			// 优化（Task 8）：running 转 completed
+			p.completedCount.Add(1)
 			p.emitEvent(PoolEvent{Type: "task_completed", TaskID: task.ID})
 		}
 
@@ -251,14 +331,14 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			Response: result,
 			Error:    err,
 			Duration: duration,
-			Status:   pt.status,
+			Status:   pt.loadStatus(),
 		}
 
 		p.mu.Lock()
 		delete(p.agents, task.ID)
 		p.mu.Unlock()
 
-		p.updateStats()
+		// 保留 updateStats() 调用以同步 PoolStats 整体结构；Stats() 现在直接读原子变量
 
 		return pt.result, err
 	}
@@ -314,11 +394,13 @@ func (p *Pool) createAgentForTask(task TaskConfig) agent.Agent {
 		cfg.Model = p.model
 	}
 
+	// v0.7.0: Toolkit 字段已废弃，通过链式 API 注入工具能力
+	reactAgt := agent.NewReActAgent(cfg)
+	var agt agent.Agent = reactAgt
 	if p.toolkit != nil {
-		cfg.Toolkit = p.toolkit
+		agt = reactAgt.AsCapability().WithToolkit(p.toolkit)
 	}
 
-	agt := agent.NewReActAgent(cfg)
 	p.mu.Lock()
 	p.agents[task.ID] = agt
 	p.mu.Unlock()
@@ -338,33 +420,17 @@ func (p *Pool) getTask(id string) *poolTask {
 	return p.tasks[id]
 }
 
+// updateStats 同步原子计数器到 PoolStats 结构体，供向后兼容的 Stats() 调用使用。
+// 优化（Task 8）：O(1) 原子读取替代 O(n) 全量遍历 tasks map。
 func (p *Pool) updateStats() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	running := 0
-	queued := 0
-	completed := 0
-	failed := 0
-
-	for _, t := range p.tasks {
-		switch t.status {
-		case PoolTaskQueued:
-			queued++
-		case PoolTaskRunning:
-			running++
-		case PoolTaskCompleted:
-			completed++
-		case PoolTaskFailed:
-			failed++
-		}
-	}
-
-	p.stats.RunningTasks = running
-	p.stats.QueuedTasks = queued
-	p.stats.CompletedTasks = completed
-	p.stats.FailedTasks = failed
-	p.stats.ActiveConcurrency = running
+	p.stats.RunningTasks = int(p.runningCount.Load())
+	p.stats.QueuedTasks = int(p.queuedCount.Load())
+	p.stats.CompletedTasks = int(p.completedCount.Load())
+	p.stats.FailedTasks = int(p.failedCount.Load())
+	p.stats.ActiveConcurrency = p.stats.RunningTasks
 }
 
 func (p *Pool) emitEvent(event PoolEvent) {
@@ -399,9 +465,9 @@ func (p *Pool) Cancel(taskID string) error {
 		return ErrTaskNotFound
 	}
 
-	if task.status == PoolTaskRunning {
+	if task.loadStatus() == PoolTaskRunning {
 		task.cancelFunc()
-		task.status = PoolTaskCancelled
+		task.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 	}
 
 	p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: taskID})
@@ -413,44 +479,64 @@ func (p *Pool) CancelAll() {
 	defer p.mu.Unlock()
 
 	for id, task := range p.tasks {
-		if task.status == PoolTaskQueued || task.status == PoolTaskRunning {
+		if task.loadStatus() == PoolTaskQueued || task.loadStatus() == PoolTaskRunning {
 			task.cancelFunc()
-			task.status = PoolTaskCancelled
+			task.storeStatus(PoolTaskCancelled) // perf-v6 Task A
 			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: id})
 		}
 	}
 }
 
+// GetTasksBySession 返回指定会话的任务结果。
+// 优化（perf-v2）：使用会话索引 O(k) 查找替代 O(n) 全量遍历。
 func (p *Pool) GetTasksBySession(sessionID string) []TaskResult {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	var results []TaskResult
-	for _, pt := range p.tasks {
-		if pt.sessionID == sessionID {
-			if pt.result != nil {
-				results = append(results, *pt.result)
-			} else {
-				results = append(results, TaskResult{
-					TaskID: pt.config.ID,
-					Task:   pt.config,
-					Status: pt.status,
-				})
-			}
+	taskIDs, ok := p.sessionIndex[sessionID]
+	if !ok {
+		return nil
+	}
+
+	results := make([]TaskResult, 0, len(taskIDs))
+	for taskID := range taskIDs {
+		pt, exists := p.tasks[taskID]
+		if !exists {
+			continue
+		}
+		if pt.result != nil {
+			results = append(results, *pt.result)
+		} else {
+			results = append(results, TaskResult{
+				TaskID: pt.config.ID,
+				Task:   pt.config,
+				Status: pt.loadStatus(),
+			})
 		}
 	}
 	return results
 }
 
+// CancelBySession 取消指定会话的所有任务。
+// 优化（perf-v2）：使用会话索引 O(k) 查找替代 O(n) 全量遍历。
 func (p *Pool) CancelBySession(sessionID string) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	for id, pt := range p.tasks {
-		if pt.sessionID == sessionID && (pt.status == PoolTaskQueued || pt.status == PoolTaskRunning) {
+	taskIDs, ok := p.sessionIndex[sessionID]
+	if !ok {
+		return nil
+	}
+
+	for taskID := range taskIDs {
+		pt, exists := p.tasks[taskID]
+		if !exists {
+			continue
+		}
+		if pt.loadStatus() == PoolTaskQueued || pt.loadStatus() == PoolTaskRunning {
 			pt.cancelFunc()
-			pt.status = PoolTaskCancelled
-			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: id})
+			pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
+			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: taskID})
 		}
 	}
 	return nil
@@ -480,7 +566,7 @@ func (p *Pool) ListTasks() []TaskResult {
 			results = append(results, TaskResult{
 				TaskID: pt.config.ID,
 				Task:   pt.config,
-				Status: pt.status,
+				Status: pt.loadStatus(),
 			})
 		}
 	}
@@ -499,11 +585,20 @@ func (p *Pool) ListAgents() map[string]agent.AgentStats {
 	return result
 }
 
+// Stats 直接读取原子计数器 + 缓存的 stats 字段，避免双重锁。
+// 优化（Task 8）：Stats() 不再调用 updateStats() 走写锁后再读 RLock，
+// 改为仅一次读锁 + 直接读原子变量。
 func (p *Pool) Stats() PoolStats {
-	p.updateStats()
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.stats
+	// 原子读取叠加到返回的快照上，避免修改共享的 p.stats
+	stats := p.stats
+	stats.RunningTasks = int(p.runningCount.Load())
+	stats.QueuedTasks = int(p.queuedCount.Load())
+	stats.CompletedTasks = int(p.completedCount.Load())
+	stats.FailedTasks = int(p.failedCount.Load())
+	stats.ActiveConcurrency = stats.RunningTasks
+	return stats
 }
 
 func (p *Pool) EventChannel() <-chan PoolEvent {
@@ -523,19 +618,28 @@ func (p *Pool) SetToolkit(registry *tools.Registry) {
 }
 
 // Cleanup 清理已完成、失败或取消的任务记录，释放 tasks map 中的内存
+// 优化（perf-v2）：同步清理会话索引
 func (p *Pool) Cleanup() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	for id, t := range p.tasks {
-		if t.status == PoolTaskCompleted || t.status == PoolTaskFailed || t.status == PoolTaskCancelled {
+		if t.loadStatus() == PoolTaskCompleted || t.loadStatus() == PoolTaskFailed || t.loadStatus() == PoolTaskCancelled {
+			// 清理会话索引
+			if t.sessionID != "" {
+				if ids, ok := p.sessionIndex[t.sessionID]; ok {
+					delete(ids, id)
+					if len(ids) == 0 {
+						delete(p.sessionIndex, t.sessionID)
+					}
+				}
+			}
 			delete(p.tasks, id)
 		}
 	}
 }
 
 // cleanupIfNeeded 当 task map 超过 MaxRetainedTasks 阈值时自动清理终态任务（M8 修复）。
-// 仅在配置了 MaxRetainedTasks（>0）且当前任务数超过阈值时触发，保留活跃任务。
-// 零值（0）时不做任何事，保持向后兼容。
+// 优化（perf-v2）：同步清理会话索引，避免索引泄漏。
 func (p *Pool) cleanupIfNeeded() {
 	if p.config.MaxRetainedTasks <= 0 {
 		return
@@ -546,7 +650,16 @@ func (p *Pool) cleanupIfNeeded() {
 		return
 	}
 	for id, t := range p.tasks {
-		if t.status == PoolTaskCompleted || t.status == PoolTaskFailed || t.status == PoolTaskCancelled {
+		if t.loadStatus() == PoolTaskCompleted || t.loadStatus() == PoolTaskFailed || t.loadStatus() == PoolTaskCancelled {
+			// 清理会话索引
+			if t.sessionID != "" {
+				if ids, ok := p.sessionIndex[t.sessionID]; ok {
+					delete(ids, id)
+					if len(ids) == 0 {
+						delete(p.sessionIndex, t.sessionID)
+					}
+				}
+			}
 			delete(p.tasks, id)
 		}
 	}
@@ -560,6 +673,10 @@ func (p *Pool) Close() {
 	})
 }
 
+// generateTaskID 生成唯一任务 ID。优化（Task 8）：使用 strconv 避免 fmt.Sprintf 的反射分配。
+var taskIDCounter atomic.Int64
+
 func generateTaskID(index int) string {
-	return fmt.Sprintf("task_%d_%d", time.Now().UnixNano(), index)
+	seq := taskIDCounter.Add(1)
+	return "task_" + strconv.FormatInt(time.Now().UnixNano(), 10) + "_" + strconv.FormatInt(int64(index), 10) + "_" + strconv.FormatInt(seq, 10)
 }

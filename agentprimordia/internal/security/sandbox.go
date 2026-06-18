@@ -15,7 +15,18 @@ var (
 	ErrPathTraversal     = errors.New("path traversal detected")
 )
 
-var dangerousChars = []string{";", "|", "&", "$", "`", ">", "<", "\n"}
+var dangerousChars = []string{";", "|", "&", "$", "`", ">", "<", "\n", "\r", "(", ")"}
+
+// ContainsShellMetacharacter 检查命令字符串是否包含 shell 元字符。
+// 返回 (true, 元字符) 或 (false, "")。用于 Shell 工具和安全沙箱的统一校验。
+func ContainsShellMetacharacter(cmd string) (bool, string) {
+	for _, ch := range dangerousChars {
+		if strings.Contains(cmd, ch) {
+			return true, ch
+		}
+	}
+	return false, ""
+}
 
 type AccessLevel int
 
@@ -133,10 +144,8 @@ func (s *Sandbox) CanExecute(agentID, cmd string) error {
 	defer s.mu.RUnlock()
 
 	// 检查 shell 元字符，防止命令注入绕过
-	for _, ch := range dangerousChars {
-		if strings.Contains(cmd, ch) {
-			return fmt.Errorf("%w: command contains shell metacharacter '%s'", ErrCommandBlocked, ch)
-		}
+	if hasMeta, ch := ContainsShellMetacharacter(cmd); hasMeta {
+		return fmt.Errorf("%w: command contains shell metacharacter '%s'", ErrCommandBlocked, ch)
 	}
 
 	// 提取命令名（空格前的第一个词）

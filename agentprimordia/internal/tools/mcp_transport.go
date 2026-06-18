@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 // mcpTransport 抽象 MCP 传输层，支持 HTTP 和 stdio 两种模式
@@ -29,9 +30,12 @@ type mcpHTTPTransport struct {
 }
 
 func newHTTPTransport(baseURL string) *mcpHTTPTransport {
+	// perf-v5 Task 4：添加 timeout 避免 goroutine 永久挂起
 	return &mcpHTTPTransport{
 		baseURL: strings.TrimRight(baseURL, "/"),
-		client:  &http.Client{},
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
 }
 

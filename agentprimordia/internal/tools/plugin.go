@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 )
 
@@ -165,6 +166,14 @@ func (p *BuiltinPlugin) Close() error {
 }
 
 func newBuiltinFS(rootDir string) (Tool, error) {
+	// 验证目录存在性
+	info, err := os.Stat(rootDir)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%s is not a directory", rootDir)
+	}
 	return &builtinToolAdapter{name: "filesystem", desc: "File system operations"}, nil
 }
 

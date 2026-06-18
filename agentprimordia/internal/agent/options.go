@@ -1,0 +1,132 @@
+// options.go — Functional Options for AgentConfig
+// v0.7.0 API 稳定化：提供 22 个 Option 函数（4 标量 + 14 顶层快捷注入 + 4 分组注入），
+// 让用户通过 NewAgent(name, prompt, model, opts...) 一次性注入所有能力。
+package agent
+
+import (
+	"agentprimordia/internal/llm"
+	"agentprimordia/internal/memory"
+	"agentprimordia/internal/persist"
+	"agentprimordia/internal/tools"
+)
+
+// Option 是 AgentConfig 的函数式选项类型。
+// 每个 Option 函数接收 *AgentConfig 并按需修改字段，
+// 由 NewAgent 在构造时依次应用。
+type Option func(*AgentConfig)
+
+// ===== 4 个标量 Option =====
+
+// WithMaxTurns 设置 ReAct 循环的最大迭代次数（默认 50）。
+func WithMaxTurns(n int) Option {
+	return func(c *AgentConfig) { c.MaxTurns = n }
+}
+
+// WithTemperature 设置 LLM 温度参数（默认 0，由 Model 决定）。
+func WithTemperature(t float64) Option {
+	return func(c *AgentConfig) { c.Temperature = t }
+}
+
+// WithSessionID 设置会话 ID，用于跨轮记忆关联。
+func WithSessionID(id string) Option {
+	return func(c *AgentConfig) { c.SessionID = id }
+}
+
+// WithPromptTemplate 设置系统提示词模板，支持 {{.Variable}} 变量注入。
+func WithPromptTemplate(t *PromptTemplate) Option {
+	return func(c *AgentConfig) { c.PromptTemplate = t }
+}
+
+// ===== 14 个顶层快捷注入 Option =====
+
+// WithMemory 设置记忆存储（快捷方式：等价于 WithMemoryConfig 时仅设 Store 字段）。
+func WithMemory(m MemoryStore) Option {
+	return func(c *AgentConfig) { c.Memory.Store = m }
+}
+
+// WithToolkit 设置工具注册表（快捷方式：等价于 WithToolsConfig 时仅设 Registry 字段）。
+func WithToolkit(r *tools.Registry) Option {
+	return func(c *AgentConfig) { c.Tools.Registry = r }
+}
+
+// WithHooks 设置 Hook 管理器（快捷方式：等价于 WithObservability 时仅设 Hooks 字段）。
+func WithHooks(h Hooks) Option {
+	return func(c *AgentConfig) { c.Observability.Hooks = h }
+}
+
+// WithRAG 设置 RAG 检索配置，启用后 Agent 在推理前自动查询知识库。
+func WithRAG(cfg RAGConfig) Option {
+	return func(c *AgentConfig) { c.RAG = cfg }
+}
+
+// WithTracer 设置分布式追踪器（快捷方式：等价于 WithObservability 时仅设 Tracer 字段）。
+func WithTracer(t Tracer) Option {
+	return func(c *AgentConfig) { c.Observability.Tracer = t }
+}
+
+// WithCostTracker 设置成本追踪器（快捷方式：等价于 WithObservability 时仅设 CostTracker 字段）。
+func WithCostTracker(ct *CostTracker) Option {
+	return func(c *AgentConfig) { c.Observability.CostTracker = ct }
+}
+
+// WithContextWindow 设置上下文窗口裁剪策略（快捷方式：等价于 WithResilience 时仅设 ContextWindow 字段）。
+func WithContextWindow(cw ContextWindowStrategy) Option {
+	return func(c *AgentConfig) { c.Resilience.ContextWindow = cw }
+}
+
+// WithEvents 设置事件发布器（快捷方式：等价于 WithObservability 时仅设 Events 字段）。
+func WithEvents(ep EventPublisher) Option {
+	return func(c *AgentConfig) { c.Observability.Events = ep }
+}
+
+// WithMetrics 设置指标收集器（快捷方式：等价于 WithObservability 时仅设 Metrics 字段）。
+func WithMetrics(m MetricsRecorder) Option {
+	return func(c *AgentConfig) { c.Observability.Metrics = m }
+}
+
+// WithCheckpointStore 设置状态持久化存储（快捷方式：等价于 WithResilience 时仅设 CheckpointStore 字段）。
+func WithCheckpointStore(cs persist.CheckpointStore) Option {
+	return func(c *AgentConfig) { c.Resilience.CheckpointStore = cs }
+}
+
+// WithSummarizer 设置记忆摘要生成器（快捷方式：等价于 WithMemoryConfig 时仅设 Summarizer 字段）。
+func WithSummarizer(s memory.SummaryExtractor) Option {
+	return func(c *AgentConfig) { c.Memory.Summarizer = s }
+}
+
+// WithFileScope 设置文件范围限制（快捷方式：等价于 WithMemoryConfig 时仅设 FileScope 字段）。
+func WithFileScope(scopes []string) Option {
+	return func(c *AgentConfig) { c.Memory.FileScope = scopes }
+}
+
+// WithCache 设置 LLM 响应缓存（快捷方式：等价于 WithResilience 时仅设 Cache 字段）。
+func WithCache(cache llm.LLMCache) Option {
+	return func(c *AgentConfig) { c.Resilience.Cache = cache }
+}
+
+// WithHITL 设置人机协作配置（快捷方式：等价于 WithResilience 时仅设 HITL 字段）。
+func WithHITL(cfg *HITLConfig) Option {
+	return func(c *AgentConfig) { c.Resilience.HITL = cfg }
+}
+
+// ===== 4 个分组注入 Option =====
+
+// WithMemoryConfig 整体设置记忆能力分组配置（Store / Summarizer / FileScope）。
+func WithMemoryConfig(cfg MemoryConfig) Option {
+	return func(c *AgentConfig) { c.Memory = cfg }
+}
+
+// WithObservability 整体设置可观测性分组配置（Hooks / Tracer / Metrics / Events / CostTracker）。
+func WithObservability(cfg ObservabilityConfig) Option {
+	return func(c *AgentConfig) { c.Observability = cfg }
+}
+
+// WithResilience 整体设置韧性分组配置（CheckpointStore / HITL / Cache / ContextWindow）。
+func WithResilience(cfg ResilienceConfig) Option {
+	return func(c *AgentConfig) { c.Resilience = cfg }
+}
+
+// WithToolsConfig 整体设置工具系统分组配置（Registry）。
+func WithToolsConfig(cfg ToolsConfig) Option {
+	return func(c *AgentConfig) { c.Tools = cfg }
+}

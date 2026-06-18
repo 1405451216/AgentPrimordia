@@ -8,7 +8,7 @@ import (
 
 func TestAdminHandler_GetAgents_Empty(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/agents")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -25,7 +25,7 @@ func TestAdminHandler_GetAgents_Empty(t *testing.T) {
 
 func TestAdminHandler_GetTasks_Empty(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/tasks")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/tasks")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -45,7 +45,7 @@ func TestAdminHandler_GetTasks_Empty(t *testing.T) {
 
 func TestAdminHandler_InvalidMethod(t *testing.T) {
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodPost, "/api/agents")
+	rec := doAuthorizedRequest(t, handler, http.MethodPost, "/api/agents")
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("期望状态码 405，实际 %d", rec.Code)

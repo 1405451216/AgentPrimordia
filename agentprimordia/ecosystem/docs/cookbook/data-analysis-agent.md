@@ -83,16 +83,14 @@ func main() {
 		SystemPrompt: "你是数据收集专家，负责从文件和网页获取原始数据。",
 		MaxTurns:     10,
 		Model:        resilient,
-		Toolkit:      registry,
-	})
+	}).WithToolkit(registry)
 
 	analyzer := ap.NewReActAgent(ap.ReActConfig{
 		Name:         "DataAnalyzer",
 		SystemPrompt: "你是数据分析专家，负责统计分析和趋势发现。",
 		MaxTurns:     15,
 		Model:        resilient,
-		Toolkit:      registry,
-	})
+	}).WithToolkit(registry)
 
 	reporter := ap.NewReActAgent(ap.ReActConfig{
 		Name:         "ReportGenerator",

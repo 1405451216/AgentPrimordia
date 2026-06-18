@@ -1,0 +1,535 @@
+# 插件开发
+
+本指南介绍如何开发 AgentPrimordia 工具插件。
+
+## 插件接口
+
+所有工具插件必须实现以下接口：
+
+```go
+type ToolPlugin interface {
+    // Name 返回插件名称
+    Name() string
+    
+    // Version 返回插件版本
+    Version() string
+    
+    // Tools 返回工具列表
+    Tools() []tools.Tool
+    
+    // Init 初始化插件
+    Init(config map[string]interface{}) error
+    
+    // Close 关闭插件
+    Close() error
+}
+```
+
+## 基础插件结构
+
+### 目录结构
+
+```
+my-plugin/
+├── plugin.go        # 插件主文件
+├── tools.go         # 工具定义
+├── config.go        # 配置定义
+├── plugin_test.go   # 测试文件
+└── README.md        # 文档
+```
+
+### 插件主文件
+
+```go
+package myplugin
+
+import (
+    "agentprimordia.dev/agentprimordia/pkg/tools"
+)
+
+// Plugin 主插件结构
+type Plugin struct {
+    name    string
+    version string
+    config  *Config
+    tools   []tools.Tool
+}
+
+// NewPlugin 创建插件实例
+func NewPlugin() *Plugin {
+    return &Plugin{
+        name:    "my-plugin",
+        version: "1.0.0",
+    }
+}
+
+// Name 返回插件名称
+func (p *Plugin) Name() string {
+    return p.name
+}
+
+// Version 返回插件版本
+func (p *Plugin) Version() string {
+    return p.version
+}
+
+// Tools 返回工具列表
+func (p *Plugin) Tools() []tools.Tool {
+    return p.tools
+}
+
+// Init 初始化插件
+func (p *Plugin) Init(config map[string]interface{}) error {
+    // 解析配置
+    cfg, err := parseConfig(config)
+    if err != nil {
+        return err
+    }
+    p.config = cfg
+    
+    // 初始化工具
+    p.tools = []tools.Tool{
+        NewTool1(p.config),
+        NewTool2(p.config),
+    }
+    
+    return nil
+}
+
+// Close 关闭插件
+func (p *Plugin) Close() error {
+    // 清理资源
+    return nil
+}
+```
+
+## 配置定义
+
+```go
+package myplugin
+
+type Config struct {
+    APIKey   string `json:"api_key"`
+    BaseURL  string `json:"base_url"`
+    Timeout  int    `json:"timeout"`
+    MaxRetry int    `json:"max_retry"`
+}
+
+func parseConfig(raw map[string]interface{}) (*Config, error) {
+    cfg := &Config{
+        Timeout:  30,
+        MaxRetry: 3,
+    }
+    
+    if v, ok := raw["api_key"].(string); ok {
+        cfg.APIKey = v
+    }
+    
+    if v, ok := raw["base_url"].(string); ok {
+        cfg.BaseURL = v
+    }
+    
+    if v, ok := raw["timeout"].(float64); ok {
+        cfg.Timeout = int(v)
+    }
+    
+    if v, ok := raw["max_retry"].(float64); ok {
+        cfg.MaxRetry = int(v)
+    }
+    
+    // 验证必填字段
+    if cfg.APIKey == "" {
+        return nil, errors.New("api_key is required")
+    }
+    
+    return cfg, nil
+}
+```
+
+## 工具定义
+
+### 工具 1
+
+```go
+package myplugin
+
+import (
+    "context"
+    "fmt"
+    
+    "agentprimordia.dev/agentprimordia/pkg/tools"
+)
+
+// Tool1 第一个工具
+type Tool1 struct {
+    config *Config
+}
+
+func NewTool1(config *Config) tools.Tool {
+    return &Tool1{config: config}
+}
+
+func (t *Tool1) Name() string {
+    return "my_tool_1"
+}
+
+func (t *Tool1) Description() string {
+    return "我的第一个工具，用于处理特定任务。参数：input (string) - 输入数据"
+}
+
+func (t *Tool1) Parameters() map[string]interface{} {
+    return map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "input": map[string]interface{}{
+                "type":        "string",
+                "description": "输入数据",
+            },
+            "format": map[string]interface{}{
+                "type":        "string",
+                "description": "输出格式: json/text",
+                "enum":        []string{"json", "text"},
+            },
+        },
+        "required": []string{"input"},
+    }
+}
+
+func (t *Tool1) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
+    input, ok := params["input"].(string)
+    if !ok {
+        return "", fmt.Errorf("input is required")
+    }
+    
+    format, _ := params["format"].(string)
+    if format == "" {
+        format = "text"
+    }
+    
+    // 实现工具逻辑
+    result, err := t.process(input, format)
+    if err != nil {
+        return "", fmt.Errorf("process failed: %w", err)
+    }
+    
+    return result, nil
+}
+
+func (t *Tool1) process(input, format string) (string, error) {
+    // 实际处理逻辑
+    return fmt.Sprintf("处理完成: %s (格式: %s)", input, format), nil
+}
+```
+
+### 工具 2
+
+```go
+// Tool2 第二个工具
+type Tool2 struct {
+    config *Config
+}
+
+func NewTool2(config *Config) tools.Tool {
+    return &Tool2{config: config}
+}
+
+func (t *Tool2) Name() string {
+    return "my_tool_2"
+}
+
+func (t *Tool2) Description() string {
+    return "我的第二个工具，用于查询数据。参数：query (string) - 查询语句"
+}
+
+func (t *Tool2) Parameters() map[string]interface{} {
+    return map[string]interface{}{
+        "type": "object",
+        "properties": map[string]interface{}{
+            "query": map[string]interface{}{
+                "type":        "string",
+                "description": "查询语句",
+            },
+            "limit": map[string]interface{}{
+                "type":        "number",
+                "description": "返回数量限制",
+            },
+        },
+        "required": []string{"query"},
+    }
+}
+
+func (t *Tool2) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
+    query, ok := params["query"].(string)
+    if !ok {
+        return "", fmt.Errorf("query is required")
+    }
+    
+    limit := 10
+    if v, ok := params["limit"].(float64); ok {
+        limit = int(v)
+    }
+    
+    // 实现查询逻辑
+    results, err := t.query(query, limit)
+    if err != nil {
+        return "", fmt.Errorf("query failed: %w", err)
+    }
+    
+    return formatResults(results), nil
+}
+```
+
+## 测试
+
+### 单元测试
+
+```go
+package myplugin
+
+import (
+    "context"
+    "testing"
+)
+
+func TestPlugin_Init(t *testing.T) {
+    plugin := NewPlugin()
+    
+    config := map[string]interface{}{
+        "api_key":  "test-key",
+        "timeout":  30,
+        "max_retry": 3,
+    }
+    
+    err := plugin.Init(config)
+    if err != nil {
+        t.Fatalf("Init failed: %v", err)
+    }
+    
+    if plugin.Name() != "my-plugin" {
+        t.Errorf("Expected name 'my-plugin', got '%s'", plugin.Name())
+    }
+    
+    if len(plugin.Tools()) != 2 {
+        t.Errorf("Expected 2 tools, got %d", len(plugin.Tools()))
+    }
+}
+
+func TestTool1_Execute(t *testing.T) {
+    config := &Config{
+        APIKey:  "test-key",
+        Timeout: 30,
+    }
+    
+    tool := NewTool1(config)
+    
+    params := map[string]interface{}{
+        "input":  "test data",
+        "format": "text",
+    }
+    
+    result, err := tool.Execute(context.Background(), params)
+    if err != nil {
+        t.Fatalf("Execute failed: %v", err)
+    }
+    
+    expected := "处理完成: test data (格式: text)"
+    if result != expected {
+        t.Errorf("Expected '%s', got '%s'", expected, result)
+    }
+}
+```
+
+### 集成测试
+
+```go
+func TestPlugin_Integration(t *testing.T) {
+    // 创建插件
+    plugin := NewPlugin()
+    
+    // 初始化
+    err := plugin.Init(map[string]interface{}{
+        "api_key": "test-key",
+    })
+    if err != nil {
+        t.Fatal(err)
+    }
+    defer plugin.Close()
+    
+    // 创建工具管理器
+    mgr := tools.NewToolManager()
+    for _, tool := range plugin.Tools() {
+        mgr.Register(tool)
+    }
+    
+    // 测试工具执行
+    result, err := mgr.Execute(context.Background(), "my_tool_1", map[string]interface{}{
+        "input": "test",
+    })
+    if err != nil {
+        t.Fatal(err)
+    }
+    
+    if result == "" {
+        t.Error("Expected non-empty result")
+    }
+}
+```
+
+## 使用插件
+
+### 注册插件
+
+```go
+package main
+
+import (
+    "log"
+    
+    "agentprimordia.dev/agentprimordia/pkg/agent"
+    "agentprimordia.dev/agentprimordia/pkg/llm"
+    "agentprimordia.dev/agentprimordia/pkg/tools"
+    "myplugin"
+)
+
+func main() {
+    // 创建插件
+    plugin := myplugin.NewPlugin()
+    
+    // 初始化插件
+    err := plugin.Init(map[string]interface{}{
+        "api_key":  "your-api-key",
+        "timeout":  30,
+        "max_retry": 3,
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer plugin.Close()
+    
+    // 创建工具管理器
+    toolMgr := tools.NewToolManager()
+    
+    // 注册插件工具
+    for _, tool := range plugin.Tools() {
+        toolMgr.Register(tool)
+    }
+    
+    // 创建 Agent
+    llmProvider := llm.NewDemoLLM()
+    a := agent.NewAgent(llmProvider, toolMgr)
+    
+    // 运行
+    result, err := a.Run(context.Background(), "使用工具处理数据")
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    log.Printf("结果: %s", result)
+}
+```
+
+## 插件最佳实践
+
+### 1. 清晰的命名
+
+- 插件名称使用小写和连字符：`my-plugin`
+- 工具名称使用小写和下划线：`my_tool_1`
+
+### 2. 完整的文档
+
+- 每个工具都有清晰的 Description
+- 参数说明包含类型和用途
+- 提供使用示例
+
+### 3. 严格的验证
+
+- 验证必填参数
+- 检查参数类型
+- 验证参数范围
+
+### 4. 错误处理
+
+- 返回清晰的错误信息
+- 包含错误上下文
+- 提供解决建议
+
+### 5. 资源管理
+
+- 在 Close 方法中清理资源
+- 使用 context 控制超时
+- 避免内存泄漏
+
+### 6. 测试覆盖
+
+- 单元测试覆盖所有工具
+- 集成测试验证插件功能
+- 边界条件测试
+
+## 发布插件
+
+### 1. 版本管理
+
+使用语义化版本：
+
+```go
+const Version = "1.0.0"
+```
+
+### 2. 文档
+
+编写 README.md：
+
+```markdown
+# My Plugin
+
+AgentPrimordia 工具插件，提供 XXX 功能。
+
+## 安装
+
+```bash
+go get github.com/yourname/my-plugin
+```
+
+## 使用
+
+```go
+plugin := myplugin.NewPlugin()
+plugin.Init(map[string]interface{}{
+    "api_key": "your-api-key",
+})
+```
+
+## 工具
+
+### my_tool_1
+
+描述...
+
+### my_tool_2
+
+描述...
+
+## 配置
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| api_key | string | 是 | API 密钥 |
+| timeout | int | 否 | 超时时间（秒） |
+```
+
+### 3. 许可证
+
+选择合适的开源许可证。
+
+## 完整示例
+
+参考官方插件实现：
+- `plugins/http` - HTTP 请求插件
+- `plugins/sql` - SQL 查询插件
+- `plugins/git` - Git 操作插件
+
+## 下一步
+
+- 查看 [工具 API](../api/tools.md) 了解工具接口
+- 学习 [安全最佳实践](security.md) 确保插件安全
+- 阅读 [创建 Agent](../guides/create-agent.md) 了解如何集成插件

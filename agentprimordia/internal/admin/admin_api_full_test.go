@@ -13,13 +13,15 @@ import (
 
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/pool"
+	"agentprimordia/internal/tools"
 )
 
-// doRequestWithPool 使用指定 pool 创建 handler 并发起请求
+// doRequestWithPool 使用指定 pool 创建 handler 并发起授权请求
 func doRequestWithPool(t *testing.T, p *pool.Pool, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
-	handler := NewAdminHandler(p)
+	handler := NewAdminHandler(p, tools.NewRegistry(), WithAPIToken(testToken))
 	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("Authorization", "Bearer "+testToken)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	return rec
@@ -38,13 +40,15 @@ func TestAdminAPI_GetAgent_Existing(t *testing.T) {
 		tasks := []pool.TaskConfig{
 			{ID: agentID, Title: "存在性验证任务", Prompt: "执行任务"},
 		}
-		_, _ = p.Dispatch(context.Background(), tasks)
+		if _, err := p.Dispatch(context.Background(), tasks); err != nil {
+			t.Logf("Dispatch failed (acceptable in test): %v", err)
+		}
 	}()
 
 	time.Sleep(50 * time.Millisecond)
 
-	handler := NewAdminHandler(p)
-	rec := doRequest(t, handler, http.MethodGet, "/api/agents/"+agentID)
+	handler := NewAdminHandler(p, tools.NewRegistry(), WithAPIToken(testToken))
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents/"+agentID)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d，响应体: %s", rec.Code, rec.Body.String())
@@ -115,7 +119,7 @@ func TestAdminAPI_SystemInfo_FieldTypes(t *testing.T) {
 	t.Parallel()
 
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/system")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/system")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -312,6 +316,7 @@ func TestAdminAPI_XSS_InAgentID(t *testing.T) {
 
 			encodedID := url.PathEscape(payload)
 			req := httptest.NewRequest(http.MethodGet, "/api/agents/"+encodedID, nil)
+			req.Header.Set("Authorization", "Bearer "+testToken)
 			rec := httptest.NewRecorder()
 			handler.ServeHTTP(rec, req)
 
@@ -392,7 +397,7 @@ func TestAdminAPI_ResponseFormat(t *testing.T) {
 
 	t.Run("listAgents_返回map", func(t *testing.T) {
 		t.Parallel()
-		rec := doRequest(t, handler, http.MethodGet, "/api/agents")
+		rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents")
 
 		var result map[string]any
 		if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
@@ -402,7 +407,7 @@ func TestAdminAPI_ResponseFormat(t *testing.T) {
 
 	t.Run("stats_包含所有PoolStats字段", func(t *testing.T) {
 		t.Parallel()
-		rec := doRequest(t, handler, http.MethodGet, "/api/stats")
+		rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/stats")
 
 		var result map[string]any
 		if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
@@ -422,7 +427,7 @@ func TestAdminAPI_ResponseFormat(t *testing.T) {
 
 	t.Run("tasks_返回数组", func(t *testing.T) {
 		t.Parallel()
-		rec := doRequest(t, handler, http.MethodGet, "/api/tasks")
+		rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/tasks")
 
 		var result []map[string]any
 		if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
@@ -449,7 +454,7 @@ func TestAdminAPI_ResponseFormat(t *testing.T) {
 
 	t.Run("systemInfo_包含所有字段", func(t *testing.T) {
 		t.Parallel()
-		rec := doRequest(t, handler, http.MethodGet, "/api/system")
+		rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/system")
 
 		var result map[string]any
 		if err := json.NewDecoder(rec.Body).Decode(&result); err != nil {
@@ -470,7 +475,7 @@ func TestAdminAPI_ResponseFormat(t *testing.T) {
 
 	t.Run("getAgent_NotFound_包含error字段", func(t *testing.T) {
 		t.Parallel()
-		rec := doRequest(t, handler, http.MethodGet, "/api/agents/nonexistent")
+		rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents/nonexistent")
 
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("期望状态码 404，实际 %d", rec.Code)
@@ -544,7 +549,12 @@ func TestAdminAPI_ConcurrentMixedEndpoints(t *testing.T) {
 			wg.Add(1)
 			go func(path string, expectedStatus int) {
 				defer wg.Done()
-				rec := doRequest(t, handler, http.MethodGet, path)
+				req := httptest.NewRequest(http.MethodGet, path, nil)
+				if path != "/api/health" {
+					req.Header.Set("Authorization", "Bearer "+testToken)
+				}
+				rec := httptest.NewRecorder()
+				handler.ServeHTTP(rec, req)
 				if rec.Code != expectedStatus {
 					errCh <- fmt.Errorf("%s: 期望状态码 %d，实际 %d", path, expectedStatus, rec.Code)
 				}
@@ -599,7 +609,7 @@ func TestAdminAPI_Stats_NonNegativeValues(t *testing.T) {
 	t.Parallel()
 
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/stats")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/stats")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("期望状态码 200，实际 %d", rec.Code)
@@ -709,7 +719,7 @@ func TestAdminAPI_GetAgent_NotRegistered(t *testing.T) {
 	t.Parallel()
 
 	handler := newTestHandler(t)
-	rec := doRequest(t, handler, http.MethodGet, "/api/agents/nonexistent-agent")
+	rec := doAuthorizedRequest(t, handler, http.MethodGet, "/api/agents/nonexistent-agent")
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("期望状态码 404，实际 %d", rec.Code)
@@ -733,6 +743,7 @@ func TestAdminAPI_XSS_JSONEncodingSafe(t *testing.T) {
 	xssID := `<script>alert(1)</script>`
 	encodedID := url.PathEscape(xssID)
 	req := httptest.NewRequest(http.MethodGet, "/api/agents/"+encodedID, nil)
+	req.Header.Set("Authorization", "Bearer "+testToken)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -762,7 +773,7 @@ func TestAdminAPI_ConcurrentDispatchAndQuery(t *testing.T) {
 	p.SetModel(mockLLM)
 	t.Cleanup(func() { p.Close() })
 
-	handler := NewAdminHandler(p)
+	handler := NewAdminHandler(p, tools.NewRegistry(), WithAPIToken(testToken))
 	var wg sync.WaitGroup
 	errCh := make(chan error, 30)
 
@@ -772,7 +783,9 @@ func TestAdminAPI_ConcurrentDispatchAndQuery(t *testing.T) {
 		tasks := []pool.TaskConfig{
 			{ID: "concurrent-1", Title: "并发任务1", Prompt: "执行"},
 		}
-		_, _ = p.Dispatch(context.Background(), tasks)
+		if _, err := p.Dispatch(context.Background(), tasks); err != nil {
+			t.Logf("Dispatch failed (acceptable in test): %v", err)
+		}
 	}()
 
 	for i := 0; i < 10; i++ {
@@ -782,6 +795,9 @@ func TestAdminAPI_ConcurrentDispatchAndQuery(t *testing.T) {
 			endpoints := []string{"/api/health", "/api/stats", "/api/agents"}
 			for _, ep := range endpoints {
 				req := httptest.NewRequest(http.MethodGet, ep, nil)
+				if ep != "/api/health" {
+					req.Header.Set("Authorization", "Bearer "+testToken)
+				}
 				rec := httptest.NewRecorder()
 				handler.ServeHTTP(rec, req)
 				if rec.Code != http.StatusOK {

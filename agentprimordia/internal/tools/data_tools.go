@@ -243,7 +243,10 @@ func (t *CSVTool) aggregateCSV(params map[string]any) (*Result, error) {
 	}
 
 	output := map[string]any{"function": aggFunc, "column": aggColumn, "value": result, "count": count}
-	outputJSON, _ := json.MarshalIndent(output, "", "  ")
+	outputJSON, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal aggregate result: %w", err)
+	}
 	return &Result{Content: string(outputJSON)}, nil
 }
 
@@ -252,10 +255,15 @@ func (t *CSVTool) writeCSV(params map[string]any) (*Result, error) {
 	if !ok {
 		return nil, fmt.Errorf("parameter 'file_path' must be a string")
 	}
-	dataBytes, _ := json.Marshal(params["data"])
+	dataBytes, err := json.Marshal(params["data"])
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal CSV data: %w", err)
+	}
 
 	var data []map[string]any
-	_ = json.Unmarshal(dataBytes, &data)
+	if err := json.Unmarshal(dataBytes, &data); err != nil {
+		return nil, fmt.Errorf("invalid 'data' parameter: %w", err)
+	}
 
 	file, err := os.Create(filePath)
 	if err != nil {

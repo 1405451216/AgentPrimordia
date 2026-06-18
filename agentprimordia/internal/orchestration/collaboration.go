@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -352,6 +353,7 @@ func (s *CollaborationSession) executeDebate(ctx context.Context, topic string) 
 }
 
 // executeReview 执行评审
+// 优化（perf-v2）：使用 channel 替代 mutex-protected append，减少锁竞争
 func (s *CollaborationSession) executeReview(ctx context.Context, content string) error {
 	// 检查上下文是否已取消
 	select {
@@ -366,7 +368,8 @@ func (s *CollaborationSession) executeReview(ctx context.Context, content string
 		reviewers = s.getAllCollaborators()
 	}
 
-	var reviews []*CollaborationStatement
+	// 优化（perf-v2）：使用 channel 替代 mutex-protected append
+	reviewCh := make(chan *CollaborationStatement, len(reviewers))
 	var wg sync.WaitGroup
 
 	for _, reviewer := range reviewers {
@@ -389,14 +392,18 @@ func (s *CollaborationSession) executeReview(ctx context.Context, content string
 				Timestamp:      time.Now(),
 			}
 
-			s.mu.Lock()
-			reviews = append(reviews, review)
-			s.mu.Unlock()
+			reviewCh <- review
 			s.addToHistory(review)
 		}(reviewer)
 	}
 
 	wg.Wait()
+	close(reviewCh)
+
+	reviews := make([]*CollaborationStatement, 0, len(reviewers))
+	for review := range reviewCh {
+		reviews = append(reviews, review)
+	}
 
 	round := &DebateRound{
 		RoundNumber: 1,
@@ -432,7 +439,7 @@ func (s *CollaborationSession) executeConsensus(ctx context.Context, topic strin
 		if round == 1 && len(options) == 0 {
 			for _, sug := range suggestions {
 				option := &ConsensusOption{
-					ID:          fmt.Sprintf("option-%d", len(options)+1),
+					ID:          "option-" + strconv.Itoa(len(options)+1),
 					Description: sug.Content,
 					Supporters:  []string{sug.CollaboratorID},
 					Score:       sug.CollaboratorWeight,
@@ -465,6 +472,7 @@ func (s *CollaborationSession) executeConsensus(ctx context.Context, topic strin
 }
 
 // executeBrainstorm 执行头脑风暴
+// 优化（perf-v2）：使用 channel 替代 mutex-protected append
 func (s *CollaborationSession) executeBrainstorm(ctx context.Context, topic string) error {
 	// 检查上下文是否已取消
 	select {
@@ -473,7 +481,8 @@ func (s *CollaborationSession) executeBrainstorm(ctx context.Context, topic stri
 	default:
 	}
 
-	ideas := make([]*CollaborationStatement, 0)
+	// 优化（perf-v2）：使用 channel 替代 mutex-protected append
+	ideaCh := make(chan *CollaborationStatement, len(s.collaborators))
 	var wg sync.WaitGroup
 
 	for _, collab := range s.collaborators {
@@ -496,14 +505,18 @@ func (s *CollaborationSession) executeBrainstorm(ctx context.Context, topic stri
 				Timestamp:      time.Now(),
 			}
 
-			s.mu.Lock()
-			ideas = append(ideas, idea)
-			s.mu.Unlock()
+			ideaCh <- idea
 			s.addToHistory(idea)
 		}(collab)
 	}
 
 	wg.Wait()
+	close(ideaCh)
+
+	ideas := make([]*CollaborationStatement, 0, len(s.collaborators))
+	for idea := range ideaCh {
+		ideas = append(ideas, idea)
+	}
 
 	round := &DebateRound{
 		RoundNumber: 1,
@@ -523,13 +536,14 @@ func (s *CollaborationSession) executeBrainstorm(ctx context.Context, topic stri
 
 // ===== 辅助方法 =====
 
+// getPreviousStatements 获取之前的声明历史。
+// 优化（perf-v2）：返回只读引用而非深拷贝，因为历史仅追加不修改。
+// 调用者不得修改返回的 slice。
 func (s *CollaborationSession) getPreviousStatements() []*CollaborationStatement {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-
-	history := make([]*CollaborationStatement, len(s.result.History))
-	copy(history, s.result.History)
-	return history
+	// 返回底层 slice 的引用，因为 history 只追加不修改，并发读安全
+	return s.result.History
 }
 
 func (s *CollaborationSession) addToHistory(stmt *CollaborationStatement) {
@@ -541,7 +555,7 @@ func (s *CollaborationSession) addToHistory(stmt *CollaborationStatement) {
 
 func (s *CollaborationSession) generateStatementID() string {
 	s.statementID++
-	return fmt.Sprintf("stmt-%d-%d", s.currentRound, s.statementID)
+	return "stmt-" + strconv.Itoa(s.currentRound) + "-" + strconv.Itoa(s.statementID)
 }
 
 func (s *CollaborationSession) getAllCollaborators() []*Collaborator {
@@ -625,7 +639,7 @@ func (s *CollaborationSession) synthesizeDebateResult() {
 		Type:           "debate_summary",
 		Content:        strings.Join(allStatements, "\n\n"),
 		AgreementLevel: s.calculateAgreementLevel(),
-		Reasoning:      fmt.Sprintf("经过 %d 轮辩论，收集了 %d 个观点", s.result.Metrics.TotalRounds, len(perspectives)),
+		Reasoning:      "经过 " + strconv.Itoa(s.result.Metrics.TotalRounds) + " 轮辩论，收集了 " + strconv.Itoa(len(perspectives)) + " 个观点",
 	}
 
 	s.result.Metrics.UniquePerspectives = len(perspectives)
@@ -647,7 +661,7 @@ func (s *CollaborationSession) synthesizeReviewResult(reviews []*CollaborationSt
 	s.result.FinalOutcome = &FinalOutcome{
 		Type:           "review_summary",
 		Content:        strings.Join(feedback, "\n\n---\n\n"),
-		Reasoning:      fmt.Sprintf("基于 %d 位评审者的反馈", len(reviews)),
+		Reasoning:      "基于 " + strconv.Itoa(len(reviews)) + " 位评审者的反馈",
 		AgreementLevel: reviewAgreementLevel,
 	}
 }
@@ -682,7 +696,7 @@ func (s *CollaborationSession) determineConsensusWinner(options []*ConsensusOpti
 		Options:        options,
 		Winner:         winner,
 		AgreementLevel: winner.Score / 100.0,
-		Reasoning:      fmt.Sprintf("选项 '%s' 以 %.1f%% 的支持率胜出", winner.Description, winner.Score),
+		Reasoning:      "选项 '" + winner.Description + "' 以 " + strconv.FormatFloat(winner.Score, 'f', 1, 64) + "% 的支持率胜出",
 	}
 }
 
@@ -699,7 +713,7 @@ func (s *CollaborationSession) synthesizeBrainstormResult(ideas []*Collaboration
 	s.result.FinalOutcome = &FinalOutcome{
 		Type:           "brainstorm_collection",
 		Content:        strings.Join(ideaList, "\n\n💡 "),
-		Reasoning:      fmt.Sprintf("收集了 %d 个创意想法", len(ideas)),
+		Reasoning:      "收集了 " + strconv.Itoa(len(ideas)) + " 个创意想法",
 		AgreementLevel: brainstormAgreementLevel,
 	}
 }
@@ -731,10 +745,11 @@ func (s *CollaborationSession) calculateAgreementLevel() float64 {
 }
 
 // collectSuggestions 收集建议
+// 优化（perf-v2）：使用 channel 替代 mutex-protected append
 func (s *CollaborationSession) collectSuggestions(ctx context.Context, topic string, round int) []Suggestion {
-	suggestions := make([]Suggestion, 0)
+	// 优化（perf-v2）：使用带缓冲的 channel 避免 mutex 竞争
+	sugCh := make(chan Suggestion, len(s.collaborators))
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for _, collab := range s.collaborators {
 		wg.Add(1)
@@ -747,25 +762,30 @@ func (s *CollaborationSession) collectSuggestions(ctx context.Context, topic str
 				return
 			}
 
-			mu.Lock()
-			suggestions = append(suggestions, Suggestion{
+			sugCh <- Suggestion{
 				Content:            resp.Content,
 				CollaboratorID:     c.ID,
 				CollaboratorWeight: c.Weight,
-			})
-			mu.Unlock()
+			}
 		}(collab)
 	}
 
 	wg.Wait()
+	close(sugCh)
+
+	suggestions := make([]Suggestion, 0, len(s.collaborators))
+	for sug := range sugCh {
+		suggestions = append(suggestions, sug)
+	}
 	return suggestions
 }
 
 // conductVoting 进行投票
+// 优化（perf-v2）：使用 channel 替代 mutex-protected append
 func (s *CollaborationSession) conductVoting(ctx context.Context, options []*ConsensusOption, round int) []*Vote {
-	votes := make([]*Vote, 0)
+	// 优化（perf-v2）：使用带缓冲的 channel 避免 mutex 竞争
+	voteCh := make(chan *Vote, len(s.collaborators))
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for _, collab := range s.collaborators {
 		wg.Add(1)
@@ -779,20 +799,22 @@ func (s *CollaborationSession) conductVoting(ctx context.Context, options []*Con
 			}
 
 			selectedOption := parseVoteSelection(resp.Content, options)
-			vote := &Vote{
+			voteCh <- &Vote{
 				CollaboratorID: c.ID,
 				OptionID:       selectedOption.ID,
 				Confidence:     defaultVoteConfidence,
 				Reasoning:      resp.Content,
 			}
-
-			mu.Lock()
-			votes = append(votes, vote)
-			mu.Unlock()
 		}(collab)
 	}
 
 	wg.Wait()
+	close(voteCh)
+
+	votes := make([]*Vote, 0, len(s.collaborators))
+	for vote := range voteCh {
+		votes = append(votes, vote)
+	}
 	return votes
 }
 
@@ -875,11 +897,24 @@ func (s *CollaborationSession) facilitateDiscussion(ctx context.Context, options
 }
 
 // mergeSuggestionsIntoOptions 合并建议到选项
+// perf-v4 Task 5：预计算 option 的词频表，避免每次相似度比较时重复 make(map[string]int)
 func (s *CollaborationSession) mergeSuggestionsIntoOptions(suggestions []Suggestion, options []*ConsensusOption) {
+	// 预计算所有 option 的词频表（option 数量较少，map 可重复利用）
+	optionTokenMaps := make([]map[string]int, len(options))
+	optionWordCounts := make([]int, len(options))
+	for i, opt := range options {
+		words := strings.Fields(opt.Description)
+		optionWordCounts[i] = len(words)
+		optionTokenMaps[i] = wordFrequency(opt.Description)
+	}
+
 	for _, sug := range suggestions {
+		sugWords := strings.Fields(sug.Content)
+		sugTokens := wordFrequency(sug.Content)
+		sugLen := len(sugWords)
 		matched := false
-		for _, opt := range options {
-			if similarityScore(opt.Description, sug.Content) > suggestionSimilarityThreshold {
+		for i, opt := range options {
+			if similarityScorePrecomputed(optionTokenMaps[i], optionWordCounts[i], sugTokens, sugLen) > suggestionSimilarityThreshold {
 				opt.Supporters = append(opt.Supporters, sug.CollaboratorID)
 				matched = true
 				break
@@ -887,11 +922,14 @@ func (s *CollaborationSession) mergeSuggestionsIntoOptions(suggestions []Suggest
 		}
 		if !matched {
 			newOpt := &ConsensusOption{
-				ID:          fmt.Sprintf("option-%d", len(options)+1),
+				ID:          "option-" + strconv.Itoa(len(options)+1),
 				Description: sug.Content,
 				Supporters:  []string{sug.CollaboratorID},
 			}
 			options = append(options, newOpt)
+			// 为新创建的 option 补齐预计算结果，保持后续循环可继续利用
+			optionTokenMaps = append(optionTokenMaps, sugTokens)
+			optionWordCounts = append(optionWordCounts, sugLen)
 		}
 	}
 }
@@ -922,36 +960,88 @@ func similarityScore(a, b string) float64 {
 	return float64(commonWords) / float64(maxLen)
 }
 
+// wordFrequency 计算文本词频表（perf-v4 Task 5：辅助函数）
+func wordFrequency(text string) map[string]int {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return map[string]int{}
+	}
+	m := make(map[string]int, len(words))
+	for _, w := range words {
+		m[w]++
+	}
+	return m
+}
+
+// similarityScorePrecomputed 使用预计算的词频表计算相似度（perf-v4 Task 5）
+func similarityScorePrecomputed(tokensA map[string]int, lenA int, tokensB map[string]int, lenB int) float64 {
+	if lenA == 0 && lenB == 0 {
+		return 0.0
+	}
+	commonWords := 0
+	// 遍历较小的 map 减少迭代次数
+	smaller, larger := tokensA, tokensB
+	if len(tokensB) < len(tokensA) {
+		smaller, larger = tokensB, tokensA
+	}
+	for w := range smaller {
+		if larger[w] > 0 {
+			commonWords++
+		}
+	}
+	maxLen := lenA
+	if lenB > maxLen {
+		maxLen = lenB
+	}
+	if maxLen == 0 {
+		return 0.0
+	}
+	return float64(commonWords) / float64(maxLen)
+}
+
 // ===== Prompt 构建函数 =====
+// perf-v5 Task 7：使用 strings.Builder 替代 parts []string + strings.Join，
+// 减少热路径上的 fmt.Sprintf 反射分配与中间 slice 分配
 
 func buildDebatePrompt(topic, perspective string, round int, history []*CollaborationStatement) string {
-	parts := []string{
-		fmt.Sprintf("[辩论 - 第%d轮]", round),
-		fmt.Sprintf("\n主题: %s", topic),
-	}
+	var sb strings.Builder
+	sb.Grow(1024 + 200*min(len(history), 10))
+	sb.WriteString("[辩论 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n主题: ")
+	sb.WriteString(topic)
 
 	if perspective != "" {
-		parts = append(parts, fmt.Sprintf("\n你的视角/立场: %s", perspective))
+		sb.WriteString("\n你的视角/立场: ")
+		sb.WriteString(perspective)
 	}
 
 	if round > 1 && len(history) > 0 {
-		parts = append(parts, "\n\n前几轮的论点:")
+		sb.WriteString("\n\n前几轮的论点:")
 		count := min(len(history), 10)
 		for i := len(history) - count; i < len(history); i++ {
-			parts = append(parts, fmt.Sprintf("- [%s]: %s", history[i].CollaboratorID, history[i].Content[:min(len(history[i].Content), 200)]))
+			sb.WriteString("\n- [")
+			sb.WriteString(history[i].CollaboratorID)
+			sb.WriteString("]: ")
+			content := history[i].Content
+			if len(content) > 200 {
+				content = content[:200]
+			}
+			sb.WriteString(content)
 		}
 	}
 
-	instruction := "请提出你的论点和证据。"
+	sb.WriteString("\n\n")
 	if round > 1 {
-		instruction = "请针对其他人的论点进行反驳或补充你的观点。"
+		sb.WriteString("请针对其他人的论点进行反驳或补充你的观点。")
+	} else {
+		sb.WriteString("请提出你的论点和证据。")
 	}
-
-	parts = append(parts, fmt.Sprintf("\n\n%s", instruction))
-	return strings.Join(parts, "\n")
+	return sb.String()
 }
 
 func buildReviewPrompt(content, perspective string) string {
+	// 模板字符串保留 fmt.Sprintf（仅 1 次调用且模板固定）
 	return fmt.Sprintf(`[评审任务]
 请从%s的角度审查以下内容：
 
@@ -967,52 +1057,72 @@ func buildReviewPrompt(content, perspective string) string {
 }
 
 func buildConsensusPrompt(topic string, round int, history []*CollaborationStatement) string {
-	parts := []string{
-		fmt.Sprintf("[共识讨论 - 第%d轮]", round),
-		fmt.Sprintf("\n主题: %s", topic),
-	}
+	var sb strings.Builder
+	sb.Grow(512 + 150*min(len(history), 5))
+	sb.WriteString("[共识讨论 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n主题: ")
+	sb.WriteString(topic)
 
 	if round > 1 && len(history) > 0 {
-		parts = append(parts, "\n\n当前讨论进展:")
+		sb.WriteString("\n\n当前讨论进展:")
 		count := min(len(history), 5)
 		for i := len(history) - count; i < len(history); i++ {
-			parts = append(parts, fmt.Sprintf("- %s", history[i].Content[:min(len(history[i].Content), 150)]))
+			content := history[i].Content
+			if len(content) > 150 {
+				content = content[:150]
+			}
+			sb.WriteString("\n- ")
+			sb.WriteString(content)
 		}
 	}
 
-	parts = append(parts, "\n\n请明确提出你对这个主题的建议或方案。")
-	return strings.Join(parts, "\n")
+	sb.WriteString("\n\n请明确提出你对这个主题的建议或方案。")
+	return sb.String()
 }
 
 func buildVotingPrompt(options []*ConsensusOption, round int) string {
-	parts := []string{
-		fmt.Sprintf("[投票 - 第%d轮]", round),
-		"\n请选择你最支持的方案:",
-	}
+	var sb strings.Builder
+	sb.Grow(256 + 100*len(options))
+	sb.WriteString("[投票 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n请选择你最支持的方案:")
 
 	for i, opt := range options {
-		parts = append(parts, fmt.Sprintf("%d. %s (当前支持率: %.1f%%)", i+1, opt.Description, opt.Score))
+		sb.WriteByte('\n')
+		sb.WriteString(strconv.Itoa(i + 1))
+		sb.WriteString(". ")
+		sb.WriteString(opt.Description)
+		sb.WriteString(" (当前支持率: ")
+		sb.WriteString(strconv.FormatFloat(opt.Score, 'f', 1, 64))
+		sb.WriteString("%)")
 	}
 
-	parts = append(parts, "\n\n请回复你选择的方案编号及理由。")
-	return strings.Join(parts, "\n")
+	sb.WriteString("\n\n请回复你选择的方案编号及理由。")
+	return sb.String()
 }
 
 func buildDiscussionPrompt(options []*ConsensusOption, votes []*Vote, round int) string {
-	parts := []string{
-		fmt.Sprintf("[讨论 - 第%d轮]", round),
-		"\n当前投票情况:",
-	}
+	var sb strings.Builder
+	sb.Grow(256 + 60*len(options))
+	sb.WriteString("[讨论 - 第")
+	sb.WriteString(strconv.Itoa(round))
+	sb.WriteString("轮]\n当前投票情况:")
 
 	for _, opt := range options {
-		parts = append(parts, fmt.Sprintf("- %s (%.1f%% 支持)", opt.Description, opt.Score))
+		sb.WriteString("\n- ")
+		sb.WriteString(opt.Description)
+		sb.WriteString(" (")
+		sb.WriteString(strconv.FormatFloat(opt.Score, 'f', 1, 64))
+		sb.WriteString("% 支持)")
 	}
 
-	parts = append(parts, "\n\n基于以上投票结果，请说明你是否改变主意，或者尝试说服其他人。")
-	return strings.Join(parts, "\n")
+	sb.WriteString("\n\n基于以上投票结果，请说明你是否改变主意，或者尝试说服其他人。")
+	return sb.String()
 }
 
 func buildBrainstormPrompt(topic, perspective string) string {
+	// 模板字符串保留 fmt.Sprintf（仅 1 次调用且模板固定）
 	return fmt.Sprintf(`[头脑风暴]
 主题: %s
 视角: %s
@@ -1046,7 +1156,8 @@ func containsWord(text, word string) bool {
 	return false
 }
 
+// generateSessionID 生成唯一会话 ID。
+// 优化（perf-v2）：使用 strconv 替代 fmt.Sprintf 避免反射分配。
 func generateSessionID() string {
-	timestamp := time.Now().UnixNano()
-	return fmt.Sprintf("collab-%d", timestamp)
+	return "collab-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 }

@@ -40,7 +40,7 @@ func TestShell_Execute_ScopeAllowed(t *testing.T) {
 
 	args, _ := json.Marshal(map[string]string{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": "go env GOROOT",
 		"workdir": dir,
 	})
 
@@ -59,7 +59,7 @@ func TestShell_Execute_NoScopePolicy(t *testing.T) {
 	dir := t.TempDir()
 	args, _ := json.Marshal(map[string]string{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": "go env GOROOT",
 		"workdir": dir,
 	})
 

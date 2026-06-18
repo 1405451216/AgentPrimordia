@@ -193,29 +193,28 @@ func main() {
 		return nil
 	})
 
-	ragAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name: "RAGKnowledgeAssistant",
-		SystemPrompt: `你是一个专业的知识助手。在回答问题前，请先检索知识库获取相关信息。
+	ragAgent, err := agent.NewAgent("RAGKnowledgeAssistant", `你是一个专业的知识助手。在回答问题前，请先检索知识库获取相关信息。
 如果知识库中没有相关信息，请诚实说明，不要编造内容。
-回答时要引用知识来源，保持准确性和专业性。`,
-		Model:       demoLLM,
-		Toolkit:     toolRegistry,
-		Memory:      ap.NewMemoryAdapter(memStore),
-		MaxTurns:    15,
-		Temperature: 0.7,
-		SessionID:   "rag-demo-session",
-		Lifecycle:   agent.NewLifecycle(),
-		Hooks:       hooks,
-		RAG: &agent.RAGConfig{
+回答时要引用知识来源，保持准确性和专业性。`, demoLLM,
+		agent.WithToolkit(toolRegistry),
+		agent.WithMemory(memStore),
+		agent.WithMaxTurns(15),
+		agent.WithTemperature(0.7),
+		agent.WithSessionID("rag-demo-session"),
+		agent.WithHooks(hooks),
+		agent.WithRAG(agent.RAGConfig{
 			Provider: ragProvider,
 			Mode:     agent.RAGModeFirst, // 第一轮自动检索
 			TopK:     3,
 			MinScore: 0.1,
-		},
-		CheckpointStore: checkpointStore,
-		EventPublisher:  ap.NewEventBusAdapter(eventBus),
-		Metrics:         ap.NewMetricsAdapter(agentMetrics),
-	})
+		}),
+		agent.WithCheckpointStore(checkpointStore),
+		agent.WithEvents(ap.NewEventBusAdapter(eventBus)),
+		agent.WithMetrics(agentMetrics),
+	)
+	if err != nil {
+		log.Fatalf("创建 RAG Agent 失败: %v", err)
+	}
 
 	fmt.Println("  ✓ RAG 知识助手已创建")
 	fmt.Println("    - RAG 模式: First (首轮自动检索)")
@@ -285,21 +284,23 @@ func main() {
 	fmt.Println()
 
 	// 创建两个专家 Agent
-	analyzerAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Analyzer",
-		SystemPrompt: "你是一个代码分析专家，负责分析代码质量和潜在问题。",
-		Model:        demo.NewDemoLLM("代码分析完成：发现3个潜在问题，2个性能优化点。"),
-		Toolkit:      tools.NewRegistry(),
-		MaxTurns:     5,
-	})
+	analyzerAgent, err := agent.NewAgent("Analyzer", "你是一个代码分析专家，负责分析代码质量和潜在问题。",
+		demo.NewDemoLLM("代码分析完成：发现3个潜在问题，2个性能优化点。"),
+		agent.WithToolkit(tools.NewRegistry()),
+		agent.WithMaxTurns(5),
+	)
+	if err != nil {
+		log.Fatalf("创建 Analyzer Agent 失败: %v", err)
+	}
 
-	writerAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Writer",
-		SystemPrompt: "你是一个技术文档撰写专家，负责将分析结果转化为清晰的文档。",
-		Model:        demo.NewDemoLLM("技术文档已生成：包含问题描述、优化建议和代码示例。"),
-		Toolkit:      tools.NewRegistry(),
-		MaxTurns:     5,
-	})
+	writerAgent, err := agent.NewAgent("Writer", "你是一个技术文档撰写专家，负责将分析结果转化为清晰的文档。",
+		demo.NewDemoLLM("技术文档已生成：包含问题描述、优化建议和代码示例。"),
+		agent.WithToolkit(tools.NewRegistry()),
+		agent.WithMaxTurns(5),
+	)
+	if err != nil {
+		log.Fatalf("创建 Writer Agent 失败: %v", err)
+	}
 
 	pipeline := agent.NewPipeline(
 		agent.PipelineStep{Name: "analyze", Agent: analyzerAgent},

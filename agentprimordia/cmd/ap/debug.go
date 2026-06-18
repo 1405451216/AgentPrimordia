@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"agentprimordia/internal/debugger"
 )
@@ -61,6 +65,16 @@ func runDebug(args []string) {
 		os.Exit(1)
 	}
 
-	// 阻塞主线程
-	select {}
+	// 等待中断信号以优雅退出
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	fmt.Println("\n正在关闭调试服务器...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Stop(ctx); err != nil {
+		errorf("server shutdown error: %v", err)
+	}
+	fmt.Println("调试服务器已退出")
 }

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // ClientOption Client 配置选项
@@ -45,11 +46,16 @@ type A2AClient struct {
 	nextID      int
 }
 
+// defaultA2AHTTPTimeout 是 A2A 客户端默认的总请求超时。
+const defaultA2AHTTPTimeout = 30 * time.Second
+
 func NewA2AClient(baseURL string, opts ...ClientOption) *A2AClient {
 	c := &A2AClient{
-		baseURL:    strings.TrimRight(baseURL, "/"),
-		httpClient: http.DefaultClient,
-		logger:     slog.Default(),
+		baseURL: strings.TrimRight(baseURL, "/"),
+		httpClient: &http.Client{
+			Timeout: defaultA2AHTTPTimeout,
+		},
+		logger: slog.Default(),
 	}
 	for _, opt := range opts {
 		opt(c)

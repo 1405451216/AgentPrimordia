@@ -195,17 +195,17 @@ func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *Bu
 		}
 
 		if needAck {
-			if err := t.readAckResponse(conn, msg.ID); err != nil {
+			if err := t.readAckResponse(conn, msg.ID, t.config.AckTimeout); err != nil {
 				conn.Close()
 				t.pool.Invalidate(target)
 				lastErr = fmt.Errorf("read ack from %s failed: %w", target, err)
 				continue
 			}
-			conn.Close()
+			// ACK 成功，接收端会关闭连接，无需归还连接池
 			return nil
 		}
 
-		conn.Close()
+		// 非 ACK 消息，接收端会关闭连接，无需归还连接池
 		return nil
 	}
 
@@ -213,8 +213,8 @@ func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *Bu
 }
 
 // readAckResponse 从连接中读取ACK响应
-func (t *TCPTransport) readAckResponse(conn net.Conn, msgID string) error {
-	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+func (t *TCPTransport) readAckResponse(conn net.Conn, msgID string, timeout time.Duration) error {
+	_ = conn.SetReadDeadline(time.Now().Add(timeout))
 	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
 
 	var buf [4096]byte
@@ -358,12 +358,9 @@ func (p *connPool) Get(ctx context.Context, target string) (net.Conn, error) {
 		return nil, fmt.Errorf("pool closed")
 	}
 
-	if conns := p.conns[target]; len(conns) > 0 {
-		pc := conns[len(conns)-1]
-		p.conns[target] = conns[:len(conns)-1]
-		pc.lastUsed = time.Now()
-		return pc.Conn, nil
-	}
+	// 当前协议是每条消息一个连接，接收端会关闭连接
+	// 所以连接池只用于快速建立新连接，不复用已有连接
+	// 未来可以改为长连接协议以支持连接复用
 
 	conn, err := p.dialer.DialContext(ctx, "tcp", target)
 	if err != nil {

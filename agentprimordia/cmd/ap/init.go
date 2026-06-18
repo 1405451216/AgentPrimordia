@@ -11,6 +11,7 @@ import (
 
 //go:embed scaffold/basic scaffold/with-tools scaffold/multi-agent
 //go:embed scaffold/agent-with-cache scaffold/agent-with-rag scaffold/agent-with-metrics
+//go:embed scaffold/quickstart
 var scaffoldFS embed.FS
 
 func runInit(args []string) {
@@ -37,6 +38,7 @@ Usage:
   ap init <项目名> [--template NAME] [--dry-run]
 
 Templates:
+  quickstart         5分钟快速入门 (推荐新手)
   basic              minimal agent (default)
   with-tools         agent with tools (filesystem + shell + web)
   multi-agent        multi-agent collaboration
@@ -70,6 +72,7 @@ Examples:
 
 	// 验证模板
 	validTemplates := map[string]bool{
+		"quickstart":         true,
 		"basic":              true,
 		"with-tools":         true,
 		"multi-agent":        true,
@@ -78,7 +81,7 @@ Examples:
 		"agent-with-metrics": true,
 	}
 	if !validTemplates[template] {
-		errorf("unknown template %q, supported: basic, with-tools, multi-agent, agent-with-cache, agent-with-rag, agent-with-metrics", template)
+		errorf("unknown template %q, supported: quickstart, basic, with-tools, multi-agent, agent-with-cache, agent-with-rag, agent-with-metrics", template)
 		os.Exit(1)
 	}
 

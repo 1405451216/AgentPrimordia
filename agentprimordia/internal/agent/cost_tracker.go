@@ -2,7 +2,9 @@ package agent
 
 import (
 	"agentprimordia/internal/llm"
+	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -43,12 +45,25 @@ type ModelCost struct {
 	Tokens  int64   `json:"tokens"`
 }
 
+// recordBudgetCheckHook 仅用于测试，在 records 追加后、预算检查前调用。
+// 生产代码中保持 nil。
+var recordBudgetCheckHook func()
+
 // CostTracker 成本追踪器
+// perf-v5 Task 13：累计字段改 atomic，CheckBudget 改 O(1)
 type CostTracker struct {
 	pricing map[string]llm.ModelPricing
 	budget  *BudgetConfig
 	records []CostRecord
 	mu      sync.RWMutex
+
+	// 原子累加字段（O(1) 预算检查）
+	totalCostBits     atomic.Uint64 // math.Float64bits 后的位模式
+	totalPromptTokens atomic.Int64
+	totalCompTokens   atomic.Int64
+	totalTokens       atomic.Int64
+	callCount         atomic.Int64
+	lastTokens        atomic.Int64 // 最近一次调用的 token 数（用于 MaxTokensPerCall）
 }
 
 // NewCostTracker 创建成本追踪器
@@ -75,12 +90,33 @@ func (t *CostTracker) Record(model, sessionID, agentName string, usage llm.Usage
 		AgentName:        agentName,
 	}
 
-	// 在同一个锁保护下完成记录 + 预算检查，消除 TOCTOU 竞态
+	// 在锁内先追加记录并更新原子累加字段，再进行预算检查，保证 CheckBudget() 并发读取时
+	// records 与原子累加值之间不存在不一致窗口。
 	t.mu.Lock()
 	t.records = append(t.records, record)
-	exceeded := t.checkBudgetLocked()
+
+	// 原子累加必须在预算检查前完成
+	for {
+		oldBits := t.totalCostBits.Load()
+		oldCost := math.Float64frombits(oldBits)
+		newBits := math.Float64bits(oldCost + cost)
+		if t.totalCostBits.CompareAndSwap(oldBits, newBits) {
+			break
+		}
+	}
+	t.totalPromptTokens.Add(int64(usage.PromptTokens))
+	t.totalCompTokens.Add(int64(usage.CompletionTokens))
+	t.totalTokens.Add(int64(usage.TotalTokens))
+	t.callCount.Add(1)
+	t.lastTokens.Store(int64(usage.TotalTokens))
+
+	if recordBudgetCheckHook != nil {
+		recordBudgetCheckHook()
+	}
 	t.mu.Unlock()
 
+	// 预算检查使用原子累加字段，O(1) 且无锁；Record 中已保证 atomic 字段与 records 同步更新。
+	exceeded := t.CheckBudget()
 	if exceeded && t.budget != nil && t.budget.OnBudgetExceed != nil {
 		t.budget.OnBudgetExceed(t.Summary())
 	}
@@ -117,47 +153,28 @@ func (t *CostTracker) Summary() *CostSummary {
 	return summary
 }
 
-// CheckBudget 检查是否超出预算
+// CheckBudget 检查是否超出预算（perf-v5 Task 13：O(1) 读取原子累加字段）
 func (t *CostTracker) CheckBudget() bool {
 	if t.budget == nil {
 		return false
 	}
 
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.checkBudgetLocked()
-}
-
-// checkBudgetLocked 在已持有锁的情况下检查预算（调用方必须持有 t.mu）
-func (t *CostTracker) checkBudgetLocked() bool {
-	if t.budget == nil {
-		return false
-	}
-
 	if t.budget.MaxTotalCostUSD > 0 {
-		var totalCost float64
-		for _, r := range t.records {
-			totalCost += r.CostUSD
-		}
+		totalCost := math.Float64frombits(t.totalCostBits.Load())
 		if totalCost > t.budget.MaxTotalCostUSD {
 			return true
 		}
 	}
 
 	if t.budget.MaxTokensPerSession > 0 {
-		var totalTokens int64
-		for _, r := range t.records {
-			totalTokens += int64(r.TotalTokens)
-		}
-		if totalTokens > int64(t.budget.MaxTokensPerSession) {
+		if t.totalTokens.Load() > int64(t.budget.MaxTokensPerSession) {
 			return true
 		}
 	}
 
 	// 检查单次调用 Token 上限
-	if t.budget.MaxTokensPerCall > 0 && len(t.records) > 0 {
-		last := t.records[len(t.records)-1]
-		if last.TotalTokens > t.budget.MaxTokensPerCall {
+	if t.budget.MaxTokensPerCall > 0 {
+		if t.lastTokens.Load() > int64(t.budget.MaxTokensPerCall) {
 			return true
 		}
 	}
@@ -170,4 +187,10 @@ func (t *CostTracker) Reset() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.records = make([]CostRecord, 0)
+	t.totalCostBits.Store(0)
+	t.totalPromptTokens.Store(0)
+	t.totalCompTokens.Store(0)
+	t.totalTokens.Store(0)
+	t.callCount.Store(0)
+	t.lastTokens.Store(0)
 }

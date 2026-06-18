@@ -151,7 +151,7 @@ func TestWorkflow_ConditionalBranching(t *testing.T) {
 	}
 
 	fmt.Printf("✅ Conditional Workflow: status=%s branches=%d\n",
-		result.Status, result.Metrics.BranchesTaken)
+		result.Status, result.Metrics.BranchesTaken.Load())
 }
 
 func TestWorkflow_LoopExecution(t *testing.T) {
@@ -200,12 +200,12 @@ func TestWorkflow_LoopExecution(t *testing.T) {
 		t.Fatalf("Execute error: %v", err)
 	}
 
-	if result.Metrics.Iterations < 2 {
-		t.Errorf("expected at least 2 iterations, got %d", result.Metrics.Iterations)
+	if result.Metrics.Iterations.Load() < 2 {
+		t.Errorf("expected at least 2 iterations, got %d", result.Metrics.Iterations.Load())
 	}
 
 	fmt.Printf("✅ Loop Workflow: iterations=%d records=%d\n",
-		result.Metrics.Iterations, len(result.Records))
+		result.Metrics.Iterations.Load(), len(result.Records))
 }
 
 func TestWorkflow_ParallelForkJoin(t *testing.T) {
@@ -334,12 +334,12 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 		t.Fatalf("unexpected error after retries: %v", err)
 	}
 
-	if result.Metrics.RetriesAttempted == 0 && attemptCount > 1 {
+	if result.Metrics.RetriesAttempted.Load() == 0 && attemptCount > 1 {
 		t.Log("retries were attempted as expected")
 	}
 
 	fmt.Printf("✅ Error Handling (Retry): attempts=%d retries=%d\n",
-		attemptCount, result.Metrics.RetriesAttempted)
+		attemptCount, result.Metrics.RetriesAttempted.Load())
 }
 
 func TestWorkflow_ErrorHandling_Fallback(t *testing.T) {
@@ -629,21 +629,17 @@ func TestWorkflow_MetricsCollection(t *testing.T) {
 	}
 
 	metrics := result.Metrics
-	if metrics.TotalNodes == 0 {
+	if metrics.TotalNodes.Load() == 0 {
 		t.Error("no metrics collected")
 	}
 
-	if metrics.TotalDuration < 0 {
-		t.Error("total duration should not be negative")
-	}
-
 	fmt.Printf("✅ Metrics Collection:\n")
-	fmt.Printf("   Total Nodes: %d\n", metrics.TotalNodes)
+	fmt.Printf("   Total Nodes: %d\n", metrics.TotalNodes.Load())
 	fmt.Printf("   Executed: %d | Failed: %d | Skipped: %d\n",
-		metrics.ExecutedNodes, metrics.FailedNodes, metrics.SkippedNodes)
-	fmt.Printf("   Total Duration: %v\n", metrics.TotalDuration)
+		metrics.ExecutedNodes.Load(), metrics.FailedNodes.Load(), metrics.SkippedNodes.Load())
+	fmt.Printf("   Total Duration: %v\n", time.Duration(metrics.TotalDurationNs.Load()))
 	fmt.Printf("   Avg Node Duration: %v\n", metrics.AvgNodeDuration)
-	fmt.Printf("   Branches Taken: %d\n", metrics.BranchesTaken)
+	fmt.Printf("   Branches Taken: %d\n", metrics.BranchesTaken.Load())
 }
 
 func TestWorkflow_ExportImport(t *testing.T) {

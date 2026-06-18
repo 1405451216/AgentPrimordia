@@ -3,11 +3,25 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log"
+	"log/slog"
 	"testing"
 
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/tools"
 )
+
+// benchLogger 用于基准测试的静默日志记录器，避免 slog 默认输出淹没结果
+var benchLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
+
+// suppressToolLogs 临时屏蔽标准 log 输出（工具执行器使用 log.Default）
+func suppressToolLogs(b *testing.B) func() {
+	b.Helper()
+	old := log.Default().Writer()
+	log.SetOutput(io.Discard)
+	return func() { log.SetOutput(old) }
+}
 
 // benchMockTool 用于基准测试的轻量 Mock 工具
 type benchMockTool struct {
@@ -25,6 +39,7 @@ func (m *benchMockTool) Execute(_ context.Context, _ json.RawMessage) (*tools.Re
 
 // BenchmarkReActAgent_SimpleCompletion 测试无工具的单轮完成性能
 func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
+	defer suppressToolLogs(b)()
 	b.ReportAllocs()
 
 	mockLLM := llm.NewMockLLM(nil).WithResponse("done")
@@ -32,8 +47,8 @@ func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "bench-simple",
 		Model:    mockLLM,
-		Toolkit:  nil,
 		MaxTurns: 10,
+		Logger:   benchLogger,
 	})
 
 	ctx := context.Background()
@@ -53,6 +68,7 @@ func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
 
 // BenchmarkReActAgent_SingleToolCall 测试单次工具调用场景性能
 func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
+	defer suppressToolLogs(b)()
 	b.ReportAllocs()
 
 	registry := tools.NewRegistry()
@@ -71,9 +87,9 @@ func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
 		agent := NewReActAgent(ReActConfig{
 			Name:     "bench-tool",
 			Model:    mockLLM,
-			Toolkit:  registry,
 			MaxTurns: 10,
-		})
+			Logger:   benchLogger,
+		}).AsCapability().WithToolkit(registry)
 
 		_, err := agent.Run(context.Background(), UserMessage("use tool"))
 		if err != nil {
@@ -84,6 +100,7 @@ func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
 
 // BenchmarkReActAgent_MaxTurns 测试多轮次运行性能（5 轮工具调用循环）
 func BenchmarkReActAgent_MaxTurns(b *testing.B) {
+	defer suppressToolLogs(b)()
 	b.ReportAllocs()
 
 	registry := tools.NewRegistry()
@@ -103,13 +120,32 @@ func BenchmarkReActAgent_MaxTurns(b *testing.B) {
 		agent := NewReActAgent(ReActConfig{
 			Name:     "bench-maxturns",
 			Model:    mockLLM,
-			Toolkit:  registry,
 			MaxTurns: 10,
-		})
+			Logger:   benchLogger,
+		}).AsCapability().WithToolkit(registry)
 
 		_, err := agent.Run(context.Background(), UserMessage("multi-turn"))
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
+	}
+}
+
+// BenchmarkConvertToLLMMessages 测试消息转换的内存分配
+func BenchmarkConvertToLLMMessages(b *testing.B) {
+	history := []Message{
+		{Role: RoleSystem, Content: "You are a helpful assistant."},
+		{Role: RoleUser, Content: "Hello"},
+		{Role: RoleAssistant, Content: "Hi", ToolCalls: []ToolCall{
+			{ID: "call_1", Name: "search", Args: `{"q":"go"}`},
+		}},
+		{Role: RoleTool, Content: "results", Metadata: Metadata{Extra: map[string]string{"tool_call_id": "call_1"}}},
+		{Role: RoleAssistant, Content: "Done"},
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = convertToLLMMessages(history)
 	}
 }

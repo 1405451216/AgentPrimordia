@@ -718,9 +718,12 @@ func TestServer_SSE_NonExistentTask(t *testing.T) {
 		t.Errorf("Content-Type 应为 text/event-stream, got %s", contentType)
 	}
 
-	// 不存在的任务不应产生任何事件数据
+	// 不存在的任务应推送 error 事件
 	body := rec.Body.String()
-	if strings.Contains(body, "data:") {
-		t.Errorf("不存在的任务不应推送事件, got: %s", body)
+	if !strings.Contains(body, "data:") {
+		t.Errorf("不存在的任务应推送 error 事件, got: %s", body)
+	}
+	if !strings.Contains(body, `"type":"error"`) {
+		t.Errorf("error 事件类型不匹配, got: %s", body)
 	}
 }

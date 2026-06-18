@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -37,6 +40,9 @@ type CapabilityAgent struct {
 	fileScope   []string
 	cache       llm.LLMCache
 	toolkit     *tools.Registry
+	planner     planning.Planner
+	reflector   reflection.Reflector
+	toolLearner tool_learning.ToolLearner
 }
 
 // ===== Agent 接口委托 =====
@@ -134,100 +140,90 @@ func (c *CapabilityAgent) GetFileScope() []string { return c.fileScope }
 // GetCache 返回 LLM 缓存（CacheCapable）
 func (c *CapabilityAgent) GetCache() llm.LLMCache { return c.cache }
 
+// GetToolkit 返回工具注册表（ToolkitCapable）
+func (c *CapabilityAgent) GetToolkit() *tools.Registry { return c.toolkit }
+
 // ===== 链式 API =====
 
-// WithMemory 注入记忆存储能力，同步更新内部 ReActAgent 的配置
+// WithMemory 注入记忆存储能力
 func (c *CapabilityAgent) WithMemory(m MemoryStore) *CapabilityAgent {
 	c.memory = m
-	c.inner.config.Memory = m
 	return c
 }
 
-// WithRAG 注入 RAG 检索能力，同步更新内部 ReActAgent 的配置
+// WithRAG 注入 RAG 检索能力
 func (c *CapabilityAgent) WithRAG(cfg RAGConfig) *CapabilityAgent {
 	c.rag = &cfg
-	c.inner.config.RAG = &cfg
 	return c
 }
 
-// WithHITL 注入人机协作能力，同步更新内部 ReActAgent 的配置
+// WithHITL 注入人机协作能力
 func (c *CapabilityAgent) WithHITL(cfg HITLConfig) *CapabilityAgent {
 	c.hitl = &cfg
-	c.inner.config.HITL = &cfg
 	// 重建 HITLManager
 	c.inner.hitlMgr = NewHITLManager(cfg)
 	return c
 }
 
-// WithHooks 注入 Hook 管理器，同步更新内部 ReActAgent 的配置
+// WithHooks 注入 Hook 管理器
 func (c *CapabilityAgent) WithHooks(h Hooks) *CapabilityAgent {
 	c.hooks = h
 	c.inner.hooks = h
-	c.inner.config.Hooks = h
 	return c
 }
 
-// WithTracer 注入分布式追踪器，同步更新内部 ReActAgent 的配置
+// WithTracer 注入分布式追踪器
 func (c *CapabilityAgent) WithTracer(t Tracer) *CapabilityAgent {
 	c.tracer = t
-	c.inner.config.Tracer = t
 	return c
 }
 
-// WithCostTracker 注入成本追踪器，同步更新内部 ReActAgent 的配置
+// WithCostTracker 注入成本追踪器
 func (c *CapabilityAgent) WithCostTracker(ct *CostTracker) *CapabilityAgent {
 	c.costTracker = ct
-	c.inner.config.CostTracker = ct
 	return c
 }
 
-// WithContextWindow 注入上下文窗口裁剪策略，同步更新内部 ReActAgent 的配置
+// WithContextWindow 注入上下文窗口裁剪策略
 func (c *CapabilityAgent) WithContextWindow(cw ContextWindowStrategy) *CapabilityAgent {
 	c.ctxWindow = cw
-	c.inner.config.ContextWindow = cw
 	return c
 }
 
-// WithEvents 注入事件发布器，同步更新内部 ReActAgent 的配置
+// WithEvents 注入事件发布器
 func (c *CapabilityAgent) WithEvents(ep EventPublisher) *CapabilityAgent {
 	c.eventPub = ep
-	c.inner.config.EventPublisher = ep
 	return c
 }
 
-// WithMetrics 注入指标记录器，同步更新内部 ReActAgent 的配置
+// WithMetrics 注入指标记录器
 func (c *CapabilityAgent) WithMetrics(m MetricsRecorder) *CapabilityAgent {
 	c.metrics = m
-	c.inner.config.Metrics = m
 	return c
 }
 
-// WithCheckpointStore 注入检查点存储，同步更新内部 ReActAgent 的配置
+// WithCheckpointStore 注入检查点存储
 func (c *CapabilityAgent) WithCheckpointStore(cs persist.CheckpointStore) *CapabilityAgent {
 	c.checkpoint = cs
-	c.inner.config.CheckpointStore = cs
 	return c
 }
 
-// WithSummarizer 注入摘要提取器，同步更新内部 ReActAgent 的配置
+// WithSummarizer 注入摘要提取器
 func (c *CapabilityAgent) WithSummarizer(s memory.SummaryExtractor) *CapabilityAgent {
 	c.summarizer = s
-	c.inner.config.Summarizer = s
 	return c
 }
 
-// WithFileScope 注入文件作用域限制，同步更新内部 ReActAgent 的配置
+// WithFileScope 注入文件作用域限制
 func (c *CapabilityAgent) WithFileScope(scopes []string) *CapabilityAgent {
 	c.fileScope = scopes
-	c.inner.config.FileScope = scopes
 	return c
 }
 
-// WithCache 注入 LLM 缓存，同步更新内部 ReActAgent 的配置
-// 注意：缓存会在 LLM Provider 层生效，设置后自动包装 Model 为 CachedProvider
+// WithCache 注入 LLM 缓存
+// 缓存会在 LLM Provider 层生效，设置后自动包装 Model 为 CachedProvider
 func (c *CapabilityAgent) WithCache(cache llm.LLMCache) *CapabilityAgent {
 	c.cache = cache
-	c.inner.config.Cache = cache
 	// 包装 Model 为 CachedProvider
 	if cache != nil {
 		cached, err := llm.NewCachedProvider(c.inner.config.Model, cache, 0.8)
@@ -238,9 +234,41 @@ func (c *CapabilityAgent) WithCache(cache llm.LLMCache) *CapabilityAgent {
 	return c
 }
 
-// WithToolkit 注入工具注册表，同步更新内部 ReActAgent 的配置
+// WithToolkit 注入工具注册表
 func (c *CapabilityAgent) WithToolkit(t *tools.Registry) *CapabilityAgent {
 	c.toolkit = t
-	c.inner.config.Toolkit = t
 	return c
+}
+
+// WithPlanner 注入任务规划器
+func (c *CapabilityAgent) WithPlanner(p planning.Planner) *CapabilityAgent {
+	c.planner = p
+	return c
+}
+
+// GetPlanner 返回任务规划器
+func (c *CapabilityAgent) GetPlanner() planning.Planner {
+	return c.planner
+}
+
+// WithReflector 注入反思器
+func (c *CapabilityAgent) WithReflector(r reflection.Reflector) *CapabilityAgent {
+	c.reflector = r
+	return c
+}
+
+// GetReflector 返回反思器
+func (c *CapabilityAgent) GetReflector() reflection.Reflector {
+	return c.reflector
+}
+
+// WithToolLearner 注入工具学习器
+func (c *CapabilityAgent) WithToolLearner(tl tool_learning.ToolLearner) *CapabilityAgent {
+	c.toolLearner = tl
+	return c
+}
+
+// GetToolLearner 返回工具学习器
+func (c *CapabilityAgent) GetToolLearner() tool_learning.ToolLearner {
+	return c.toolLearner
 }

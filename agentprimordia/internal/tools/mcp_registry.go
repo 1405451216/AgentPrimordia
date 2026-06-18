@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 )
@@ -128,6 +129,13 @@ func (r *MCPRegistry) connectExisting(ctx context.Context, name string, entry *M
 
 // startProcess 启动 MCP Server 子进程并连接
 func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPClientEntry) error {
+	if strings.TrimSpace(entry.Config.Command) == "" {
+		r.mu.Lock()
+		entry.Status = MCPClientFailed
+		r.mu.Unlock()
+		return fmt.Errorf("MCP Server %q command cannot be empty", name)
+	}
+
 	cmd := exec.CommandContext(ctx, entry.Config.Command, entry.Config.Args...)
 
 	if len(entry.Config.Env) > 0 {
@@ -145,7 +153,8 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 	if err != nil {
 		return fmt.Errorf("MCP Server %q stdout 管道创建失败: %w", name, err)
 	}
-	cmd.Stderr = os.Stderr
+	// stderr 不再直接透传到进程 stderr，避免泄露敏感信息；改为丢弃。
+	cmd.Stderr = io.Discard
 
 	if err := cmd.Start(); err != nil {
 		r.mu.Lock()
@@ -154,9 +163,21 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 		return fmt.Errorf("MCP Server %q 启动失败: %w", name, err)
 	}
 
+	// 启动后台 goroutine 收割子进程，避免僵尸进程并更新状态。
+	go func() {
+		_ = cmd.Wait()
+		r.mu.Lock()
+		if entry.Cmd == cmd {
+			entry.Status = MCPClientStopped
+		}
+		r.mu.Unlock()
+	}()
+
 	// 等待服务就绪
+	timer := time.NewTimer(2 * time.Second)
+	defer timer.Stop()
 	select {
-	case <-time.After(2 * time.Second):
+	case <-timer.C:
 	case <-ctx.Done():
 		_ = cmd.Process.Kill()
 		return ctx.Err()

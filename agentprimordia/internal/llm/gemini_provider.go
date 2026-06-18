@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -43,7 +44,7 @@ func NewGeminiProvider(cfg Config) (*GeminiProvider, error) {
 
 	return &GeminiProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -127,7 +128,7 @@ func (p *GeminiProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 		body["generationConfig"] = generationConfig
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -150,7 +151,8 @@ func (p *GeminiProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
-		return nil, fmt.Errorf("Gemini API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("gemini", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -174,7 +176,8 @@ func (p *GeminiProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 			data := strings.TrimPrefix(line, "data: ")
 
 			var sseResp geminiResponse
-			if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &sseResp); err != nil {
 				continue
 			}
 
@@ -231,8 +234,8 @@ func (p *GeminiProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 
 	body := map[string]any{
 		"contents": contents,
-		"tools": []map[string]any{
-			{"function_declarations": declarations},
+		"tools": []geminiToolContainer{
+			{FunctionDeclarations: declarations},
 		},
 	}
 
@@ -260,7 +263,10 @@ func (p *GeminiProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 				result.Content = part.Text
 			}
 			if part.FunctionCall.Name != "" {
-				argsJSON, _ := json.Marshal(part.FunctionCall.Args)
+				argsJSON, err := json.Marshal(part.FunctionCall.Args)
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal Gemini function call args: %w", err)
+				}
 				result.ToolCalls = append(result.ToolCalls, FunctionCall{
 					ID:        fmt.Sprintf("gemini_fc_%s", part.FunctionCall.Name),
 					Name:      part.FunctionCall.Name,
@@ -345,7 +351,7 @@ func (p *GeminiProvider) Info() ModelInfo {
 // ===== 内部方法 =====
 
 func (p *GeminiProvider) doRequest(ctx context.Context, model, action string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -376,10 +382,9 @@ func (p *GeminiProvider) doRequest(ctx context.Context, model, action string, bo
 		var errResp struct {
 			Error *APIError `json:"error"`
 		}
-		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil {
-			return nil, errResp.Error
-		}
-		return nil, fmt.Errorf("Gemini API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("gemini", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
 	}
 
 	return respBody, nil
@@ -463,6 +468,11 @@ type geminiFunctionDeclaration struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
 	Parameters  map[string]any `json:"parameters,omitempty"`
+}
+
+// geminiToolContainer Gemini 工具容器（perf-v6 Task 4：typed struct 替代 map）
+type geminiToolContainer struct {
+	FunctionDeclarations []geminiFunctionDeclaration `json:"function_declarations,omitempty"`
 }
 
 // injectResponseFormat 将 ResponseFormat 注入 Gemini generationConfig

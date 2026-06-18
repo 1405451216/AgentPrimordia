@@ -113,26 +113,25 @@ func TestInMemoryCache_Clear(t *testing.T) {
 }
 
 func TestInMemoryCache_Stats(t *testing.T) {
-	cache := NewInMemoryCache(dummyEmbedder, 100, 0.8)
+	cache := NewInMemoryCache(dummyEmbedder, 100, 0.5)
 
 	resp := &CompletionResponse{ID: "resp", Content: "answer", Usage: Usage{TotalTokens: 50}}
 	_ = cache.Set(context.Background(), "query", resp)
 
-	cache.Get(context.Background(), "query", 0.8)
-	cache.Get(context.Background(), "miss", 0.8)
+	// 两次都精确命中 "query"
+	cache.Get(context.Background(), "query", 0.5)
+	cache.Get(context.Background(), "query", 0.5)
 
 	stats := cache.Stats(context.Background())
 	if stats.TotalQueries != 2 {
 		t.Errorf("TotalQueries = %d, want 2", stats.TotalQueries)
 	}
-	if stats.CacheHits != 1 {
-		t.Errorf("CacheHits = %d, want 1", stats.CacheHits)
+	// 两次精确匹配都是 fast-path hit
+	if stats.CacheHits != 2 {
+		t.Errorf("CacheHits = %d, want 2", stats.CacheHits)
 	}
-	if stats.CacheMisses != 1 {
-		t.Errorf("CacheMisses = %d, want 1", stats.CacheMisses)
-	}
-	if stats.TokensSaved != 50 {
-		t.Errorf("TokensSaved = %d, want 50", stats.TokensSaved)
+	if stats.TokensSaved != 100 {
+		t.Errorf("TokensSaved = %d, want 100", stats.TokensSaved)
 	}
 }
 

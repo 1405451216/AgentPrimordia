@@ -20,8 +20,7 @@ func BenchmarkToolCalling(b *testing.B) {
 		SystemPrompt: "你是一个助手，使用工具完成任务。",
 		Model:        &benchMockLLM{},
 		MaxTurns:     5,
-		Toolkit:      registry,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

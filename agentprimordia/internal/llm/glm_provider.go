@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -42,7 +43,7 @@ func NewGLMProvider(cfg Config) (*GLMProvider, error) {
 
 	return &GLMProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -119,7 +120,7 @@ func (p *GLMProvider) StreamMultimodal(ctx context.Context, req *CompletionReque
 	}
 
 	url := fmt.Sprintf("%s/chat/completions", p.config.BaseURL)
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -141,18 +142,8 @@ func (p *GLMProvider) StreamMultimodal(ctx context.Context, req *CompletionReque
 		defer resp.Body.Close()
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		var openaiErr struct {
-			Error *struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    string `json:"code"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &openaiErr) == nil && openaiErr.Error != nil {
-			return nil, fmt.Errorf("glm API error (HTTP %d): [%s] %s",
-				resp.StatusCode, openaiErr.Error.Code, openaiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("API returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("glm", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -177,7 +168,8 @@ func (p *GLMProvider) StreamMultimodal(ctx context.Context, req *CompletionReque
 
 			data := strings.TrimPrefix(line, "data: ")
 			var streamResp openaiChatResponse
-			if err := json.Unmarshal([]byte(data), &streamResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &streamResp); err != nil {
 				continue
 			}
 
@@ -308,7 +300,7 @@ func (p *GLMProvider) resolveMaxTokens(req *CompletionRequestExt) int {
 func (p *GLMProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
 	url := fmt.Sprintf("%s%s", p.config.BaseURL, endpoint)
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -331,18 +323,8 @@ func (p *GLMProvider) doRequest(ctx context.Context, endpoint string, body any) 
 	if resp.StatusCode != http.StatusOK {
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		var openaiErr struct {
-			Error *struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    string `json:"code"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &openaiErr) == nil && openaiErr.Error != nil {
-			return nil, fmt.Errorf("GLM API returned HTTP %d: [%s] %s",
-				resp.StatusCode, openaiErr.Error.Code, openaiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("GLM API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("glm", resp.StatusCode, respBody, resp.Header)
 	}
 
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)

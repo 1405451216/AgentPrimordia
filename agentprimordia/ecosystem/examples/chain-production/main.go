@@ -90,7 +90,7 @@ func main() {
 		SessionID:    "prod-session-001",
 	}).
 		WithToolkit(registry).
-		WithMemory(ap.NewMemoryAdapter(mem)).
+		WithMemory(mem).
 		WithHooks(hooks).
 		WithEvents(&mockEventPublisher{}).
 		WithMetrics(&mockMetricsRecorder{}).

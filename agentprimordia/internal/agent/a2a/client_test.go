@@ -333,6 +333,31 @@ func TestClient_IntegrationFlow(t *testing.T) {
 	}
 }
 
+func TestClient_DefaultTimeout(t *testing.T) {
+	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer slowServer.Close()
+
+	client := NewA2AClient(slowServer.URL)
+	if client.httpClient.Timeout != defaultA2AHTTPTimeout {
+		t.Fatalf("默认超时 = %v, want %v", client.httpClient.Timeout, defaultA2AHTTPTimeout)
+	}
+
+	// 使用一个极短的自定义超时，验证超时确实生效
+	shortClient := NewA2AClient(slowServer.URL, WithClientHTTPClient(&http.Client{
+		Timeout: 50 * time.Millisecond,
+	}))
+	_, err := shortClient.FetchAgentCard()
+	if err == nil {
+		t.Fatal("短超时客户端应返回错误")
+	}
+	if !strings.Contains(err.Error(), "context deadline exceeded") && !strings.Contains(err.Error(), "Client.Timeout") {
+		t.Fatalf("期望超时错误，实际: %v", err)
+	}
+}
+
 func TestClient_ConnectionError(t *testing.T) {
 	client := NewA2AClient("http://127.0.0.1:1")
 	_, err := client.FetchAgentCard()

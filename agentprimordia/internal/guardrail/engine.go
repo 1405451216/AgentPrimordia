@@ -2,6 +2,7 @@ package guardrail
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type CheckPoint string
@@ -50,12 +51,23 @@ type Rule interface {
 }
 
 type Engine struct {
-	mu    sync.RWMutex
+	mu    sync.Mutex
 	rules []Rule
+	// 优化（perf-v3）：copy-on-write 快照，Check hot-path 无锁读取
+	rulesSnapshot atomic.Pointer[[]Rule]
 }
 
 func NewEngine() *Engine {
-	return &Engine{rules: make([]Rule, 0)}
+	e := &Engine{rules: make([]Rule, 0)}
+	e.refreshSnapshot()
+	return e
+}
+
+// refreshSnapshot 在 mu 保护下重建原子快照（写路径调用）
+func (e *Engine) refreshSnapshot() {
+	snap := make([]Rule, len(e.rules))
+	copy(snap, e.rules)
+	e.rulesSnapshot.Store(&snap)
 }
 
 func (e *Engine) AddRule(r Rule) {
@@ -63,15 +75,18 @@ func (e *Engine) AddRule(r Rule) {
 		return
 	}
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	e.rules = append(e.rules, r)
+	e.refreshSnapshot()
+	e.mu.Unlock()
 }
 
 func (e *Engine) Rules() []string {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	names := make([]string, len(e.rules))
-	for i, r := range e.rules {
+	snap := e.rulesSnapshot.Load()
+	if snap == nil {
+		return nil
+	}
+	names := make([]string, len(*snap))
+	for i, r := range *snap {
 		names[i] = r.Name()
 	}
 	return names
@@ -79,19 +94,22 @@ func (e *Engine) Rules() []string {
 
 // RuleCount returns the number of registered rules.
 func (e *Engine) RuleCount() int {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-	return len(e.rules)
+	snap := e.rulesSnapshot.Load()
+	if snap == nil {
+		return 0
+	}
+	return len(*snap)
 }
 
 func (e *Engine) Check(input string, point CheckPoint) (*Report, error) {
-	e.mu.RLock()
-	rulesCopy := make([]Rule, len(e.rules))
-	copy(rulesCopy, e.rules)
-	e.mu.RUnlock()
+	// 优化（perf-v3）：无锁读取快照，Check hot-path 零分配 + 零锁竞争
+	snap := e.rulesSnapshot.Load()
+	if snap == nil || len(*snap) == 0 {
+		return &Report{Passed: true, Action: ActionPass}, nil
+	}
 
 	report := &Report{Passed: true, Action: ActionPass}
-	for _, rule := range rulesCopy {
+	for _, rule := range *snap {
 		result, err := rule.Check(input, point)
 		if err != nil {
 			return nil, err

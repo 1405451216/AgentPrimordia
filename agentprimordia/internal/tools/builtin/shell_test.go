@@ -3,6 +3,9 @@ package builtin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -10,6 +13,16 @@ import (
 
 	"agentprimordia/internal/tools"
 )
+
+// testOutputCmd 返回跨平台可用的、会输出内容并退出 0 的命令
+func testOutputCmd() string {
+	return "go env GOROOT"
+}
+
+// testFailCmd 返回跨平台可用的、会输出到 stderr 并退出非 0 的命令
+func testFailCmd() string {
+	return "go build ./this_package_does_not_exist_12345"
+}
 
 // mockScopePolicy 用于测试的 ScopePolicy mock
 type mockScopePolicy struct {
@@ -57,20 +70,20 @@ func TestExecuteSimpleCommand_Echo(t *testing.T) {
 	sh := NewShell()
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": testOutputCmd(),
 	})
 	result, err := sh.Execute(context.Background(), args)
 	if err != nil || result.IsError {
 		t.Fatalf("error: %v, result: %v", err, result)
 	}
-	if !strings.Contains(result.Content, "hello") {
-		t.Errorf("expected 'hello' in output, got: %s", result.Content)
+	if !strings.Contains(result.Content, "GOROOT") && !strings.Contains(result.Content, `\`) && !strings.Contains(result.Content, "/") {
+		t.Errorf("expected GOROOT path in output, got: %s", result.Content)
 	}
 }
 
 func TestExecuteSimpleCommand_Pwd(t *testing.T) {
-	sh := NewShell().WithWhitelist([]string{"echo", "pwd", "cd"})
-	cmd := "cd"
+	sh := NewShell().WithWhitelist([]string{"go", "pwd"})
+	cmd := "go env GOROOT"
 	if runtime.GOOS != "windows" {
 		cmd = "pwd"
 	}
@@ -83,7 +96,7 @@ func TestExecuteSimpleCommand_Pwd(t *testing.T) {
 		t.Fatalf("error: %v, result: %v", err, result)
 	}
 	if result.Content == "" {
-		t.Error("pwd/cd should return a path")
+		t.Error("command should return output")
 	}
 }
 
@@ -142,17 +155,13 @@ func TestBlockedCommand(t *testing.T) {
 }
 
 func TestStderrCapture(t *testing.T) {
-	cmd := "dir nonexistent_dir_xyz_12345"
-	if runtime.GOOS != "windows" {
-		cmd = "ls /nonexistent_dir_xyz_12345"
-	}
-	sh := NewShell().WithWhitelist([]string{"ls", "dir"}) // explicitly allow ls/dir
+	sh := NewShell().WithBlacklist()
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": cmd,
+		"command": testFailCmd(),
 	})
 	result, _ := sh.Execute(context.Background(), args)
-	// Command may succeed or fail depending on OS, just check it returns JSON
+	// 只要返回 JSON 且包含 stderr 字段即可
 	var output map[string]any
 	if err := json.Unmarshal([]byte(result.Content), &output); err != nil {
 		t.Fatalf("result should be JSON: %v, got: %s", err, result.Content)
@@ -164,8 +173,8 @@ func TestStderrCapture(t *testing.T) {
 
 func TestWorkingDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
-	sh := NewShell().WithWhitelist([]string{"echo", "pwd", "cd"})
-	cmd := "cd"
+	sh := NewShell().WithWhitelist([]string{"go", "pwd"})
+	cmd := "go env GOROOT"
 	if runtime.GOOS != "windows" {
 		cmd = "pwd"
 	}
@@ -184,14 +193,14 @@ func TestWorkingDirectory(t *testing.T) {
 	if stdout == "" {
 		t.Fatal("stdout should not be empty")
 	}
-	t.Logf("pwd in workdir: %s", strings.TrimSpace(stdout))
+	t.Logf("output in workdir: %s", strings.TrimSpace(stdout))
 }
 
 func TestExitCode_Success(t *testing.T) {
 	sh := NewShell()
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo test_exit_code",
+		"command": testOutputCmd(),
 	})
 	result, err := sh.Execute(context.Background(), args)
 	if err != nil || result.IsError {
@@ -211,15 +220,10 @@ func TestExitCode_Success(t *testing.T) {
 }
 
 func TestExitCode_Failure(t *testing.T) {
-	// Use blacklist mode so all commands including 'exit' are allowed
 	sh := NewShell().WithBlacklist()
-	cmd := "exit 1"
-	if runtime.GOOS == "windows" {
-		cmd = "cmd /c exit 1"
-	}
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": cmd,
+		"command": testFailCmd(),
 	})
 	result, _ := sh.Execute(context.Background(), args)
 	var output map[string]any
@@ -259,13 +263,31 @@ func TestShell_MissingCommand(t *testing.T) {
 	}
 }
 
+func TestShell_NoShellInterpretation(t *testing.T) {
+	sh := NewShell().WithBlacklist()
+	marker := filepath.Join(t.TempDir(), "marker.txt")
+	// 分号在旧实现中会被 shell 解释为命令分隔符；新实现应仅作为 echo 的参数
+	args, _ := json.Marshal(map[string]any{
+		"action":  "execute",
+		"command": fmt.Sprintf("echo hello ; touch %s", marker),
+	})
+	result, _ := sh.Execute(context.Background(), args)
+	if _, err := os.Stat(marker); err == nil {
+		t.Errorf("shell metacharacter should not trigger second command, marker file was created")
+	}
+	if result.IsError {
+		// 如果元字符检查仍然拒绝，也算安全；但首选行为是不执行第二条命令
+		t.Logf("command was rejected (defense-in-depth): %s", result.Content)
+	}
+}
+
 // ===== 白名单模式测试 =====
 
 func TestShell_WhitelistMode_Allowed(t *testing.T) {
-	sh := NewShell().WithWhitelist([]string{"echo", "dir"})
+	sh := NewShell().WithWhitelist([]string{"go"})
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo hello whitelist",
+		"command": "go env GOROOT",
 	})
 	result, err := sh.Execute(context.Background(), args)
 	if err != nil {
@@ -295,17 +317,17 @@ func TestShell_WhitelistMode_Blocked(t *testing.T) {
 }
 
 func TestShell_WhitelistMode_CaseInsensitive(t *testing.T) {
-	sh := NewShell().WithWhitelist([]string{"ECHO"})
+	sh := NewShell().WithWhitelist([]string{"GO"})
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo case test",
+		"command": "go env GOPATH",
 	})
 	result, err := sh.Execute(context.Background(), args)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if result.IsError {
-		t.Fatalf("case-insensitive whitelist should allow 'echo', got: %s", result.Content)
+		t.Fatalf("case-insensitive whitelist should allow 'go', got: %s", result.Content)
 	}
 }
 
@@ -421,10 +443,10 @@ func TestShell_WithAllowedWorkdirs_Blocked(t *testing.T) {
 
 func TestShell_WithAllowedWorkdirs_Allowed(t *testing.T) {
 	tmpDir := t.TempDir()
-	sh := NewShell().WithWhitelist([]string{"echo"}).WithAllowedWorkdirs([]string{tmpDir})
+	sh := NewShell().WithWhitelist([]string{"go"}).WithAllowedWorkdirs([]string{tmpDir})
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": "go env GOROOT",
 		"workdir": tmpDir,
 	})
 	result, err := sh.Execute(context.Background(), args)
@@ -435,10 +457,10 @@ func TestShell_WithAllowedWorkdirs_Allowed(t *testing.T) {
 
 func TestShell_WithScopePolicy_Denied(t *testing.T) {
 	policy := NewMockScopePolicy(false)
-	sh := NewShell().WithWhitelist([]string{"echo"}).WithScopePolicy(policy, "agent1")
+	sh := NewShell().WithWhitelist([]string{"go"}).WithScopePolicy(policy, "agent1")
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "echo hello",
+		"command": "go env GOROOT",
 		"workdir": "/restricted",
 	})
 	result, _ := sh.Execute(context.Background(), args)

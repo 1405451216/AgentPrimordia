@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -14,36 +15,96 @@ var (
 )
 
 // Registry manages tool registration and lookup
+// 优化（Task 9）：
+//   - 使用 sync.Map 替代 map+RWMutex，适配读多写少场景
+//   - Definitions() 缓存"原始 tool def 列表"，每次返回前再深克隆。
+//     这样既避免每次都解析 buildToolDef，也保证调用方修改不会相互影响。
+//   - extractPathFromArgs 使用 json.Decoder 提前退出
 type Registry struct {
-	tools       map[string]Tool
-	permissions map[string]*Permission
-	mu          sync.RWMutex
+	tools       sync.Map // map[string]Tool
+	toolDefs    sync.Map // map[string]map[string]any（每个工具的原始 def 模板）
+	permissions sync.Map // map[string]*Permission
+
+	// Definitions() 缓存：避免每次都遍历 sync.Map + cloneToolDef 每个元素
+	// 缓存内容：原始 def 列表（共享）；每次调用返回前再 cloneToolDef 一遍以保证隔离。
+	defsCache    atomic.Pointer[[]map[string]any]
+	defsValid    atomic.Bool
+	defsCacheLen atomic.Int64
+	defsMu       sync.Mutex // 保证缓存只被一个 goroutine 重建
 }
 
 // NewRegistry creates an empty tool registry
 func NewRegistry() *Registry {
-	return &Registry{
-		tools:       make(map[string]Tool),
-		permissions: make(map[string]*Permission),
-	}
+	return &Registry{}
 }
 
 // Register adds a tool to the registry
 // 重复注册同名工具为幂等操作，直接覆盖
 func (r *Registry) Register(tool Tool) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	name := tool.Name()
 	if name == "" {
 		return ErrInvalidConfig
 	}
 
-	r.tools[name] = tool
-	if _, exists := r.permissions[name]; !exists {
-		r.permissions[name] = &Permission{}
+	r.tools.Store(name, tool)
+	r.toolDefs.Store(name, buildToolDef(tool))
+	if _, exists := r.permissions.Load(name); !exists {
+		r.permissions.Store(name, &Permission{})
 	}
+	// 失效 Definitions 缓存
+	r.invalidateDefsCache()
 	return nil
+}
+
+// buildToolDef 将 Tool 转换为 LLM FunctionDefinition 映射
+func buildToolDef(tool Tool) map[string]any {
+	var params map[string]any
+	if tool.Parameters() != nil {
+		if err := json.Unmarshal(tool.Parameters(), &params); err != nil {
+			// 工具参数 schema 解析失败，使用空参数继续
+			params = nil
+		}
+	}
+	return map[string]any{
+		"type": "function",
+		"function": map[string]any{
+			"name":        tool.Name(),
+			"description": tool.Description(),
+			"parameters":  params,
+		},
+	}
+}
+
+// cloneToolDef 深拷贝工具定义，防止调用者修改缓存
+func cloneToolDef(def map[string]any) map[string]any {
+	clone := make(map[string]any, len(def))
+	for k, v := range def {
+		if inner, ok := v.(map[string]any); ok {
+			innerClone := make(map[string]any, len(inner))
+			for ik, iv := range inner {
+				if params, ok := iv.(map[string]any); ok && params != nil {
+					paramsClone := make(map[string]any, len(params))
+					for pk, pv := range params {
+						paramsClone[pk] = pv
+					}
+					innerClone[ik] = paramsClone
+				} else {
+					innerClone[ik] = iv
+				}
+			}
+			clone[k] = innerClone
+		} else {
+			clone[k] = v
+		}
+	}
+	return clone
+}
+
+// invalidateDefsCache 失效 Definitions() 缓存。Register/Unregister 时调用。
+func (r *Registry) invalidateDefsCache() {
+	r.defsValid.Store(false)
+	r.defsCache.Store(nil)
+	r.defsCacheLen.Store(0)
 }
 
 // RegisterMultiple registers multiple tools at once
@@ -58,90 +119,114 @@ func (r *Registry) RegisterMultiple(tools ...Tool) error {
 
 // Get retrieves a tool by name
 func (r *Registry) Get(name string) (Tool, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	tool, exists := r.tools[name]
-	return tool, exists
+	v, exists := r.tools.Load(name)
+	if !exists {
+		return nil, false
+	}
+	tool, ok := v.(Tool)
+	if !ok {
+		return nil, false
+	}
+	return tool, true
 }
 
 // List returns all registered tool names
 func (r *Registry) List() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	names := make([]string, 0, len(r.tools))
-	for name := range r.tools {
+	names := make([]string, 0)
+	r.tools.Range(func(key, _ any) bool {
+		name, ok := key.(string)
+		if !ok {
+			return true
+		}
 		names = append(names, name)
-	}
+		return true
+	})
 	return names
 }
 
 // Count returns the number of registered tools
 func (r *Registry) Count() int {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	return len(r.tools)
+	count := 0
+	r.tools.Range(func(_, _ any) bool {
+		count++
+		return true
+	})
+	return count
 }
 
-// Definitions returns all tools formatted as LLM FunctionDefinitions
+// Definitions 返回所有工具的 LLM FunctionDefinitions。
+// 优化（Task 9）：缓存"原始 def 列表"，每次返回时再 cloneToolDef。
+// 这样既避免每次都遍历 sync.Map 重建完整列表，又保证每次返回的是独立的深拷贝，
+// 调用方修改不会相互污染。
 func (r *Registry) Definitions() []map[string]any {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	defs := make([]map[string]any, 0, len(r.tools))
-	for _, tool := range r.tools {
-		var params map[string]any
-		if tool.Parameters() != nil {
-			_ = json.Unmarshal(tool.Parameters(), &params)
+	// 快路径：缓存命中且长度未变
+	if !r.defsValid.Load() {
+		// 双检锁：只有一个 goroutine 重建缓存，其他等待后读取。
+		r.defsMu.Lock()
+		if !r.defsValid.Load() {
+			r.rebuildDefsCache()
 		}
-		def := map[string]any{
-			"type": "function",
-			"function": map[string]any{
-				"name":        tool.Name(),
-				"description": tool.Description(),
-				"parameters":  params,
-			},
-		}
-		defs = append(defs, def)
+		r.defsMu.Unlock()
 	}
-	return defs
+	cached := r.defsCache.Load()
+	if cached == nil {
+		// 极端情况：重建失败，返回空切片
+		return []map[string]any{}
+	}
+	// 每次返回独立深拷贝（与测试 TestRegistry_Definitions_CacheIsolation 兼容）
+	out := make([]map[string]any, 0, len(*cached))
+	for _, def := range *cached {
+		out = append(out, cloneToolDef(def))
+	}
+	return out
+}
+
+// rebuildDefsCache 重建缓存的原始 def 列表
+func (r *Registry) rebuildDefsCache() {
+	cached := make([]map[string]any, 0)
+	r.toolDefs.Range(func(_, v any) bool {
+		def, ok := v.(map[string]any)
+		if !ok {
+			return true
+		}
+		cached = append(cached, def)
+		return true
+	})
+	r.defsCache.Store(&cached)
+	r.defsCacheLen.Store(int64(len(cached)))
+	r.defsValid.Store(true)
 }
 
 // SetPermission configures access control for a specific tool
 func (r *Registry) SetPermission(name string, perm Permission) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, exists := r.tools[name]; !exists {
+	if _, exists := r.tools.Load(name); !exists {
 		return ErrToolNotFound
 	}
-
-	r.permissions[name] = &perm
+	r.permissions.Store(name, &perm)
 	return nil
 }
 
 // GetPermission returns the permission settings for a tool
 func (r *Registry) GetPermission(name string) (*Permission, bool) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	perm, exists := r.permissions[name]
-	return perm, exists
+	v, exists := r.permissions.Load(name)
+	if !exists {
+		return nil, false
+	}
+	perm, ok := v.(*Permission)
+	if !ok {
+		return nil, false
+	}
+	return perm, true
 }
 
 func (r *Registry) Unregister(name string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	delete(r.tools, name)
-	delete(r.permissions, name)
+	r.tools.Delete(name)
+	r.toolDefs.Delete(name)
+	r.permissions.Delete(name)
+	r.invalidateDefsCache()
 }
 
 func (r *Registry) RegisterPlugin(plugin ToolPlugin) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if err := plugin.Init(nil); err != nil {
 		return err
 	}
@@ -151,38 +236,41 @@ func (r *Registry) RegisterPlugin(plugin ToolPlugin) error {
 		if toolName == "" {
 			return ErrInvalidConfig
 		}
-		r.tools[toolName] = tool
-		if _, exists := r.permissions[toolName]; !exists {
-			r.permissions[toolName] = &Permission{}
+		r.tools.Store(toolName, tool)
+		r.toolDefs.Store(toolName, buildToolDef(tool))
+		if _, exists := r.permissions.Load(toolName); !exists {
+			r.permissions.Store(toolName, &Permission{})
 		}
 	}
-
+	r.invalidateDefsCache()
 	return nil
 }
 
 func (r *Registry) ToolsByCategory() map[string][]Tool {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	categories := make(map[string][]Tool)
-	for _, tool := range r.tools {
+	r.tools.Range(func(_, v any) bool {
+		tool, ok := v.(Tool)
+		if !ok {
+			return true
+		}
 		cat := "default"
 		if ct, ok := tool.(CategorizedTool); ok {
 			cat = ct.Category()
 		}
 		categories[cat] = append(categories[cat], tool)
-	}
-
+		return true
+	})
 	return categories
 }
 
 func (r *Registry) ToolCategories() []string {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
 	seen := make(map[string]bool)
 	var cats []string
-	for _, tool := range r.tools {
+	r.tools.Range(func(_, v any) bool {
+		tool, ok := v.(Tool)
+		if !ok {
+			return true
+		}
 		cat := "default"
 		if ct, ok := tool.(CategorizedTool); ok {
 			cat = ct.Category()
@@ -191,7 +279,7 @@ func (r *Registry) ToolCategories() []string {
 			seen[cat] = true
 			cats = append(cats, cat)
 		}
-	}
-
+		return true
+	})
 	return cats
 }

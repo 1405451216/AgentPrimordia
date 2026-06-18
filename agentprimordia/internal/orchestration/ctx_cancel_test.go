@@ -127,18 +127,18 @@ func TestOrchestrator_DAGCancel(t *testing.T) {
 
 	// 3 个串行依赖的慢步骤
 	step1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:  "DAGSlow1",
-		Model: slowDemoLLM("dagslow"),
+		Name:     "DAGSlow1",
+		Model:    slowDemoLLM("dagslow"),
 		MaxTurns: 1,
 	})
 	step2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:  "DAGSlow2",
-		Model: slowDemoLLM("dagslow"),
+		Name:     "DAGSlow2",
+		Model:    slowDemoLLM("dagslow"),
 		MaxTurns: 1,
 	})
 	step3 := agent.NewReActAgent(agent.ReActConfig{
-		Name:  "DAGSlow3",
-		Model: slowDemoLLM("dagslow"),
+		Name:     "DAGSlow3",
+		Model:    slowDemoLLM("dagslow"),
 		MaxTurns: 1,
 	})
 
@@ -177,13 +177,13 @@ func TestOrchestrator_SequentialNoCancel(t *testing.T) {
 	})
 
 	step1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:  "FastStep1",
-		Model: demo.NewDemoLLM("fast1"),
+		Name:     "FastStep1",
+		Model:    demo.NewDemoLLM("fast1"),
 		MaxTurns: 1,
 	})
 	step2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:  "FastStep2",
-		Model: demo.NewDemoLLM("fast2"),
+		Name:     "FastStep2",
+		Model:    demo.NewDemoLLM("fast2"),
 		MaxTurns: 1,
 	})
 

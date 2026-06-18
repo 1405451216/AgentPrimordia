@@ -70,7 +70,7 @@ func main() {
 	// 链式注入所有能力
 	capableAgent := agent.
 		WithToolkit(registry).
-		WithMemory(ap.NewMemoryAdapter(mem)).
+		WithMemory(mem).
 		WithHooks(hooks)
 
 	// 运行

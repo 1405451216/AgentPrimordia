@@ -150,6 +150,120 @@ func TestBuiltinPlugin_Init_NoRootDir(t *testing.T) {
 	}
 }
 
+func TestNewBuiltinWeb(t *testing.T) {
+	tool := newBuiltinWeb()
+	if tool == nil {
+		t.Fatal("expected tool, got nil")
+	}
+	if tool.Name() != "web" {
+		t.Errorf("expected name 'web', got '%s'", tool.Name())
+	}
+	if tool.Description() != "Web search and fetch" {
+		t.Errorf("expected description 'Web search and fetch', got '%s'", tool.Description())
+	}
+}
+
+func TestNewBuiltinShell(t *testing.T) {
+	tool := newBuiltinShell()
+	if tool == nil {
+		t.Fatal("expected tool, got nil")
+	}
+	if tool.Name() != "shell" {
+		t.Errorf("expected name 'shell', got '%s'", tool.Name())
+	}
+}
+
+func TestNewBuiltinCalc(t *testing.T) {
+	tool := newBuiltinCalc()
+	if tool == nil {
+		t.Fatal("expected tool, got nil")
+	}
+	if tool.Name() != "calculator" {
+		t.Errorf("expected name 'calculator', got '%s'", tool.Name())
+	}
+}
+
+func TestNewBuiltinDateTime(t *testing.T) {
+	tool := newBuiltinDateTime()
+	if tool == nil {
+		t.Fatal("expected tool, got nil")
+	}
+	if tool.Name() != "datetime" {
+		t.Errorf("expected name 'datetime', got '%s'", tool.Name())
+	}
+}
+
+func TestBuiltinToolAdapter_Execute(t *testing.T) {
+	tool := newBuiltinWeb()
+	_, err := tool.Execute(context.Background(), nil)
+	if err == nil {
+		t.Error("expected error from builtin adapter")
+	}
+}
+
+func TestBuiltinPlugin_Close(t *testing.T) {
+	plugin := &BuiltinPlugin{}
+	_ = plugin.Init(map[string]any{"root_dir": t.TempDir()})
+	err := plugin.Close()
+	if err != nil {
+		t.Errorf("Close() returned error: %v", err)
+	}
+}
+
+func TestBuiltinPlugin_Version(t *testing.T) {
+	plugin := &BuiltinPlugin{}
+	version := plugin.Version()
+	if version != "1.0.0" {
+		t.Errorf("expected version '1.0.0', got '%s'", version)
+	}
+}
+
+func TestNewBuiltinFS(t *testing.T) {
+	tool, err := newBuiltinFS(t.TempDir())
+	if err != nil {
+		t.Fatalf("newBuiltinFS returned error: %v", err)
+	}
+	if tool == nil {
+		t.Fatal("expected tool, got nil")
+	}
+	if tool.Name() != "filesystem" {
+		t.Errorf("expected name 'filesystem', got '%s'", tool.Name())
+	}
+}
+
+func TestNewBuiltinFS_InvalidDir(t *testing.T) {
+	_, err := newBuiltinFS("/nonexistent/path/that/does/not/exist")
+	if err == nil {
+		t.Error("expected error for invalid directory")
+	}
+}
+
+func TestBuiltinToolAdapter_Parameters(t *testing.T) {
+	tool := &builtinToolAdapter{name: "test", desc: "test tool"}
+	params := tool.Parameters()
+	if params != nil {
+		t.Errorf("expected nil parameters, got %v", params)
+	}
+}
+
+func TestBuiltinPlugin_Init_WithAllOptions(t *testing.T) {
+	plugin := &BuiltinPlugin{}
+	err := plugin.Init(map[string]any{
+		"root_dir":     t.TempDir(),
+		"enable_fs":    true,
+		"enable_shell": true,
+		"enable_web":   true,
+		"enable_utils": true,
+	})
+	if err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	tools := plugin.Tools()
+	if len(tools) < 4 {
+		t.Errorf("expected at least 4 tools, got %d", len(tools))
+	}
+}
+
 func TestRegistry_RegisterPlugin(t *testing.T) {
 	registry := NewRegistry()
 	plugin := &mockPlugin{

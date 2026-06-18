@@ -174,6 +174,148 @@ func (s *SQLiteStore) Add(ctx context.Context, episode *Episode) error {
 	return nil
 }
 
+// BatchAdd 批量插入多个 episode，使用单一事务包裹所有 INSERT。
+// 优化（Task 4）：在高吞吐场景（如 Pool 多 Agent 并发写入）下，批量事务比逐条
+// INSERT 减少 fsync 次数并降低全局互斥锁的串行化开销。
+func (s *SQLiteStore) BatchAdd(ctx context.Context, episodes []*Episode) error {
+	if len(episodes) == 0 {
+		return nil
+	}
+	// 预验证所有 episodes
+	for i, ep := range episodes {
+		if ep == nil {
+			return fmt.Errorf("episode at index %d is nil", i)
+		}
+		if err := ep.Validate(); err != nil {
+			return fmt.Errorf("validate episode %d: %w", i, err)
+		}
+	}
+
+	// 预序列化 metadata
+	type prepared struct {
+		ep           *Episode
+		metadataJSON []byte
+	}
+	prepareds := make([]prepared, len(episodes))
+	for i, ep := range episodes {
+		var metadataJSON []byte
+		if len(ep.Metadata) > 0 {
+			data, err := json.Marshal(ep.Metadata)
+			if err != nil {
+				return fmt.Errorf("marshal metadata for episode %d: %w", i, err)
+			}
+			metadataJSON = data
+		}
+		prepareds[i] = prepared{ep: ep, metadataJSON: metadataJSON}
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin batch tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO episodes (id, session_id, role, content, summary, topics, importance, metadata, created_at)
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare batch insert: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, p := range prepareds {
+		_, err := stmt.ExecContext(ctx,
+			p.ep.ID,
+			p.ep.SessionID,
+			p.ep.Role,
+			p.ep.Content,
+			p.ep.Summary,
+			p.ep.Topics,
+			p.ep.Importance,
+			string(p.metadataJSON),
+			p.ep.CreatedAt,
+		)
+		if err != nil {
+			return fmt.Errorf("batch insert episode %s: %w", p.ep.ID, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit batch tx: %w", err)
+	}
+	committed = true
+	return nil
+}
+
+// AddBatch 是 BatchAdd 的别名（perf-v6 round 5 Task 3：统一接口名）
+func (s *SQLiteStore) AddBatch(ctx context.Context, episodes []*Episode) error {
+	return s.BatchAdd(ctx, episodes)
+}
+
+// GetBatch 批量获取（perf-v6 round 5 Task 3）
+// 单次查询使用 IN(?,?,?) 优化
+func (s *SQLiteStore) GetBatch(ctx context.Context, ids []string) (map[string]*Episode, error) {
+	if len(ids) == 0 {
+		return map[string]*Episode{}, nil
+	}
+
+	// 预构建 IN 子句的占位符
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
+		FROM episodes WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string]*Episode, len(ids))
+	for rows.Next() {
+		ep, err := scanRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		result[ep.ID] = ep
+	}
+	return result, rows.Err()
+}
+
+// DeleteBatch 批量删除（perf-v6 round 5 Task 3）
+// 单次 DELETE 使用 IN 子句
+func (s *SQLiteStore) DeleteBatch(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	query := `DELETE FROM episodes WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
 func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOptions) ([]*Episode, error) {
 	if opts == nil {
 		opts = &SearchOptions{Limit: defaultSearchLimit}
@@ -211,9 +353,6 @@ func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOpti
 	`, whereExtra)
 
 	args = append(args, opts.Limit, opts.Offset)
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
@@ -254,7 +393,8 @@ func (s *SQLiteStore) SearchAdvanced(ctx context.Context, opts SearchOptions) ([
 		keywordScore := normalizeFTS5Rank(cand.rawRank, maxRank)
 		semanticScore := 0.0
 		if opts.UseSemantic {
-			semanticScore = computeSemanticScore(queryTokens, cand.episode)
+			// 优化（perf-v3）：使用预计算的 contentTokens，避免重复 tokenize
+			semanticScore = computeSemanticScorePrecomputed(queryTokens, cand.contentTokens, cand.episode.Importance)
 		}
 		combinedScore := (1-opts.SemanticWeight)*keywordScore + opts.SemanticWeight*semanticScore
 
@@ -280,6 +420,8 @@ func (s *SQLiteStore) SearchAdvanced(ctx context.Context, opts SearchOptions) ([
 type ftsCandidate struct {
 	episode *Episode
 	rawRank float64
+	// 优化（perf-v3）：预计算的内容 token 集合，避免 scoring 时重复 tokenize
+	contentTokens map[string]struct{}
 }
 
 func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptions) ([]*ftsCandidate, error) {
@@ -330,9 +472,6 @@ func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptio
 
 	args = append(args, limit)
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("search fts5 candidates: %w", err)
@@ -340,6 +479,8 @@ func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptio
 	defer rows.Close()
 
 	var candidates []*ftsCandidate
+	// 优化（perf-v3）：语义打分时预计算 token，避免每个候选重复 tokenize
+	preTokenize := opts.UseSemantic
 	for rows.Next() {
 		var ep Episode
 		var metadataJSON sql.NullString
@@ -361,7 +502,11 @@ func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptio
 		if rawRank.Valid {
 			rank = rawRank.Float64
 		}
-		candidates = append(candidates, &ftsCandidate{episode: &ep, rawRank: rank})
+		cand := &ftsCandidate{episode: &ep, rawRank: rank}
+		if preTokenize {
+			cand.contentTokens = tokenize(ep.Content + " " + ep.Summary + " " + ep.Topics)
+		}
+		candidates = append(candidates, cand)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate candidate rows: %w", err)
@@ -393,6 +538,12 @@ func tokenize(text string) map[string]struct{} {
 
 func computeSemanticScore(queryTokens map[string]struct{}, ep *Episode) float64 {
 	contentTokens := tokenize(ep.Content + " " + ep.Summary + " " + ep.Topics)
+	return computeSemanticScorePrecomputed(queryTokens, contentTokens, ep.Importance)
+}
+
+// computeSemanticScorePrecomputed 使用预计算的 content token 集合计算语义分数
+// 优化（perf-v3）：避免搜索路径中重复 tokenize episode 内容
+func computeSemanticScorePrecomputed(queryTokens, contentTokens map[string]struct{}, importance float64) float64 {
 	if len(contentTokens) == 0 || len(queryTokens) == 0 {
 		return 0
 	}
@@ -407,7 +558,7 @@ func computeSemanticScore(queryTokens map[string]struct{}, ep *Episode) float64 
 		return 0
 	}
 	jaccard := float64(intersection) / float64(union)
-	importanceWeight := 1.0 + ep.Importance
+	importanceWeight := 1.0 + importance
 	return jaccard * importanceWeight
 }
 
@@ -418,9 +569,6 @@ func sortSearchResults(results []*SearchResult) {
 }
 
 func (s *SQLiteStore) Get(ctx context.Context, id string) (*Episode, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	query := `SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at FROM episodes WHERE id = ?`
 	row := s.db.QueryRowContext(ctx, query, id)
 
@@ -449,9 +597,6 @@ func (s *SQLiteStore) Delete(ctx context.Context, id string) error {
 }
 
 func (s *SQLiteStore) Count(ctx context.Context, sessionID string) (int64, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	var query string
 	var args []any
 	if sessionID != "" {
@@ -505,9 +650,6 @@ func (s *SQLiteStore) List(ctx context.Context, opts *ListOptions) ([]*Episode, 
 		whereClause, orderCol, orderDir,
 	)
 	args = append(args, opts.Limit, opts.Offset)
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
@@ -616,9 +758,6 @@ func (s *SQLiteStore) SearchByTag(ctx context.Context, tag string, opts *SearchO
 
 	args = append(args, opts.Limit, opts.Offset)
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("search by tag: %w", err)
@@ -632,9 +771,6 @@ func (s *SQLiteStore) GetImportant(ctx context.Context, threshold float64, limit
 	if limit <= 0 {
 		limit = defaultSearchLimit
 	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
@@ -657,9 +793,6 @@ func (s *SQLiteStore) GetTimeline(ctx context.Context, days int) (map[string][]*
 	if days <= 0 {
 		days = 30
 	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
@@ -699,9 +832,6 @@ func (s *SQLiteStore) GetMemoriesByTag(ctx context.Context, tag string, limit in
 		limit = defaultSearchLimit
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
 		FROM episodes
@@ -720,9 +850,6 @@ func (s *SQLiteStore) GetMemoriesByTag(ctx context.Context, tag string, limit in
 }
 
 func (s *SQLiteStore) GetMemoriesBySession(ctx context.Context, sessionID string) ([]*Episode, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
 		FROM episodes
@@ -743,9 +870,6 @@ func (s *SQLiteStore) GetImportantMemories(ctx context.Context, threshold float6
 	if limit <= 0 {
 		limit = defaultSearchLimit
 	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
@@ -770,9 +894,6 @@ func (s *SQLiteStore) GetMemoryTimeline(ctx context.Context, days int) ([]*Memor
 	}
 
 	cutoff := time.Now().AddDate(0, 0, -days).UTC().Format(time.RFC3339)
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
@@ -843,9 +964,6 @@ func (s *SQLiteStore) CleanupExpired(ctx context.Context, maxAgeDays int) (int64
 }
 
 func (s *SQLiteStore) Stats(ctx context.Context) (*MemoryStats, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	stats := &MemoryStats{}
 
 	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM episodes").Scan(&stats.TotalEpisodes)
@@ -1013,14 +1131,11 @@ func (s *SQLiteStore) importJSON(ctx context.Context, data []byte) (int, error) 
 		return 0, fmt.Errorf("unmarshal episodes from json: %w", err)
 	}
 
-	count := 0
-	for _, ep := range episodes {
-		if err := s.Add(ctx, ep); err != nil {
-			return count, fmt.Errorf("import episode %s: %w", ep.ID, err)
-		}
-		count++
+	// 优化（Task 4）：使用批量事务导入，避免每条记录都 fsync 一次
+	if err := s.BatchAdd(ctx, episodes); err != nil {
+		return 0, fmt.Errorf("batch import: %w", err)
 	}
-	return count, nil
+	return len(episodes), nil
 }
 
 // sanitizeFTSQuery 清洗 FTS5 全文搜索查询字符串

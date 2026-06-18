@@ -39,9 +39,9 @@ package llm
 //  8. 运行测试：go test -run TestTemplate ./internal/llm/
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -148,7 +148,7 @@ func (p *TemplateProvider) resolveModel(model string) string {
 func (p *TemplateProvider) doRequest(ctx context.Context, endpoint string, body any) ([]byte, error) {
 	url := fmt.Sprintf("%s%s", p.config.BaseURL, endpoint)
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -172,19 +172,8 @@ func (p *TemplateProvider) doRequest(ctx context.Context, endpoint string, body 
 	if resp.StatusCode != http.StatusOK {
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
-		// TODO: 根据目标 API 的错误格式调整解析逻辑
-		var apiErr struct {
-			Error *struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    string `json:"code"`
-			} `json:"error"`
-		}
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error != nil {
-			return nil, fmt.Errorf("API returned HTTP %d: [%s] %s",
-				resp.StatusCode, apiErr.Error.Code, apiErr.Error.Message)
-		}
-		return nil, fmt.Errorf("API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("api", resp.StatusCode, respBody, resp.Header)
 	}
 
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)

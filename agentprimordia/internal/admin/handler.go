@@ -9,27 +9,66 @@ import (
 	"time"
 
 	"agentprimordia/internal/pool"
+	"agentprimordia/internal/tools"
 )
 
-type AdminHandler struct {
-	pool   *pool.Pool
-	mux    *http.ServeMux
-	logger *slog.Logger
+// AdminOption 用于配置 AdminHandler。
+type AdminOption func(*AdminHandler)
+
+// WithAPIToken 设置 Admin API 的访问令牌。
+// 设置后，除 /api/health 外的所有 /api/* 端点都需要在请求头中提供
+// Authorization: Bearer <token>。
+func WithAPIToken(token string) AdminOption {
+	return func(h *AdminHandler) {
+		h.apiToken = token
+	}
 }
 
-func NewAdminHandler(p *pool.Pool) *AdminHandler {
+type AdminHandler struct {
+	pool     *pool.Pool
+	registry *tools.Registry
+	mux      *http.ServeMux
+	logger   *slog.Logger
+	apiToken string
+}
+
+func NewAdminHandler(p *pool.Pool, r *tools.Registry, opts ...AdminOption) *AdminHandler {
 	h := &AdminHandler{
-		pool:   p,
-		mux:    http.NewServeMux(),
-		logger: slog.Default(),
+		pool:     p,
+		registry: r,
+		mux:      http.NewServeMux(),
+		logger:   slog.Default(),
+	}
+	for _, opt := range opts {
+		opt(h)
 	}
 
-	h.mux.HandleFunc("GET /api/agents", h.listAgents)
-	h.mux.HandleFunc("GET /api/agents/{id}", h.getAgent)
-	h.mux.HandleFunc("GET /api/stats", h.stats)
-	h.mux.HandleFunc("GET /api/tasks", h.tasks)
+	if h.apiToken == "" {
+		h.logger.Error("Admin API 未配置访问令牌 (WithAPIToken)，所有管理端点将返回 401")
+	}
+
+	// 公开健康检查端点
 	h.mux.HandleFunc("GET /api/health", h.health)
-	h.mux.HandleFunc("GET /api/system", h.systemInfo)
+
+	// 受保护端点
+	h.mux.HandleFunc("GET /api/agents", h.requireAuth(h.listAgents))
+	h.mux.HandleFunc("GET /api/agents/{id}", h.requireAuth(h.getAgent))
+	h.mux.HandleFunc("GET /api/stats", h.requireAuth(h.stats))
+	h.mux.HandleFunc("GET /api/tasks", h.requireAuth(h.tasks))
+	h.mux.HandleFunc("GET /api/system", h.requireAuth(h.systemInfo))
+
+	// 新增工具管理端点
+	h.mux.HandleFunc("GET /api/tools", h.requireAuth(h.listTools))
+	h.mux.HandleFunc("GET /api/tools/{name}", h.requireAuth(h.getTool))
+	h.mux.HandleFunc("GET /api/tools/categories", h.requireAuth(h.toolCategories))
+
+	// 新增工作流监控端点
+	h.mux.HandleFunc("GET /api/workflows", h.requireAuth(h.listWorkflows))
+	h.mux.HandleFunc("GET /api/workflows/{id}", h.requireAuth(h.getWorkflow))
+
+	// 新增实时日志端点
+	h.mux.HandleFunc("GET /api/logs/stream", h.requireAuth(h.logStream))
+
 	h.mux.HandleFunc("GET /", h.index)
 
 	return h
@@ -37,6 +76,38 @@ func NewAdminHandler(p *pool.Pool) *AdminHandler {
 
 func (h *AdminHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
+}
+
+// requireAuth 返回一个包装 handler，校验 Bearer Token。
+// 若未配置 apiToken，则直接拒绝所有请求。
+func (h *AdminHandler) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.apiToken == "" {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "Admin API 未配置访问令牌",
+			})
+			return
+		}
+
+		auth := r.Header.Get("Authorization")
+		const prefix = "Bearer "
+		if len(auth) < len(prefix) || auth[:len(prefix)] != prefix {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "缺少有效的 Authorization: Bearer <token> 请求头",
+			})
+			return
+		}
+
+		token := auth[len(prefix):]
+		if token != h.apiToken {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "访问令牌无效",
+			})
+			return
+		}
+
+		next(w, r)
+	}
 }
 
 func (h *AdminHandler) listAgents(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +174,145 @@ func (h *AdminHandler) systemInfo(w http.ResponseWriter, r *http.Request) {
 		"heap_objects": memStats.HeapObjects,
 		"stack_use_mb": float64(memStats.StackInuse) / 1024 / 1024,
 	})
+}
+
+// listTools 列出所有已注册工具
+func (h *AdminHandler) listTools(w http.ResponseWriter, r *http.Request) {
+	if h.registry == nil {
+		writeJSON(w, http.StatusOK, []any{})
+		return
+	}
+	toolsList := h.registry.List()
+	result := make([]map[string]any, 0, len(toolsList))
+	for _, name := range toolsList {
+		t, ok := h.registry.Get(name)
+		if !ok {
+			continue
+		}
+		result = append(result, map[string]any{
+			"name":        t.Name(),
+			"description": t.Description(),
+			"parameters":  t.Parameters(),
+		})
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// getTool 获取单个工具详情
+func (h *AdminHandler) getTool(w http.ResponseWriter, r *http.Request) {
+	if h.registry == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "工具注册表为空"})
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "缺少工具名称"})
+		return
+	}
+	tool, ok := h.registry.Get(name)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "工具不存在"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"name":        tool.Name(),
+		"description": tool.Description(),
+		"parameters":  tool.Parameters(),
+	})
+}
+
+// toolCategories 按类别列出工具
+func (h *AdminHandler) toolCategories(w http.ResponseWriter, r *http.Request) {
+	if h.registry == nil {
+		writeJSON(w, http.StatusOK, map[string]any{})
+		return
+	}
+	categories := h.registry.ToolsByCategory()
+	writeJSON(w, http.StatusOK, categories)
+}
+
+// listWorkflows 列出所有工作流（基于 Pool 任务列表）
+func (h *AdminHandler) listWorkflows(w http.ResponseWriter, r *http.Request) {
+	if h.pool == nil {
+		writeJSON(w, http.StatusOK, []any{})
+		return
+	}
+
+	tasks := h.pool.ListTasks()
+	result := make([]map[string]any, 0, len(tasks))
+	for _, task := range tasks {
+		entry := map[string]any{
+			"id":       task.TaskID,
+			"title":    task.Task.Title,
+			"status":   string(task.Status),
+			"duration": task.Duration.String(),
+		}
+		if task.Task.SessionID != "" {
+			entry["session_id"] = task.Task.SessionID
+		}
+		if task.Error != nil {
+			entry["error"] = task.Error.Error()
+		}
+		result = append(result, entry)
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// getWorkflow 获取单个工作流详情
+func (h *AdminHandler) getWorkflow(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "缺少工作流 ID"})
+		return
+	}
+	if h.pool == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "工作流未找到"})
+		return
+	}
+
+	task, ok := h.pool.GetTask(id)
+	if !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "工作流未找到"})
+		return
+	}
+
+	result := map[string]any{
+		"id":       task.TaskID,
+		"title":    task.Task.Title,
+		"prompt":   task.Task.Prompt,
+		"status":   string(task.Status),
+		"duration": task.Duration.String(),
+	}
+	if task.Task.SessionID != "" {
+		result["session_id"] = task.Task.SessionID
+	}
+	if task.Response != nil {
+		result["response"] = task.Response.Content
+	}
+	if task.Error != nil {
+		result["error"] = task.Error.Error()
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+// logStream 实时日志流（Server-Sent Events）
+func (h *AdminHandler) logStream(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// 发送初始连接确认
+	_, _ = w.Write([]byte("event: connected\ndata: {\"status\":\"ok\"}\n\n"))
+	flusher.Flush()
+
+	// 保持连接直到客户端断开
+	<-r.Context().Done()
 }
 
 func (h *AdminHandler) index(w http.ResponseWriter, r *http.Request) {

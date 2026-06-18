@@ -21,10 +21,13 @@ func ExampleNewAgent() {
 	mock := testutil.NewMockProvider("你好！我是 AgentPrimordia 助手，有什么可以帮你的？")
 
 	// 使用 NewAgent 创建 Agent，通过函数式选项配置
-	agent := ap.NewAgent("hello-agent", "你是一个友好的助手", mock,
+	agent, err := ap.NewAgent("hello-agent", "你是一个友好的助手", mock,
 		ap.WithMaxTurns(3),
 		ap.WithTemperature(0.7),
 	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	// 运行 Agent
 	resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
@@ -57,9 +60,13 @@ func ExampleNewAgent_withTools() {
 	mock := testutil.NewMockProvider("让我帮你读取文件内容。")
 
 	// 创建 Agent 并通过链式 API 注入工具集
-	agent := ap.NewAgent("tooled-agent", "你是一个可以读写文件、执行命令和访问网页的助手", mock,
+	agent, err := ap.NewAgent("tooled-agent", "你是一个可以读写文件、执行命令和访问网页的助手", mock,
 		ap.WithMaxTurns(5),
-	).WithToolkit(registry)
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+	agent = agent.WithToolkit(registry)
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage("读取当前目录的文件"))
 	if err != nil {
@@ -87,10 +94,14 @@ func ExampleNewAgent_withMemory() {
 	mock := testutil.NewMockProvider("我记得你之前说过的话。")
 
 	// 创建 Agent 并注入记忆存储
-	agent := ap.NewAgent("memory-agent", "你是一个有记忆能力的助手", mock,
+	agent, err := ap.NewAgent("memory-agent", "你是一个有记忆能力的助手", mock,
 		ap.WithMaxTurns(5),
 		ap.WithSessionID("session-001"),
-	).WithMemory(mem)
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+	agent = agent.WithMemory(mem)
 
 	// 第一轮对话
 	resp, err := agent.Run(context.Background(), ap.UserMessage("我叫小明"))
@@ -137,14 +148,17 @@ func ExampleNewAgent_chainAPI() {
 	mock := testutil.NewMockProvider("根据知识库的信息，我来回答你的问题。")
 
 	// 使用链式 API 一次性注入所有能力
-	agent := ap.NewAgent("full-agent", "你是一个全功能助手", mock,
+	agent, err := ap.NewAgent("full-agent", "你是一个全功能助手", mock,
 		ap.WithMaxTurns(10),
 		ap.WithTemperature(0.5),
 		ap.WithSessionID("session-full"),
-	).
-		WithToolkit(registry). // 注入工具集
-		WithMemory(mem).       // 注入记忆存储
-		WithRAG(ap.RAGConfig{  // 注入 RAG 检索能力
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+	agent = agent.WithToolkit(registry). // 注入工具集
+						WithMemory(mem).      // 注入记忆存储
+						WithRAG(ap.RAGConfig{ // 注入 RAG 检索能力
 			Provider: ragProvider,
 			Mode:     ap.RAGModeAuto,
 			TopK:     5,
@@ -310,9 +324,13 @@ func ExampleSession() {
 		"你好！我叫小智。",
 		"你刚才说你叫小明。",
 	)
-	agent := ap.NewAgent("chat-agent", "你是一个对话助手", mock,
+	agent, err := ap.NewAgent("chat-agent", "你是一个对话助手", mock,
 		ap.WithMaxTurns(5),
-	).WithMemory(mem)
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+	agent = agent.WithMemory(mem)
 
 	// 创建会话
 	sess := ap.NewSession(agent, mem, ap.SessWithID("chat-session-001"))
@@ -371,9 +389,13 @@ func ExampleNewOpenAIProvider() {
 		return
 	}
 
-	agent := ap.NewAgent("openai-agent", "你是一个智能助手", provider,
+	agent, err := ap.NewAgent("openai-agent", "你是一个智能助手", provider,
 		ap.WithMaxTurns(3),
 	)
+	if err != nil {
+		fmt.Printf("创建 Agent 失败: %v\n", err)
+		return
+	}
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage("你好"))
 	if err != nil {

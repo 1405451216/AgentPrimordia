@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -43,7 +44,7 @@ func NewMistralProvider(cfg Config) (*MistralProvider, error) {
 
 	return &MistralProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultTimeout},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -116,7 +117,7 @@ func (p *MistralProvider) Stream(ctx context.Context, req *CompletionRequest) (<
 		body["response_format"] = buildOpenAIResponseFormat(req.ResponseFormat)
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -137,10 +138,9 @@ func (p *MistralProvider) Stream(ctx context.Context, req *CompletionRequest) (<
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 		respBody, _ := io.ReadAll(limitedReader)
 		var apiErr APIError
-		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != "" {
-			return nil, &apiErr
-		}
-		return nil, fmt.Errorf("Mistral API returned HTTP %d: %s", resp.StatusCode, respBody)
+		parsed := json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != ""
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("mistral", resp.StatusCode, respBody, resp.Header, &apiErr, parsed)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -171,7 +171,8 @@ func (p *MistralProvider) Stream(ctx context.Context, req *CompletionRequest) (<
 			}
 
 			var sseResp openaiChatResponse
-			if err := json.Unmarshal([]byte(data), &sseResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配
+			if err := jsonutil.DecodeString(data, &sseResp); err != nil {
 				continue
 			}
 			if sseResp.Error != nil {
@@ -344,7 +345,7 @@ func (p *MistralProvider) setHeaders(req *http.Request) {
 }
 
 func (p *MistralProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -371,10 +372,9 @@ func (p *MistralProvider) doRequest(ctx context.Context, path string, body any) 
 		var errResp struct {
 			Error *APIError `json:"error"`
 		}
-		if json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil {
-			return nil, errResp.Error
-		}
-		return nil, fmt.Errorf("Mistral API returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPErrorOrAPIError("mistral", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
 	}
 
 	return respBody, nil

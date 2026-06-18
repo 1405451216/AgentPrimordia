@@ -24,7 +24,10 @@ func main() {
 
 	mockLLM := testutil.NewMockProvider("你好！我是 AgentPrimordia 助手，有什么可以帮你的？")
 
-	agent := ap.NewAgent("BasicAgent", systemPrompt, mockLLM, ap.WithMaxTurns(3))
+	agent, err := ap.NewAgent("BasicAgent", systemPrompt, mockLLM, ap.WithMaxTurns(3))
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
 	if err != nil {

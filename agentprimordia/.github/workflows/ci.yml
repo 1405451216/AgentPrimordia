@@ -34,14 +34,20 @@ jobs:
         run: go mod download
 
       - name: Build
+        env:
+          CGO_ENABLED: 0
         run: go build ./...
 
       - name: Test with race detector
         if: runner.os != 'Windows'
+        env:
+          CGO_ENABLED: 1
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Test without race detector (Windows)
         if: runner.os == 'Windows'
+        env:
+          CGO_ENABLED: 0
         run: go test -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: "Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 soft gate)"

@@ -206,14 +206,14 @@ func (addLabelTool) Execute(ctx context.Context, args json.RawMessage) (*ap.Tool
 
 // registryFromTools 用最简方式注册工具到 ap.ToolRegistry
 // 不使用 DefaultToolkit 因为本 demo 只需要自定义工具，不需要 FS/Shell/Web
-func registryFromTools(tools ...ap.Tool) *ap.ToolRegistry {
+func registryFromTools(tools ...ap.Tool) (*ap.ToolRegistry, error) {
 	registry := ap.NewToolRegistry()
 	for _, t := range tools {
 		if err := registry.Register(t); err != nil {
-			panic(fmt.Sprintf("failed to register tool %s: %v", t.Name(), err))
+			return nil, fmt.Errorf("failed to register tool %s: %w", t.Name(), err)
 		}
 	}
-	return registry
+	return registry, nil
 }
 
 // formatIssueBrief 把 Issue 简化成单行字符串（用于最终报告输出）

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+
+	"agentprimordia/internal/jsonutil" // perf-v6 round 8 Task 1：统一 JSON 序列化
 )
 
 // ValidationError 结构化输出验证错误
@@ -26,7 +28,8 @@ func ValidateAgainstSchema(data json.RawMessage, schema *SchemaDef) []Validation
 		return []ValidationError{{Message: "schema must not be nil"}}
 	}
 	var v any
-	if err := json.Unmarshal(data, &v); err != nil {
+	// perf-v6 round 8 Task 1：使用 pooled reader
+	if err := jsonutil.Unmarshal(data, &v); err != nil {
 		return []ValidationError{{Message: fmt.Sprintf("无效 JSON: %s", err)}}
 	}
 

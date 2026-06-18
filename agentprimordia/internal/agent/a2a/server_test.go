@@ -293,6 +293,29 @@ func TestServer_SSEEventsEndpoint(t *testing.T) {
 	}
 }
 
+func TestServer_WithService(t *testing.T) {
+	tm := NewTaskManager()
+	defer tm.Cleanup()
+	card := NewAgentCard("service-agent", "Service Agent")
+	service := NewA2AService(card, tm)
+	server := NewA2AServerWithService(service)
+
+	req := httptest.NewRequest("GET", "/", nil)
+	rec := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var got AgentCard
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal failed: %v", err)
+	}
+	if got.AgentID != "service-agent" {
+		t.Errorf("AgentID = %q, want %q", got.AgentID, "service-agent")
+	}
+}
+
 func TestServer_AuthFailure(t *testing.T) {
 	tm := NewTaskManager()
 	defer tm.Cleanup()

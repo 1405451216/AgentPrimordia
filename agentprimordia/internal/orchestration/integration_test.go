@@ -274,7 +274,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 	t.Logf("✅ Conditional workflow completed")
 	t.Logf("   Path taken: %v", workflowResult.PathTaken)
 	t.Logf("   Records: %d", len(workflowResult.Records))
-	t.Logf("   Branches taken: %d", workflowResult.Metrics.BranchesTaken)
+	t.Logf("   Branches taken: %d", workflowResult.Metrics.BranchesTaken.Load())
 
 	// 9. 综合性能指标汇总
 	t.Log("\n📊 5. System Performance Summary:")

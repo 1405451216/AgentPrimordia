@@ -93,6 +93,91 @@ func TestAdd_MultipleEpisodes(t *testing.T) {
 	}
 }
 
+// perf-v6 round 5 Task 3：批量 Add 测试
+func TestAddBatch(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	episodes := []*Episode{
+		MustEpisode("session-1", "user", "First batch"),
+		MustEpisode("session-1", "assistant", "Second batch"),
+		MustEpisode("session-2", "user", "Third batch"),
+	}
+
+	if err := store.AddBatch(ctx, episodes); err != nil {
+		t.Fatalf("AddBatch() error = %v", err)
+	}
+
+	count, _ := store.Count(ctx, "")
+	if count != 3 {
+		t.Errorf("Count = %d, want %d", count, 3)
+	}
+
+	// 空 batch 应成功
+	if err := store.AddBatch(ctx, nil); err != nil {
+		t.Errorf("AddBatch(nil) error = %v", err)
+	}
+
+	// nil episode 应报错
+	invalid := []*Episode{nil}
+	if err := store.AddBatch(ctx, invalid); err == nil {
+		t.Error("AddBatch with nil should return error")
+	}
+}
+
+// perf-v6 round 5 Task 3：批量 Get 测试
+func TestGetBatch(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	ep1 := MustEpisode("session-1", "user", "Episode 1")
+	ep2 := MustEpisode("session-1", "user", "Episode 2")
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
+
+	result, err := store.GetBatch(ctx, []string{ep1.ID, ep2.ID, "nonexistent"})
+	if err != nil {
+		t.Fatalf("GetBatch() error = %v", err)
+	}
+	if len(result) != 2 {
+		t.Errorf("len(result) = %d, want 2", len(result))
+	}
+	if result[ep1.ID] == nil || result[ep2.ID] == nil {
+		t.Error("GetBatch missing expected episodes")
+	}
+
+	// 空 ids
+	r, _ := store.GetBatch(ctx, nil)
+	if len(r) != 0 {
+		t.Errorf("GetBatch(nil) = %d, want 0", len(r))
+	}
+}
+
+// perf-v6 round 5 Task 3：批量 Delete 测试
+func TestDeleteBatch(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	ep1 := MustEpisode("session-1", "user", "Episode 1")
+	ep2 := MustEpisode("session-1", "user", "Episode 2")
+	ep3 := MustEpisode("session-1", "user", "Episode 3")
+	_ = store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep3)
+
+	if err := store.DeleteBatch(ctx, []string{ep1.ID, ep2.ID}); err != nil {
+		t.Fatalf("DeleteBatch() error = %v", err)
+	}
+
+	count, _ := store.Count(ctx, "")
+	if count != 1 {
+		t.Errorf("Count after DeleteBatch = %d, want %d", count, 1)
+	}
+}
+
 func TestGet_ByID(t *testing.T) {
 	store, _ := WithInMemory()
 	defer store.Close()
@@ -170,7 +255,9 @@ func TestCount_All(t *testing.T) {
 	ctx := context.Background()
 	for i := 0; i < 5; i++ {
 		ep := MustEpisode("session-1", "user", "Message")
-		_ = store.Add(ctx, ep)
+		if err := store.Add(ctx, ep); err != nil {
+			t.Fatalf("Add failed: %v", err)
+		}
 	}
 
 	count, err := store.Count(ctx, "")
@@ -189,11 +276,15 @@ func TestCount_BySession(t *testing.T) {
 	ctx := context.Background()
 	for i := 0; i < 3; i++ {
 		ep := MustEpisode("session-a", "user", "Message A")
-		_ = store.Add(ctx, ep)
+		if err := store.Add(ctx, ep); err != nil {
+			t.Fatalf("Add failed: %v", err)
+		}
 	}
 	for i := 0; i < 7; i++ {
 		ep := MustEpisode("session-b", "user", "Message B")
-		_ = store.Add(ctx, ep)
+		if err := store.Add(ctx, ep); err != nil {
+			t.Fatalf("Add failed: %v", err)
+		}
 	}
 
 	countA, err := store.Count(ctx, "session-a")
@@ -223,8 +314,12 @@ func TestSearch_BasicMatch(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog"))
-	_ = store.Add(ctx, MustEpisode("s1", "assistant", "I like programming in Go"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "The quick brown fox jumps over the lazy dog")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("s1", "assistant", "I like programming in Go")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.Search(ctx, "fox", &SearchOptions{Limit: 10})
 	if err != nil {
@@ -240,7 +335,9 @@ func TestSearch_NoMatch(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Hello world"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Hello world")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.Search(ctx, "nonexistentterm", &SearchOptions{Limit: 10})
 	if err != nil {
@@ -256,8 +353,12 @@ func TestSearch_WithSessionFilter(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("session-a", "user", "Go programming language"))
-	_ = store.Add(ctx, MustEpisode("session-b", "user", "Python programming language"))
+	if err := store.Add(ctx, MustEpisode("session-a", "user", "Go programming language")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("session-b", "user", "Python programming language")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.Search(ctx, "programming", &SearchOptions{
 		SessionID: "session-a",
@@ -280,7 +381,9 @@ func TestSearch_WithLimit(t *testing.T) {
 
 	ctx := context.Background()
 	for i := 0; i < 10; i++ {
-		_ = store.Add(ctx, MustEpisode("s1", "user", "test message about search"))
+		if err := store.Add(ctx, MustEpisode("s1", "user", "test message about search")); err != nil {
+			t.Fatalf("Add failed: %v", err)
+		}
 	}
 
 	results, err := store.Search(ctx, "search", &SearchOptions{Limit: 3})
@@ -297,8 +400,12 @@ func TestSearch_WithRoleFilter(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "What is Go?"))
-	_ = store.Add(ctx, MustEpisode("s1", "assistant", "Go is a programming language"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "What is Go?")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("s1", "assistant", "Go is a programming language")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.Search(ctx, "Go", &SearchOptions{
 		Limit:      10,
@@ -322,7 +429,9 @@ func TestSearch_SummarySearch(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Long content here")
 	ep.Summary = "Short summary about AI"
-	_ = store.Add(ctx, ep)
+	if err := store.Add(ctx, ep); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.Search(ctx, "AI", &SearchOptions{Limit: 10})
 	if err != nil {
@@ -339,7 +448,9 @@ func TestList_Pagination(t *testing.T) {
 
 	ctx := context.Background()
 	for i := 0; i < 15; i++ {
-		_ = store.Add(ctx, MustEpisode("s1", "user", "message"))
+		if err := store.Add(ctx, MustEpisode("s1", "user", "message")); err != nil {
+			t.Fatalf("Add failed: %v", err)
+		}
 	}
 
 	page1, err := store.List(ctx, &ListOptions{Limit: 5, Offset: 0})
@@ -375,7 +486,9 @@ func TestList_Ordering(t *testing.T) {
 	var firstID string
 	for i := 0; i < 5; i++ {
 		ep := MustEpisode("s1", "user", "message")
-		_ = store.Add(ctx, ep)
+		if err := store.Add(ctx, ep); err != nil {
+			t.Fatalf("Add failed: %v", err)
+		}
 		if i == 0 {
 			firstID = ep.ID
 		}
@@ -412,9 +525,15 @@ func TestList_BySession(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("session-x", "user", "msg x1"))
-	_ = store.Add(ctx, MustEpisode("session-y", "user", "msg y1"))
-	_ = store.Add(ctx, MustEpisode("session-x", "user", "msg x2"))
+	if err := store.Add(ctx, MustEpisode("session-x", "user", "msg x1")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("session-y", "user", "msg y1")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("session-x", "user", "msg x2")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.List(ctx, &ListOptions{
 		SessionID: "session-x",
@@ -521,7 +640,9 @@ func TestEnhanced_UpdateSummary(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Hello world")
-	_ = store.Add(ctx, ep)
+	if err := store.Add(ctx, ep); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	err := store.UpdateSummary(ctx, ep.ID, "Greeting", "greeting,hello")
 	if err != nil {
@@ -543,7 +664,9 @@ func TestEnhanced_SetImportance(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Important message")
-	_ = store.Add(ctx, ep)
+	if err := store.Add(ctx, ep); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	err := store.SetImportance(ctx, ep.ID, 0.8)
 	if err != nil {
@@ -563,11 +686,15 @@ func TestEnhanced_SearchByTag(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Message 1")
 	ep1.Topics = "go,programming"
-	_ = store.Add(ctx, ep1)
+	if err := store.Add(ctx, ep1); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	ep2 := MustEpisode("s1", "user", "Message 2")
 	ep2.Topics = "python,data"
-	_ = store.Add(ctx, ep2)
+	if err := store.Add(ctx, ep2); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.SearchByTag(ctx, "go", nil)
 	if err != nil {
@@ -585,7 +712,9 @@ func TestEnhanced_SearchByTag_NoResults(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
 	ep.Topics = "go"
-	_ = store.Add(ctx, ep)
+	if err := store.Add(ctx, ep); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.SearchByTag(ctx, "nonexistent", nil)
 	if err != nil {
@@ -603,15 +732,21 @@ func TestEnhanced_GetImportant(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Low importance")
 	ep1.Importance = 0.2
-	_ = store.Add(ctx, ep1)
+	if err := store.Add(ctx, ep1); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	ep2 := MustEpisode("s1", "user", "High importance")
 	ep2.Importance = 0.9
-	_ = store.Add(ctx, ep2)
+	if err := store.Add(ctx, ep2); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	ep3 := MustEpisode("s1", "user", "Medium importance")
 	ep3.Importance = 0.5
-	_ = store.Add(ctx, ep3)
+	if err := store.Add(ctx, ep3); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.GetImportant(ctx, 0.5, 10)
 	if err != nil {
@@ -632,7 +767,9 @@ func TestEnhanced_GetImportant_Empty(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Low importance")
 	ep.Importance = 0.1
-	_ = store.Add(ctx, ep)
+	if err := store.Add(ctx, ep); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.GetImportant(ctx, 0.9, 10)
 	if err != nil {
@@ -648,7 +785,9 @@ func TestEnhanced_GetTimeline(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Today message"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Today message")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.GetTimeline(ctx, 7)
 	if err != nil {
@@ -664,7 +803,9 @@ func TestEnhanced_CleanupExpired(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Recent message"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Recent message")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	deleted, err := store.CleanupExpired(ctx, 30)
 	if err != nil {
@@ -680,7 +821,9 @@ func TestEnhanced_CleanupExpired_None(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Message"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Message")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	deleted, err := store.CleanupExpired(ctx, 0)
 	if err != nil {
@@ -696,8 +839,12 @@ func TestEnhanced_Stats(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Message 1"))
-	_ = store.Add(ctx, MustEpisode("s2", "user", "Message 2"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Message 1")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("s2", "user", "Message 2")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	stats, err := store.Stats(ctx)
 	if err != nil {
@@ -720,7 +867,9 @@ func TestEnhanced_Topics_Default(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
-	_ = store.Add(ctx, ep)
+	if err := store.Add(ctx, ep); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	got, _ := store.Get(ctx, ep.ID)
 	if got.Topics != "" {
@@ -755,8 +904,12 @@ func TestSearchAdvanced(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Go programming language"))
-	_ = store.Add(ctx, MustEpisode("s1", "assistant", "Python data science"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Go programming language")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("s1", "assistant", "Python data science")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:      "Go",
@@ -778,7 +931,9 @@ func TestSearchAdvanced_SemanticWeight(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Go programming language"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Go programming language")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.SearchAdvanced(ctx, SearchOptions{
 		Query:          "Go",
@@ -801,11 +956,15 @@ func TestGetMemoriesByTag(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Message about Go")
 	ep1.Topics = "go,programming"
-	_ = store.Add(ctx, ep1)
+	if err := store.Add(ctx, ep1); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	ep2 := MustEpisode("s1", "user", "Message about Python")
 	ep2.Topics = "python,data"
-	_ = store.Add(ctx, ep2)
+	if err := store.Add(ctx, ep2); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.GetMemoriesByTag(ctx, "go", 10)
 	if err != nil {
@@ -821,9 +980,15 @@ func TestGetMemoriesBySession(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("session-a", "user", "Msg A1"))
-	_ = store.Add(ctx, MustEpisode("session-b", "user", "Msg B1"))
-	_ = store.Add(ctx, MustEpisode("session-a", "user", "Msg A2"))
+	if err := store.Add(ctx, MustEpisode("session-a", "user", "Msg A1")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("session-b", "user", "Msg B1")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("session-a", "user", "Msg A2")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.GetMemoriesBySession(ctx, "session-a")
 	if err != nil {
@@ -846,11 +1011,15 @@ func TestGetImportantMemories(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Low")
 	ep1.Importance = 0.2
-	_ = store.Add(ctx, ep1)
+	if err := store.Add(ctx, ep1); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	ep2 := MustEpisode("s1", "user", "High")
 	ep2.Importance = 0.9
-	_ = store.Add(ctx, ep2)
+	if err := store.Add(ctx, ep2); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	results, err := store.GetImportantMemories(ctx, 0.5, 10)
 	if err != nil {
@@ -893,8 +1062,12 @@ func TestClearAll_BySession(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("session-a", "user", "Msg A"))
-	_ = store.Add(ctx, MustEpisode("session-b", "user", "Msg B"))
+	if err := store.Add(ctx, MustEpisode("session-a", "user", "Msg A")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("session-b", "user", "Msg B")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	err := store.ClearAll(ctx, "session-a")
 	if err != nil {
@@ -916,8 +1089,12 @@ func TestClearAll_EntireStore(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Msg 1"))
-	_ = store.Add(ctx, MustEpisode("s2", "user", "Msg 2"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Msg 1")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+	if err := store.Add(ctx, MustEpisode("s2", "user", "Msg 2")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	err := store.ClearAll(ctx, "")
 	if err != nil {
@@ -935,7 +1112,9 @@ func TestExportMemories_JSON(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Export test"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Export test")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	data, err := store.ExportMemories(ctx, "", "json")
 	if err != nil {
@@ -951,7 +1130,9 @@ func TestExportMemories_Markdown(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Export test"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Export test")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	data, err := store.ExportMemories(ctx, "", "markdown")
 	if err != nil {
@@ -967,7 +1148,9 @@ func TestImportMemories(t *testing.T) {
 	defer store.Close()
 
 	ctx := context.Background()
-	_ = store.Add(ctx, MustEpisode("s1", "user", "Original"))
+	if err := store.Add(ctx, MustEpisode("s1", "user", "Original")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
 
 	// 导出再导入
 	data, _ := store.ExportMemories(ctx, "", "json")

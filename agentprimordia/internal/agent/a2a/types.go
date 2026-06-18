@@ -4,8 +4,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+)
+
+// ===== 业务错误 =====
+
+var (
+	ErrTaskNotFound   = errors.New("任务不存在")
+	ErrTaskConflict   = errors.New("任务冲突或非法状态转换")
+	ErrMessageMissing = errors.New("缺少 message 参数")
 )
 
 // ===== 认证相关 =====
@@ -228,23 +237,36 @@ func (m *A2AMessage) UnmarshalJSON(data []byte) error {
 		var typeHint struct {
 			TypeName string `json:"type"`
 		}
-		_ = json.Unmarshal(rp, &typeHint)
+		// 类型提示解析失败时回退到 TextPart
+		if err := json.Unmarshal(rp, &typeHint); err != nil {
+			var p TextPart
+			m.Parts[i] = p
+			continue
+		}
 		switch typeHint.TypeName {
 		case "text":
 			var p TextPart
-			_ = json.Unmarshal(rp, &p)
+			if err := json.Unmarshal(rp, &p); err != nil {
+				p = TextPart{TypeField: "text"}
+			}
 			m.Parts[i] = p
 		case "file":
 			var p FilePart
-			_ = json.Unmarshal(rp, &p)
+			if err := json.Unmarshal(rp, &p); err != nil {
+				p = FilePart{TypeField: "file"}
+			}
 			m.Parts[i] = p
 		case "data":
 			var p DataPart
-			_ = json.Unmarshal(rp, &p)
+			if err := json.Unmarshal(rp, &p); err != nil {
+				p = DataPart{TypeField: "data"}
+			}
 			m.Parts[i] = p
 		default:
 			var p TextPart
-			_ = json.Unmarshal(rp, &p)
+			if err := json.Unmarshal(rp, &p); err != nil {
+				p = TextPart{TypeField: "text"}
+			}
 			m.Parts[i] = p
 		}
 	}

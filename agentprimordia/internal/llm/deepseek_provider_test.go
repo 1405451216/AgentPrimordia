@@ -10,9 +10,7 @@ import (
 	"time"
 )
 
-// TestDeepSeekProvider_Configuration 验证 DeepSeek 通过 OpenAI 兼容模式配置
-// DeepSeek 没有独立实现，依赖 OpenAIProvider 的 OpenAI 兼容接口。
-// 关键配置：BaseURL=https://api.deepseek.com/v1, Model=deepseek-chat 或 deepseek-reasoner
+// TestDeepSeekProvider_Configuration 验证 DeepSeek 通过独立 Provider 配置
 func TestDeepSeekProvider_Configuration(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -42,13 +40,12 @@ func TestDeepSeekProvider_Configuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			provider, err := NewOpenAIProvider(Config{
-				APIKey:  "test-deepseek-key",
-				BaseURL: tt.wantBaseURL,
-				Model:   tt.model,
+			provider, err := NewDeepSeekProvider(Config{
+				APIKey: "test-deepseek-key",
+				Model:  tt.model,
 			})
 			if err != nil {
-				t.Fatalf("NewOpenAIProvider error: %v", err)
+				t.Fatalf("NewDeepSeekProvider error: %v", err)
 			}
 			if provider == nil {
 				t.Fatal("provider should not be nil")
@@ -56,7 +53,36 @@ func TestDeepSeekProvider_Configuration(t *testing.T) {
 			if info := provider.Info(); info.Name != tt.wantModel {
 				t.Errorf("Info().Name = %q, want %q", info.Name, tt.wantModel)
 			}
+			if info := provider.Info(); info.Provider != "deepseek" {
+				t.Errorf("Info().Provider = %q, want %q", info.Provider, "deepseek")
+			}
 		})
+	}
+}
+
+// TestDeepSeekProvider_DefaultModel 验证未指定 Model 时默认使用 deepseek-chat
+func TestDeepSeekProvider_DefaultModel(t *testing.T) {
+	provider, err := NewDeepSeekProvider(Config{
+		APIKey: "test-key",
+	})
+	if err != nil {
+		t.Fatalf("NewDeepSeekProvider error: %v", err)
+	}
+	if info := provider.Info(); info.Name != "deepseek-chat" {
+		t.Errorf("default model = %q, want %q", info.Name, "deepseek-chat")
+	}
+}
+
+// TestDeepSeekProvider_NoAPIKey 验证缺失 API Key 时返回明确错误
+func TestDeepSeekProvider_NoAPIKey(t *testing.T) {
+	_, err := NewDeepSeekProvider(Config{
+		APIKey: "",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing API key")
+	}
+	if !strings.Contains(err.Error(), "API key") {
+		t.Errorf("expected error to mention API key, got %q", err.Error())
 	}
 }
 
@@ -101,7 +127,7 @@ func TestDeepSeekProvider_Complete(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider, _ := NewOpenAIProvider(Config{
+	provider, _ := NewDeepSeekProvider(Config{
 		APIKey:  "test-deepseek-key",
 		BaseURL: server.URL,
 		Model:   "deepseek-chat",
@@ -160,7 +186,7 @@ func TestDeepSeekProvider_CallTools(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider, _ := NewOpenAIProvider(Config{
+	provider, _ := NewDeepSeekProvider(Config{
 		APIKey:  "test-deepseek-key",
 		BaseURL: server.URL,
 		Model:   "deepseek-chat",
@@ -211,7 +237,7 @@ func TestDeepSeekProvider_Stream(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider, _ := NewOpenAIProvider(Config{
+	provider, _ := NewDeepSeekProvider(Config{
 		APIKey:  "test-deepseek-key",
 		BaseURL: server.URL,
 		Model:   "deepseek-chat",
@@ -254,7 +280,7 @@ func TestDeepSeekProvider_Stream_ContextCancel(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider, _ := NewOpenAIProvider(Config{
+	provider, _ := NewDeepSeekProvider(Config{
 		APIKey:  "test-deepseek-key",
 		BaseURL: server.URL,
 		Model:   "deepseek-chat",
@@ -287,7 +313,7 @@ func TestDeepSeekProvider_Stream_APIError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	provider, _ := NewOpenAIProvider(Config{
+	provider, _ := NewDeepSeekProvider(Config{
 		APIKey:  "bad-key",
 		BaseURL: server.URL,
 		Model:   "deepseek-chat",
@@ -301,20 +327,5 @@ func TestDeepSeekProvider_Stream_APIError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "401") {
 		t.Errorf("expected error to contain '401', got %q", err.Error())
-	}
-}
-
-// TestDeepSeekProvider_New_NoAPIKey 验证缺失 API Key 时返回明确错误
-func TestDeepSeekProvider_New_NoAPIKey(t *testing.T) {
-	_, err := NewOpenAIProvider(Config{
-		APIKey:  "",
-		BaseURL: "https://api.deepseek.com/v1",
-		Model:   "deepseek-chat",
-	})
-	if err == nil {
-		t.Fatal("expected error for missing API key")
-	}
-	if !strings.Contains(err.Error(), "API key") {
-		t.Errorf("expected error to mention API key, got %q", err.Error())
 	}
 }

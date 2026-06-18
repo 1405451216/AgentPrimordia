@@ -2,79 +2,17 @@ package ap_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
-	"agentprimordia/internal/agent"
 	"agentprimordia/internal/llm"
 	ap "agentprimordia/pkg"
 )
 
-// ===== MemoryAdapter 测试 =====
-
-func TestMemoryAdapter_Add(t *testing.T) {
-	store, err := ap.WithInMemory()
-	if err != nil {
-		t.Fatalf("WithInMemory failed: %v", err)
-	}
-	defer store.Close()
-
-	adapter := ap.NewMemoryAdapter(store)
-
-	ep := &agent.MemoryEpisode{
-		ID:        "ep-test-1",
-		SessionID: "session-1",
-		Role:      "user",
-		Content:   "Hello, world!",
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-	}
-
-	if err := adapter.Add(context.Background(), ep); err != nil {
-		t.Fatalf("MemoryAdapter.Add() error = %v", err)
-	}
-
-	// 验证数据写入了底层 store
-	count, err := store.Count(context.Background(), "session-1")
-	if err != nil {
-		t.Fatalf("store.Count() error = %v", err)
-	}
-	if count != 1 {
-		t.Errorf("expected 1 episode, got %d", count)
-	}
-}
-
-func TestMemoryAdapter_AddMultiple(t *testing.T) {
-	store, err := ap.WithInMemory()
-	if err != nil {
-		t.Fatalf("WithInMemory failed: %v", err)
-	}
-	defer store.Close()
-
-	adapter := ap.NewMemoryAdapter(store)
-
-	for i := 0; i < 5; i++ {
-		ep := &agent.MemoryEpisode{
-			ID:        "ep-test-" + string(rune('0'+i)),
-			SessionID: "session-1",
-			Role:      "user",
-			Content:   "message",
-			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-		}
-		if err := adapter.Add(context.Background(), ep); err != nil {
-			t.Fatalf("MemoryAdapter.Add() error = %v", err)
-		}
-	}
-
-	count, _ := store.Count(context.Background(), "session-1")
-	if count != 5 {
-		t.Errorf("expected 5 episodes, got %d", count)
-	}
-}
-
 // ===== EventBusAdapter 测试 =====
 
 func TestEventBusAdapter_PublishAsync(t *testing.T) {
+	t.Parallel()
 	bus := ap.NewBus(16)
 	defer bus.Close()
 
@@ -98,6 +36,7 @@ func TestEventBusAdapter_PublishAsync(t *testing.T) {
 }
 
 func TestEventBusAdapter_PublishAsync_ClosedBus(t *testing.T) {
+	t.Parallel()
 	bus := ap.NewBus(16)
 	bus.Close()
 
@@ -106,66 +45,6 @@ func TestEventBusAdapter_PublishAsync_ClosedBus(t *testing.T) {
 	err := adapter.PublishAsync("agent.start", "test", nil)
 	if err == nil {
 		t.Error("expected error when publishing to closed bus")
-	}
-}
-
-// ===== MetricsAdapter 测试 =====
-
-func TestMetricsAdapter_RecordLLMCall(t *testing.T) {
-	m := ap.NewMetrics()
-	adapter := ap.NewMetricsAdapter(m)
-
-	adapter.RecordLLMCall(100*time.Millisecond, nil)
-	adapter.RecordLLMCall(200*time.Millisecond, errors.New("timeout"))
-
-	snap := m.Snapshot()
-	if snap.LLMTotalCalls != 2 {
-		t.Errorf("expected 2 LLM calls, got %d", snap.LLMTotalCalls)
-	}
-	if snap.LLMTotalErrors != 1 {
-		t.Errorf("expected 1 LLM error, got %d", snap.LLMTotalErrors)
-	}
-}
-
-func TestMetricsAdapter_RecordToolCall(t *testing.T) {
-	m := ap.NewMetrics()
-	adapter := ap.NewMetricsAdapter(m)
-
-	adapter.RecordToolCall(50*time.Millisecond, nil)
-
-	snap := m.Snapshot()
-	if snap.ToolTotalCalls != 1 {
-		t.Errorf("expected 1 tool call, got %d", snap.ToolTotalCalls)
-	}
-}
-
-func TestMetricsAdapter_RecordTurn(t *testing.T) {
-	m := ap.NewMetrics()
-	adapter := ap.NewMetricsAdapter(m)
-
-	adapter.RecordTurn(1 * time.Second)
-
-	snap := m.Snapshot()
-	if snap.TotalTurns != 1 {
-		t.Errorf("expected 1 turn, got %d", snap.TotalTurns)
-	}
-}
-
-func TestMetricsAdapter_ActiveAgents(t *testing.T) {
-	m := ap.NewMetrics()
-	adapter := ap.NewMetricsAdapter(m)
-
-	adapter.IncActiveAgents()
-	adapter.IncActiveAgents()
-	snap := m.Snapshot()
-	if snap.ActiveAgents != 2 {
-		t.Errorf("expected 2 active agents, got %d", snap.ActiveAgents)
-	}
-
-	adapter.DecActiveAgents()
-	snap = m.Snapshot()
-	if snap.ActiveAgents != 1 {
-		t.Errorf("expected 1 active agent, got %d", snap.ActiveAgents)
 	}
 }
 
@@ -195,15 +74,15 @@ func TestAgentIntegration_WithMemoryEventBusMetrics(t *testing.T) {
 
 	// 创建 Agent，集成所有模块
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:           "IntegrationAgent",
-		SystemPrompt:   "You are a helpful assistant.",
-		Model:          mockLLM,
-		Toolkit:        ap.NewToolRegistry(),
-		Memory:         ap.NewMemoryAdapter(memStore),
-		EventPublisher: ap.NewEventBusAdapter(bus),
-		Metrics:        ap.NewMetricsAdapter(m),
-		MaxTurns:       10,
-	})
+		Name:         "IntegrationAgent",
+		SystemPrompt: "You are a helpful assistant.",
+		Model:        mockLLM,
+		MaxTurns:     10,
+	}).AsCapability().
+		WithToolkit(ap.NewToolRegistry()).
+		WithMemory(memStore).
+		WithEvents(ap.NewEventBusAdapter(bus)).
+		WithMetrics(m)
 
 	// 运行 Agent
 	resp, err := a.Run(context.Background(), ap.UserMessage("Hello!"))
@@ -261,13 +140,13 @@ func TestAgentIntegration_WithCheckpoint(t *testing.T) {
 
 	// 创建 Agent with Checkpoint
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:            "CheckpointAgent",
-		Model:           mockLLM,
-		Toolkit:         ap.NewToolRegistry(),
-		CheckpointStore: cpStore,
-		SessionID:       "session-checkpoint-1",
-		MaxTurns:        10,
-	})
+		Name:      "CheckpointAgent",
+		Model:     mockLLM,
+		SessionID: "session-checkpoint-1",
+		MaxTurns:  10,
+	}).AsCapability().
+		WithToolkit(ap.NewToolRegistry()).
+		WithCheckpointStore(cpStore)
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Do something"))
 	if err != nil {
@@ -295,17 +174,18 @@ func TestAgentIntegration_WithCheckpoint(t *testing.T) {
 }
 
 func TestAgentIntegration_WithContextWindow(t *testing.T) {
+	t.Parallel()
 	mockLLM := &integrationMockLLM{response: "Summarized!"}
 
 	strategy := ap.NewDefaultStrategy(3) // 只保留最后3条
 
 	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:          "ContextWindowAgent",
-		Model:         mockLLM,
-		Toolkit:       ap.NewToolRegistry(),
-		ContextWindow: strategy,
-		MaxTurns:      10,
-	})
+		Name:     "ContextWindowAgent",
+		Model:    mockLLM,
+		MaxTurns: 10,
+	}).AsCapability().
+		WithToolkit(ap.NewToolRegistry()).
+		WithContextWindow(strategy)
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Test"))
 	if err != nil {
@@ -317,14 +197,14 @@ func TestAgentIntegration_WithContextWindow(t *testing.T) {
 }
 
 func TestAgentIntegration_Stop(t *testing.T) {
+	t.Parallel()
 	mockLLM := &integrationMockLLM{response: "Running..."}
 
 	a := ap.NewReActAgent(ap.ReActConfig{
 		Name:     "StopAgent",
 		Model:    mockLLM,
-		Toolkit:  ap.NewToolRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(ap.NewToolRegistry())
 
 	// 在另一个 goroutine 中停止
 	go func() {

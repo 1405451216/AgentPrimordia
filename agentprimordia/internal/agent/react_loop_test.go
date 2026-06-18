@@ -12,6 +12,7 @@ import (
 )
 
 func TestReActAgent_SimpleCompletion(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Hello! I can help you.")
 
 	registry := tools.NewRegistry()
@@ -19,9 +20,8 @@ func TestReActAgent_SimpleCompletion(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "test-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	resp, err := agent.Run(context.Background(), UserMessage("Hi there"))
 
@@ -40,6 +40,7 @@ func TestReActAgent_SimpleCompletion(t *testing.T) {
 }
 
 func TestReActAgent_SingleToolCall(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).
 		WithToolResponse([]llm.FunctionCall{
 			{ID: "call_1", Name: "get_time", Arguments: "{}"},
@@ -52,9 +53,8 @@ func TestReActAgent_SingleToolCall(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "tool-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	resp, err := agent.Run(context.Background(), UserMessage("What time is it?"))
 
@@ -73,6 +73,7 @@ func TestReActAgent_SingleToolCall(t *testing.T) {
 }
 
 func TestReActAgent_MultipleToolCalls(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).
 		WithToolResponse([]llm.FunctionCall{
 			{ID: "call_1", Name: "search", Arguments: `{"q":"golang"}`},
@@ -87,9 +88,8 @@ func TestReActAgent_MultipleToolCalls(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "multi-tool-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 20,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	resp, err := agent.Run(context.Background(), UserMessage("Compare Go, Rust, and Python"))
 
@@ -102,6 +102,7 @@ func TestReActAgent_MultipleToolCalls(t *testing.T) {
 }
 
 func TestReActAgent_MaxTurnsExceeded(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t)
 	for i := 0; i < 15; i++ {
 		mockLLM.WithToolResponse([]llm.FunctionCall{
@@ -115,9 +116,8 @@ func TestReActAgent_MaxTurnsExceeded(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "loop-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 5,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	resp, err := agent.Run(context.Background(), UserMessage("Keep going"))
 
@@ -133,14 +133,14 @@ func TestReActAgent_MaxTurnsExceeded(t *testing.T) {
 }
 
 func TestReActAgent_LLMError(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithError(errors.New("API rate limited"))
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "error-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	resp, err := agent.Run(context.Background(), UserMessage("test"))
 
@@ -153,14 +153,14 @@ func TestReActAgent_LLMError(t *testing.T) {
 }
 
 func TestReActAgent_ContextCanceled(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("slow response").WithDelay(2 * time.Second)
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "cancel-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
@@ -173,6 +173,7 @@ func TestReActAgent_ContextCanceled(t *testing.T) {
 }
 
 func TestReActAgent_Hooks_Fired(t *testing.T) {
+	t.Parallel()
 	var reasoningCalled bool
 	var toolUseCalled bool
 	var completeCalled bool
@@ -203,10 +204,8 @@ func TestReActAgent_Hooks_Fired(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "hooks-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 10,
-		Hooks:    hooks,
-	})
+	}).AsCapability().WithToolkit(registry).WithHooks(hooks)
 
 	_, err := agent.Run(context.Background(), UserMessage("test with hooks"))
 	if err != nil {
@@ -225,12 +224,12 @@ func TestReActAgent_Hooks_Fired(t *testing.T) {
 }
 
 func TestReActAgent_NoToolkit(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Simple answer")
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "no-toolkit-agent",
 		Model:    mockLLM,
-		Toolkit:  nil,
 		MaxTurns: 10,
 	})
 
@@ -245,14 +244,14 @@ func TestReActAgent_NoToolkit(t *testing.T) {
 }
 
 func TestReActAgent_Stats(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Stats test")
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "stats-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	_, err := agent.Run(context.Background(), UserMessage("test"))
 	if err != nil {
@@ -324,6 +323,7 @@ func (m *mockTool) Execute(ctx context.Context, args json.RawMessage) (*tools.Re
 }
 
 func TestReActAgent_GracefulShutdown(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithToolResponse([]llm.FunctionCall{
 		{ID: "tc1", Name: "echo", Arguments: `{"msg":"hi"}`},
@@ -336,9 +336,8 @@ func TestReActAgent_GracefulShutdown(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "graceful-agent",
 		Model:    mockLLM,
-		Toolkit:  registry,
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(registry)
 
 	done := make(chan struct{})
 	go func() {
@@ -365,14 +364,14 @@ func TestReActAgent_GracefulShutdown(t *testing.T) {
 }
 
 func TestReActAgent_GracefulShutdown_TimeoutFallback(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("done").WithDelay(200 * time.Millisecond)
 
 	agent := NewReActAgent(ReActConfig{
 		Name:     "graceful-timeout-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry())
 
 	done := make(chan struct{})
 	go func() {
@@ -394,6 +393,7 @@ func TestReActAgent_GracefulShutdown_TimeoutFallback(t *testing.T) {
 }
 
 func TestReActAgent_WithCache(t *testing.T) {
+	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("cached answer")
 
 	cache := llm.NewFingerprintCache(100, 0)
@@ -401,10 +401,8 @@ func TestReActAgent_WithCache(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "cache-agent",
 		Model:    mockLLM,
-		Toolkit:  tools.NewRegistry(),
 		MaxTurns: 10,
-		Cache:    cache,
-	})
+	}).AsCapability().WithToolkit(tools.NewRegistry()).WithCache(cache)
 
 	resp, err := agent.Run(context.Background(), UserMessage("what is Go?"))
 	if err != nil {
@@ -417,5 +415,72 @@ func TestReActAgent_WithCache(t *testing.T) {
 	stats := cache.Stats(context.Background())
 	if stats.EntryCount != 1 {
 		t.Errorf("EntryCount = %d, want 1", stats.EntryCount)
+	}
+}
+
+func TestReActAgent_RequestID_AutoGenerated(t *testing.T) {
+	t.Parallel()
+	mockLLM := llm.NewMockLLM(t).WithResponse("Hello!")
+	agent := NewReActAgent(ReActConfig{
+		Name:     "reqid-agent",
+		Model:    mockLLM,
+		MaxTurns: 10,
+	}).AsCapability().WithToolkit(tools.NewRegistry())
+
+	resp, err := agent.Run(context.Background(), UserMessage("Hi"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.RequestID == "" {
+		t.Error("RequestID should be auto-generated when not provided in context")
+	}
+	if len(resp.RequestID) != 32 {
+		t.Errorf("RequestID length = %d, want 32 (16 bytes hex)", len(resp.RequestID))
+	}
+
+	// Stats 也应该包含 RequestID
+	stats := agent.Stats()
+	if stats.RequestID != resp.RequestID {
+		t.Errorf("Stats.RequestID = %q, want %q", stats.RequestID, resp.RequestID)
+	}
+}
+
+func TestReActAgent_RequestID_FromContext(t *testing.T) {
+	t.Parallel()
+	mockLLM := llm.NewMockLLM(t).WithResponse("Hello!")
+	agent := NewReActAgent(ReActConfig{
+		Name:     "reqid-ctx-agent",
+		Model:    mockLLM,
+		MaxTurns: 10,
+	}).AsCapability().WithToolkit(tools.NewRegistry())
+
+	// 通过 context 传入自定义请求 ID
+	ctx := WithRequestID(context.Background(), "custom-req-123")
+	resp, err := agent.Run(ctx, UserMessage("Hi"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.RequestID != "custom-req-123" {
+		t.Errorf("RequestID = %q, want custom-req-123", resp.RequestID)
+	}
+}
+
+func TestNewRequestID_Uniqueness(t *testing.T) {
+	t.Parallel()
+	ids := make(map[string]bool)
+	for i := 0; i < 100; i++ {
+		id := NewRequestID()
+		if ids[id] {
+			t.Fatalf("duplicate RequestID generated: %s", id)
+		}
+		ids[id] = true
+	}
+}
+
+func TestRequestIDFromCtx_Empty(t *testing.T) {
+	t.Parallel()
+	id := RequestIDFromCtx(context.Background())
+	if id != "" {
+		t.Errorf("RequestIDFromCtx of empty context = %q, want empty", id)
 	}
 }

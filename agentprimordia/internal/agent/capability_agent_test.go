@@ -206,20 +206,20 @@ func TestChainAPI_SyncsToInnerConfig(t *testing.T) {
 
 	capAgent := a.WithMemory(mem).WithMetrics(mr)
 
-	// 验证内部 ReActAgent 的配置已同步
-	if a.config.Memory != mem {
-		t.Error("内部 ReActAgent 的 Memory 应已同步")
-	}
-	if a.config.Metrics != mr {
-		t.Error("内部 ReActAgent 的 Metrics 应已同步")
-	}
-
-	// 验证通过 CapabilityAgent 也能获取
+	// 验证通过 CapabilityAgent 接口能获取注入的能力
 	if capAgent.GetMemoryStore() != mem {
 		t.Error("GetMemoryStore 应返回注入的 MemoryStore")
 	}
 	if capAgent.GetMetricsRecorder() != mr {
 		t.Error("GetMetricsRecorder 应返回注入的 MetricsRecorder")
+	}
+
+	// 验证内部 ReActAgent 通过接口发现也能获取能力
+	if innerMem := a.getMemoryStore(); innerMem != mem {
+		t.Error("内部 ReActAgent 应通过接口发现获取 MemoryStore")
+	}
+	if innerMr := a.getMetricsRecorder(); innerMr != mr {
+		t.Error("内部 ReActAgent 应通过接口发现获取 MetricsRecorder")
 	}
 }
 

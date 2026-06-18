@@ -175,15 +175,18 @@ func (f *FileSystem) Execute(ctx context.Context, args json.RawMessage) (*tools.
 	}
 
 	action := ""
-	_ = json.Unmarshal(params["action"], &action)
+	if err := unmarshalRaw(params["action"], &action); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'action': %v", err)), nil
+	}
 
 	rawPath := ""
-	_ = json.Unmarshal(params["path"], &rawPath)
+	if err := unmarshalRaw(params["path"], &rawPath); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'path': %v", err)), nil
+	}
 
 	cleanPath := filepath.Clean(rawPath)
-	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, "\\..") {
-		return tools.NewErrorResult("path traversal denied: path contains '..'"), nil
-	}
+	// 不再通过子串匹配拒绝包含 ".." 的文件名（如 "..gitignore"），
+	// 真正的目录穿越由下面的绝对路径根目录前缀检查捕获。
 
 	fullPath := filepath.Join(f.rootDir, cleanPath)
 
@@ -310,14 +313,18 @@ func (f *FileSystem) readFile(_ context.Context, path string, params map[string]
 	startLine := 1
 	endLine := len(lines)
 
-	if raw, ok := params["start_line"]; ok {
+	if raw, ok := params["start_line"]; ok && len(raw) > 0 {
 		var v float64
-		_ = json.Unmarshal(raw, &v)
+		if err := unmarshalRaw(raw, &v); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'start_line': %v", err)), nil
+		}
 		startLine = int(v)
 	}
-	if raw, ok := params["end_line"]; ok {
+	if raw, ok := params["end_line"]; ok && len(raw) > 0 {
 		var v float64
-		_ = json.Unmarshal(raw, &v)
+		if err := unmarshalRaw(raw, &v); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'end_line': %v", err)), nil
+		}
 		endLine = int(v)
 	}
 
@@ -344,7 +351,9 @@ func (f *FileSystem) writeFile(_ context.Context, path string, params map[string
 	var content struct {
 		Value string `json:"content"`
 	}
-	_ = json.Unmarshal(params["content"], &content.Value)
+	if err := unmarshalRaw(params["content"], &content.Value); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'content': %v", err)), nil
+	}
 
 	if f.maxWriteSize > 0 && int64(len(content.Value)) > f.maxWriteSize {
 		return tools.NewErrorResult(fmt.Sprintf("content too large: %d bytes (max %d bytes)", len(content.Value), f.maxWriteSize)), nil
@@ -386,8 +395,12 @@ func (f *FileSystem) editFile(_ context.Context, path string, params map[string]
 		OldStr string `json:"old_str"`
 		NewStr string `json:"new_str"`
 	}
-	_ = json.Unmarshal(params["old_str"], &editParams.OldStr)
-	_ = json.Unmarshal(params["new_str"], &editParams.NewStr)
+	if err := unmarshalRaw(params["old_str"], &editParams.OldStr); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'old_str': %v", err)), nil
+	}
+	if err := unmarshalRaw(params["new_str"], &editParams.NewStr); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'new_str': %v", err)), nil
+	}
 
 	if editParams.OldStr == "" {
 		return tools.NewErrorResult("old_str is required for edit operation"), nil
@@ -468,7 +481,9 @@ func (f *FileSystem) searchInFile(path string, params map[string]json.RawMessage
 	var query struct {
 		Value string `json:"query"`
 	}
-	_ = json.Unmarshal(params["query"], &query.Value)
+	if err := unmarshalRaw(params["query"], &query.Value); err != nil {
+		return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'query': %v", err)), nil
+	}
 
 	if query.Value == "" {
 		return tools.NewErrorResult("query is required for search operation"), nil
@@ -494,7 +509,9 @@ func (f *FileSystem) searchInFile(path string, params map[string]json.RawMessage
 	var re *regexp.Regexp
 	if raw, ok := params["regex"]; ok {
 		var regexFlag bool
-		_ = json.Unmarshal(raw, &regexFlag)
+		if err := unmarshalRaw(raw, &regexFlag); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'regex': %v", err)), nil
+		}
 		if regexFlag {
 			// ReDoS 防护：限制正则复杂度，检测危险的重复量词嵌套
 			if hasReDoSPattern(query.Value) {
@@ -581,19 +598,25 @@ type searchDirectoryParams struct {
 
 func (f *FileSystem) searchDirectory(_ context.Context, dirPath string, params map[string]json.RawMessage) (*tools.Result, error) {
 	var p searchDirectoryParams
-	if raw, ok := params["query"]; ok {
-		_ = json.Unmarshal(raw, &p.Query)
+	if raw, ok := params["query"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &p.Query); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'query': %v", err)), nil
+		}
 	}
 	if p.Query == "" {
 		return tools.NewErrorResult("query is required for search_directory operation"), nil
 	}
-	if raw, ok := params["include"]; ok {
-		_ = json.Unmarshal(raw, &p.Include)
+	if raw, ok := params["include"]; ok && len(raw) > 0 {
+		if err := unmarshalRaw(raw, &p.Include); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'include': %v", err)), nil
+		}
 	}
 	maxResults := 50
-	if raw, ok := params["max_results"]; ok {
+	if raw, ok := params["max_results"]; ok && len(raw) > 0 {
 		var v float64
-		_ = json.Unmarshal(raw, &v)
+		if err := unmarshalRaw(raw, &v); err != nil {
+			return tools.NewErrorResult(fmt.Sprintf("invalid parameter 'max_results': %v", err)), nil
+		}
 		if v > 0 {
 			maxResults = int(v)
 		}

@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -555,4 +556,296 @@ func TestResilient_CircuitHalfOpen_AllowsOnlyOneProbe(t *testing.T) {
 
 	// 等待第一个请求完成
 	<-err1
+}
+
+// ===== perf-v6 round 8 Task 3：Retry-After + 错误分类测试 =====
+
+// TestResilient_FatalError_StopsRetrying 验证 fatal error 立即停止重试
+func TestResilient_FatalError_StopsRetrying(t *testing.T) {
+	// 401 认证错误是 fatal（不可重试）
+	fatalErr := NewRetryableError(KindAuthError, 401, 0, errors.New("invalid api key"))
+	mock := NewMockLLM(t).WithError(fatalErr)
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   5,
+		RetryBackoff: 1 * time.Millisecond,
+		MaxBackoff:   1 * time.Millisecond,
+	})
+
+	_, err := provider.Complete(context.Background(), &CompletionRequest{})
+
+	// 应立即返回 fatal 错误，不重试
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, fatalErr) && !strings.Contains(err.Error(), "401") {
+		t.Errorf("expected 401 fatal error, got %v", err)
+	}
+}
+
+// TestResilient_ClientError_DoesNotCountAsCircuitFailure 验证 4xx 不触发熔断
+func TestResilient_ClientError_DoesNotCountAsCircuitFailure(t *testing.T) {
+	// 400 client error 不计入失败次数
+	clientErr := NewRetryableError(KindClientError, 400, 0, errors.New("bad request"))
+	mock := NewMockLLM(t).WithError(clientErr)
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:       0, // 不重试
+		RetryBackoff:     1 * time.Millisecond,
+		MaxBackoff:       1 * time.Millisecond,
+		CircuitThreshold: 3,
+	})
+
+	// 触发 5 次 400 错误
+	for i := 0; i < 5; i++ {
+		_, _ = provider.Complete(context.Background(), &CompletionRequest{})
+	}
+
+	// 熔断器应保持 closed（因为 4xx 不计入失败）
+	state := provider.state.Load()
+	if circuitState(state) != circuitClosed {
+		t.Errorf("circuit should remain closed after 4xx errors, got state=%d", state)
+	}
+}
+
+// TestResilient_RateLimit_TriggersCircuit 验证 429 计入熔断
+func TestResilient_RateLimit_TriggersCircuit(t *testing.T) {
+	rateLimitErr := NewRetryableError(KindRateLimited, 429, 0, errors.New("rate limited"))
+	mock := NewMockLLM(t).WithError(rateLimitErr)
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:       0,
+		RetryBackoff:     1 * time.Millisecond,
+		MaxBackoff:       1 * time.Millisecond,
+		CircuitThreshold: 3,
+	})
+
+	for i := 0; i < 4; i++ {
+		_, _ = provider.Complete(context.Background(), &CompletionRequest{})
+	}
+
+	state := provider.state.Load()
+	if circuitState(state) != circuitOpen {
+		t.Errorf("circuit should be open after 4x 429 errors, got state=%d", state)
+	}
+}
+
+// TestResilient_RetryAfter_HonorsServerHeader 验证 Retry-After 被尊重
+func TestResilient_RetryAfter_HonorsServerHeader(t *testing.T) {
+	// 用 Retry-After=200ms 的 rate limit 错误
+	retryAfter := 200 * time.Millisecond
+	rateLimitErr := NewRetryableError(KindRateLimited, 429, retryAfter, errors.New("rate limited"))
+
+	// 第一次失败，第二次成功
+	callCount := 0
+	mock := &countingProvider{
+		fn: func(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, rateLimitErr
+			}
+			return &CompletionResponse{Content: "ok"}, nil
+		},
+	}
+
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   3,
+		RetryBackoff: 1 * time.Hour, // 故意设很大，验证 Retry-After 优先
+		MaxBackoff:   1 * time.Hour,
+	})
+
+	start := time.Now()
+	resp, err := provider.Complete(context.Background(), &CompletionRequest{})
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+	if resp.Content != "ok" {
+		t.Errorf("expected 'ok', got %q", resp.Content)
+	}
+	// 验证实际等待时间在 Retry-After 附近（允许 ±50ms 误差）
+	if elapsed < retryAfter-50*time.Millisecond || elapsed > retryAfter+200*time.Millisecond {
+		t.Errorf("expected elapsed ~%v, got %v (Retry-After should take priority over RetryBackoff)", retryAfter, elapsed)
+	}
+}
+
+// TestResilient_RetryAfter_CappedByMaxBackoff 验证 Retry-After 不会超过 MaxBackoff
+func TestResilient_RetryAfter_CappedByMaxBackoff(t *testing.T) {
+	// server 给了 1 小时，但 MaxBackoff 只有 100ms
+	rateLimitErr := NewRetryableError(KindRateLimited, 429, 1*time.Hour, errors.New("rate limited"))
+
+	callCount := 0
+	mock := &countingProvider{
+		fn: func(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, rateLimitErr
+			}
+			return &CompletionResponse{Content: "ok"}, nil
+		},
+	}
+
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   3,
+		RetryBackoff: 1 * time.Millisecond,
+		MaxBackoff:   100 * time.Millisecond,
+	})
+
+	start := time.Now()
+	_, err := provider.Complete(context.Background(), &CompletionRequest{})
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+	// 应被 cap 在 MaxBackoff
+	if elapsed > 200*time.Millisecond {
+		t.Errorf("Retry-After should be capped by MaxBackoff, but elapsed=%v", elapsed)
+	}
+}
+
+// TestResilient_NonRetryableError_StopsRetrying 验证非 RetryableError 也按默认重试
+// （保持向后兼容：网络错误等不属于 RetryableError 但仍可重试）
+func TestResilient_NonRetryableError_StopsRetrying(t *testing.T) {
+	// 普通 error（非 RetryableError）走默认重试
+	plainErr := errors.New("connection reset")
+	mock := NewMockLLM(t).WithError(plainErr)
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   2,
+		RetryBackoff: 1 * time.Millisecond,
+		MaxBackoff:   1 * time.Millisecond,
+	})
+
+	_, err := provider.Complete(context.Background(), &CompletionRequest{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	// 不应是 fatal（plain error 默认按 retryable 处理）
+	if strings.Contains(err.Error(), "context canceled") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+// TestResilient_Stream_RespectsRetryAfter 验证 Stream 路径也尊重 Retry-After
+func TestResilient_Stream_RespectsRetryAfter(t *testing.T) {
+	retryAfter := 100 * time.Millisecond
+	rateLimitErr := NewRetryableError(KindRateLimited, 429, retryAfter, errors.New("rate limited"))
+
+	callCount := 0
+	mock := &countingProvider{
+		streamFn: func(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, rateLimitErr
+			}
+			ch := make(chan Chunk, 1)
+			ch <- Chunk{Content: "ok", Done: true}
+			close(ch)
+			return ch, nil
+		},
+	}
+
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   1,
+		RetryBackoff: 1 * time.Hour, // 应被 Retry-After 覆盖
+		MaxBackoff:   1 * time.Hour,
+	})
+
+	start := time.Now()
+	ch, err := provider.Stream(context.Background(), &CompletionRequest{})
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("expected stream success, got %v", err)
+	}
+	if ch == nil {
+		t.Fatal("expected non-nil channel")
+	}
+	// 消费 channel
+	for range ch {
+	}
+
+	if elapsed < retryAfter-50*time.Millisecond || elapsed > retryAfter+200*time.Millisecond {
+		t.Errorf("expected elapsed ~%v (Retry-After), got %v", retryAfter, elapsed)
+	}
+}
+
+// TestResilient_Stream_FatalError_NoRetry 验证 Stream 路径 fatal 错误不重试
+func TestResilient_Stream_FatalError_NoRetry(t *testing.T) {
+	fatalErr := NewRetryableError(KindAuthError, 401, 0, errors.New("bad api key"))
+	mock := &countingProvider{
+		streamFn: func(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error) {
+			return nil, fatalErr
+		},
+	}
+
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   5,
+		RetryBackoff: 1 * time.Millisecond,
+		MaxBackoff:   1 * time.Millisecond,
+	})
+
+	_, err := provider.Stream(context.Background(), &CompletionRequest{})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	// 401 错误不应被重试，直接返回
+	if !errors.Is(err, fatalErr) && !strings.Contains(err.Error(), "401") {
+		t.Errorf("expected 401 fatal error, got %v", err)
+	}
+}
+
+// countingProvider 帮助测试的 mock provider，按调用次数返回不同结果
+type countingProvider struct {
+	fn       func(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error)
+	streamFn func(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error)
+}
+
+func (p *countingProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
+	if p.fn != nil {
+		return p.fn(ctx, req)
+	}
+	return &CompletionResponse{Content: "default"}, nil
+}
+
+func (p *countingProvider) Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error) {
+	if p.streamFn != nil {
+		return p.streamFn(ctx, req)
+	}
+	ch := make(chan Chunk)
+	close(ch)
+	return ch, nil
+}
+
+func (p *countingProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
+	return nil, ErrNotSupported
+}
+
+func (p *countingProvider) Info() ModelInfo {
+	return ModelInfo{Name: "counting"}
+}
+
+// BenchmarkResilient_RetryAfter_Path 验证 Retry-After 处理开销（perf-v6 round 8 Task 3 性能基线）
+// 模拟：每个请求都是带 Retry-After=1s 的限流错误，验证路径开销
+func BenchmarkResilient_RetryAfter_Path(b *testing.B) {
+	rateLimitErr := NewRetryableError(KindRateLimited, 429, 1*time.Millisecond, errors.New("rate limited"))
+
+	mock := &countingProvider{
+		fn: func(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
+			return &CompletionResponse{Content: "ok"}, nil // 永远成功，验证路径开销
+		},
+	}
+
+	provider, _ := NewResilientProvider(mock, ResilientConfig{
+		MaxRetries:   0,
+		RetryBackoff: 1 * time.Millisecond,
+		MaxBackoff:   1 * time.Millisecond,
+	})
+
+	// 验证 classifyHTTPError 不会改变现有成功路径的开销
+	_ = rateLimitErr
+
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_, _ = provider.Complete(context.Background(), &CompletionRequest{})
+	}
 }

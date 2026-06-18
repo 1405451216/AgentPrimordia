@@ -3,6 +3,7 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -68,6 +69,12 @@ func (e *Episode) Validate() error {
 var episodeIDCounter int64
 
 func generateEpisodeID() string {
+	// 优化（perf-v3）：strconv 替代 fmt.Sprintf，避免反射分配
 	n := atomic.AddInt64(&episodeIDCounter, 1)
-	return fmt.Sprintf("ep_%013d", n)
+	s := strconv.FormatInt(n, 10)
+	// 左侧填充 0 至 13 位
+	for len(s) < 13 {
+		s = "0" + s
+	}
+	return "ep_" + s
 }

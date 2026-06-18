@@ -8,6 +8,7 @@ import (
 )
 
 func TestLifecycle_InitialState(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	if lc.Status() != StatusIdle {
@@ -16,6 +17,7 @@ func TestLifecycle_InitialState(t *testing.T) {
 }
 
 func TestLifecycle_SetStatus(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	if err := lc.SetStatus(StatusRunning); err != nil {
@@ -34,6 +36,7 @@ func TestLifecycle_SetStatus(t *testing.T) {
 }
 
 func TestLifecycle_Stop(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	if lc.IsStopped() {
@@ -48,6 +51,7 @@ func TestLifecycle_Stop(t *testing.T) {
 }
 
 func TestLifecycle_StopChan(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	select {
@@ -66,6 +70,7 @@ func TestLifecycle_StopChan(t *testing.T) {
 }
 
 func TestLifecycle_PauseAndResume(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	_ = lc.SetStatus(StatusRunning)
@@ -83,6 +88,7 @@ func TestLifecycle_PauseAndResume(t *testing.T) {
 }
 
 func TestLifecycle_PauseOnlyWhenRunning(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	lc.Pause()
@@ -93,6 +99,7 @@ func TestLifecycle_PauseOnlyWhenRunning(t *testing.T) {
 }
 
 func TestLifecycle_ResumeOnlyWhenPaused(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	lc.Resume()
@@ -103,6 +110,7 @@ func TestLifecycle_ResumeOnlyWhenPaused(t *testing.T) {
 }
 
 func TestLifecycle_WaitPause(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 	_ = lc.SetStatus(StatusRunning)
 
@@ -118,6 +126,7 @@ func TestLifecycle_WaitPause(t *testing.T) {
 }
 
 func TestLifecycle_WaitResume(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 	_ = lc.SetStatus(StatusRunning)
 
@@ -136,6 +145,7 @@ func TestLifecycle_WaitResume(t *testing.T) {
 }
 
 func TestLifecycle_WaitPauseContextCancel(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 	_ = lc.SetStatus(StatusRunning)
 
@@ -149,6 +159,7 @@ func TestLifecycle_WaitPauseContextCancel(t *testing.T) {
 }
 
 func TestLifecycle_WaitResumeContextCancel(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
@@ -161,6 +172,7 @@ func TestLifecycle_WaitResumeContextCancel(t *testing.T) {
 }
 
 func TestLifecycle_ConcurrentStatusAccess(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	var wg sync.WaitGroup
@@ -179,6 +191,7 @@ func TestLifecycle_ConcurrentStatusAccess(t *testing.T) {
 }
 
 func TestLifecycle_StatusTransitions(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	transitions := []AgentStatus{
@@ -199,6 +212,7 @@ func TestLifecycle_StatusTransitions(t *testing.T) {
 }
 
 func TestLifecycle_GracefulShutdown_IdleAgent(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -211,6 +225,7 @@ func TestLifecycle_GracefulShutdown_IdleAgent(t *testing.T) {
 }
 
 func TestLifecycle_GracefulShutdown_WaitsForCompletion(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 	_ = lc.SetStatus(StatusRunning)
 
@@ -236,6 +251,7 @@ func TestLifecycle_GracefulShutdown_WaitsForCompletion(t *testing.T) {
 }
 
 func TestLifecycle_GracefulShutdown_TimeoutFallback(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 	_ = lc.SetStatus(StatusRunning)
 
@@ -260,6 +276,7 @@ func TestLifecycle_GracefulShutdown_TimeoutFallback(t *testing.T) {
 }
 
 func TestLifecycle_IsGracefulShutdown(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 
 	if lc.IsGracefulShutdown() {
@@ -276,6 +293,7 @@ func TestLifecycle_IsGracefulShutdown(t *testing.T) {
 }
 
 func TestLifecycle_GracefulShutdown_ResetClearsState(t *testing.T) {
+	t.Parallel()
 	lc := NewLifecycle()
 	_ = lc.SetStatus(StatusRunning)
 	_ = lc.SetStatus(StatusFailed)

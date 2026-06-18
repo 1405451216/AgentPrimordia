@@ -59,13 +59,11 @@ func TestReActAgent_AsyncSummaryStored(t *testing.T) {
 	agent := NewReActAgent(ReActConfig{
 		Name:     "summary-store-agent",
 		Model:    mockLLM,
-		Toolkit:  nil,
 		MaxTurns: 1,
-		Memory:   store,
 	})
 
 	// 注入 Summarizer：通过 CapabilityAgent 的 WithSummarizer
-	cap := agent.AsCapability()
+	cap := agent.AsCapability().WithMemory(store)
 	cap.WithSummarizer(&stubSummarizer{summary: "这是摘要", topics: "topic1,topic2"})
 
 	_, err := agent.Run(context.Background(), UserMessage("some content to summarize"))

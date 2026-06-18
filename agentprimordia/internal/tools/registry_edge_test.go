@@ -200,3 +200,120 @@ func TestRegistry_ConcurrentAccess(t *testing.T) {
 		<-done
 	}
 }
+
+func TestRegistry_Definitions_CacheOverwrite(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&mockTool{name: "cached", description: "first", response: "ok"})
+
+	defs1 := reg.Definitions()
+	if len(defs1) != 1 {
+		t.Fatalf("expected 1 def, got %d", len(defs1))
+	}
+
+	// 覆盖注册，验证缓存更新
+	_ = reg.Register(&mockTool{name: "cached", description: "second", response: "ok"})
+	defs2 := reg.Definitions()
+	fn, ok := defs2[0]["function"].(map[string]any)
+	if !ok {
+		t.Fatal("function should be map")
+	}
+	if fn["description"] != "second" {
+		t.Errorf("expected description 'second' after overwrite, got '%v'", fn["description"])
+	}
+
+	// 验证返回的是深拷贝：修改 defs1 不影响 defs2
+	defs1[0]["type"] = "modified"
+	if defs2[0]["type"] != "function" {
+		t.Error("Definitions 应该返回深拷贝，避免调用者污染缓存")
+	}
+}
+
+func TestRegistry_Definitions_CacheIsolation(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&mockTool{
+		name:        "iso",
+		description: "iso tool",
+		params:      json.RawMessage(`{"type":"object","properties":{"x":{"type":"number"}}}`),
+		response:    "ok",
+	})
+
+	defs := reg.Definitions()
+	fn, _ := defs[0]["function"].(map[string]any)
+	params, _ := fn["parameters"].(map[string]any)
+	params["type"] = "modified"
+
+	defs2 := reg.Definitions()
+	fn2, _ := defs2[0]["function"].(map[string]any)
+	params2, _ := fn2["parameters"].(map[string]any)
+	if params2["type"] != "object" {
+		t.Error("parameters 也应该被深拷贝")
+	}
+}
+
+// TestRegistry_TypeAssertionSafety 验证 Registry 内部 sync.Map 若被异常值污染，
+// 各查询方法不会 panic，而是跳过或返回 false。
+func TestRegistry_TypeAssertionSafety(t *testing.T) {
+	reg := NewRegistry()
+	_ = reg.Register(&mockTool{name: "valid", response: "ok"})
+
+	// 模拟异常值污染
+	reg.tools.Store("bad-tool", "not a Tool")
+	reg.tools.Store(123, &mockTool{name: "int-key", response: "ok"}) // 非 string key
+	reg.toolDefs.Store("bad-def", "not a map")
+	reg.permissions.Store("bad-perm", "not a Permission")
+
+	// Get 应返回 false 而不是 panic
+	if _, exists := reg.Get("bad-tool"); exists {
+		t.Error("Get should return false for non-Tool value")
+	}
+	if _, exists := reg.GetPermission("bad-perm"); exists {
+		t.Error("GetPermission should return false for non-Permission value")
+	}
+
+	// List 应跳过非 string key（顺序不保证）
+	names := reg.List()
+	hasValid := false
+	for _, n := range names {
+		if n == "valid" {
+			hasValid = true
+		}
+	}
+	if !hasValid {
+		t.Errorf("List should include valid key, got %v", names)
+	}
+
+	// Definitions 应跳过异常 def
+	defs := reg.Definitions()
+	if len(defs) != 1 {
+		t.Errorf("Definitions should skip invalid defs, got %d", len(defs))
+	}
+
+	// ToolsByCategory / ToolCategories 应跳过异常 tool
+	byCat := reg.ToolsByCategory()
+	if len(byCat) != 1 {
+		t.Errorf("ToolsByCategory should skip invalid tools, got %v", byCat)
+	}
+	cats := reg.ToolCategories()
+	if len(cats) != 1 {
+		t.Errorf("ToolCategories should skip invalid tools, got %v", cats)
+	}
+}
+
+func BenchmarkRegistry_Definitions(b *testing.B) {
+	reg := NewRegistry()
+	for i := 0; i < 20; i++ {
+		name := "tool_" + string(rune('a'+i%26))
+		_ = reg.Register(&mockTool{
+			name:        name,
+			description: "benchmark tool",
+			params:      json.RawMessage(`{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`),
+			response:    "ok",
+		})
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = reg.Definitions()
+	}
+}

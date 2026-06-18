@@ -67,6 +67,7 @@ const (
 
 type HookContext struct {
 	AgentID    string
+	RequestID  string
 	SessionID  string
 	Point      HookPoint
 	Turn       int
@@ -163,56 +164,86 @@ func OnStateTransition(from, to string) HookCondition {
 	}
 }
 
-// HookStats 钩子执行统计
+// hookPointCount HookPoint enum 的数量（perf-v5 Task 11）
+// 通过 reflect 或者手工计算得到，用于分配 atomic 数组
+const hookPointCount = 64 // 大于实际 HookPoint 数量（35+），预留空间
+
+// HookStats 钩子执行统计（perf-v5 Task 11：原子化，避免锁内 map 写）
 type HookStats struct {
 	TotalFired   int64
 	TotalErrors  int64
-	ByPoint      map[HookPoint]int64
-	ByPointError map[HookPoint]int64
-	mu           sync.RWMutex
+	ByPoint      []atomic.Int64 // 下标对应 HookPoint 的 enum 序号
+	ByPointError []atomic.Int64
+	// nameIndex 记录 HookPoint string → 下标的映射（构造时一次性建好）
+	nameIndex map[HookPoint]int
 }
 
 func newHookStats() *HookStats {
+	idx := make(map[HookPoint]int, hookPointCount)
+	// 枚举所有 HookPoint（手动列举避免引入 reflect）
+	all := []HookPoint{
+		HookBeforeRun, HookAfterRun, HookBeforeTurn, HookAfterTurn,
+		HookBeforeLLM, HookAfterLLM, HookBeforeTool, HookAfterTool,
+		HookOnError, HookOnComplete, HookBeforeRAG, HookAfterRAG,
+		HookBeforePipelineStep, HookAfterPipelineStep,
+		HookBeforeHandoff, HookAfterHandoff,
+		HookBeforeParallelAgent, HookAfterParallelAgent,
+		HookBeforeDAGNode, HookAfterDAGNode,
+		HookOnStream, HookOnStreamStart, HookOnStreamEnd,
+		HookBeforeMemoryRead, HookAfterMemoryRead, HookBeforeMemoryWrite, HookAfterMemoryWrite,
+		HookContextWindowUpdate, HookContextWindowFull,
+		HookBeforeToolParse, HookAfterToolParse,
+		HookOnMetricsCollect, HookBeforeShutdown, HookAfterShutdown, HookOnStateChange,
+	}
+	for i, p := range all {
+		idx[p] = i
+	}
 	return &HookStats{
-		ByPoint:      make(map[HookPoint]int64),
-		ByPointError: make(map[HookPoint]int64),
+		ByPoint:      make([]atomic.Int64, hookPointCount),
+		ByPointError: make([]atomic.Int64, hookPointCount),
+		nameIndex:    idx,
 	}
 }
 
 func (s *HookStats) Record(point HookPoint, err error) {
 	atomic.AddInt64(&s.TotalFired, 1)
-	s.mu.Lock()
-	s.ByPoint[point]++
-	if err != nil {
-		atomic.AddInt64(&s.TotalErrors, 1)
-		s.ByPointError[point]++
+	if idx, ok := s.nameIndex[point]; ok && idx < hookPointCount {
+		s.ByPoint[idx].Add(1)
+		if err != nil {
+			atomic.AddInt64(&s.TotalErrors, 1)
+			s.ByPointError[idx].Add(1)
+		}
 	}
-	s.mu.Unlock()
 }
 
 func (s *HookStats) Snapshot() map[string]interface{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	result := map[string]interface{}{
 		"total_fired":  atomic.LoadInt64(&s.TotalFired),
 		"total_errors": atomic.LoadInt64(&s.TotalErrors),
-		"by_point":     make(map[string]int64),
-		"by_errors":    make(map[string]int64),
+		"by_point":     make(map[string]int64, len(s.nameIndex)),
+		"by_errors":    make(map[string]int64, len(s.nameIndex)),
 	}
-	for k, v := range s.ByPoint {
-		result["by_point"].(map[string]int64)[string(k)] = v
-	}
-	for k, v := range s.ByPointError {
-		result["by_errors"].(map[string]int64)[string(k)] = v
+	for p, idx := range s.nameIndex {
+		if v := s.ByPoint[idx].Load(); v > 0 {
+			result["by_point"].(map[string]int64)[string(p)] = v
+		}
+		if v := s.ByPointError[idx].Load(); v > 0 {
+			result["by_errors"].(map[string]int64)[string(p)] = v
+		}
 	}
 	return result
 }
 
+// HookManager 钩子管理器
+// perf-v6 Task 5：用 atomic.Pointer 维护 hooks 快照，避免 Fire 路径 make+copy
 type HookManager struct {
 	mu         sync.RWMutex
 	hooks      map[HookPoint][]Hook
 	stats      *HookStats
 	middleware []HookMiddleware
+	// 快照：注册时同步更新，Fire 时一次 atomic load 无锁
+	hooksSnap      atomic.Pointer[map[HookPoint][]Hook]
+	middlewareSnap atomic.Pointer[[]HookMiddleware]
 }
 
 // HookMiddleware 中间件，可在 Fire 前后添加横切逻辑
@@ -265,6 +296,21 @@ func (m *HookManager) RegisterInPhase(phase HookPhase, point HookPoint, fn HookF
 	m.RegisterConditionalInPhase(phase, point, fn, 0, Always, "")
 }
 
+// refreshSnapshots 刷新 atomic.Pointer 快照（perf-v6 Task 5）
+// 必须在持锁状态下调用
+func (m *HookManager) refreshSnapshots() {
+	// 拷贝 hooks map
+	newHooks := make(map[HookPoint][]Hook, len(m.hooks))
+	for p, hs := range m.hooks {
+		newHooks[p] = append([]Hook(nil), hs...)
+	}
+	m.hooksSnap.Store(&newHooks)
+
+	// 拷贝 middleware
+	newMid := append([]HookMiddleware(nil), m.middleware...)
+	m.middlewareSnap.Store(&newMid)
+}
+
 func (m *HookManager) RegisterConditionalInPhase(phase HookPhase, point HookPoint, fn HookFunc, priority int, condition HookCondition, id string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -286,24 +332,38 @@ func (m *HookManager) RegisterConditionalInPhase(phase HookPhase, point HookPoin
 			break
 		}
 	}
+	m.refreshSnapshots() // perf-v6 Task 5
 }
 
 func (m *HookManager) Use(middleware HookMiddleware) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.middleware = append(m.middleware, middleware)
+	m.refreshSnapshots() // perf-v6 Task 5
 }
 
 func (m *HookManager) Fire(ctx context.Context, hctx *HookContext) error {
-	m.mu.RLock()
-	hooks := make([]Hook, len(m.hooks[hctx.Point]))
-	copy(hooks, m.hooks[hctx.Point])
-	mids := make([]HookMiddleware, len(m.middleware))
-	copy(mids, m.middleware)
-	m.mu.RUnlock()
+	// perf-v6 Task 5：atomic.Pointer 快照无锁读取，避免 make+copy
+	var hooks []Hook
+	if snap := m.hooksSnap.Load(); snap != nil {
+		hooks = (*snap)[hctx.Point]
+	} else {
+		// fallback：第一次 Fire 之前没有快照
+		m.mu.RLock()
+		hooks = append([]Hook(nil), m.hooks[hctx.Point]...)
+		m.mu.RUnlock()
+	}
 
-	phaseOrder := []HookPhase{PhaseValidation, PhasePreProcessing, PhaseExecution, PhasePostProcessing}
+	var mids []HookMiddleware
+	if snap := m.middlewareSnap.Load(); snap != nil {
+		mids = *snap
+	} else {
+		m.mu.RLock()
+		mids = append([]HookMiddleware(nil), m.middleware...)
+		m.mu.RUnlock()
+	}
 
+	// perf-v5 Task 12：phaseOrder 提升为包级 var，避免每次 Fire 都分配 slice
 	var execErr error
 
 	for _, mid := range mids {
@@ -354,6 +414,7 @@ func (m *HookManager) Remove(point HookPoint) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.hooks, point)
+	m.refreshSnapshots() // perf-v6 Task 5
 }
 
 func (m *HookManager) RemoveByID(id string) {
@@ -368,12 +429,15 @@ func (m *HookManager) RemoveByID(id string) {
 		}
 		m.hooks[point] = filtered
 	}
+	m.refreshSnapshots() // perf-v6 Task 5
 }
 
 func (m *HookManager) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.hooks = make(map[HookPoint][]Hook)
+	m.middleware = nil
+	m.refreshSnapshots() // perf-v6 Task 5
 }
 
 func (m *HookManager) Count(point HookPoint) int {
@@ -578,6 +642,9 @@ func TimeoutMiddleware(timeout time.Duration) *HookMiddlewareFunc {
 // errRecovered 是 ErrorRecoveryMiddleware 使用的 sentinel error，
 // 表示错误已被恢复处理，不应继续传播
 var errRecovered = errors.New("hook error recovered")
+
+// phaseOrder Hook 执行阶段顺序（perf-v5 Task 12：包级 var 避免每次 Fire 分配）
+var phaseOrder = []HookPhase{PhaseValidation, PhasePreProcessing, PhaseExecution, PhasePostProcessing}
 
 // ErrorRecoveryMiddleware 错误恢复中间件：记录错误但不阻断后续钩子
 func ErrorRecoveryMiddleware(onError func(HookPoint, error)) *HookMiddlewareFunc {

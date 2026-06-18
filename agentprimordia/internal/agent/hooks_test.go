@@ -3,12 +3,14 @@ package agent
 import (
 	"context"
 	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestHookManager_RegisterAndFire(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var called int32
 	m.Register(HookBeforeRun, func(_ context.Context, _ *HookContext) error {
@@ -26,6 +28,7 @@ func TestHookManager_RegisterAndFire(t *testing.T) {
 }
 
 func TestHookManager_PriorityOrdering(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	order := make([]int, 0)
 
@@ -52,6 +55,7 @@ func TestHookManager_PriorityOrdering(t *testing.T) {
 }
 
 func TestHookManager_ConditionalExecution(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var turn3Called bool
 	var alwaysCalled bool
@@ -84,6 +88,7 @@ func TestHookManager_ConditionalExecution(t *testing.T) {
 }
 
 func TestHookManager_OnTurnsGreaterCondition(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var called int32
 	m.RegisterConditional(HookAfterTurn, func(_ context.Context, _ *HookContext) error {
@@ -101,6 +106,7 @@ func TestHookManager_OnTurnsGreaterCondition(t *testing.T) {
 }
 
 func TestHookManager_OnErrorCondition(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var errorHookCalled bool
 
@@ -125,6 +131,7 @@ func TestHookManager_OnErrorCondition(t *testing.T) {
 }
 
 func TestHookManager_StateTransitionCondition(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var transitionCaught bool
 
@@ -156,6 +163,7 @@ func TestHookManager_StateTransitionCondition(t *testing.T) {
 }
 
 func TestHookManager_RemoveByID(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var called int32
 
@@ -184,6 +192,7 @@ func TestHookManager_RemoveByID(t *testing.T) {
 }
 
 func TestHookManager_Stats(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 
 	m.Register(HookBeforeRun, func(_ context.Context, _ *HookContext) error { return nil })
@@ -206,6 +215,7 @@ func TestHookManager_Stats(t *testing.T) {
 }
 
 func TestHookManager_TotalCount(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 
 	m.Register(HookBeforeRun, func(_ context.Context, _ *HookContext) error { return nil })
@@ -221,6 +231,7 @@ func TestHookManager_TotalCount(t *testing.T) {
 }
 
 func TestHookManager_RegisteredPoints(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	m.Register(HookOnStream, func(_ context.Context, _ *HookContext) error { return nil })
 	m.Register(HookOnStateChange, func(_ context.Context, _ *HookContext) error { return nil })
@@ -232,6 +243,7 @@ func TestHookManager_RegisteredPoints(t *testing.T) {
 }
 
 func TestHookMiddleware_Chain(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var beforeOrder []string
 	var afterOrder []string
@@ -271,6 +283,7 @@ func TestHookMiddleware_Chain(t *testing.T) {
 }
 
 func TestHookMiddleware_BeforeBlocks(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var hookCalled bool
 
@@ -295,6 +308,7 @@ func TestHookMiddleware_BeforeBlocks(t *testing.T) {
 }
 
 func TestErrorRecoveryMiddleware(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var recoveredErrors []string
 
@@ -316,6 +330,7 @@ func TestErrorRecoveryMiddleware(t *testing.T) {
 }
 
 func TestAllHookPoints(t *testing.T) {
+	t.Parallel()
 	points := AllHookPoints()
 	if len(points) < 30 {
 		t.Errorf("AllHookPoints 应返回至少 30 个点，实际 %d", len(points))
@@ -331,6 +346,7 @@ func TestAllHookPoints(t *testing.T) {
 }
 
 func TestHookPointCategory(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		point    HookPoint
 		expected string
@@ -358,6 +374,7 @@ func TestHookPointCategory(t *testing.T) {
 }
 
 func TestHookConvenienceMethods(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	var streamCalled, stateCalled, memoryCalled bool
 
@@ -393,6 +410,7 @@ func TestHookConvenienceMethods(t *testing.T) {
 }
 
 func TestHookContext_Fields(t *testing.T) {
+	t.Parallel()
 	hctx := &HookContext{
 		AgentID:            "agent-1",
 		SessionID:          "sess-1",
@@ -423,6 +441,7 @@ func TestHookContext_Fields(t *testing.T) {
 }
 
 func TestHookManager_Clear(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	m.Register(HookBeforeRun, func(_ context.Context, _ *HookContext) error { return nil })
 	m.Register(HookAfterRun, func(_ context.Context, _ *HookContext) error { return nil })
@@ -438,6 +457,7 @@ func TestHookManager_Clear(t *testing.T) {
 }
 
 func TestHookManager_FireEmptyPoint(t *testing.T) {
+	t.Parallel()
 	m := NewHookManager()
 	err := m.Fire(context.Background(), &HookContext{Point: "nonexistent"})
 	if err != nil {
@@ -446,6 +466,7 @@ func TestHookManager_FireEmptyPoint(t *testing.T) {
 }
 
 func TestHookStats_Snapshot(t *testing.T) {
+	t.Parallel()
 	s := newHookStats()
 	s.Record(HookBeforeRun, nil)
 	s.Record(HookAfterTurn, errors.New("err"))
@@ -460,7 +481,38 @@ func TestHookStats_Snapshot(t *testing.T) {
 	}
 }
 
+// perf-v5 Task 11 验证：HookStats.Record 并发安全（atomic.Int64 数组）
+func TestHookStats_ConcurrentRecord(t *testing.T) {
+	t.Parallel()
+	s := newHookStats()
+	const goroutines = 50
+	const perGoroutine = 100
+
+	var wg sync.WaitGroup
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < perGoroutine; j++ {
+				s.Record(HookBeforeLLM, nil)
+			}
+		}()
+	}
+	wg.Wait()
+
+	snap := s.Snapshot()
+	totalFired := snap["total_fired"].(int64)
+	expected := int64(goroutines * perGoroutine)
+	if totalFired != expected {
+		t.Errorf("并发 Record 后 total_fired 失真: got=%d, want=%d", totalFired, expected)
+	}
+	if snap["total_errors"].(int64) != 0 {
+		t.Errorf("total_errors 应为 0，got=%d", snap["total_errors"].(int64))
+	}
+}
+
 func TestHookPhase_ValidationStopsExecution(t *testing.T) {
+	t.Parallel()
 	mgr := NewHookManager()
 	var executionOrder []string
 
@@ -483,6 +535,7 @@ func TestHookPhase_ValidationStopsExecution(t *testing.T) {
 }
 
 func TestHookPhase_ExecutionOrder(t *testing.T) {
+	t.Parallel()
 	mgr := NewHookManager()
 	var order []string
 
@@ -519,6 +572,7 @@ func TestHookPhase_ExecutionOrder(t *testing.T) {
 }
 
 func TestHookPhase_RegisterDefaultIsExecution(t *testing.T) {
+	t.Parallel()
 	mgr := NewHookManager()
 	var called bool
 	mgr.Register(HookBeforeLLM, func(_ context.Context, _ *HookContext) error {
@@ -535,6 +589,7 @@ func TestHookPhase_RegisterDefaultIsExecution(t *testing.T) {
 }
 
 func TestHookPhase_MultipleInSamePhase(t *testing.T) {
+	t.Parallel()
 	mgr := NewHookManager()
 	var order []string
 
@@ -557,6 +612,7 @@ func TestHookPhase_MultipleInSamePhase(t *testing.T) {
 }
 
 func TestLoggingMiddleware(t *testing.T) {
+	t.Parallel()
 	mw := LoggingMiddleware()
 	m := NewHookManager()
 	m.Use(mw)
@@ -569,6 +625,7 @@ func TestLoggingMiddleware(t *testing.T) {
 }
 
 func TestMetricsCollectionMiddleware(t *testing.T) {
+	t.Parallel()
 	stats := newHookStats()
 	mw := MetricsCollectionMiddleware(stats)
 	m := NewHookManager()
@@ -592,6 +649,7 @@ func TestMetricsCollectionMiddleware(t *testing.T) {
 }
 
 func TestTimeoutMiddleware(t *testing.T) {
+	t.Parallel()
 	mw := TimeoutMiddleware(5 * time.Second)
 	m := NewHookManager()
 	m.Use(mw)

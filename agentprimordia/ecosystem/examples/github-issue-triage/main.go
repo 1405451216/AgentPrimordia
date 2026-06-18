@@ -84,11 +84,14 @@ func main() {
 	fmt.Printf("[Provider]   使用 %s\n\n", providerName)
 
 	// 3. 注册工具
-	registry := registryFromTools(
+	registry, err := registryFromTools(
 		listIssuesTool{},
 		readIssueTool{},
 		addLabelTool{},
 	)
+	if err != nil {
+		log.Fatalf("注册工具失败: %v", err)
+	}
 
 	// 4. 运行 triage 流程
 	startTime := time.Now()
@@ -107,11 +110,15 @@ func main() {
 	} else {
 		// 真实 LLM 模式: 走完整 ReAct 循环
 		provider, _, _, _ := createProvider()
-		agent := ap.NewAgent("issue-triage-bot", systemPrompt,
+		agent, err := ap.NewAgent("issue-triage-bot", systemPrompt,
 			provider,
 			ap.WithMaxTurns(20),
 			ap.WithTemperature(0),
-		).WithToolkit(registry)
+		)
+		if err != nil {
+			log.Fatalf("创建 Agent 失败: %v", err)
+		}
+		agent = agent.WithToolkit(registry)
 
 		fmt.Println("[Agent] 开始 Triage...")
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)

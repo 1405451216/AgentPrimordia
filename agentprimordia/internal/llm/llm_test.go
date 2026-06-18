@@ -7,6 +7,7 @@ import (
 )
 
 func TestMockLLM_Complete(t *testing.T) {
+	t.Parallel()
 	mock := NewMockLLM(t).WithResponse("Hello, world!")
 
 	resp, err := mock.Complete(context.Background(), &CompletionRequest{
@@ -25,6 +26,7 @@ func TestMockLLM_Complete(t *testing.T) {
 }
 
 func TestMockLLM_Stream(t *testing.T) {
+	t.Parallel()
 	mock := NewMockLLM(t).WithResponse("Streamed content")
 
 	ch, err := mock.Stream(context.Background(), &CompletionRequest{
@@ -49,6 +51,7 @@ func TestMockLLM_Stream(t *testing.T) {
 }
 
 func TestMockLLM_CallTools(t *testing.T) {
+	t.Parallel()
 	mock := NewMockLLM(t).WithToolResponse([]FunctionCall{
 		{ID: "call_1", Name: "get_weather", Arguments: `{"city": "Beijing"}`},
 	})
@@ -67,6 +70,7 @@ func TestMockLLM_CallTools(t *testing.T) {
 }
 
 func TestMockLLM_Error(t *testing.T) {
+	t.Parallel()
 	mock := NewMockLLM(t).WithError(context.Canceled)
 
 	_, err := mock.Complete(context.Background(), &CompletionRequest{})
@@ -76,6 +80,7 @@ func TestMockLLM_Error(t *testing.T) {
 }
 
 func TestMockLLM_Delay(t *testing.T) {
+	t.Parallel()
 	start := time.Now()
 	mock := NewMockLLM(t).WithResponse("delayed").WithDelay(10 * time.Millisecond)
 
@@ -94,6 +99,7 @@ func TestMockLLM_Delay(t *testing.T) {
 }
 
 func TestMockLLM_Info(t *testing.T) {
+	t.Parallel()
 	mock := NewMockLLM(t)
 	info := mock.Info()
 
@@ -106,6 +112,7 @@ func TestMockLLM_Info(t *testing.T) {
 }
 
 func TestMockLLM_Embeddings(t *testing.T) {
+	t.Parallel()
 	mock := NewMockLLM(t)
 
 	embeddings, err := mock.Embeddings(context.Background(), []string{"hello", "world"})

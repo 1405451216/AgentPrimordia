@@ -8,6 +8,21 @@ import (
 	"time"
 )
 
+// perf-v6 Task 6：Broadcast 路径 target slice 复用
+var broadcastTargetPool = sync.Pool{
+	New: func() any {
+		s := make([]busTarget, 0, 16)
+		return &s
+	},
+}
+
+// busTarget Broadcast 内部 target 结构
+type busTarget struct {
+	agentID string
+	handler BusMessageHandler
+	chs     []chan *BusMessage
+}
+
 // ===== 统一消息类型 =====
 
 // BusMessageType 统一消息类型（合并 A2AMessageType + MessageType）
@@ -129,13 +144,10 @@ func (b *LocalMessageBus) Broadcast(ctx context.Context, msg *BusMessage) map[st
 	}
 
 	// 快照 handlers 和 channels，避免在持有 RLock 期间执行 handler
+	// perf-v6 Task 6：target slice 复用 sync.Pool
 	b.mu.RLock()
-	type target struct {
-		agentID string
-		handler BusMessageHandler
-		chs     []chan *BusMessage
-	}
-	targets := make([]target, 0, len(b.handlers))
+	targetsPtr := broadcastTargetPool.Get().(*[]busTarget)
+	targets := (*targetsPtr)[:0]
 	for agentID, handler := range b.handlers {
 		if agentID == msg.From {
 			continue
@@ -143,7 +155,7 @@ func (b *LocalMessageBus) Broadcast(ctx context.Context, msg *BusMessage) map[st
 		chs := b.channels[agentID]
 		chsCopy := make([]chan *BusMessage, len(chs))
 		copy(chsCopy, chs)
-		targets = append(targets, target{agentID: agentID, handler: handler, chs: chsCopy})
+		targets = append(targets, busTarget{agentID: agentID, handler: handler, chs: chsCopy})
 	}
 	b.mu.RUnlock()
 
@@ -153,7 +165,7 @@ func (b *LocalMessageBus) Broadcast(ctx context.Context, msg *BusMessage) map[st
 
 	for _, t := range targets {
 		wg.Add(1)
-		go func(t target) {
+		go func(t busTarget) {
 			defer wg.Done()
 			broadcastMsg := *msg
 			broadcastMsg.To = t.agentID
@@ -177,6 +189,10 @@ func (b *LocalMessageBus) Broadcast(ctx context.Context, msg *BusMessage) map[st
 		}(t)
 	}
 	wg.Wait()
+
+	// 归还 sync.Pool（perf-v6 Task 6）
+	targets = targets[:0]
+	broadcastTargetPool.Put(&targets)
 
 	return results
 }

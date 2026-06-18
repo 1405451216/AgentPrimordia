@@ -906,8 +906,7 @@ func (m *MyMemoryStore) Search(ctx context.Context, query string, opts *memory.S
 ```go
 agent := agent.NewReActAgent(agent.ReActConfig{
     // ...
-    Memory: &MyMemoryStore{},
-})
+}).WithMemory(&MyMemoryStore{})
 ```
 
 ### 实现自定义 CheckpointStore
@@ -1038,13 +1037,12 @@ ragStore := memory.NewRAGStore(memStore, myEmbedder)
 
 agent := agent.NewReActAgent(agent.ReActConfig{
     // ...
-    RAG: &agent.RAGConfig{
-        Provider:         ragAdapter,  // 实现 RAGProvider 接口
-        Mode:             agent.RAGModeAuto,
-        TopK:             5,           // 返回最多 5 条
-        MinScore:         0.3,         // 最低相关度阈值
-        // ContextTemplate: "...",     // TODO: 自定义模板
-    },
+}).WithRAG(agent.RAGConfig{
+    Provider:         ragAdapter,  // 实现 RAGProvider 接口
+    Mode:             agent.RAGModeAuto,
+    TopK:             5,           // 返回最多 5 条
+    MinScore:         0.3,         // 最低相关度阈值
+    // ContextTemplate: "...",     // TODO: 自定义模板
 })
 ```
 
@@ -1189,9 +1187,8 @@ func TestAgentIntegration(t *testing.T) {
     agent := agent.NewReActAgent(agent.ReActConfig{
         Name:    "integration-test-agent",
         Model:   provider,
-        Toolkit: registry,
         MaxTurns: 3,
-    })
+    }).WithToolkit(registry)
 
     resp, err := agent.Run(context.Background(), agent.UserMessage("What's the weather?"))
     if err != nil {
@@ -1237,9 +1234,8 @@ func TestMyAgent(t *testing.T) {
     agent := agent.NewReActAgent(agent.ReActConfig{
         Name:     "test-agent",
         Model:    mock,
-        Toolkit:  registry,
         MaxTurns: 3,
-    })
+    }).WithToolkit(registry)
     
     resp, err := agent.Run(context.Background(), agent.UserMessage("What's the weather?"))
     if err != nil {

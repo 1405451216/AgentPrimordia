@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"container/list"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -10,6 +11,67 @@ import (
 	"sync"
 	"time"
 )
+
+// promptFingerprintCache 缓存 prompt → fingerprint（perf-v6 Task 7 + Task B）
+// 使用 container/list + map 实现 O(1) LRU，避免 sync.Map 无限制增长
+type fingerprintCache struct {
+	mu    sync.Mutex
+	lru   *list.List               // 双向链表：Front=最旧, Back=最新
+	items map[string]*list.Element // prompt → list.Element
+	max   int
+}
+
+func newFingerprintCache(max int) *fingerprintCache {
+	if max <= 0 {
+		max = defaultFingerprintCacheSize
+	}
+	return &fingerprintCache{
+		lru:   list.New(),
+		items: make(map[string]*list.Element, max),
+		max:   max,
+	}
+}
+
+func (c *fingerprintCache) get(key string) (string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if elem, ok := c.items[key]; ok {
+		c.lru.MoveToBack(elem) // O(1) 升级
+		return elem.Value.(*fpCacheEntry).value, true
+	}
+	return "", false
+}
+
+func (c *fingerprintCache) put(key, value string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if elem, ok := c.items[key]; ok {
+		elem.Value.(*fpCacheEntry).value = value
+		c.lru.MoveToBack(elem)
+		return
+	}
+	// 淘汰最旧
+	for c.lru.Len() >= c.max {
+		front := c.lru.Front()
+		if front == nil {
+			break
+		}
+		c.lru.Remove(front)
+		oldKey := front.Value.(*fpCacheEntry).key
+		delete(c.items, oldKey)
+	}
+	// Value 同时存 key（用于淘汰时反向查 map）和 value
+	entry := &fpCacheEntry{key: key, value: value}
+	listElem := c.lru.PushBack(entry)
+	c.items[key] = listElem
+}
+
+type fpCacheEntry struct {
+	key, value string
+}
+
+// promptFingerprintCache 全局实例（perf-v6 Task B：限制大小 1000）
+var promptFingerprintCache = newFingerprintCache(1000)
 
 const (
 	defaultFingerprintCacheSize = 100
@@ -214,9 +276,15 @@ func (h *HybridCache) Invalidate(ctx context.Context, key string) error {
 }
 
 func PromptFingerprint(text string) string {
+	// perf-v6 Task 7：缓存 prompt → fingerprint，避免重复 sha256
+	if v, ok := promptFingerprintCache.get(text); ok {
+		return v
+	}
 	normalized := normalizeText(text)
 	hash := sha256.Sum256([]byte(normalized))
-	return hex.EncodeToString(hash[:])[:16]
+	fp := hex.EncodeToString(hash[:])[:16]
+	promptFingerprintCache.put(text, fp)
+	return fp
 }
 
 func normalizeText(text string) string {

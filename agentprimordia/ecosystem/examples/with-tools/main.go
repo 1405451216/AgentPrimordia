@@ -42,8 +42,11 @@ func main() {
 
 	mock := testutil.NewMockProvider("让我帮你读取文件内容。")
 
-	agent := ap.NewAgent("TooledAgent", "你是一个可以读写文件、执行命令和访问网页的助手", mock, ap.WithMaxTurns(5)).
-		WithToolkit(registry).
+	agent, err := ap.NewAgent("TooledAgent", "你是一个可以读写文件、执行命令和访问网页的助手", mock, ap.WithMaxTurns(5))
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+	agent = agent.WithToolkit(registry).
 		WithMemory(memory).
 		WithHooks(hooks)
 

@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -41,7 +42,7 @@ func NewOllamaProvider(cfg Config) (*OllamaProvider, error) {
 
 	return &OllamaProvider{
 		config: cfg,
-		client: &http.Client{Timeout: defaultOllamaTimeout}, // 本地模型可能更慢
+		client: NewDefaultLLMClient(defaultOllamaTimeout), // 本地模型可能更慢
 	}, nil
 }
 
@@ -105,7 +106,7 @@ func (p *OllamaProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 		p.injectResponseFormat(body, req.ResponseFormat)
 	}
 
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -125,7 +126,8 @@ func (p *OllamaProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
-		return nil, fmt.Errorf("Ollama API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("ollama", resp.StatusCode, respBody, resp.Header)
 	}
 
 	ch := make(chan Chunk, 32)
@@ -148,7 +150,8 @@ func (p *OllamaProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 			}
 
 			var chunkResp ollamaChatResponse
-			if err := json.Unmarshal([]byte(line), &chunkResp); err != nil {
+			// perf-v6 round 8 Task 1：使用 pooled stringReader 避免每条 SSE 消息分配 + []byte 拷贝
+			if err := jsonutil.DecodeString(line, &chunkResp); err != nil {
 				continue
 			}
 
@@ -224,7 +227,10 @@ func (p *OllamaProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 	}
 
 	for _, tc := range resp.Message.ToolCalls {
-		argsJSON, _ := json.Marshal(tc.Function.Arguments)
+		argsJSON, err := json.Marshal(tc.Function.Arguments)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal Ollama function call args: %w", err)
+		}
 		result.ToolCalls = append(result.ToolCalls, FunctionCall{
 			ID:        fmt.Sprintf("ollama_%s_%d", tc.Function.Name, tc.ID),
 			Name:      tc.Function.Name,
@@ -291,7 +297,7 @@ func (p *OllamaProvider) Info() ModelInfo {
 // ===== 内部方法 =====
 
 func (p *OllamaProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := json.Marshal(body)
+	bodyBytes, err := jsonutil.MarshalBody(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -316,7 +322,8 @@ func (p *OllamaProvider) doRequest(ctx context.Context, path string, body any) (
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Ollama API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("ollama", resp.StatusCode, respBody, resp.Header)
 	}
 
 	return respBody, nil
@@ -438,7 +445,7 @@ func (p *OllamaProvider) PullModel(ctx context.Context, modelName string) error 
 }
 
 func (p *OllamaProvider) DeleteModel(ctx context.Context, modelName string) error {
-	bodyBytes, err := json.Marshal(map[string]any{"name": modelName})
+	bodyBytes, err := jsonutil.MarshalBody(map[string]any{"name": modelName})
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -457,7 +464,8 @@ func (p *OllamaProvider) DeleteModel(ctx context.Context, modelName string) erro
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize))
-		return fmt.Errorf("Ollama delete returned HTTP %d: %s", resp.StatusCode, string(respBody))
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return NewHTTPError("ollama", resp.StatusCode, respBody, resp.Header)
 	}
 	return nil
 }
@@ -506,7 +514,8 @@ func (p *OllamaProvider) doGet(ctx context.Context, path string) (json.RawMessag
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Ollama API returned HTTP %d: %s", resp.StatusCode, respBody)
+		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
+		return nil, NewHTTPError("ollama", resp.StatusCode, respBody, resp.Header)
 	}
 
 	return respBody, nil

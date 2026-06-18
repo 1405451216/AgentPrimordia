@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -137,9 +138,10 @@ func TestOpenAIProvider_Complete_APIError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	apiErr, ok := err.(*APIError)
-	if !ok {
-		t.Fatalf("expected *APIError, got %T", err)
+	// perf-v6 round 8 Task 3：错误现在是 *RetryableError，用 errors.As 提取内部 APIError
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError inside *RetryableError, got %T: %v", err, err)
 	}
 	if apiErr.Type != "invalid_request_error" {
 		t.Errorf("expected type 'invalid_request_error', got '%s'", apiErr.Type)

@@ -67,11 +67,11 @@ func TestHandoffProtocol_CompleteAndFail(t *testing.T) {
 	}
 
 	stats := protocol.GetStats()
-	if stats.Successful != 1 {
-		t.Errorf("expected 1 successful, got %d", stats.Successful)
+	if stats.Successful.Load() != 1 {
+		t.Errorf("expected 1 successful, got %d", stats.Successful.Load())
 	}
 
-	t.Logf("✅ Complete: duration=%v success=%d", record.Duration, stats.Successful)
+	t.Logf("✅ Complete: duration=%v success=%d", record.Duration, stats.Successful.Load())
 
 	// 测试失败
 	ctx2 := CreateStandardContext("失败测试", nil, 1)
@@ -87,11 +87,11 @@ func TestHandoffProtocol_CompleteAndFail(t *testing.T) {
 	}
 
 	stats2 := protocol.GetStats()
-	if stats2.Failed != 1 {
-		t.Errorf("expected 1 failed, got %d", stats2.Failed)
+	if stats2.Failed.Load() != 1 {
+		t.Errorf("expected 1 failed, got %d", stats2.Failed.Load())
 	}
 
-	t.Logf("✅ Fail: failed=%d total=%d", stats2.Failed, stats2.TotalHandoffs)
+	t.Logf("✅ Fail: failed=%d total=%d", stats2.Failed.Load(), stats2.TotalHandoffs.Load())
 }
 
 func TestHandoffProtocol_Reject(t *testing.T) {
@@ -112,11 +112,11 @@ func TestHandoffProtocol_Reject(t *testing.T) {
 	}
 
 	stats := protocol.GetStats()
-	if stats.Rejected != 1 {
-		t.Errorf("expected 1 rejected, got %d", stats.Rejected)
+	if stats.Rejected.Load() != 1 {
+		t.Errorf("expected 1 rejected, got %d", stats.Rejected.Load())
 	}
 
-	t.Logf("✅ Reject: reason=%s rejected=%d", reason, stats.Rejected)
+	t.Logf("✅ Reject: reason=%s rejected=%d", reason, stats.Rejected.Load())
 }
 
 func TestHandoffProtocol_Validation(t *testing.T) {
@@ -232,7 +232,7 @@ func TestHandoffManager_Integration(t *testing.T) {
 	}
 
 	stats := manager.GetProtocol().GetStats()
-	t.Logf("✅ Manager Integration: status=%s successful=%d", record.Status, stats.Successful)
+	t.Logf("✅ Manager Integration: status=%s successful=%d", record.Status, stats.Successful.Load())
 	t.Logf("   Duration: %v", record.Duration)
 }
 
@@ -339,11 +339,11 @@ func TestHandoffProtocol_ConcurrentHandoffs(t *testing.T) {
 	}
 
 	stats := protocol.GetStats()
-	if stats.TotalHandoffs != 5 {
-		t.Errorf("expected 5 handoffs, got %d", stats.TotalHandoffs)
+	if stats.TotalHandoffs.Load() != 5 {
+		t.Errorf("expected 5 handoffs, got %d", stats.TotalHandoffs.Load())
 	}
-	if stats.Successful != 5-errCount {
-		t.Errorf("expected %d successful, got %d", 5-errCount, stats.Successful)
+	if stats.Successful.Load() != int64(5-errCount) {
+		t.Errorf("expected %d successful, got %d", 5-errCount, stats.Successful.Load())
 	}
 
 	active := protocol.GetActiveHandoffs()
@@ -351,7 +351,7 @@ func TestHandoffProtocol_ConcurrentHandoffs(t *testing.T) {
 		t.Errorf("expected no active handoffs, got %d", len(active))
 	}
 
-	t.Logf("✅ Concurrent Handoffs: total=%d successful=%d errors=%d", stats.TotalHandoffs, stats.Successful, errCount)
+	t.Logf("✅ Concurrent Handoffs: total=%d successful=%d errors=%d", stats.TotalHandoffs.Load(), stats.Successful.Load(), errCount)
 }
 
 func BenchmarkHandoffProtocol_Initiate(b *testing.B) {

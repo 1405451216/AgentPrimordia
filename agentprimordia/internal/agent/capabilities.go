@@ -1,9 +1,13 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
+	"agentprimordia/internal/tools"
 )
 
 // 此文件定义 Capable 接口协议，实现协议式微内核架构。
@@ -94,4 +98,28 @@ type FileScopeCapable interface {
 // 引擎自动缓存 Complete 调用结果以减少重复请求。
 type CacheCapable interface {
 	GetCache() llm.LLMCache
+}
+
+// ToolkitCapable 标识 Agent 具备工具注册表能力。
+// 引擎通过此接口发现可用的工具定义。
+type ToolkitCapable interface {
+	GetToolkit() *tools.Registry
+}
+
+// PlanningCapable 标识 Agent 具备任务规划能力。
+// Agent 可以将复杂任务分解为子任务并生成执行计划。
+type PlanningCapable interface {
+	GetPlanner() planning.Planner
+}
+
+// ReflectionCapable 标识 Agent 具备自我反思能力。
+// Agent 可以对输出进行反思、批评和改进。
+type ReflectionCapable interface {
+	GetReflector() reflection.Reflector
+}
+
+// ToolLearningCapable 标识 Agent 具备工具学习能力。
+// Agent 可以记录工具使用经验，获取最佳实践，并基于历史经验建议改进。
+type ToolLearningCapable interface {
+	GetToolLearner() tool_learning.ToolLearner
 }
