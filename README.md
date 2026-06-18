@@ -3,7 +3,7 @@
 > 通用 Go Agent 开发框架 — 轻量、并发原生、生产验证
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/badge/go-1.22+-00ADD8E.svg)](https://golang.org)
+[![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
 
 ## 特性
 
@@ -11,14 +11,21 @@
 - **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
 - **工具系统** — FileSystem / Shell / Web / Knowledge 内置，MCP 协议集成，插件扩展
 - **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索
-- **13 家 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek
+- **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / 弹性包装器
 - **Resilient Provider** — 自动重试 / 降级 / 熔断
 - **并发调度** — Pool 信号量调度，会话隔离，重试策略
 - **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
 - **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard
 - **K8s Operator** — AgentDeployment CRD 声明式部署
 - **CLI 工具** — `ap init / run / debug / test / mcp / plugin`
-- **零外部依赖** — 纯 Go 标准库（仅 modernc.org/sqlite + gopkg.in/yaml.v3）
+- **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+
+## v0.8.0 Highlights
+
+- **开发者体验重构** — `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
+- **`WithRAGMemory()` 一步 RAG** — 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
+- **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
+- **向后兼容** — 旧 `ap.NewReActAgent()` API 仍然可用
 
 ## v0.7.0 Highlights
 
@@ -32,6 +39,7 @@
 ### 安装 CLI
 
 ```bash
+cd agentprimordia
 go build -o ap ./cmd/ap/
 ```
 
@@ -111,14 +119,22 @@ results, _ := pool.Dispatch(ctx, []ap.TaskConfig{
 ### DAG 编排
 
 ```go
-dag := ap.NewDAG()
-dag.AddNode("collect", collectAgent)
-dag.AddNode("analyze", analyzeAgent)
-dag.AddNode("report", reportAgent)
-dag.AddEdge("collect", "analyze", nil)
-dag.AddEdge("analyze", "report", nil)
+dag, _ := ap.NewDAGBuilder("data-analysis").
+    Node("collect", func(ctx context.Context, input string) (string, error) {
+        return collectAgent.Run(ctx, ap.UserMessage(input))
+    }).
+    Node("analyze", func(ctx context.Context, input string) (string, error) {
+        return analyzeAgent.Run(ctx, ap.UserMessage(input))
+    }).
+    Node("report", func(ctx context.Context, input string) (string, error) {
+        return reportAgent.Run(ctx, ap.UserMessage(input))
+    }).
+    Edge("collect", "analyze").
+    Edge("analyze", "report").
+    Build()
 
-result, _ := dag.Execute(ctx, ap.UserMessage("分析销售数据"))
+result, _ := dag.Run(ctx, "分析销售数据")
+fmt.Println(result.NodeResults["report"].Output)
 ```
 
 ### MCP Server 集成
@@ -314,24 +330,35 @@ P99 耗时:   1.4s
 agentprimordia/
 ├── cmd/
 │   ├── ap/                   # CLI 工具 (ap init/run/debug/test/mcp/plugin)
+│   ├── admin/                # Admin HTTP API Server
 │   └── example/              # 示例应用
 ├── internal/
-│   ├── agent/                # ReActLoop 引擎 + 编排 (DAG/Pipeline/Handoff/GroupChat)
+│   ├── agent/                # ReActLoop 引擎 + 协议式微内核
+│   │   ├── a2a/              # Agent2Agent 协议
+│   │   ├── planning/         # 任务规划
+│   │   ├── reflection/       # 自反思
+│   │   └── tool_learning/    # 工具学习
 │   ├── pool/                 # 多 Agent 并发调度
 │   ├── tools/                # 工具系统 (Registry/MCP/Plugin/Builtin)
-│   ├── memory/               # 记忆存储 (SQLite/Vector/RAG/Milvus/Qdrant/pgvector)
-│   ├── llm/                  # LLM 抽象层 (13 Provider + Resilient)
-│   ├── guardrail/            # 安全防护 (PII/Topic/Injection/Trie)
+│   ├── memory/               # 记忆存储 (SQLite/Vector/RAG)
+│   ├── llm/                  # LLM 抽象层 (10+ Provider + Resilient)
+│   ├── guardrail/            # 输入输出护栏 (PII/Topic/Injection)
+│   ├── debugger/             # Inspector / Visualizer
+│   ├── prompt/               # 提示词模板
+│   ├── config/               # 配置热加载
 │   ├── metrics/              # Prometheus 指标
 │   ├── otel/                 # OpenTelemetry 桥接
 │   ├── events/               # 事件总线
 │   ├── security/             # ACL + Sandbox
-│   └── persist/              # 状态持久化
+│   ├── persist/              # 状态持久化
+│   └── concurrency/          # 文件锁等并发原语
 ├── operator/                  # K8s Operator (独立 go.mod)
 │   ├── api/v1/               # AgentDeployment CRD
 │   ├── controller/           # Reconciler
 │   ├── cmd/                  # Operator 入口
 │   └── manifest/             # CRD + 部署清单 + 示例
+├── testutil/                  # 测试辅助工具 (MockProvider / NewTestAgent)
+├── pgvector/                  # pgvector 向量存储扩展
 ├── deploy/grafana/            # Grafana Dashboard 模板
 ├── bench/                     # 性能基准测试套件
 ├── docs/                      # 文档 + Cookbook
@@ -441,12 +468,13 @@ golangci-lint run
 1. **来自生产，服务生产** — 核心模式从 CodeCast 生产环境提炼
 2. **接口优先** — LLM / Tools / Memory 全部接口解耦，自由替换
 3. **并发原生** — Goroutine + Channel 是一等公民
-4. **零外部依赖** — 纯 Go 标准库（仅 modernc.org/sqlite + gopkg.in/yaml.v3）
+4. **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
 5. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
 
 ## 文档
 
 - [CHANGELOG](CHANGELOG.md)
+- [v0.8.0 发布说明](RELEASE-NOTES-v0.8.0.md)
 - [v0.7.0 发布说明](RELEASE-NOTES-v0.7.0.md)
 - [架构图](architecture-mermaid.md)
 - [API 完整参考](api-reference.md)

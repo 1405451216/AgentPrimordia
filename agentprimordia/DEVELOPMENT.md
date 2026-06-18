@@ -1302,3 +1302,38 @@ Operator 会自动创建 ConfigMap、Deployment、Service 和 HPA 资源，详�
 | `AP_LLM_TEMPERATURE` | 温度 | 0 |
 | `AP_LLM_MAX_TOKENS` | 最大 token 数 | 0 (不限) |
 | `AP_LLM_EXTRA_*` | 额外配置 | — |
+
+---
+
+## v0.7 → v0.8 迁移指南
+
+### 新特性（向后兼容）
+
+1. **简化 Agent 入口** — 推荐直接使用 `ap.NewAgent()`，旧 `ap.NewReActAgent()` 仍可用
+   ```go
+   // v0.8.0 推荐写法
+   agent := ap.NewAgent("hello", "你是一个助手", provider, ap.WithMaxTurns(10))
+   ```
+
+2. **协议式微内核** — 通过 17 个 Capable 接口实现能力自动发现与组合
+
+3. **7 个内置工具** — FileSystem、Shell、Web、API、Database、CodeExecution、Knowledge
+
+4. **20+ 生命周期 Hook** — 覆盖 Agent 全生命周期的审计、告警、成本追踪
+
+5. **A2A 协议** — Agent 间协作，支持自动 Agent Card 发现和异步任务执行
+
+6. **自反思能力** — Agent 可评估自身输出质量并自动改进
+
+7. **工具学习** — Agent 可自动发现和学习新工具
+
+8. **配置热加载** — 运行时动态更新配置，无需重启
+
+### 破坏性变更
+
+无。v0.8.0 完全向后兼容 v0.7.x。
+
+### 依赖变更
+
+- Go 版本要求：1.22 → **1.26+**
+- 外部依赖：仅 `modernc.org/sqlite` + `gopkg.in/yaml.v3`（纯 Go，无需 CGO）

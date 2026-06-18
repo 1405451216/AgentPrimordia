@@ -24,9 +24,9 @@
 
 | 痛点 | AgentPrimordia 的答案 |
 |------|----------------------|
-| 🧩 LLM Provider 耦合，换个模型就要改代码 | **统一 Provider 接口**，13 内置 Provider，一行代码切换 |
+| 🧩 LLM Provider 耦合，换个模型就要改代码 | **统一 Provider 接口**，10+ 内置 Provider，一行代码切换 |
 | 💥 API 调用不稳定，偶尔超时或限流 | **ResilientProvider**：自动重试 + 降级链 + 熔断器 |
-| 🔧 工具系统从零搭建，每个工具都要写胶水代码 | **Plugin Tool 接口**，4 个内置工具 + 权限确认机制 |
+| 🔧 工具系统从零搭建，每个工具都要写胶水代码 | **Plugin Tool 接口**，7 个内置工具 + 权限确认机制 |
 | 🧠 Agent 没有记忆，每次对话从零开始 | **Episodic Memory**：SQLite + FTS5 + 向量检索 + RAG |
 | 🔄 多任务编排复杂，手动管理 goroutine | **Pool 调度器**：并发控制 + 超时 + 重试 + 事件通知 |
 | 🔒 Agent 执行危险操作没有防线 | **Sandbox + ACL**：命令白名单 + 路径穿越检测 + 访问控制 |
@@ -82,13 +82,16 @@ resilient.AddFallback(fallback)  // 主模型挂了自动切备用
 
 ### 🔧 工具系统
 
-4 个开箱即用的内置工具：
+7 个开箱即用的内置工具：
 
 | 工具 | 能力 |
 |------|------|
 | **FileSystem** | 文件/目录的读写、搜索、列表 |
 | **Shell** | 执行 Shell 命令 |
 | **Web** | HTTP GET/POST 请求 |
+| **API** | REST API 调用（白名单、超时） |
+| **Database** | SQL 数据库查询 |
+| **CodeExecution** | 代码执行（沙箱） |
 | **Knowledge** | RAG on_demand 模式的知识检索 |
 
 自定义工具只需实现 4 个方法：
@@ -144,7 +147,7 @@ sandbox.ValidatePath("agent-1", "/etc/../../../etc/passwd", AccessRead)
 // → ErrPathTraversal: 路径穿越攻击已拦截
 ```
 
-### 🪝 11 个生命周期 Hook
+### 🪝 20+ 个生命周期 Hook
 
 在 Agent 运行的每个关键节点插入你的逻辑：
 

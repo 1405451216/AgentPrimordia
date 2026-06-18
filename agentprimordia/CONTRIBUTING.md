@@ -52,7 +52,7 @@
 
 ### 前置要求
 
-- Go 1.22 或更高版本
+- Go 1.26 或更高版本
 - Git
 - 推荐的 IDE：VS Code、GoLand
 

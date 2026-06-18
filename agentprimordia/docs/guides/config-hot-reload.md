@@ -1,0 +1,46 @@
+# 配置热加载
+
+Config 模块提供配置文件热加载能力，支持轮询检测文件变化并触发回调。
+
+## 快速开始
+
+```go
+watcher := config.NewConfigWatcher(config.ConfigWatcherOptions{
+    Path:     "./config.yaml",
+    Interval: 5 * time.Second,
+    OnChange: func(data []byte) error {
+        // 解析新配置并应用
+        var cfg AppConfig
+        if err := yaml.Unmarshal(data, &cfg); err != nil {
+            return err
+        }
+        applyConfig(cfg)
+        return nil
+    },
+})
+
+if err := watcher.Start(); err != nil {
+    panic(err)
+}
+defer watcher.Stop()
+```
+
+## 与 ReActAgent 集成
+
+```go
+watcher := config.NewConfigWatcher(config.ConfigWatcherOptions{
+    Path: "./agent.yaml",
+    OnChange: func(data []byte) error {
+        // 重新加载 system prompt、模型参数等
+        return nil
+    },
+})
+```
+
+## 变更检测
+
+ConfigWatcher 使用 SHA256 哈希和文件修改时间双重检测，避免误触发。
+
+## 下一步
+
+- 了解 [Agent 架构](../concepts/agent.md)

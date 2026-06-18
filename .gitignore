@@ -111,6 +111,5 @@ coverage_tools
 coverage
 
 # ---------- Wiki / Generated ----------
-CODE_WIKI*.md
 agent_bench.txt
 count_lines.ps1

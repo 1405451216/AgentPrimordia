@@ -1,0 +1,1828 @@
+# AgentPrimordia Code Wiki
+
+> 万物之源,智能之始 — 生产级 Go AI Agent 开发框架
+
+**版本**: v0.8.0 | **语言**: Go 1.26+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
+
+---
+
+## 目录
+
+- [1. 项目概述](#1-项目概述)
+- [2. 整体架构](#2-整体架构)
+- [3. 目录结构](#3-目录结构)
+- [4. 核心模块详解](#4-核心模块详解)
+  - [4.1 agent — ReAct Loop 引擎](#41-agent--react-loop-引擎)
+  - [4.2 llm — LLM 抽象层](#42-llm--llm-抽象层)
+  - [4.3 tools — 工具系统](#43-tools--工具系统)
+  - [4.4 memory — 记忆存储](#44-memory--记忆存储)
+  - [4.5 pool — 多 Agent 调度](#45-pool--多-agent-调度)
+  - [4.6 persist — 检查点持久化](#46-persist--检查点持久化)
+  - [4.7 guardrail — 安全护栏](#47-guardrail--安全护栏)
+  - [4.8 metrics — 可观测性](#48-metrics--可观测性)
+  - [4.9 events — 事件总线](#49-events--事件总线)
+  - [4.10 security — ACL 与沙箱](#410-security--acl-与沙箱)
+  - [4.11 otel — OpenTelemetry 桥接](#411-otel--opentelemetry-桥接)
+  - [4.12 orchestration — 编排引擎](#412-orchestration--编排引擎)
+  - [4.13 concurrency — 并发原语](#413-concurrency--并发原语)
+  - [4.14 config — 配置管理](#414-config--配置管理)
+  - [4.15 prompt — Prompt 工程](#415-prompt--prompt-工程)
+  - [4.16 debugger — 调试器](#416-debugger--调试器)
+  - [4.17 admin — 管理 API](#417-admin--管理-api)
+- [5. 协议式微内核架构](#5-协议式微内核架构)
+- [6. 插件生态](#6-插件生态)
+- [7. 公共 API 层 (pkg)](#7-公共-api-层-pkg)
+- [8. 依赖关系图](#8-依赖关系图)
+- [9. 关键接口总览](#9-关键接口总览)
+- [10. 错误码体系](#10-错误码体系)
+- [11. 快速上手](#11-快速上手)
+- [12. 构建与运行](#12-构建与运行)
+- [13. Docker 部署](#13-docker-部署)
+- [14. 测试体系](#14-测试体系)
+- [15. 性能基准测试](#15-性能基准测试)
+- [16. 示例应用](#16-示例应用)
+- [17. Provider 贡献指南](#17-provider-贡献指南)
+- [18. TypeScript SDK](#18-typescript-sdk)
+- [19. 版本迁移指南](#19-版本迁移指南)
+  - [19.1 v0.7 → v0.8 迁移](#191-v07--v08-迁移)
+  - [19.2 v0.6 → v0.7 迁移](#192-v06--v07-迁移)
+- [20. pgvector 适配器](#20-pgvector-适配器)
+- [21. 相关文档](#21-相关文档)
+- [22. 设计哲学](#22-设计哲学)
+
+---
+
+## 1. 项目概述
+
+**AgentPrimordia** 是一个用 Go 构建的通用 AI Agent 开发框架，从 CodeCast 生产环境验证的 Agent 架构中提炼而来。
+
+### 核心特性
+
+| 能力 | 说明 |
+|------|------|
+| **ReAct Loop 引擎** | Reasoning + Acting 循环，20+ 生命周期钩子 |
+| **协议式微内核** | 17 个 Capable 接口 + 链式 API，能力按需组合、自动发现 |
+| **多 Agent 编排** | Pipeline / Handoff / Parallel / DAG / GroupChat / Collaboration / Workflow |
+| **工具系统** | FileSystem / Shell / Web / API / Database / CodeExecution / Knowledge 内置，MCP 协议集成，插件扩展 |
+| **三层记忆** | SQLite FTS5 + Vector Store + RAG Pipeline 混合检索 |
+| **LLM 抽象** | 10+ 家 Provider（OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / 弹性包装器） |
+| **Resilient Provider** | 自动重试 / 降级 / 熔断 |
+| **Pool 调度** | 信号量并发控制，会话隔离，重试策略 |
+| **安全防护** | ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 |
+| **可观测性** | Prometheus Metrics / OpenTelemetry / Grafana Dashboard |
+| **K8s Operator** | AgentDeployment CRD 声明式部署 |
+| **CLI 工具** | `ap init / run / debug / test / mcp / plugin` |
+| **TypeScript SDK** | 镜像 Go 核心能力的 TS SDK |
+
+### 数据流
+
+```
+用户输入 (Message)
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│          ReAct Loop (Run/StreamRun)     │
+│                                         │
+│  ┌─────┐   ┌──────┐   ┌──────────────┐ │
+│  │ RAG │──▶│  LLM │──▶│ Tool Execute │ │
+│  └─────┘   └──────┘   └──────────────┘ │
+│      ▲         │              │         │
+│      │         ▼              ▼         │
+│      │    ┌──────────┐  ┌──────────┐   │
+│      │    │ Thought  │  │  Result  │   │
+│      │    └──────────┘  └──────────┘   │
+│      │         │              │         │
+│      └─────────┴──────────────┘         │
+│              (历史消息循环)               │
+└─────────────────────────────────────────┘
+    │
+    ▼
+最终响应 (Response)
+```
+
+### 设计原则
+
+1. **接口驱动** — 所有子系统通过 Go interface 解耦，可独立替换
+2. **组合优于继承** — Agent 能力通过配置组合（Memory、Hooks、RAG 等），而非继承
+3. **弹性优先** — ResilientProvider 内建重试、降级、熔断，生产级可靠性
+4. **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+5. **协议式微内核** — 能力通过接口发现，而非配置字段
+6. **链式 API** — `NewAgent(...).WithMemory(mem).WithRAG(cfg)` 风格
+7. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
+
+---
+
+## 2. 架构总览
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Your Application                       │
+├──────────────────────────────────────────────────────────┤
+│                   AgentPrimordia Framework                 │
+│                                                            │
+│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────────┐  │
+│  │ ReActLoop │ │   Pool   │ │  DAG   │ │  Pipeline    │  │
+│  │ (Engine) │ │(Dispatch)│ │(Graph) │ │(Sequential)  │  │
+│  └────┬─────┘ └────┬─────┘ └───┬────┘ └──────┬───────┘  │
+│       └────────────┼───────────┼──────────────┘          │
+│              ┌──────┴──────┐                               │
+│              │ Tool System │                               │
+│              │ ┌─────────┐ │                               │
+│              │ │Built-in │ │  MCP  │  Plugin │             │
+│              │ │FS/Shell/│ │  Client│  System │             │
+│              │ │Web/Know │ │  Reg.  │         │             │
+│              │ └─────────┘ │        │         │             │
+│              └─────────────┘        │         │             │
+│                                    │         │             │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │                  LLM Layer                          │  │
+│  │  OpenAI │ Anthropic │ Gemini │ Ollama │ Azure │ ...│  │
+│  │              ResilientProvider                       │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │
+│  │ Memory   │ │ EventBus │ │ Metrics  │ │ Guardrails │  │
+│  │SQLite+FTS│ │(Pub/Sub) │ │OTel/Prom │ │ACL/Sandbox │  │
+│  │ +Vector  │ │          │ │          │ │  PII检测   │  │
+│  │ +RAG     │ │          │ │          │ │            │  │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. 项目结构
+
+```
+agentprimordia/
+├── cmd/
+│   ├── ap/                       # CLI 工具 (ap init/run/debug/test/mcp/plugin)
+│   │   ├── scaffold/             # 项目模板 (basic/with-tools/multi-agent 等)
+│   │   ├── main.go               # CLI 入口
+│   │   ├── run.go                # ap run 命令
+│   │   ├── init.go               # ap init 命令
+│   │   ├── debug.go              # ap debug 命令
+│   │   ├── test.go               # ap test 命令
+│   │   ├── mcp.go                # ap mcp 命令
+│   │   └── plugin.go             # ap plugin 命令
+│   ├── admin/                    # 管理后台
+│   └── example/                  # 示例应用
+│       ├── hello-agent/          # 最简 Agent
+│       ├── multi-agent/          # 多 Agent 调度
+│       ├── production/           # 生产级示例
+│       └── demo/                 # Demo LLM
+├── internal/
+│   ├── agent/                    # ReActLoop 引擎 + 编排
+│   │   ├── a2a/                  # Agent-to-Agent 协议 (JSON-RPC/SSE)
+│   │   ├── react_loop.go         # ReAct 循环核心
+│   │   ├── types.go              # Agent/Message/Response 等核心类型
+│   │   ├── new_agent.go          # NewAgent 简化入口
+│   │   ├── capability_agent.go   # CapabilityAgent 链式 API
+│   │   ├── capabilities.go       # Capable 接口协议 (微内核)
+│   │   ├── orchestration.go      # Pipeline / Handoff / Parallel
+│   │   ├── dag.go                # DAG 工作流引擎
+│   │   ├── dag_builder.go        # 声明式 DAG 构建器
+│   │   ├── dag_delegate.go       # Agent 委派节点
+│   │   ├── group_chat.go         # 多 Agent 群聊
+│   │   ├── workflow.go           # 工作流执行引擎 (5 种模式)
+│   │   ├── hooks.go              # Hook 系统 (20+ 钩子点)
+│   │   ├── lifecycle.go          # 生命周期状态机
+│   │   ├── session.go            # 会话管理
+│   │   ├── context_window.go     # 上下文窗口裁剪
+│   │   ├── prompt.go             # Prompt 模板
+│   │   ├── transport.go          # 传输层接口
+│   │   ├── http_transport.go     # HTTP 传输
+│   │   ├── tcp_transport.go      # TCP 传输
+│   │   ├── bus.go                # 消息总线
+│   │   ├── tracer.go             # 分布式追踪
+│   │   ├── cost_tracker.go       # 成本追踪
+│   │   ├── hitl.go               # 人机协作 (Human-in-the-Loop)
+│   │   ├── multimodal.go         # 多模态支持
+│   │   ├── eval.go               # 评估框架
+│   │   └── discovery.go          # Agent 发现
+│   ├── pool/                     # 多 Agent 并发调度
+│   │   ├── dispatcher.go         # Pool 调度器
+│   │   ├── types.go              # PoolConfig/TaskConfig/TaskResult
+│   │   └── events.go             # Pool 事件
+│   ├── tools/                    # 工具系统
+│   │   ├── types.go              # Tool 接口
+│   │   ├── registry.go           # 工具注册中心
+│   │   ├── executor.go           # 工具执行器
+│   │   ├── scope.go              # 作用域权限策略
+│   │   ├── plugin.go             # 插件系统
+│   │   ├── mcp.go                # MCP 客户端
+│   │   ├── mcp_registry.go       # MCP 注册中心
+│   │   ├── mcp_transport.go      # MCP 传输层
+│   │   └── builtin/              # 内置工具
+│   │       ├── filesystem.go     # 文件系统操作
+│   │       ├── shell.go          # Shell 命令执行
+│   │       ├── web.go            # HTTP 请求
+│   │       ├── knowledge.go      # 知识库搜索
+│   │       └── toolkit.go        # 工具包快捷创建
+│   ├── memory/                   # 记忆存储
+│   │   ├── types.go              # Memory 接口 (组合接口)
+│   │   ├── memory.go             # InMemoryStore 实现
+│   │   ├── sqlite.go             # SQLite + FTS5 实现
+│   │   ├── vector.go             # 向量存储 (余弦相似度)
+│   │   ├── rag.go                # RAG 检索
+│   │   ├── rag_pipeline.go       # RAG Pipeline
+│   │   ├── rag_rerank.go         # RAG 重排序
+│   │   ├── rag_generator.go      # RAG 端到端生成
+│   │   ├── summarizer.go         # 摘要提取
+│   │   ├── conversational_memory.go  # 对话记忆
+│   │   ├── qdrant_provider.go    # Qdrant 向量库
+│   │   ├── milvus_provider.go    # Milvus 向量库
+│   │   └── episode.go            # 记忆片段
+│   ├── llm/                      # LLM 抽象层
+│   │   ├── types.go              # Provider 接口
+│   │   ├── openai_provider.go    # OpenAI
+│   │   ├── anthropic_provider.go # Anthropic (Claude)
+│   │   ├── gemini_provider.go    # Google Gemini
+│   │   ├── ollama_provider.go    # Ollama (本地)
+│   │   ├── azure_provider.go     # Azure OpenAI
+│   │   ├── qwen_provider.go      # 通义千问
+│   │   ├── glm_provider.go       # 智谱 GLM
+│   │   ├── mistral_provider.go   # Mistral AI
+│   │   ├── cohere_provider.go    # Cohere
+│   │   ├── resilient.go          # 弹性 Provider (重试/熔断/降级)
+│   │   ├── cache.go              # LLM 缓存
+│   │   ├── cache_enhanced.go     # 增强缓存 (语义匹配)
+│   │   ├── cache_sqlite.go       # SQLite 持久化缓存
+│   │   ├── structured.go         # 结构化输出
+│   │   ├── multimodal_provider.go # 多模态 Provider
+│   │   ├── pricing.go            # 定价表
+│   │   ├── mock_llm.go           # MockLLM (测试用)
+│   │   └── provider_template.go  # Provider 模板
+│   ├── guardrail/                # 安全防护
+│   │   ├── engine.go             # 守卫引擎
+│   │   ├── injection_rule.go     # 注入防护
+│   │   ├── output_rule.go        # 输出过滤
+│   │   ├── pii_rule.go           # PII 检测
+│   │   ├── topic_rule.go         # 主题限制
+│   │   ├── trie_rule.go          # Trie 树规则
+│   │   ├── sanitizer.go          # 内容清洗
+│   │   └── hook.go               # Guardrail Hook 集成
+│   ├── persist/                  # 状态持久化
+│   │   ├── checkpoint.go         # CheckpointStore 接口
+│   │   └── sqlite_checkpoint.go  # SQLite 实现
+│   ├── metrics/                  # Prometheus 指标
+│   │   ├── metrics.go            # 指标收集器
+│   │   └── exporter.go           # 指标导出
+│   ├── events/                   # 事件总线
+│   │   └── bus.go                # 发布/订阅
+│   ├── security/                 # ACL + Sandbox
+│   │   └── sandbox.go            # 沙箱执行
+│   ├── otel/                     # OpenTelemetry
+│   │   ├── bridge.go             # OTel 桥接
+│   │   ├── provider.go           # OTel Provider
+│   │   └── otlp_exporter.go      # OTLP 导出
+│   ├── concurrency/              # 并发工具
+│   │   └── filelock.go           # 文件锁
+│   ├── config/                   # 配置
+│   │   └── hot_reload.go         # 热重载
+│   ├── prompt/                   # Prompt 工程
+│   │   ├── template.go           # 模板引擎
+│   │   ├── few_shot.go           # Few-shot 示例
+│   │   └── parser.go             # Prompt 解析
+│   ├── debugger/                 # 调试器
+│   │   ├── http.go               # HTTP 调试服务
+│   │   └── visualizer.go         # 可视化
+│   ├── orchestration/            # 编排 (独立包)
+│   │   ├── orchestrator.go       # 编排器
+│   │   ├── collaboration.go      # 协作模式
+│   │   └── handoff.go            # 交接
+│   └── admin/                    # 管理 API
+│       └── handler.go            # HTTP Handler
+├── operator/                     # K8s Operator (独立 go.mod)
+│   ├── api/v1/                   # AgentDeployment CRD
+│   ├── controller/               # Reconciler
+│   ├── cmd/                      # Operator 入口
+│   └── manifest/                 # CRD + 部署清单
+├── pgvector/                     # pgvector 适配器
+├── pkg/                          # 公共 API (类型别名 + re-export)
+│   ├── agent.go                  # Agent 相关类型
+│   ├── llm.go                    # LLM 相关类型
+│   ├── tools.go                  # 工具相关类型
+│   ├── memory.go                 # 记忆相关类型
+│   ├── pool.go                   # Pool 相关类型
+│   ├── errors.go                 # 错误定义
+│   ├── options.go                # 选项模式
+│   ├── pipeline.go               # Pipeline 类型
+│   ├── adapters.go               # 适配器
+│   ├── hooks.go                  # Hook 类型
+│   ├── guardrail.go              # Guardrail 类型
+│   ├── security.go               # 安全类型
+│   ├── metrics.go                # 指标类型
+│   ├── otel.go                   # OTel 类型
+│   ├── persist.go                # 持久化类型
+│   ├── lifecycle.go              # 生命周期类型
+│   ├── events.go                 # 事件类型
+│   ├── concurrency.go            # 并发类型
+│   └── version.go                # 版本信息
+├── sdk/typescript/               # TypeScript SDK
+├── bench/                        # 性能基准测试
+├── deploy/grafana/               # Grafana Dashboard 模板
+├── ecosystem/                    # 生态系统
+│   ├── examples/                 # 20+ 示例应用
+│   ├── plugins/                  # 官方插件 (email/git/http/json/kv/sql)
+│   ├── templates/                # 项目模板
+│   ├── docs/                     # 文档 + Cookbook
+│   └── contributing/             # 贡献指南
+├── testutil/                     # 测试工具
+├── Makefile                      # 构建脚本
+├── Dockerfile                    # 容器化
+└── docker-compose.yml            # 编排
+```
+
+---
+
+## 4. 核心模块详解
+
+### 4.1 agent — ReAct 引擎与编排
+
+**位置：** `internal/agent/`
+
+**核心职责：** Agent 推理引擎、多 Agent 编排、生命周期管理
+
+#### 核心接口
+
+```go
+// Agent 是所有 Agent 实现的核心接口
+type Agent interface {
+    Run(ctx context.Context, input Message) (*Response, error)
+    StreamRun(ctx context.Context, input Message) (<-chan StreamEvent, error)
+    Stop()
+    Stats() AgentStats
+    Name() string
+}
+```
+
+#### 核心类型
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| `ReActAgent` | `react_loop.go` | ReAct 循环引擎实现 |
+| `ReActConfig` | `react_loop.go` | Agent 配置（模型、工具、记忆、钩子等） |
+| `CapabilityAgent` | `capability_agent.go` | 链式 API 包装器，实现协议式微内核 |
+| `Message` | `types.go` | 对话消息（角色、内容、工具调用） |
+| `Response` | `types.go` | Agent 最终响应（内容、用量、指标） |
+| `Thought` | `types.go` | LLM 推理输出（文本 + 工具调用） |
+| `ToolCall` | `types.go` | 工具调用请求 |
+| `StreamEvent` | `types.go` | 流式输出事件 |
+| `AgentStatus` | `types.go` | Agent 状态枚举 |
+| `AgentStats` | `types.go` | 运行时统计 |
+
+#### 协议式微内核 (Capabilities)
+
+```go
+// 能力接口 — 引擎通过类型断言自动发现
+type MemoryCapable interface { GetMemoryStore() MemoryStore }
+type RAGCapable interface { GetRAGConfig() *RAGConfig }
+type HITLCapable interface { GetHITLConfig() *HITLConfig }
+type HookCapable interface { GetHooks() Hooks }
+type TraceCapable interface { GetTracer() Tracer }
+type CostCapable interface { GetCostTracker() *CostTracker }
+type ContextWindowCapable interface { GetContextWindowStrategy() ContextWindowStrategy }
+type EventCapable interface { GetEventPublisher() EventPublisher }
+type MetricsCapable interface { GetMetricsRecorder() MetricsRecorder }
+type CheckpointCapable interface { GetCheckpointStore() persist.CheckpointStore }
+type SummarizerCapable interface { GetSummarizer() memory.SummaryExtractor }
+type FileScopeCapable interface { GetFileScope() []string }
+type CacheCapable interface { GetCache() llm.LLMCache }
+```
+
+#### ReAct 循环流程
+
+```
+用户输入 → 构建 SystemPrompt → 初始化 History
+    ↓
+┌─── runLoop ──────────────────────────────────────────┐
+│  for turn := 0; turn < MaxTurns; turn++ {            │
+│    1. 检查 Lifecycle / Context 取消                    │
+│    2. 触发 HookBeforeTurn                              │
+│    3. 检查预算 (CostTracker)                           │
+│    4. RAG 检索 & 注入上下文 (如启用)                    │
+│    5. 裁剪上下文窗口                                   │
+│    6. 调用 LLM (Complete / CallTools)                  │
+│    7. 保存 Assistant 消息到 Memory                     │
+│    8. 若无 ToolCalls → 返回 Response (完成)            │
+│    9. 遍历 ToolCalls:                                  │
+│       a. HITL 检查 (如启用)                            │
+│       b. 执行工具 (Executor)                           │
+│       c. 保存 Tool 结果到 Memory                       │
+│   10. 保存 Checkpoint                                  │
+│  }                                                     │
+└────────────────────────────────────────────────────────┘
+```
+
+#### 编排模式
+
+| 模式 | 类型 | 说明 |
+|------|------|------|
+| **Pipeline** | `Pipeline` | 顺序执行，前一个输出作为后一个输入 |
+| **Handoff** | `Handoff` | Agent 间动态交接，Router 函数路由 |
+| **Parallel** | `ParallelRun()` | 并行执行，同一输入发给多个 Agent |
+| **DAG** | `DAGWorkflow` | 有向无环图，支持条件边、重试、并行 |
+| **GroupChat** | `GroupChat` | 多 Agent 对话，支持多种发言选择器 |
+| **Workflow** | `WorkflowExecution` | 5 种工作流类型（线性/条件/循环/并行/状态机） |
+
+#### 生命周期状态机
+
+```
+Idle → Running → [Paused | WaitingForInput | Completed | Failed | Cancelled]
+Paused → Running | Cancelled
+WaitingForInput → Running | Cancelled | Failed
+Completed/Failed/Cancelled → Idle (Reset)
+```
+
+#### Hook 系统
+
+20+ 钩子点，按阶段执行（Validation → PreProcessing → Execution → PostProcessing）：
+
+| 类别 | 钩子点 |
+|------|--------|
+| 生命周期 | `before_run`, `after_run`, `before_shutdown`, `after_shutdown` |
+| 执行 | `before_turn`, `after_turn`, `on_complete`, `on_error`, `on_state_change` |
+| LLM | `before_llm`, `after_llm` |
+| 工具 | `before_tool`, `after_tool`, `before_tool_parse`, `after_tool_parse` |
+| 记忆 | `before_rag`, `after_rag`, `before_memory_read/write`, `after_memory_read/write` |
+| 流式 | `on_stream`, `on_stream_start`, `on_stream_end` |
+| 编排 | `before_pipeline_step`, `before_handoff`, `before_dag_node` 等 |
+
+---
+
+### 4.2 llm — LLM 抽象层
+
+**位置：** `internal/llm/`
+
+**核心职责：** 统一 LLM 调用接口，支持 12 家 Provider（DeepSeek 已合并到 OpenAI 兼容模式）
+
+#### 核心接口
+
+```go
+type Provider interface {
+    Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error)
+    Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error)
+    CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error)
+    Info() ModelInfo
+}
+
+type Embedder interface {
+    Embeddings(ctx context.Context, texts []string) ([][]float32, error)
+}
+```
+
+#### Provider 实现
+
+| Provider | 文件 | 说明 |
+|----------|------|------|
+| `OpenAIProvider` | `openai_provider.go` | GPT-4o 等 |
+| `AnthropicProvider` | `anthropic_provider.go` | Claude 系列 |
+| `GeminiProvider` | `gemini_provider.go` | Google Gemini |
+| `OllamaProvider` | `ollama_provider.go` | 本地模型 |
+| `AzureOpenAIProvider` | `azure_provider.go` | Azure OpenAI |
+| `QwenProvider` | `qwen_provider.go` | 通义千问 (DashScope) |
+| `GLMProvider` | `glm_provider.go` | 智谱 GLM |
+| `MistralProvider` | `mistral_provider.go` | Mistral AI |
+| `CohereProvider` | `cohere_provider.go` | Cohere v2 |
+| `ResilientProvider` | `resilient.go` | 弹性包装器 |
+| `CachedProvider` | `cache.go` | 缓存装饰器 |
+| `MultimodalProvider` | `multimodal_provider.go` | 多模态 |
+
+#### ResilientProvider
+
+```go
+type ResilientProvider struct {
+    primary   Provider
+    fallbacks []Provider
+    config    ResilientConfig
+    state     circuitState  // closed / open / halfOpen
+    failures  int
+}
+```
+
+功能：
+- **重试** — 指数退避 + 随机抖动
+- **熔断** — 失败次数超阈值后熔断，定时恢复
+- **降级** — 主 Provider 失败后自动切换 Fallback
+
+#### 结构化输出
+
+```go
+type StructuredExtractor interface {
+    Extract(ctx context.Context, text string) (any, error)
+}
+```
+
+支持从 Go struct 生成 JSON Schema，预定义模板：情感分析、NER、分类、摘要。
+
+---
+
+### 4.3 tools — 工具系统
+
+**位置：** `internal/tools/`
+
+**核心职责：** 工具注册、执行、权限控制、MCP 集成、插件扩展
+
+#### 核心接口
+
+```go
+type Tool interface {
+    Name() string
+    Description() string
+    Parameters() json.RawMessage
+    Execute(ctx context.Context, args json.RawMessage) (*Result, error)
+}
+```
+
+#### 组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `Registry` | `registry.go` | 工具注册中心，管理注册/查找/权限 |
+| `Executor` | `executor.go` | 工具执行器，超时/权限/文件锁 |
+| `ScopePolicy` | `scope.go` | 作用域权限策略接口 |
+| `FileScopePolicy` | `scope.go` | 基于文件路径的权限策略 |
+| `MCPClient` | `mcp.go` | MCP 协议客户端 |
+| `MCPRegistry` | `mcp_registry.go` | MCP Server 注册中心 |
+| `ToolPlugin` | `plugin.go` | 插件接口 |
+| `PluginLoader` | `plugin.go` | 插件加载器 |
+
+#### 内置工具 (`builtin/`)
+
+| 工具 | 文件 | 说明 |
+|------|------|------|
+| `FileSystem` | `filesystem.go` | 文件读写、搜索、编辑 |
+| `Shell` | `shell.go` | 命令执行（白名单、超时） |
+| `Web` | `web.go` | HTTP GET/POST |
+| `API` | `api.go` | REST API 调用（白名单、超时） |
+| `Database` | `database.go` | SQL 数据库查询 |
+| `CodeExecution` | `code_execution.go` | 代码执行（沙箱） |
+| `KnowledgeSearch` | `knowledge.go` | 知识库搜索 |
+| `Toolkit` | `toolkit.go` | 工具包快捷创建 |
+
+#### 工具执行流程
+
+```
+ToolCall → Executor.Execute()
+    ↓
+1. Registry.Get(name) 查找工具
+2. ScopePolicy.Allow(agent, path) 权限检查
+3. Permission.RequireConfirmation 确认检查
+4. context.WithTimeout 设置超时
+5. tool.Execute(ctx, args) 执行
+6. 记录指标、返回 Result
+```
+
+---
+
+### 4.4 memory — 记忆存储
+
+**位置：** `internal/memory/`
+
+**核心职责：** 对话记忆存储、全文搜索、向量检索、RAG Pipeline
+
+#### 核心接口
+
+```go
+// Memory 组合接口
+type Memory interface {
+    MemoryReader    // Get/Search/List/Count/Stats
+    MemoryWriter    // Add/Delete/UpdateSummary/SetImportance
+    MemorySearcher  // SearchAdvanced/SearchByTag/GetImportant/GetTimeline
+    MemoryLifecycle // Close/CleanupExpired/ClearAll
+    MemoryExporter  // ExportMemories/ImportMemories
+    MemoryQuery     // GetMemoriesByTag/Session/Important/Timeline
+    MemoryToolUse   // RecordToolUse
+}
+```
+
+#### 实现
+
+| 实现 | 文件 | 说明 |
+|------|------|------|
+| `InMemoryStore` | `memory.go` | 内存存储（测试用） |
+| `SQLiteStore` | `sqlite.go` | SQLite + FTS5 全文搜索 |
+| `VectorStore` | `vector.go` | 内存向量存储（余弦相似度） |
+| `RAGStore` | `rag.go` | 混合 RAG（FTS + Vector） |
+| `QdrantProvider` | `qdrant_provider.go` | Qdrant 向量库 |
+| `MilvusProvider` | `milvus_provider.go` | Milvus 向量库 |
+
+#### RAG Pipeline
+
+```
+查询 → Embedding → Vector Search → FTS Search → Rerank → TopK → 上下文注入
+```
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `RAGStore` | `rag.go` | 混合检索 |
+| `RAGPipeline` | `rag_pipeline.go` | 完整 Pipeline |
+| `Reranker` | `rag_rerank.go` | 重排序 |
+| `RetrievalAugmentedGenerator` | `rag_generator.go` | 端到端生成 |
+
+#### Episode 结构
+
+```go
+type Episode struct {
+    ID         string            // 唯一 ID
+    SessionID  string            // 会话 ID
+    Role       string            // user/assistant/system/tool
+    Content    string            // 内容
+    Summary    string            // 摘要
+    Topics     string            // 主题标签
+    Importance float64           // 重要性
+    Metadata   map[string]string // 元数据
+    CreatedAt  string            // 创建时间
+}
+```
+
+---
+
+### 4.5 pool — 多 Agent 调度
+
+**位置：** `internal/pool/`
+
+**核心职责：** 并发任务分发、信号量控制、会话隔离、重试策略
+
+#### 核心类型
+
+```go
+type Pool struct {
+    config       PoolConfig
+    semaphore    chan struct{}      // 并发控制
+    tasks        map[string]*poolTask
+    agents       map[string]agent.Agent
+    agentFactory AgentFactory
+    // ...
+}
+
+type PoolConfig struct {
+    MaxConcurrency   int
+    Timeout          time.Duration
+    RetryPolicy      RetryPolicy
+    MaxRetainedTasks int
+    DefaultAgent     ReActAgentConfig
+}
+
+type TaskConfig struct {
+    ID         string
+    Title      string
+    Prompt     string
+    SessionID  string
+    FilesScope []string
+    MaxTurns   int
+    Metadata   map[string]string
+}
+```
+
+#### 调度流程
+
+```
+Dispatch(tasks) → 为每个 task 启动 goroutine
+    ↓
+executeTask():
+    1. semaphore <- struct{}{} (获取信号量)
+    2. createAgentForTask() (工厂或默认)
+    3. agent.Run(ctx, prompt)
+    4. 失败时检查 RetryPolicy
+    5. 释放信号量
+    6. 更新 Stats
+```
+
+---
+
+### 4.6 persist — 状态持久化
+
+**位置：** `internal/persist/`
+
+**核心职责：** Agent 状态检查点，支持断点恢复
+
+```go
+type CheckpointStore interface {
+    Save(ctx context.Context, state *AgentState) error
+    Load(ctx context.Context, agentID string) (*AgentState, error)
+    List(ctx context.Context, sessionID string) ([]*AgentState, error)
+    Delete(ctx context.Context, agentID string) error
+}
+
+type AgentState struct {
+    AgentID   string
+    SessionID string
+    Status    string
+    Messages  []CheckpointMessage
+    TurnCount int
+    Metrics   CheckpointMetrics
+    SavedAt   time.Time
+}
+```
+
+---
+
+### 4.7 guardrail — 安全防护
+
+**位置：** `internal/guardrail/`
+
+**核心职责：** 输入/输出内容审核，安全防护规则引擎
+
+```go
+type Engine struct {
+    rules []Rule
+}
+
+type Rule interface {
+    Name() string
+    Check(input string, point CheckPoint) (*Result, error)
+}
+
+// CheckPoint: input / output
+// Action: pass / reject / sanitize / flag
+// Severity: low / medium / high / critical
+```
+
+#### 内置规则
+
+| 规则 | 文件 | 说明 |
+|------|------|------|
+| `InjectionRule` | `injection_rule.go` | Prompt 注入防护 |
+| `OutputRule` | `output_rule.go` | 输出过滤 |
+| `PIIRule` | `pii_rule.go` | PII 检测 |
+| `TopicRule` | `topic_rule.go` | 主题限制 |
+| `TrieRule` | `trie_rule.go` | Trie 树关键词 |
+| `Sanitizer` | `sanitizer.go` | 内容清洗 |
+
+---
+
+### 4.8 metrics — 可观测性
+
+**位置：** `internal/metrics/`
+
+**核心职责：** Prometheus 指标收集与导出
+
+```go
+type MetricsRecorder interface {
+    RecordLLMCall(duration time.Duration, err error)
+    RecordToolCall(duration time.Duration, err error)
+    RecordTurn(duration time.Duration)
+    RecordTokenUsage(model string, promptTokens, completionTokens int)
+    IncActiveAgents()
+    DecActiveAgents()
+}
+```
+
+---
+
+### 4.9 events — 事件总线
+
+**位置：** `internal/events/`
+
+**核心职责：** 发布/订阅事件系统
+
+```go
+type EventPublisher interface {
+    PublishAsync(eventType string, source string, payload any) error
+}
+```
+
+---
+
+### 4.10 security — ACL 与沙箱
+
+**位置：** `internal/security/`
+
+**核心职责：** 命令沙箱、ACL 访问控制
+
+---
+
+### 4.11 otel — OpenTelemetry 桥接
+
+**位置：** `internal/otel/`
+
+**核心职责：** 分布式追踪，OTLP 导出
+
+```go
+type Tracer interface {
+    Start(name string, kind SpanKind, opts ...SpanOption) Span
+}
+
+type Span interface {
+    SpanContext() SpanContext
+    SetAttribute(key string, value any)
+    SetStatus(code SpanStatus, msg string)
+    End()
+}
+```
+
+---
+
+### 4.12 orchestration — 编排引擎
+
+**位置：** `internal/orchestration/`
+
+独立于 `agent/orchestration.go` 的编排引擎，提供更高级的编排能力：
+
+```go
+type OrchestratorMode string
+
+const (
+    SequentialMode OrchestratorMode = "sequential"  // 顺序执行
+    ParallelMode   OrchestratorMode = "parallel"    // 并行执行
+    DAGMode        OrchestratorMode = "dag"         // DAG 工作流
+)
+
+type OrchestratorConfig struct {
+    Name        string
+    Mode        OrchestratorMode
+    MaxRetries  int           // 默认 3
+    Timeout     time.Duration // 默认 5 分钟
+}
+
+type AgentStep struct {
+    ID          string
+    Name        string
+    Agent       agent.Agent
+    Prompt      string
+    InputFrom   []string      // 输入来源（其他步骤 ID）
+    OutputKey   string
+    Condition   StepCondition
+    RetryPolicy *RetryPolicy
+    Timeout     time.Duration
+    Priority    int
+}
+```
+
+#### 组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `Orchestrator` | `orchestrator.go` | 编排器主逻辑 |
+| `Workflow` | `workflow.go` | 工作流定义 |
+| `Handoff` | `handoff.go` | Agent 交接 |
+| `Collaboration` | `collaboration.go` | 协作模式 |
+| `Visualizer` | `visualizer.go` | 编排可视化 |
+
+---
+
+### 4.13 concurrency — 并发原语
+
+**位置：** `internal/concurrency/`
+
+#### FileLockManager
+
+基于路径的文件锁，支持引用计数：
+
+```go
+flm := concurrency.NewFileLockManager()
+
+// 获取锁
+flm.Acquire("/path/to/file")
+
+// 尝试获取（非阻塞）
+if flm.TryAcquire("/path/to/file") {
+    defer flm.Release("/path/to/file")
+    // 操作文件
+}
+
+// 释放
+flm.Release("/path/to/file")
+```
+
+#### Scope 验证
+
+```go
+// 验证作用域不重叠
+err := concurrency.ValidateScopes([]string{"/path1", "/path2"})
+
+// 错误类型
+ErrGlobalWriteConflict  // 全局写入冲突
+ErrScopeOverlap         // 作用域重叠
+```
+
+---
+
+### 4.14 config — 配置管理
+
+**位置：** `internal/config/`
+
+#### 热重载
+
+```go
+// 监听配置文件变更
+watcher := config.NewWatcher("config.yaml")
+watcher.OnChange(func(cfg *config.Config) {
+    // 配置变更回调
+    slog.Info("配置已更新", "version", cfg.Version)
+})
+
+// 启动监听
+go watcher.Watch()
+defer watcher.Close()
+```
+
+---
+
+### 4.15 prompt — Prompt 工程
+
+**位置：** `internal/prompt/`
+
+#### 模板引擎
+
+```go
+tmpl := prompt.NewTemplate("你是一个{{.Role}}，请{{.Task}}")
+result := tmpl.Execute(map[string]any{
+    "Role": "编程助手",
+    "Task": "解释这段代码",
+})
+```
+
+#### Few-shot 示例
+
+```go
+fewshot := prompt.NewFewShotBuilder().
+    AddExample("输入: 你好\n输出: 你好！有什么可以帮助的吗？").
+    AddExample("输入: 再见\n输出: 再见！祝你有美好的一天！").
+    Build()
+
+prompt := fewshot.BuildPrompt("输入: 谢谢")
+```
+
+---
+
+### 4.16 debugger — 调试器
+
+**位置：** `internal/debugger/`
+
+#### HTTP 调试服务
+
+```bash
+# 启动调试服务器
+ap debug
+
+# 访问端点
+http://localhost:6060/debug/pprof/     # pprof 性能分析
+http://localhost:6060/debug/agent/     # Agent 状态
+http://localhost:6060/debug/tools/     # 工具注册表
+http://localhost:6060/debug/memory/    # 记忆存储
+```
+
+#### 可视化
+
+```go
+viz := debugger.NewVisualizer(agent)
+viz.RenderHTML()  // 生成 HTML 可视化报告
+```
+
+---
+
+### 4.17 admin — 管理 API
+
+**位置：** `internal/admin/`
+
+提供 HTTP API 用于 Agent 管理：
+
+```go
+admin := admin.NewServer(admin.Config{
+    Port: 8080,
+})
+
+// 启动
+go admin.Start()
+```
+
+**API 端点：**
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/agents` | GET | 列出所有 Agent |
+| `/api/agents/:id` | GET | 获取 Agent 详情 |
+| `/api/agents/:id/stop` | POST | 停止 Agent |
+| `/api/metrics` | GET | 获取指标 |
+| `/api/health` | GET | 健康检查 |
+
+---
+
+## 5. 协议式微内核架构
+
+**位置：** `internal/agent/capabilities.go`
+
+AgentPrimordia 采用协议式微内核设计，通过 17 个 Capable 接口实现能力的自动发现与组合：
+
+```go
+// 能力接口 — 引擎通过类型断言自动发现
+type MemoryCapable interface { GetMemoryStore() MemoryStore }
+type RAGCapable interface { GetRAGConfig() *RAGConfig }
+type HITLCapable interface { GetHITLConfig() *HITLConfig }
+type HookCapable interface { GetHooks() Hooks }
+type TraceCapable interface { GetTracer() Tracer }
+type CostCapable interface { GetCostTracker() *CostTracker }
+type ContextWindowCapable interface { GetContextWindowStrategy() ContextWindowStrategy }
+type EventCapable interface { GetEventPublisher() EventPublisher }
+type MetricsCapable interface { GetMetricsRecorder() MetricsRecorder }
+type CheckpointCapable interface { GetCheckpointStore() persist.CheckpointStore }
+type SummarizerCapable interface { GetSummarizer() memory.SummaryExtractor }
+type FileScopeCapable interface { GetFileScope() []string }
+type CacheCapable interface { GetCache() llm.LLMCache }
+type ToolkitCapable interface { GetToolkit() *tools.Registry }
+type PlanningCapable interface { GetPlanner() planning.Planner }
+type ReflectionCapable interface { GetReflectionConfig() *reflection.Config }
+type ToolLearningCapable interface { GetToolLearningConfig() *toollearning.Config }
+```
+
+### CapabilityAgent 包装器
+
+`CapabilityAgent` 实现所有 Capable 接口，提供链式 API：
+
+```go
+agent := ap.NewReActAgent(ap.ReActConfig{
+    Name: "my-agent",
+    Model: provider,
+    MaxTurns: 10,
+}).
+    WithMemory(mem).
+    WithRAG(ragCfg).
+    WithHooks(hooks).
+    WithToolkit(registry)
+```
+
+### 自引用模式
+
+```go
+// ReActAgent.self 默认指向自身
+a.initSelf()  // a.self = a
+
+// WithXxx 时更新为 CapabilityAgent
+a.self = capAgent  // 引擎通过 a.self.(XxxCapable) 发现能力
+```
+
+---
+
+## 6. 插件生态
+
+**位置：** `ecosystem/plugins/`
+
+### 官方插件
+
+| 插件 | 版本 | 分类 | 工具 | 说明 |
+|------|------|------|------|------|
+| http | 0.1.0 | network | `http_client` | HTTP 客户端封装 |
+| sql | 0.1.0 | database | `sqlite_processor` | SQLite 数据处理 |
+| git | 0.1.0 | vcs | `git_tool` | Git 版本控制 |
+| json | 0.1.0 | data | `json_processor` + `csv_processor` | JSON/CSV 处理 |
+| email | 0.1.0 | communication | `email_sender` | 邮件发送（net/smtp） |
+| kv | 0.1.0 | database | `kv_store` | 键值存储（SQLite 后端） |
+
+### 插件使用
+
+```go
+registry := ap.NewToolRegistry()
+loader := ap.NewPluginLoader(registry)
+
+// 无配置插件
+loader.Load(jsonplugin.New())
+
+// 带配置插件
+loader.LoadWithConfig(kvplugin.New(), map[string]any{"db_path": "test.db"})
+loader.LoadWithConfig(emailplugin.New(), map[string]any{
+    "smtp_host": "smtp.example.com",
+    "smtp_port": "587",
+    "smtp_username": "user@example.com",
+    "smtp_password": "pass",
+})
+
+// 一键加载全部官方插件
+plugins.LoadAll(registry, configs)
+```
+
+---
+
+## 7. 公共 API 层 (pkg/)
+
+**位置：** `pkg/`
+
+**核心职责：** 通过类型别名和 re-export 暴露稳定的公共 API
+
+```go
+// pkg/agent.go
+type Agent = agent.Agent
+type ReActAgent = agent.ReActAgent
+type CapabilityAgent = agent.CapabilityAgent
+var NewAgent = agent.NewAgent
+var NewReActAgent = agent.NewReActAgent
+
+// pkg/llm.go
+type Provider = llm.Provider
+type OpenAIProvider = llm.OpenAIProvider
+var NewOpenAIProvider = llm.NewOpenAIProvider
+
+// pkg/tools.go
+type Tool = tools.Tool
+type ToolRegistry = tools.Registry
+var DefaultToolkit = builtin.DefaultToolkit
+
+// pkg/memory.go
+type Memory = memory.Memory
+var WithInMemory = memory.WithInMemory
+
+// pkg/pool.go
+type Pool = pool.Pool
+var NewPool = pool.NewPool
+```
+
+**API 稳定性等级：**
+
+| 等级 | 说明 |
+|------|------|
+| Stable | 向后兼容，破坏性变更需大版本 |
+| Experimental | 签名可能在 minor 版本调整 |
+| Deprecated | 已废弃，v2.0 移除 |
+| Internal | 仅供内部使用 |
+
+---
+
+## 8. 依赖关系图
+
+```
+        ┌────────────────────────────────────────┐
+        │           agent/  (顶层)               │
+        │   引用 llm, memory, persist, tools    │
+        └────┬───────┬───────┬───────────┬──────┘
+             │       │       │           │
+        ┌────▼─┐ ┌───▼──┐ ┌──▼───┐ ┌────▼────┐
+        │ llm  │ │memory│ │persist│ │  tools  │
+        └──────┘ └──────┘ └───────┘ └────┬────┘
+                                          │
+                                     ┌────▼────┐
+                                     │  pool   │
+                                     └─────────┘
+
+        横切关注点:
+        ├── guardrail/  (被 agent/hooks 集成)
+        ├── metrics/    (被 agent 记录)
+        ├── events/     (被 agent 发布)
+        ├── otel/       (被 agent/tracer 使用)
+        ├── security/   (被 tools/executor 使用)
+        └── concurrency/ (被 tools/executor 使用)
+```
+
+**规则：**
+- `agent/` 处于顶层，可引用 llm/memory/persist/tools
+- 下层模块（llm/memory/persist/tools）不能反向引用 `agent/`
+- `pool/` 依赖 `agent/` 和 `tools/`
+- `pkg/` 只做类型导出，不含业务逻辑
+
+---
+
+## 9. 关键接口总览
+
+### 核心接口
+
+| 接口 | 模块 | 方法 | 说明 |
+|------|------|------|------|
+| `Agent` | agent | Run/StreamRun/Stop/Stats/Name | Agent 核心接口 |
+| `llm.Provider` | llm | Complete/Stream/CallTools/Info | LLM 提供者 |
+| `llm.Embedder` | llm | Embeddings | 嵌入接口 |
+| `Tool` | tools | Name/Description/Parameters/Execute | 工具接口 |
+| `ToolPlugin` | tools | Name/Version/Tools/Init/Close | 插件接口 |
+| `Memory` | memory | 7 个子接口组合 | 记忆组合接口 |
+| `MemoryStore` | agent | Add | Agent 所需记忆接口 |
+| `RAGProvider` | agent | Search | RAG 检索接口 |
+| `CheckpointStore` | persist | Save/Load/List/Delete | 检查点存储 |
+
+### 横切关注点接口
+
+| 接口 | 模块 | 方法 | 说明 |
+|------|------|------|------|
+| `EventPublisher` | agent | PublishAsync | 事件发布 |
+| `MetricsRecorder` | agent | RecordLLMCall/RecordToolCall/... | 指标记录 |
+| `MessageBus` | agent | Send/Broadcast/Subscribe | 消息总线 |
+| `Transport` | agent | Send/Receive/Start/Stop | 传输层 |
+| `ContextWindowStrategy` | agent | Trim | 上下文窗口裁剪 |
+| `llm.LLMCache` | llm | Get/Set/Stats/Clear | LLM 缓存 |
+| `Hooks` | agent | Register/Fire | Hook 管理器 |
+| `Lifecycle` | agent | SetStatus/IsGracefulShutdown | 生命周期 |
+| `Tracer` | agent | Start/Span | 追踪器 |
+
+### 17 个 Capable 接口（协议式微内核）
+
+详见 [第 5 章 协议式微内核架构](#5-协议式微内核架构)
+
+---
+
+## 10. 错误码体系详解
+
+**位置：** `pkg/errors.go`
+
+### 错误码分类
+
+| 模块 | 错误码前缀 | 数量 | 说明 |
+|------|-----------|------|------|
+| Agent | `AGENT_` | 4 | Agent 生命周期错误 |
+| Tool | `TOOL_` | 4 | 工具相关错误 |
+| LLM | `LLM_` | 8 | LLM 调用错误 |
+| Pool | `POOL_` | 3 | Pool 调度错误 |
+| Context | `CTX_` | 1 | 上下文错误 |
+| Memory | `MEM_` | 8 | 记忆相关错误 |
+| Security | `SEC_` | 4 | 安全相关错误 |
+| Event | `EVT_` | 1 | 事件总线错误 |
+| Persist | `PST_` | 1 | 持久化错误 |
+| Concurrency | `CON_` | 2 | 并发冲突错误 |
+
+**总计：36 个结构化错误码**
+
+### 使用示例
+
+```go
+resp, err := agent.Run(ctx, msg)
+if err != nil {
+    code := ap.GetErrorCode(err)
+    switch {
+    case strings.HasPrefix(code, "LLM_"):
+        // LLM 调用失败，可重试
+    case strings.HasPrefix(code, "TOOL_"):
+        // 工具执行失败，检查参数
+    case code == "AGENT_001":
+        // Agent 已停止
+    }
+}
+```
+
+---
+
+## 11. 快速上手
+
+### 5 分钟创建第一个 Agent（v0.8.0 简化入口）
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+    
+    ap "agentprimordia/pkg"
+)
+
+func main() {
+    // 1. 创建 LLM Provider
+    provider := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o-mini",
+    })
+    
+    // 2. 创建 Agent（3 行即可，链式添加能力）
+    agent := ap.NewAgent("my-first-agent", "你是一个友好的助手", provider,
+        ap.WithMaxTurns(10),
+    )
+    
+    // 3. 运行
+    resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    log.Printf("Agent 回复: %s", resp.Content)
+}
+```
+
+### 传统入口（仍然兼容）
+
+```go
+agent := ap.NewReActAgent(ap.ReActConfig{
+    Name:         "my-first-agent",
+    SystemPrompt: "你是一个友好的助手",
+    Model:        provider,
+    MaxTurns:     10,
+})
+```
+
+### 渐进式添加能力
+
+```go
+agent := ap.NewReActAgent(ap.ReActConfig{
+    Name:     "capable-agent",
+    Model:    provider,
+    MaxTurns: 10,
+}).
+    WithMemory(mem).              // 添加记忆
+    WithRAG(ragCfg).              // 添加 RAG
+    WithToolkit(registry).        // 添加工具
+    WithHooks(hooks).             // 添加钩子
+    WithEvents(eventBus).         // 添加事件
+    WithMetrics(metricsRecorder)  // 添加指标
+```
+
+---
+
+## 12. 构建与运行
+
+### 安装 CLI
+
+```bash
+cd agentprimordia
+go build -o ap ./cmd/ap/
+```
+
+### 创建项目
+
+```bash
+ap init my-agent              # 创建项目
+ap init my-agent --template with-tools  # 带工具模板
+ap init my-agent --template multi-agent # 多 Agent 模板
+```
+
+### 运行
+
+```bash
+ap run                        # 编译运行
+ap run --watch                # 监视模式
+ap debug                      # 调试服务器 (http://localhost:6060)
+```
+
+### MCP 管理
+
+```bash
+ap mcp list
+ap mcp add fs --command npx --args "@mcp/server-filesystem,/tmp"
+ap mcp test fs
+```
+
+### 插件管理
+
+```bash
+ap plugin install github.com/user/ap-plugin-xxx
+ap plugin create ap-plugin-weather
+```
+
+### K8s 部署
+
+```bash
+kubectl apply -f operator/manifest/crd.yaml
+kubectl apply -f operator/manifest/examples/basic-agent.yaml
+kubectl get ad        # 查看 AgentDeployment
+kubectl get hpa       # 查看 HPA 状态
+kubectl get svc       # 查看 Service
+```
+
+---
+
+## 13. Docker 部署
+
+### 构建镜像
+
+```bash
+# 使用 Makefile
+make docker-build
+
+# 或手动构建
+docker build -t agentprimordia/agent:latest .
+```
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+
+services:
+  agent:
+    image: agentprimordia/agent:latest
+    environment:
+      - AP_LLM_API_KEY=${OPENAI_API_KEY}
+      - AP_LLM_MODEL=gpt-4o-mini
+    ports:
+      - "8080:8080"   # Admin API
+      - "9090:9090"   # Metrics
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+### 启动
+
+```bash
+# 使用 Docker Compose
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f agent
+
+# 停止
+docker-compose down
+```
+
+---
+
+## 14. 测试体系
+
+### 运行测试
+
+```bash
+# 核心测试
+go test ./internal/... ./pkg/... -race
+
+# CLI 测试
+go test ./cmd/ap/
+
+# 集成测试（需要 API Key）
+make test-integration
+
+# 基准测试
+go test -bench=. -benchmem ./bench/suite/
+
+# Lint
+golangci-lint run
+```
+
+### 测试约定
+
+| 约定 | 说明 |
+|------|------|
+| `t.TempDir()` | 临时文件，不污染项目 |
+| `httptest.Server` | Web/Shell 工具测试用模拟 |
+| `WithInMemory()` | Memory 测试用内存数据库 |
+| `MockLLM` | Agent/Pool 层测试用 |
+| `DemoLLM` | 示例应用用 |
+
+---
+
+## 15. 性能基准测试
+
+**位置：** `bench/suite/`
+
+### 运行基准测试
+
+```bash
+# 运行所有基准测试
+go test -bench=. -benchmem ./bench/suite/
+
+# 仅运行延迟测试
+go test -bench=BenchmarkLatency -benchmem ./bench/suite/
+
+# 仅运行并发测试
+go test -bench=BenchmarkConcurrent -benchmem ./bench/suite/
+
+# 生成 CPU 性能分析
+go test -bench=. -cpuprofile=cpu.prof ./bench/suite/
+go tool pprof cpu.prof
+```
+
+### 基准测试套件
+
+| 测试 | 说明 |
+|------|------|
+| `BenchmarkLatency` | 单 Agent 延迟测试 |
+| `BenchmarkConcurrent` | 并发 Agent 吞吐量测试 |
+| `BenchmarkToolCall` | 工具调用性能 |
+| `BenchmarkMemorySearch` | 记忆搜索性能 |
+
+### 测试结果示例
+
+```
+BenchmarkLatency-8           100    12.5 ms/op    1024 B/op    15 allocs/op
+BenchmarkConcurrent-8         50    25.3 ms/op    2048 B/op    30 allocs/op
+BenchmarkToolCall-8          200     6.2 ms/op     512 B/op     8 allocs/op
+```
+
+---
+
+## 16. 示例应用
+
+**位置：** `ecosystem/examples/`
+
+### 链式 API 示例（推荐）
+
+| 示例 | 说明 |
+|------|------|
+| `chain-api/` | 最简 Agent — 4 个必填字段 |
+| `chain-capable/` | 渐进式添加能力 — 工具 + 记忆 + Hook |
+| `chain-rag/` | RAG + 事件 + 指标 |
+| `chain-plugins/` | 插件生态 — JSON + KV + Email |
+| `chain-production/` | 生产级 Agent — 全部能力 |
+
+### 传统示例
+
+| 示例 | 说明 |
+|------|------|
+| `basic/` | 基础用法 |
+| `simple/` | 简单示例 |
+| `with-tools/` | 带工具的 Agent |
+| `builtin-tools/` | 内置工具演示 |
+| `multi-agent/` | 多 Agent 并发 |
+| `multi-agent-collab/` | 多 Agent 协作 |
+| `memory-backends/` | 记忆后端对比 |
+| `multimodal-vision/` | 视觉多模态 |
+| `multimodal-advanced/` | 高级多模态 |
+| `gemini-provider/` | Gemini Provider |
+| `qwen-provider/` | 千问 Provider |
+| `resilient-provider/` | 弹性 Provider |
+| `debug-tools/` | 调试工具 |
+
+### 运行示例
+
+```bash
+# 链式 API 示例
+go run ./ecosystem/examples/chain-api/
+
+# 多 Agent 示例
+go run ./ecosystem/examples/multi-agent/
+
+# 生产级示例
+go run ./ecosystem/examples/chain-production/
+
+# 使用 Makefile
+make run-hello        # chain-api
+make run-multi        # multi-agent
+make run-production   # chain-production
+```
+
+---
+
+## 17. Provider 贡献指南
+
+**位置：** `ecosystem/contributing/PROVIDER.md`
+
+### 9 章节指南
+
+1. **概述** — 为什么要贡献 Provider
+2. **快速开始** — 5 步创建新 Provider
+3. **Provider 接口规范** — Complete/Stream/CallTools/Info 详解
+4. **可选接口** — Embedder、MultimodalProvider
+5. **配置模式** — 使用通用 Config 结构体
+6. **测试要求** — 必须通过的测试
+7. **命名规范** — 文件命名、结构体命名
+8. **提交流程** — PR 检查清单
+9. **常见问题** — 8 个 FAQ
+
+### Provider 模板
+
+```go
+// internal/llm/provider_template.go
+package llm
+
+import "context"
+
+type MyProvider struct {
+    apiKey  string
+    baseURL string
+}
+
+func NewMyProvider(apiKey, baseURL string) *MyProvider {
+    return &MyProvider{apiKey: apiKey, baseURL: baseURL}
+}
+
+func (p *MyProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
+    // TODO: 实现同步补全逻辑
+    return &CompletionResponse{
+        Content: "response",
+        Usage:   Usage{PromptTokens: 10, CompletionTokens: 20},
+    }, nil
+}
+
+func (p *MyProvider) Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error) {
+    // TODO: 实现流式输出
+    ch := make(chan Chunk, 10)
+    go func() {
+        defer close(ch)
+        ch <- Chunk{Content: "response", Done: true}
+    }()
+    return ch, nil
+}
+
+func (p *MyProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
+    // TODO: 实现工具调用
+    return &ToolCallResponse{}, nil
+}
+
+func (p *MyProvider) Info() ModelInfo {
+    return ModelInfo{
+        Name:              "my-model",
+        Provider:          "my-provider",
+        MaxContext:        8192,
+        SupportsTools:     true,
+        SupportsStreaming: true,
+    }
+}
+```
+
+---
+
+## 18. TypeScript SDK
+
+**位置：** `sdk/typescript/`
+
+镜像 Go 框架核心能力的 TypeScript SDK：
+
+```
+sdk/typescript/src/
+├── agent/
+│   └── react-loop.ts       # ReAct 循环
+├── events/
+│   └── bus.ts              # 事件总线
+├── llm/
+│   ├── provider.ts         # Provider 接口
+│   ├── openai.ts           # OpenAI Provider
+│   └── resilient.ts        # Resilient Provider
+├── memory/
+│   ├── memory.ts           # 记忆存储
+│   └── vector.ts           # 向量存储
+├── metrics/
+│   └── collector.ts        # 指标收集
+├── pool/
+│   └── agent-pool.ts       # Agent Pool
+├── security/
+│   └── sandbox.ts          # 安全沙箱
+└── tools/
+    ├── registry.ts         # 工具注册
+    └── scope.ts            # 作用域
+```
+
+### 使用示例
+
+```typescript
+import { ReActLoop, OpenAIProvider } from 'agentprimordia';
+
+const provider = new OpenAIProvider({
+  apiKey: 'your-api-key',
+  model: 'gpt-4o-mini',
+});
+
+const agent = new ReActLoop({
+  name: 'my-agent',
+  systemPrompt: '你是一个助手',
+  provider,
+  maxTurns: 10,
+});
+
+const response = await agent.run('你好！');
+console.log(response.content);
+```
+
+---
+
+## 19. 版本迁移指南
+
+**位置：** `ecosystem/docs/migration/v0-deprecations.md`
+
+### 19.1 v0.7 → v0.8 迁移
+
+**新特性（向后兼容）：**
+
+1. **简化 Agent 入口** — 推荐直接使用 `ap.NewAgent()`，旧 `ap.NewReActAgent()` 仍可用
+   ```go
+   // v0.8.0 推荐写法
+   agent := ap.NewAgent("hello", "你是一个助手", provider, ap.WithMaxTurns(10))
+   ```
+
+2. **`WithRAGMemory()` 一步 RAG**
+   ```go
+   // v0.7
+   agent := ap.NewReActAgent(config).
+       WithEmbedding(embedding).
+       WithRAG(ragCfg).
+       WithMemory(store)
+   
+   // v0.8.0
+   agent := ap.NewAgent(name, system, provider,
+       ap.WithRAGMemory(ragMemoryConfig),
+   )
+   ```
+
+3. **`testutil` 测试包**
+   ```go
+   import "agentprimordia/testutil"
+   
+   provider := testutil.NewMockProvider()
+   agent := testutil.NewTestAgent(provider)
+   ```
+
+### 19.2 v0.6 → v0.7 迁移
+
+**破坏性变更：**
+
+1. **ReActConfig 字段调整**
+   ```go
+   // v0.6
+   config := ReActConfig{
+       Toolkit: registry,  // 已废弃
+   }
+   
+   // v0.7
+   agent := NewReActAgent(config).WithToolkit(registry)
+   ```
+
+2. **Memory 接口组合**
+   ```go
+   // v0.6
+   type Memory interface {
+       Add(ctx, episode) error
+       Search(ctx, query, opts) ([]*Episode, error)
+       // ... 20+ 方法
+   }
+   
+   // v0.7
+   type Memory interface {
+       MemoryReader
+       MemoryWriter
+       MemorySearcher
+       MemoryLifecycle
+       MemoryExporter
+       MemoryQuery
+       MemoryToolUse
+   }
+   ```
+
+3. **Provider 数量**
+   - v0.6: 13 家 Provider
+   - v0.7: 12 家 Provider（DeepSeek 合并到 OpenAI 兼容模式）
+
+### 迁移检查清单
+
+- [ ] 更新 `ReActConfig` 使用链式 API
+- [ ] 检查 Memory 接口实现
+- [ ] 更新 Provider 导入路径
+- [ ] 运行测试验证兼容性
+
+---
+
+## 20. pgvector 适配器
+
+**位置：** `pgvector/`
+
+PostgreSQL pgvector 扩展适配器，用于生产级向量存储：
+
+```go
+import "agentprimordia/pgvector"
+
+// 创建 pgvector 存储
+store, err := pgvector.New(pgvector.Config{
+    Host:     "localhost",
+    Port:     5432,
+    User:     "postgres",
+    Password: "password",
+    Database: "agentprimordia",
+    Table:    "vectors",
+})
+if err != nil {
+    log.Fatal(err)
+}
+defer store.Close()
+
+// 使用与 VectorStore 相同的接口
+agent := ap.NewReActAgent(config).
+    WithMemory(store)
+```
+
+### 特性
+
+- 支持 HNSW 索引
+- 余弦相似度 / L2 距离 / 内积
+- 批量插入优化
+- 连接池管理
+
+---
+
+## 21. 相关文档
+
+### 项目文档
+
+| 文档 | 位置 | 说明 |
+|------|------|------|
+| Code Wiki | `CODE_WIKI.md` | 完整代码文档（21 章节） |
+| 开发文档 | `DEVELOPMENT.md` | 开发者指南 |
+| 快速入门 | `ecosystem/docs/getting-started.md` | 5 分钟上手 |
+| API 参考 | `ecosystem/docs/api-reference.md` | 完整 API 文档 |
+| 最佳实践 | `ecosystem/docs/best-practices.md` | 生产环境建议 |
+| CLI 指南 | `ecosystem/docs/ap-guide.md` | ap 命令详解 |
+| Go 生态 | `ecosystem/docs/go-ecosystem.md` | Go 生态集成 |
+| 向量库指南 | `ecosystem/docs/vector-db-guide.md` | 向量数据库集成 |
+| Cookbook | `ecosystem/docs/cookbook/` | 实战菜谱 |
+
+### 贡献指南
+
+| 文档 | 位置 | 说明 |
+|------|------|------|
+| Provider 贡献 | `ecosystem/contributing/PROVIDER.md` | 贡献新 Provider |
+| 插件贡献 | `ecosystem/contributing/PLUGIN.md` | 贡献新插件 |
+
+### 迁移文档
+
+| 文档 | 位置 | 说明 |
+|------|------|------|
+| v0 废弃说明 | `ecosystem/docs/migration/v0-deprecations.md` | 版本迁移指南 |
+
+---
+
+## 22. 设计哲学
+
+1. **来自生产，服务生产** — 核心模式从 CodeCast 生产环境提炼
+2. **接口优先** — LLM / Tools / Memory 全部接口解耦，自由替换
+3. **并发原生** — Goroutine + Channel 是一等公民
+4. **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+5. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
+6. **协议式微内核** — 能力通过接口发现，而非配置字段
+7. **链式 API** — `NewAgent(...).WithMemory(mem).WithRAG(cfg)` 风格
+
+---
+
+*文档更新时间：2026-06-19*
+*版本：v0.8.0*

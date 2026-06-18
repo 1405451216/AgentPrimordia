@@ -36,6 +36,10 @@
 
 可以通过联系项目团队来报告滥用、骚扰或其他不可接受的行为。所有投诉都将被审查和调查，并将产生被认为必要且适合情况的响应。项目团队有义务对事件报告者保密。具体执法政策的更多细节可能会单独公布。
 
+**联系渠道**：
+- Email: security@agentprimordia.dev
+- GitHub Issues: https://github.com/AgentPrimordia/agentprimordia/issues
+
 未真诚遵守或执行行为准则的项目维护者可能会面临由项目领导层其他成员决定的临时或永久影响。
 
 ## 归属
