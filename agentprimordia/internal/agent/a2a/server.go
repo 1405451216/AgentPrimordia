@@ -1,12 +1,15 @@
 package a2a
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // ServerOption Server 配置选项
@@ -37,19 +40,35 @@ type TaskHandler interface {
 // A2AServer A2A 协议服务器
 type A2AServer struct {
 	mux         *http.ServeMux
-	taskManager TaskManager
+	service     *A2AService
 	auth        Authenticator
 	card        *AgentCard
 	taskHandler TaskHandler
 	logger      *slog.Logger
 }
 
+// NewA2AServer 创建 A2A 协议服务器（基于 TaskManager 兼容旧版构造方式）。
 func NewA2AServer(tm TaskManager, opts ...ServerOption) *A2AServer {
 	s := &A2AServer{
-		mux:         http.NewServeMux(),
-		taskManager: tm,
-		auth:        NewNoopAuthenticator(),
-		logger:      slog.Default(),
+		mux:    http.NewServeMux(),
+		auth:   NewNoopAuthenticator(),
+		logger: slog.Default(),
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	s.service = NewA2AService(s.card, tm, WithA2AServiceTaskHandler(s.taskHandler))
+	s.registerRoutes()
+	return s
+}
+
+// NewA2AServerWithService 使用已有的 A2AService 创建 A2A 协议服务器。
+func NewA2AServerWithService(service *A2AService, opts ...ServerOption) *A2AServer {
+	s := &A2AServer{
+		mux:     http.NewServeMux(),
+		service: service,
+		auth:    NewNoopAuthenticator(),
+		logger:  slog.Default(),
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -83,12 +102,13 @@ func (s *A2AServer) handleAgentCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if s.card == nil {
-		http.Error(w, "AgentCard 未配置", http.StatusNotImplemented)
+	card, err := s.service.GetAgentCard(r.Context())
+	if err != nil {
+		writeA2AJSON(w, http.StatusNotImplemented, map[string]string{"error": err.Error()})
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	data, _ := json.Marshal(s.card)
+	data, _ := json.Marshal(card)
 	_, _ = w.Write(data)
 }
 
@@ -142,23 +162,13 @@ func (s *A2AServer) handleTaskCreate(req *JSONRPCRequest) *JSONRPCResponse {
 		return NewJSONRPCError(req.ID, ErrCodeInvalidParams, "缺少 message 参数", "")
 	}
 
-	if params.TaskID == "" {
-		params.TaskID = generateID("task")
-	}
-
-	task := &Task{
-		ID:      params.TaskID,
-		State:   TaskSubmitted,
-		Message: params.Message,
-	}
-
-	created, err := s.taskManager.Create(task)
+	created, err := s.service.CreateTask(context.Background(), &CreateTaskRequest{
+		Message:   params.Message,
+		TaskID:    params.TaskID,
+		SessionID: params.SessionID,
+	})
 	if err != nil {
 		return NewJSONRPCError(req.ID, ErrCodeTaskConflict, "创建任务失败", err.Error())
-	}
-
-	if s.taskHandler != nil {
-		go func() { _ = s.taskHandler.HandleTask(params.TaskID, params.Message) }()
 	}
 
 	result, _ := json.Marshal(created)
@@ -176,9 +186,13 @@ func (s *A2AServer) handleTaskGet(req *JSONRPCRequest) *JSONRPCResponse {
 		return NewJSONRPCError(req.ID, ErrCodeInvalidParams, "缺少 id 参数", "")
 	}
 
-	task, err := s.taskManager.Get(params.ID)
+	task, err := s.service.GetTask(context.Background(), params.ID)
 	if err != nil {
-		return NewJSONRPCError(req.ID, ErrCodeTaskNotFound, "任务不存在", err.Error())
+		code := ErrCodeTaskNotFound
+		if errors.Is(err, ErrTaskConflict) {
+			code = ErrCodeTaskConflict
+		}
+		return NewJSONRPCError(req.ID, code, "任务不存在", err.Error())
 	}
 
 	result, _ := json.Marshal(task)
@@ -196,15 +210,16 @@ func (s *A2AServer) handleTaskCancel(req *JSONRPCRequest) *JSONRPCResponse {
 		return NewJSONRPCError(req.ID, ErrCodeInvalidParams, "缺少 id 参数", "")
 	}
 
-	if err := s.taskManager.Cancel(params.ID); err != nil {
+	task, err := s.service.CancelTask(context.Background(), params.ID)
+	if err != nil {
 		code := ErrCodeTaskNotFound
-		if strings.Contains(err.Error(), "非法状态转换") {
+		if errors.Is(err, ErrTaskConflict) {
 			code = ErrCodeTaskConflict
 		}
 		return NewJSONRPCError(req.ID, code, "取消任务失败", err.Error())
 	}
 
-	result, _ := json.Marshal(map[string]string{"status": "canceled"})
+	result, _ := json.Marshal(task)
 	return NewJSONRPCResult(req.ID, result)
 }
 
@@ -227,8 +242,17 @@ func (s *A2AServer) handleSSEEvents(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
-	ch := s.taskManager.Subscribe(taskID)
-	defer s.taskManager.Unsubscribe(taskID, ch)
+	ch, err := s.service.SubscribeTaskEvents(r.Context(), taskID)
+	if err != nil {
+		_, _ = fmt.Fprint(w, FormatSSEEvent(&TaskEvent{
+			Type:      EventError,
+			TaskID:    taskID,
+			Timestamp: time.Now(),
+			Error:     err.Error(),
+		}))
+		flusher.Flush()
+		return
+	}
 
 	ctx := r.Context()
 	for {

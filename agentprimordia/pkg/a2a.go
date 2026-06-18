@@ -116,6 +116,11 @@ func NewA2AServer(tm A2ATaskManager, opts ...A2AServerOption) *A2AServer {
 	return a2a.NewA2AServer(tm, opts...)
 }
 
+// NewA2AServerWithService 使用已有的 A2AService 创建 A2A HTTP 服务端
+func NewA2AServerWithService(service *A2AService, opts ...A2AServerOption) *A2AServer {
+	return a2a.NewA2AServerWithService(service, opts...)
+}
+
 // ============================================================================
 // Client
 // ============================================================================
