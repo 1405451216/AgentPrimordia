@@ -266,6 +266,35 @@ func TestBudgetConfig_NilBudget(t *testing.T) {
 	}
 }
 
+// TestCostTracker_RecordCheckBudgetConsistency 验证 Record 在预算检查前已完成原子累加更新。
+// 在旧实现中，records 在锁内追加并立即进行预算检查，而原子累加字段在锁外更新，导致并发调用 CheckBudget
+// 可能读取到未更新的原子值，从而错误地返回 false。本测试通过 hook 在预算检查前精确采样 CheckBudget。
+func TestCostTracker_RecordCheckBudgetConsistency(t *testing.T) {
+	pricing := map[string]llm.ModelPricing{
+		"expensive": {Model: "expensive", PromptPricePer1M: 1e9, CompletionPricePer1M: 1e9},
+	}
+	budget := &BudgetConfig{MaxTotalCostUSD: 0.001}
+	tracker := NewCostTracker(pricing, budget)
+
+	var observedFalse bool
+	recordBudgetCheckHook = func() {
+		// 此时 records 已追加，原子累加应已更新，CheckBudget 必须返回 true
+		if !tracker.CheckBudget() {
+			observedFalse = true
+		}
+	}
+	defer func() { recordBudgetCheckHook = nil }()
+
+	_ = tracker.Record("expensive", "s1", "a1", llm.Usage{PromptTokens: 1000, CompletionTokens: 1000, TotalTokens: 2000})
+
+	if observedFalse {
+		t.Error("在预算检查前，CheckBudget 读取到了未更新的原子累加值，返回 false")
+	}
+	if !tracker.CheckBudget() {
+		t.Error("Record 完成后 CheckBudget 应为 true")
+	}
+}
+
 func TestCostTracker_TokenBudget(t *testing.T) {
 	pricing := map[string]llm.ModelPricing{
 		"test-model": {Model: "test-model", PromptPricePer1M: 1.0, CompletionPricePer1M: 2.0},
