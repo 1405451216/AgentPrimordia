@@ -36,8 +36,10 @@
   - [TCP Transport](#tcp-transport)
   - [消息总线](#消息总线)
 - [A2A 协议](#a2a-协议)
+  - [创建 A2A Server](#创建-a2a-server)
   - [HTTP API](#a2a-http-api)
   - [JSON-RPC 方法](#a2a-json-rpc-方法)
+  - [gRPC API](#a2a-grpc-api)
   - [SSE 事件流](#a2a-sse-事件流)
   - [认证](#a2a-认证)
 - [Admin 管理面板](#admin-管理面板)
@@ -1084,21 +1086,31 @@ A2A (Agent-to-Agent) 协议实现 Google A2A 规范，支持跨 Agent 任务协�
 
 ### 创建 A2A Server
 
-```go
-import "agentprimordia/internal/agent/a2a"
+推荐使用公共包 `agentprimordia/pkg/ap`：
 
-tm := a2a.NewTaskManager()
+```go
+import ap "agentprimordia/pkg"
+
+tm := ap.NewA2ATaskManager()
 defer tm.Cleanup()
 
-card := a2a.NewAgentCard("my-agent", "My Agent")
-server := a2a.NewA2AServer(tm,
-    a2a.WithCard(card),
-    a2a.WithTaskHandler(myHandler),  // 可选
-    a2a.WithAuth(myAuthenticator),   // 可选
+card := ap.NewA2AAgentCard("my-agent", "My Agent")
+server := ap.NewA2AServer(tm,
+    ap.WithCard(card),
+    ap.WithTaskHandler(myHandler),  // 可选
+    ap.WithAuth(myAuthenticator),   // 可选
 )
 
-go server.Start(":8082")
-defer server.Close()
+http.ListenAndServe(":8082", server.Handler())
+```
+
+当 HTTP 与 gRPC 需要共享同一业务核心时，使用 `NewA2AServerWithService`：
+
+```go
+service := ap.NewA2AService(card, tm, ap.WithA2AServiceTaskHandler(myHandler))
+
+httpServer := ap.NewA2AServerWithService(service)
+grpcServer := ap.NewA2AGRPCServerWithService(service)
 ```
 
 ### A2A HTTP API
@@ -1205,10 +1217,71 @@ Content-Type: application/json
 }
 ```
 
+**响应**：返回更新后的完整 `Task` 对象，状态为 `canceled`。
+
 **错误码**：
 - `-32602`：缺少 id 参数
 - `-32002`：任务未找到
 - `-32003`：任务冲突（终态任务无法取消：completed/failed/canceled/rejected）
+
+### A2A gRPC API
+
+A2A 同时提供基于 protobuf/gRPC 的二进制传输，消息定义位于 `internal/agent/a2a/proto/a2a/v1/a2a.proto`。
+
+#### 启动 gRPC Server
+
+```go
+import ap "agentprimordia/pkg"
+
+service := ap.NewA2AService(card, tm)
+grpcServer := ap.NewA2AGRPCServerWithService(service)
+
+lis, _ := net.Listen("tcp", ":8083")
+grpcServer.Serve(lis)
+```
+
+#### gRPC 认证拦截器
+
+```go
+auth := ap.APIKeyAuthFunc(func(ctx context.Context) (*ap.Principal, error) {
+    md, ok := metadata.FromIncomingContext(ctx)
+    if !ok {
+        return nil, fmt.Errorf("missing metadata")
+    }
+    key := md.Get("x-api-key")
+    if len(key) == 0 || key[0] != "secret" {
+        return nil, fmt.Errorf("invalid api key")
+    }
+    return &ap.Principal{ID: "client-1"}, nil
+})
+
+grpcServer := ap.NewA2AGRPCServerWithService(service,
+    ap.WithGRPCAuth(auth),
+)
+```
+
+#### gRPC Client
+
+```go
+client, err := ap.NewA2AGRPCClient("localhost:8083")
+if err != nil {
+    log.Fatal(err)
+}
+
+card, err := client.FetchAgentCard(ctx)
+task, err := client.CreateTask(ctx, &ap.A2AMessage{
+    Role:  "user",
+    Parts: []ap.Part{ap.NewTextPart("帮我分析数据")},
+}, "")
+
+task, err = client.GetTask(ctx, task.ID)
+canceled, err := client.CancelTask(ctx, task.ID)
+
+ch, err := client.StreamEvents(ctx, task.ID)
+for ev := range ch {
+    fmt.Printf("event: %+v\n", ev)
+}
+```
 
 ### A2A 任务状态机
 
@@ -1237,13 +1310,13 @@ Content-Type: text/event-stream
 Cache-Control: no-cache
 Connection: keep-alive
 
-data: {"type":"task_update","task":{...}}
+data: {"type":"state_change","task_id":"task-xxx","state":"working","timestamp":"..."}
 
-data: {"type":"task_update","task":{...}}
+data: {"type":"state_change","task_id":"task-xxx","state":"completed","timestamp":"..."}
 ```
 
 - 如果 `taskID` 为空，返回 400
-- 如果任务不存在，SSE 连接正常建立但无事件推送
+- 如果任务不存在，SSE 连接建立后立即推送 `type=error` 事件并关闭
 - 客户端断开连接时自动清理订阅
 
 ### A2A 认证
