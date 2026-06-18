@@ -108,3 +108,14 @@ docker-run:
 
 docker-clean:
 	docker compose down --rmi local --volumes --remove-orphans
+
+# Protocol Buffers generation
+.PHONY: proto
+proto:
+	@mkdir -p internal/agent/a2a/proto/a2a/v1
+	protoc \
+		--go_out=. \
+		--go_opt=module=agentprimordia \
+		--go-grpc_out=. \
+		--go-grpc_opt=module=agentprimordia \
+		internal/agent/a2a/proto/a2a/v1/a2a.proto

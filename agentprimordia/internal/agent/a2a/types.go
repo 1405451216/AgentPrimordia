@@ -4,8 +4,17 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
+)
+
+// ===== 业务错误 =====
+
+var (
+	ErrTaskNotFound   = errors.New("任务不存在")
+	ErrTaskConflict   = errors.New("任务冲突或非法状态转换")
+	ErrMessageMissing = errors.New("缺少 message 参数")
 )
 
 // ===== 认证相关 =====

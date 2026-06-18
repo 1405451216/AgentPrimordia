@@ -9,7 +9,11 @@
 package ap
 
 import (
+	"log/slog"
+
 	"agentprimordia/internal/agent/a2a"
+
+	"google.golang.org/grpc"
 )
 
 // ============================================================================
@@ -107,7 +111,7 @@ type A2AServer = a2a.A2AServer
 // A2AServerOption 服务端配置选项
 type A2AServerOption = a2a.ServerOption
 
-// NewA2AServer 创建 A2A 服务端
+// NewA2AServer 创建 A2A HTTP 服务端
 func NewA2AServer(tm A2ATaskManager, opts ...A2AServerOption) *A2AServer {
 	return a2a.NewA2AServer(tm, opts...)
 }
@@ -214,4 +218,67 @@ type A2AMessageBridge = a2a.MessageBridge
 // NewA2AMessageBridge 创建消息桥接器
 func NewA2AMessageBridge() *A2AMessageBridge {
 	return a2a.NewMessageBridge()
+}
+
+// ============================================================================
+// gRPC Server / Client
+// ============================================================================
+
+// A2AService 传输无关的 A2A 业务核心
+type A2AService = a2a.A2AService
+
+// A2AServiceOption A2AService 配置选项
+type A2AServiceOption = a2a.A2AServiceOption
+
+// NewA2AService 创建 A2A 业务核心
+func NewA2AService(card *A2AAgentCard, tm A2ATaskManager, opts ...A2AServiceOption) *A2AService {
+	return a2a.NewA2AService(card, tm, opts...)
+}
+
+// A2ACreateTaskRequest 创建任务请求
+type A2ACreateTaskRequest = a2a.CreateTaskRequest
+
+// A2AGRPCServer A2A gRPC 服务端实现
+type A2AGRPCServer = a2a.A2AGRPCServer
+
+// A2AGRPCServerOption gRPC 服务端配置选项
+type A2AGRPCServerOption = a2a.GRPCServerOption
+
+// NewA2AGRPCServer 创建 A2A gRPC 服务端实现
+func NewA2AGRPCServer(service *A2AService, opts ...A2AGRPCServerOption) *A2AGRPCServer {
+	return a2a.NewA2AGRPCServer(service, opts...)
+}
+
+// NewA2AGRPCServerWithService 构造并返回已注册 A2A 服务的 *grpc.Server
+func NewA2AGRPCServerWithService(service *A2AService, opts ...A2AGRPCServerOption) *grpc.Server {
+	return a2a.NewGRPCServer(service, opts...)
+}
+
+// A2AGRPCClient A2A gRPC 客户端
+type A2AGRPCClient = a2a.A2AGRPCClient
+
+// A2AGRPCClientOption gRPC 客户端配置选项
+type A2AGRPCClientOption = a2a.GRPCClientOption
+
+// NewA2AGRPCClient 创建 A2A gRPC 客户端
+func NewA2AGRPCClient(target string, opts ...A2AGRPCClientOption) (*A2AGRPCClient, error) {
+	return a2a.NewA2AGRPCClient(target, opts...)
+}
+
+// NewA2AGRPCClientWithConn 使用已有 gRPC 连接创建客户端
+func NewA2AGRPCClientWithConn(conn *grpc.ClientConn, opts ...A2AGRPCClientOption) *A2AGRPCClient {
+	return a2a.NewA2AGRPCClientWithConn(conn, opts...)
+}
+
+// A2AGRPCAuthFunc gRPC 认证函数
+type A2AGRPCAuthFunc = a2a.GRPCAuthFunc
+
+// WithGRPCAuth 设置 gRPC server 认证函数
+func WithGRPCAuth(auth A2AGRPCAuthFunc) A2AGRPCServerOption {
+	return a2a.WithGRPCAuth(auth)
+}
+
+// WithGRPCLogger 设置 gRPC server 日志器
+func WithGRPCLogger(logger *slog.Logger) A2AGRPCServerOption {
+	return a2a.WithGRPCLogger(logger)
 }
