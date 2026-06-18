@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -756,7 +757,12 @@ func TestSkillMatchScore(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		score := skillMatchScore(tt.workerSkills, tt.requiredSkills)
+		// 构建预编译的 skillSet（与新 WorkerState 行为一致）
+		skillSet := make(map[string]struct{}, len(tt.workerSkills))
+		for _, s := range tt.workerSkills {
+			skillSet[strings.ToLower(s)] = struct{}{}
+		}
+		score := skillMatchScore(skillSet, tt.requiredSkills)
 		if score != tt.expected {
 			t.Errorf("test %d: expected score %d, got %d", i, tt.expected, score)
 		}

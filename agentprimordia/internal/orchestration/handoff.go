@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -355,6 +356,7 @@ func (p *HandoffProtocol) Export() ([]byte, error) {
 }
 
 // validateHandoff 验证交接数据
+// 优化（perf-v2）：使用 switch 替代 map 查找，避免每次调用分配 map
 func (p *HandoffProtocol) validateHandoff(record *HandoffRecord) error {
 	if record.SourceAgent == "" {
 		return fmt.Errorf("source agent is required")
@@ -365,19 +367,14 @@ func (p *HandoffProtocol) validateHandoff(record *HandoffRecord) error {
 	if record.Context == nil {
 		return fmt.Errorf("context is required")
 	}
-	if record.Type == "" {
+	switch record.Type {
+	case HandoffDirect, HandoffConditional, HandoffConsultation:
+		// 合法类型
+	case "":
 		return fmt.Errorf("handoff type is required")
-	}
-
-	validTypes := map[HandoffType]bool{
-		HandoffDirect:       true,
-		HandoffConditional:  true,
-		HandoffConsultation: true,
-	}
-	if !validTypes[record.Type] {
+	default:
 		return fmt.Errorf("invalid handoff type: %s", record.Type)
 	}
-
 	return nil
 }
 
@@ -394,10 +391,10 @@ func (p *HandoffProtocol) emitEvent(eventType, handoffID string, data any) {
 	}
 }
 
-// generateHandoffID 生成唯一ID
+// generateHandoffID 生成唯一 ID。
+// 优化（perf-v2）：使用 strconv 替代 fmt.Sprintf 避免反射分配。
 func generateHandoffID(source, target string) string {
-	timestamp := time.Now().UnixNano()
-	return fmt.Sprintf("%s->%s-%d", source, target, timestamp)
+	return source + "->" + target + "-" + strconv.FormatInt(time.Now().UnixNano(), 10)
 }
 
 // ===== 辅助方法 =====

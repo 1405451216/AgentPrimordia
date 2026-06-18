@@ -70,6 +70,9 @@ type WorkerState struct {
 	Skills         []string `json:"skills,omitempty"`
 	MaxConcurrency int      `json:"max_concurrency"`
 
+	// 优化（perf-v2）：预构建技能小写集合，避免每次匹配时重新分配 map + ToLower
+	skillSet map[string]struct{}
+
 	// 运行时指标（原子操作保护）
 	activeTasks    int64
 	totalCompleted int64
@@ -90,6 +93,17 @@ func (w *WorkerState) TotalCompleted() int {
 // TotalFailed 返回累计失败任务数
 func (w *WorkerState) TotalFailed() int {
 	return int(atomic.LoadInt64(&w.totalFailed))
+}
+
+// ensureSkillSet 懒构建技能小写集合。对直接构造的 WorkerState（如测试场景）保证 skillSet 非空。
+func (w *WorkerState) ensureSkillSet() {
+	if w.skillSet != nil || len(w.Skills) == 0 {
+		return
+	}
+	w.skillSet = make(map[string]struct{}, len(w.Skills))
+	for _, s := range w.Skills {
+		w.skillSet[strings.ToLower(s)] = struct{}{}
+	}
 }
 
 // Available 返回是否可用
@@ -195,7 +209,8 @@ func (s *SkillBasedStrategy) Select(task *Task, workers []*WorkerState) (*Worker
 	}
 	var candidates []candidate
 	for _, w := range available {
-		score := skillMatchScore(w.Skills, task.RequiredSkills)
+		w.ensureSkillSet() // 懒构建，确保 skillSet 非空
+		score := skillMatchScore(w.skillSet, task.RequiredSkills)
 		if score > 0 {
 			candidates = append(candidates, candidate{worker: w, score: score})
 		}
@@ -222,14 +237,14 @@ func (s *SkillBasedStrategy) Select(task *Task, workers []*WorkerState) (*Worker
 }
 
 // skillMatchScore 计算 worker 技能与所需技能的命中数
-func skillMatchScore(workerSkills, required []string) int {
-	set := make(map[string]struct{}, len(workerSkills))
-	for _, s := range workerSkills {
-		set[strings.ToLower(s)] = struct{}{}
+// 优化（perf-v2）：使用预构建的 skillSet 避免每次分配 map + ToLower
+func skillMatchScore(workerSkillSet map[string]struct{}, required []string) int {
+	if workerSkillSet == nil {
+		return 0
 	}
 	score := 0
 	for _, r := range required {
-		if _, ok := set[strings.ToLower(r)]; ok {
+		if _, ok := workerSkillSet[strings.ToLower(r)]; ok {
 			score++
 		}
 	}
@@ -267,12 +282,17 @@ type SupervisorEvent struct {
 }
 
 // Supervisor 监督者：管理多个 Worker 并根据策略分配任务
+// 优化（perf-v2）：缓存排序后的 worker 列表，仅在 AddWorker/RemoveWorker 时重建
 type Supervisor struct {
 	mu       sync.RWMutex
 	config   SupervisorConfig
 	workers  map[string]*WorkerState
 	strategy AssignmentStrategy
 	eventCh  chan *SupervisorEvent
+
+	// 优化（perf-v2）：缓存排序后的 worker 列表，避免每次 selectWorker 重新分配+排序
+	sortedWorkers []*WorkerState
+	sortedDirty   bool
 
 	// 运行时统计
 	totalAssigned  int64
@@ -293,10 +313,11 @@ func NewSupervisor(config SupervisorConfig, strategy AssignmentStrategy) (*Super
 	}
 
 	return &Supervisor{
-		config:   config,
-		workers:  make(map[string]*WorkerState),
-		strategy: strategy,
-		eventCh:  make(chan *SupervisorEvent, supervisorEventBufferSize),
+		config:      config,
+		workers:     make(map[string]*WorkerState),
+		strategy:    strategy,
+		eventCh:     make(chan *SupervisorEvent, supervisorEventBufferSize),
+		sortedDirty: true,
 	}, nil
 }
 
@@ -323,7 +344,13 @@ func (s *Supervisor) AddWorker(w Worker, skills []string, maxConcurrency int) er
 		MaxConcurrency: maxConcurrency,
 		available:      true,
 	}
+	// 优化（perf-v2）：预构建技能小写集合
+	state.skillSet = make(map[string]struct{}, len(skills))
+	for _, sk := range skills {
+		state.skillSet[strings.ToLower(sk)] = struct{}{}
+	}
 	s.workers[w.ID()] = state
+	s.sortedDirty = true // 标记缓存失效
 
 	s.emitEvent(&SupervisorEvent{
 		Type:     "worker_added",
@@ -349,6 +376,7 @@ func (s *Supervisor) RemoveWorker(workerID string) error {
 	}
 
 	delete(s.workers, workerID)
+	s.sortedDirty = true // 标记缓存失效
 	s.emitEvent(&SupervisorEvent{
 		Type:     "worker_removed",
 		WorkerID: workerID,
@@ -464,26 +492,46 @@ func (s *Supervisor) Execute(ctx context.Context, task *Task) (*TaskResult, erro
 	return result, nil
 }
 
-// selectWorker 通过策略选择 worker（读锁内收集列表，按 ID 排序确保确定性）
+// selectWorker 通过策略选择 worker。
+// 优化（perf-v2）：使用缓存的排序后 worker 列表，避免每次分配+排序
 func (s *Supervisor) selectWorker(task *Task) (*WorkerState, error) {
 	s.mu.RLock()
 	strategy := s.strategy
-	workers := make([]*WorkerState, 0, len(s.workers))
-	for _, w := range s.workers {
-		workers = append(workers, w)
+	// 优化（perf-v2）：懒重建排序缓存
+	if !s.sortedDirty && s.sortedWorkers != nil {
+		workers := s.sortedWorkers
+		s.mu.RUnlock()
+		if len(workers) == 0 {
+			return nil, fmt.Errorf("no workers registered")
+		}
+		return strategy.Select(task, workers)
 	}
 	s.mu.RUnlock()
+
+	// 需要重建缓存，获取写锁
+	s.mu.Lock()
+	s.rebuildSortedWorkers()
+	workers := s.sortedWorkers
+	s.mu.Unlock()
 
 	if len(workers) == 0 {
 		return nil, fmt.Errorf("no workers registered")
 	}
 
-	// 按 ID 排序，确保 map 随机迭代不影响策略的确定性
+	return strategy.Select(task, workers)
+}
+
+// rebuildSortedWorkers 重建排序后的 worker 列表缓存（必须在写锁下调用）
+func (s *Supervisor) rebuildSortedWorkers() {
+	workers := make([]*WorkerState, 0, len(s.workers))
+	for _, w := range s.workers {
+		workers = append(workers, w)
+	}
 	sort.Slice(workers, func(i, j int) bool {
 		return workers[i].ID < workers[j].ID
 	})
-
-	return strategy.Select(task, workers)
+	s.sortedWorkers = workers
+	s.sortedDirty = false
 }
 
 // Workers 返回当前所有 worker 状态快照

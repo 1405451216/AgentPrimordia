@@ -3,6 +3,7 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -234,14 +235,30 @@ func (d *Debate) collectInitialArguments(ctx context.Context, topic string, deba
 }
 
 // collectResponses 收集回应
+// 优化（perf-v2）：使用 semaphore 控制并发数，避免 O(N²) goroutine 爆炸
 func (d *Debate) collectResponses(ctx context.Context, debaters []Debater, previousArgs []Argument, round int) []Argument {
-	var wg sync.WaitGroup
-	argsCh := make(chan Argument, len(debaters)*len(previousArgs))
+	// 计算总任务数
+	totalTasks := 0
+	for _, prevArg := range previousArgs {
+		for _, debater := range debaters {
+			if prevArg.DebaterID != debater.ID() {
+				totalTasks++
+			}
+		}
+	}
 
-	// 每个参与者对其他参与者的论点进行回应
+	var wg sync.WaitGroup
+	argsCh := make(chan Argument, totalTasks)
+
+	// 优化（perf-v2）：使用 semaphore 控制并发，避免过多 goroutine 同时运行 LLM
+	maxConcurrent := len(debaters)
+	if maxConcurrent > 10 {
+		maxConcurrent = 10
+	}
+	sem := make(chan struct{}, maxConcurrent)
+
 	for _, debater := range debaters {
 		for _, prevArg := range previousArgs {
-			// 不回应自己的论点
 			if prevArg.DebaterID == debater.ID() {
 				continue
 			}
@@ -249,6 +266,8 @@ func (d *Debate) collectResponses(ctx context.Context, debaters []Debater, previ
 			wg.Add(1)
 			go func(db Debater, targetArg Argument) {
 				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
 
 				content, err := db.RespondToArgument(ctx, targetArg.Content)
 				if err != nil {
@@ -274,7 +293,7 @@ func (d *Debate) collectResponses(ctx context.Context, debaters []Debater, previ
 	wg.Wait()
 	close(argsCh)
 
-	args := make([]Argument, 0)
+	args := make([]Argument, 0, totalTasks)
 	for arg := range argsCh {
 		args = append(args, arg)
 	}
@@ -288,19 +307,30 @@ func (d *Debate) synthesizeConsensus(args []Argument) string {
 		return "未达成任何共识"
 	}
 
-	// 提取所有论点内容
+	// 提取所有论点内容（perf-v4 Task 6：使用 strings.Builder 减少 fmt.Sprintf 反射分配）
+	var sb strings.Builder
+	sb.Grow(256)
 	contents := make([]string, 0, len(args))
 	for _, arg := range args {
-		contents = append(contents, fmt.Sprintf("[%s]: %s", arg.DebaterName, arg.Content))
+		sb.WriteByte('[')
+		sb.WriteString(arg.DebaterName)
+		sb.WriteString("]: ")
+		sb.WriteString(arg.Content)
+		contents = append(contents, sb.String())
+		sb.Reset()
 	}
 
-	// 简单的共识总结：合并所有观点
-	consensus := fmt.Sprintf("经过 %d 轮辩论，共收集了 %d 个论点。\n\n主要观点：\n%s",
-		d.config.MaxRounds,
-		len(args),
-		strings.Join(contents, "\n\n"))
+	// 简单的共识总结：合并所有观点（perf-v4 Task 6：使用 strings.Builder）
+	var consensus strings.Builder
+	consensus.Grow(128 + 64*len(args))
+	consensus.WriteString("经过 ")
+	consensus.WriteString(strconv.Itoa(d.config.MaxRounds))
+	consensus.WriteString(" 轮辩论，共收集了 ")
+	consensus.WriteString(strconv.Itoa(len(args)))
+	consensus.WriteString(" 个论点。\n\n主要观点：\n")
+	consensus.WriteString(strings.Join(contents, "\n\n"))
 
-	return consensus
+	return consensus.String()
 }
 
 // calculateAgreement 计算共识度
@@ -377,7 +407,8 @@ func (d *Debate) GetDebaters() []Debater {
 	return debaters
 }
 
-// generateArgumentID 生成论点ID
+// generateArgumentID 生成论点 ID。
+// 优化（perf-v2）：使用 strconv 替代 fmt.Sprintf 避免反射分配。
 func generateArgumentID(debaterID string, round, seq int) string {
-	return fmt.Sprintf("arg-%s-r%d-%d", debaterID, round, seq)
+	return "arg-" + debaterID + "-r" + strconv.Itoa(round) + "-" + strconv.Itoa(seq)
 }

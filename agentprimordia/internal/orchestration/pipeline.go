@@ -283,6 +283,7 @@ func (p *Pipeline) executeStage(ctx context.Context, stage *Stage, input string)
 		output string
 		err    error
 	}
+	// 优化（perf-v2）：复用同一个结果 channel，避免每次重试分配新 channel
 	resultCh := make(chan handlerResult, 1)
 
 	go func() {
@@ -329,15 +330,18 @@ func (p *Pipeline) executeStage(ctx context.Context, stage *Stage, input string)
 				backoff := time.Duration(retry+1) * 100 * time.Millisecond
 				time.Sleep(backoff)
 
-				// 重新执行（使用 goroutine + select）
-				retryResultCh := make(chan handlerResult, 1)
+				// 优化（perf-v2）：复用同一个 resultCh，排空后重用
+				select {
+				case <-resultCh:
+				default:
+				}
 				go func() {
 					o, e := stage.Handler(stageCtx, input)
-					retryResultCh <- handlerResult{output: o, err: e}
+					resultCh <- handlerResult{output: o, err: e}
 				}()
 
 				select {
-				case hr := <-retryResultCh:
+				case hr := <-resultCh:
 					output = hr.output
 					err = hr.err
 				case <-stageCtx.Done():
