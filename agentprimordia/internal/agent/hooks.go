@@ -234,7 +234,6 @@ func (s *HookStats) Snapshot() map[string]interface{} {
 	return result
 }
 
-
 // HookManager 钩子管理器
 // perf-v6 Task 5：用 atomic.Pointer 维护 hooks 快照，避免 Fire 路径 make+copy
 type HookManager struct {

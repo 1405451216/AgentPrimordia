@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -10,7 +11,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 const (

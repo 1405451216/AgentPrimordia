@@ -189,7 +189,7 @@ func TestIntegration_OpenAI_APIError(t *testing.T) {
 		t.Fatal("expected error for invalid API key")
 	}
 
-		// perf-v6 round 8 Task 3：错误现在是 *RetryableError，用 errors.As 提取内部 APIError
+	// perf-v6 round 8 Task 3：错误现在是 *RetryableError，用 errors.As 提取内部 APIError
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
 		t.Logf("Got APIError: message=%s type=%s", apiErr.Message, apiErr.Type)

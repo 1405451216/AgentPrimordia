@@ -16,8 +16,8 @@ import (
 
 // perf-v6 round 4 Task 2：config 静态错误
 var (
-	ErrAgentNameRequired   = errors.New("agent name is required")
-	ErrAgentModelRequired  = errors.New("agent model (LLM Provider) is required")
+	ErrAgentNameRequired  = errors.New("agent name is required")
+	ErrAgentModelRequired = errors.New("agent model (LLM Provider) is required")
 )
 
 // MemoryConfig 记忆能力分组配置

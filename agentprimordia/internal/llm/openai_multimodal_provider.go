@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -11,7 +12,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 // OpenAIMultimodalProvider OpenAI 多模态 Provider（支持 GPT-4o 视觉能力）

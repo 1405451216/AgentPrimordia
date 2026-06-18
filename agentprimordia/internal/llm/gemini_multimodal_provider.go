@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 	"bufio"
 	"bytes"
 	"context"
@@ -12,7 +13,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
-	"agentprimordia/internal/jsonutil" // perf-v6 round 6 Task 1
 )
 
 const defaultGeminiMultimodalMaxTokens = 8192

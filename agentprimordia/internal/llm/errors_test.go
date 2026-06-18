@@ -24,7 +24,7 @@ func TestParseRetryAfter_Seconds(t *testing.T) {
 		{"60", 60 * time.Second},
 		{"120", 120 * time.Second},
 		{"3600", time.Hour},
-		{"-1", 0}, // 负数视为无效
+		{"-1", 0},  // 负数视为无效
 		{"abc", 0}, // 非数字非日期
 	}
 	for _, tt := range tests {
@@ -43,7 +43,7 @@ func TestParseRetryAfter_HTTPDate(t *testing.T) {
 		want   time.Duration
 	}{
 		{"Thu, 18 Jun 2026 12:01:30 GMT", 90 * time.Second},
-		{"Thu, 18 Jun 2026 12:00:00 GMT", 0},     // 过去的时间
+		{"Thu, 18 Jun 2026 12:00:00 GMT", 0}, // 过去的时间
 		{"Thu, 18 Jun 2026 13:00:00 GMT", time.Hour},
 		{"invalid date", 0},
 		{"", 0},

@@ -18,10 +18,10 @@ import (
 const (
 	// perf-v6 Task H：默认 maxConcurrency 提升到 2 * NumCPU（最少 16）
 	// 老值 10 在多核机器上明显不足
-	defaultMaxConcurrency = 16
-	defaultPoolTimeout    = 5 * time.Minute
-	poolEventBufferSize   = 100
-	defaultMaxTurns       = 50
+	defaultMaxConcurrency   = 16
+	defaultPoolTimeout      = 5 * time.Minute
+	poolEventBufferSize     = 100
+	defaultMaxTurns         = 50
 	defaultMaxRetainedTasks = 1000
 )
 

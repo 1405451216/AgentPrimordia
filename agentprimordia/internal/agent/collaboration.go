@@ -11,8 +11,8 @@ import (
 
 // perf-v6 round 4 Task 2：协作模式静态错误
 var (
-	ErrDebateParticipants   = errors.New("debate requires at least 2 participants")
-	ErrReviewParticipants   = errors.New("review requires at least 2 participants: author + reviewer")
+	ErrDebateParticipants = errors.New("debate requires at least 2 participants")
+	ErrReviewParticipants = errors.New("review requires at least 2 participants: author + reviewer")
 )
 
 // ===== Agent 间协作模式 =====

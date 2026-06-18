@@ -116,24 +116,24 @@ type HandoffEvent struct {
 // HandoffStats 统计信息
 // perf-v6 Task 6：所有 int 计数器改 atomic.Int64，无锁累加
 type HandoffStats struct {
-	TotalHandoffs    atomic.Int64  `json:"total_handoffs"`
-	Successful       atomic.Int64  `json:"successful"`
-	Failed           atomic.Int64  `json:"failed"`
-	Rejected         atomic.Int64  `json:"rejected"`
-	Pending          atomic.Int64  `json:"pending"`
-	AvgDurationNs    atomic.Int64  `json:"-"`
-	TotalDurationNs  atomic.Int64  `json:"-"`
+	TotalHandoffs   atomic.Int64 `json:"total_handoffs"`
+	Successful      atomic.Int64 `json:"successful"`
+	Failed          atomic.Int64 `json:"failed"`
+	Rejected        atomic.Int64 `json:"rejected"`
+	Pending         atomic.Int64 `json:"pending"`
+	AvgDurationNs   atomic.Int64 `json:"-"`
+	TotalDurationNs atomic.Int64 `json:"-"`
 }
 
 // HandoffStatsSnapshot 导出用快照（按原 JSON tag）
 type HandoffStatsSnapshot struct {
-	TotalHandoffs   int64         `json:"total_handoffs"`
-	Successful      int64         `json:"successful"`
-	Failed          int64         `json:"failed"`
-	Rejected        int64         `json:"rejected"`
-	Pending         int64         `json:"pending"`
-	AvgDuration     time.Duration `json:"avg_duration"`
-	TotalDuration   time.Duration `json:"total_duration"`
+	TotalHandoffs int64         `json:"total_handoffs"`
+	Successful    int64         `json:"successful"`
+	Failed        int64         `json:"failed"`
+	Rejected      int64         `json:"rejected"`
+	Pending       int64         `json:"pending"`
+	AvgDuration   time.Duration `json:"avg_duration"`
+	TotalDuration time.Duration `json:"total_duration"`
 }
 
 // Snapshot 返回当前指标快照（perf-v6 Task 6）

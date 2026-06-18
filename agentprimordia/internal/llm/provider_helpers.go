@@ -13,18 +13,18 @@ func ResolveModel(reqModel, configModel string) string {
 // OpenAIMessage 序列化 DTO（perf-v6 Task 2：typed struct 替代 map[string]any）
 // 反射比 typed struct 慢 2-5x；10k token prompt 单次 JSON Marshal 节省 5-10ms
 type OpenAIMessage struct {
-	Role       string                  `json:"role"`
-	Content    string                  `json:"content,omitempty"`
-	ToolCallID string                  `json:"tool_call_id,omitempty"`
-	ToolCalls  []OpenAIToolCall        `json:"tool_calls,omitempty"`
-	Name       string                  `json:"name,omitempty"`
+	Role       string           `json:"role"`
+	Content    string           `json:"content,omitempty"`
+	ToolCallID string           `json:"tool_call_id,omitempty"`
+	ToolCalls  []OpenAIToolCall `json:"tool_calls,omitempty"`
+	Name       string           `json:"name,omitempty"`
 }
 
 // OpenAIToolCall OpenAI 工具调用结构
 type OpenAIToolCall struct {
 	ID       string             `json:"id"`
 	Type     string             `json:"type"`
-	Function OpenAIToolCallFunc  `json:"function"`
+	Function OpenAIToolCallFunc `json:"function"`
 }
 
 // OpenAIToolCallFunc 工具调用函数部分

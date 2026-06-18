@@ -8,11 +8,11 @@ import (
 )
 
 type benchPayload struct {
-	Model    string             `json:"model"`
-	Messages []map[string]any   `json:"messages"`
-	Stream   bool               `json:"stream"`
-	TopP     float32            `json:"top_p"`
-	User     string             `json:"user"`
+	Model    string           `json:"model"`
+	Messages []map[string]any `json:"messages"`
+	Stream   bool             `json:"stream"`
+	TopP     float32          `json:"top_p"`
+	User     string           `json:"user"`
 }
 
 func makePayload() benchPayload {

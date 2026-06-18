@@ -9,8 +9,8 @@ import (
 
 // perf-v6 round 4 Task 2：a2a auth 静态错误
 var (
-	ErrAuthHeaderMissing   = errors.New("缺少 Authorization 头")
-	ErrAuthBearerRequired  = errors.New("Authorization 格式错误，需要 Bearer token")
+	ErrAuthHeaderMissing  = errors.New("缺少 Authorization 头")
+	ErrAuthBearerRequired = errors.New("Authorization 格式错误，需要 Bearer token")
 )
 
 // Principal 已认证主体

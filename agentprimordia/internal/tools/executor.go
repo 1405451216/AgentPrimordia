@@ -195,9 +195,9 @@ func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*
 			defer func() {
 				if r := recover(); r != nil {
 					e.logger.Printf("[TOOL] panic in batch goroutine: %v", r)
-				if e.slogger != nil {
-					e.slogger.Error("tool batch panic", "panic", r)
-				}
+					if e.slogger != nil {
+						e.slogger.Error("tool batch panic", "panic", r)
+					}
 					results[idx] = NewErrorResult(fmt.Sprintf("tool panic: %v", r))
 					errs[idx] = fmt.Errorf("tool panic: %v", r)
 				}
