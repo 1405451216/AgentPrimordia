@@ -113,10 +113,10 @@ func (t *CostTracker) Record(model, sessionID, agentName string, usage llm.Usage
 	if recordBudgetCheckHook != nil {
 		recordBudgetCheckHook()
 	}
-
-	exceeded := t.checkBudgetLocked()
 	t.mu.Unlock()
 
+	// 预算检查使用原子累加字段，O(1) 且无锁；Record 中已保证 atomic 字段与 records 同步更新。
+	exceeded := t.CheckBudget()
 	if exceeded && t.budget != nil && t.budget.OnBudgetExceed != nil {
 		t.budget.OnBudgetExceed(t.Summary())
 	}
@@ -175,43 +175,6 @@ func (t *CostTracker) CheckBudget() bool {
 	// 检查单次调用 Token 上限
 	if t.budget.MaxTokensPerCall > 0 {
 		if t.lastTokens.Load() > int64(t.budget.MaxTokensPerCall) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// checkBudgetLocked 兼容旧 API（perf-v5 Task 13：保留但不再被 Record 路径调用）
-// 调用方必须持有 t.mu
-func (t *CostTracker) checkBudgetLocked() bool {
-	if t.budget == nil {
-		return false
-	}
-
-	if t.budget.MaxTotalCostUSD > 0 {
-		var totalCost float64
-		for _, r := range t.records {
-			totalCost += r.CostUSD
-		}
-		if totalCost > t.budget.MaxTotalCostUSD {
-			return true
-		}
-	}
-
-	if t.budget.MaxTokensPerSession > 0 {
-		var totalTokens int64
-		for _, r := range t.records {
-			totalTokens += int64(r.TotalTokens)
-		}
-		if totalTokens > int64(t.budget.MaxTokensPerSession) {
-			return true
-		}
-	}
-
-	if t.budget.MaxTokensPerCall > 0 && len(t.records) > 0 {
-		last := t.records[len(t.records)-1]
-		if last.TotalTokens > t.budget.MaxTokensPerCall {
 			return true
 		}
 	}
