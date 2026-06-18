@@ -185,9 +185,8 @@ func (f *FileSystem) Execute(ctx context.Context, args json.RawMessage) (*tools.
 	}
 
 	cleanPath := filepath.Clean(rawPath)
-	if strings.Contains(cleanPath, "..") || strings.Contains(cleanPath, "\\..") {
-		return tools.NewErrorResult("path traversal denied: path contains '..'"), nil
-	}
+	// 不再通过子串匹配拒绝包含 ".." 的文件名（如 "..gitignore"），
+	// 真正的目录穿越由下面的绝对路径根目录前缀检查捕获。
 
 	fullPath := filepath.Join(f.rootDir, cleanPath)
 
