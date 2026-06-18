@@ -180,3 +180,19 @@ func TestMCPRegistry_Test_NotFound(t *testing.T) {
 		t.Error("不存在的 server 不应通过测试")
 	}
 }
+
+func TestMCPRegistry_Start_EmptyCommand(t *testing.T) {
+	r := NewMCPRegistry()
+	r.Register(MCPClientConfig{Name: "empty-cmd"})
+
+	ctx := context.Background()
+	err := r.Start(ctx, "empty-cmd")
+	if err == nil {
+		t.Fatal("空 command 应返回错误")
+	}
+
+	entry, _ := r.Get("empty-cmd")
+	if entry.Status != MCPClientFailed {
+		t.Errorf("期望状态 failed, got %s", entry.Status)
+	}
+}
