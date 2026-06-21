@@ -112,3 +112,35 @@ type PluginLoader = tools.PluginLoader
 
 // PluginInfo 描述已加载插件的信息
 type PluginInfo = tools.PluginInfo
+
+// ===== v3.0.0 前沿能力：内置工具扩展 =====
+// Stability: Experimental — v3.0.0 新增，API 可能随使用场景演进而调整。
+
+// API 是 REST API 调用工具，支持 GET/POST/PUT/DELETE/PATCH 方法，内置 SSRF 防护
+type API = builtin.API
+
+// CodeExecution 代码执行工具，支持在安全沙箱中执行 Python、JavaScript、Go 代码
+// 注意：默认禁用，需设置 AP_ALLOW_CODE_EXECUTION=true 环境变量启用
+type CodeExecution = builtin.CodeExecution
+
+// Database 是 SQLite 数据库工具，支持 query 和 execute 操作
+type Database = builtin.Database
+
+// DatabaseOption 是 Database 的可选配置
+type DatabaseOption = builtin.DatabaseOption
+
+var (
+	// NewAPI 创建新的 API 工具实例
+	NewAPI = builtin.NewAPI
+	// NewCodeExecution 创建代码执行工具实例
+	NewCodeExecution = builtin.NewCodeExecution
+	// NewDatabase 创建 SQLite 数据库工具
+	// dbPath 为数据库文件路径，传 ":memory:" 使用内存数据库
+	NewDatabase = builtin.NewDatabase
+	// WithReadOnly 设置数据库只读模式
+	WithReadOnly = builtin.WithReadOnly
+	// WithMaxRows 设置数据库查询结果最大行数
+	WithMaxRows = builtin.WithMaxRows
+	// WithQueryTimeout 设置数据库查询超时时间
+	WithQueryTimeout = builtin.WithQueryTimeout
+)

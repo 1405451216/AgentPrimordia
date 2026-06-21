@@ -70,6 +70,63 @@ type ExtractiveSummaryOutput struct {
 	CompressionRatio float64  `json:"compression_ratio" jsonschema:"description=压缩比,minimum=0,maximum=1"`
 }
 
+// CodeAnalysisOutput 代码分析输出
+type CodeAnalysisOutput struct {
+	Issues        []CodeIssue `json:"issues" jsonschema:"description=代码问题列表"`
+	Complexity    float64     `json:"complexity" jsonschema:"description=代码复杂度评分,minimum=0,maximum=10"`
+	MaintainIndex float64     `json:"maintainability_index" jsonschema:"description=可维护性指数,minimum=0,maximum=100"`
+}
+
+// CodeIssue 代码问题
+type CodeIssue struct {
+	Type        string `json:"type" jsonschema:"description=问题类型,enum=bug,enum=security,enum=performance,enum=style,enum=complexity,enum=duplication"`
+	Severity    string `json:"severity" jsonschema:"description=严重程度,enum=critical,enum=high,enum=medium,enum=low,enum=info"`
+	Line        int    `json:"line" jsonschema:"description=问题所在行号,minimum=1"`
+	Description string `json:"description" jsonschema:"description=问题描述"`
+	Suggestion  string `json:"suggestion" jsonschema:"description=修复建议"`
+}
+
+// DocumentExtractionOutput 文档提取输出
+type DocumentExtractionOutput struct {
+	Title      string              `json:"title" jsonschema:"description=文档标题"`
+	Author     string              `json:"author" jsonschema:"description=作者"`
+	Date       string              `json:"date" jsonschema:"description=日期"`
+	Keywords   []string            `json:"keywords" jsonschema:"description=关键词列表"`
+	Sections   []DocumentSection   `json:"sections" jsonschema:"description=文档章节列表"`
+	References []DocumentReference `json:"references" jsonschema:"description=引用列表"`
+}
+
+// DocumentSection 文档章节
+type DocumentSection struct {
+	Heading string `json:"heading" jsonschema:"description=章节标题"`
+	Level   int    `json:"level" jsonschema:"description=标题级别,minimum=1,maximum=6"`
+	Content string `json:"content" jsonschema:"description=章节内容摘要"`
+}
+
+// DocumentReference 文档引用
+type DocumentReference struct {
+	Title  string `json:"title" jsonschema:"description=引用标题"`
+	Author string `json:"author" jsonschema:"description=引用作者"`
+	Year   int    `json:"year" jsonschema:"description=引用年份"`
+	URL    string `json:"url" jsonschema:"description=引用URL"`
+}
+
+// APIResponseAnalysisOutput API响应分析输出
+type APIResponseAnalysisOutput struct {
+	StatusCode int                `json:"status_code" jsonschema:"description=HTTP状态码"`
+	Success    bool               `json:"success" jsonschema:"description=是否成功"`
+	Data       map[string]any     `json:"data" jsonschema:"description=响应数据"`
+	Errors     []APIResponseError `json:"errors" jsonschema:"description=错误列表"`
+	Metadata   map[string]string  `json:"metadata" jsonschema:"description=元数据"`
+}
+
+// APIResponseError API响应错误
+type APIResponseError struct {
+	Code    string `json:"code" jsonschema:"description=错误代码"`
+	Message string `json:"message" jsonschema:"description=错误消息"`
+	Field   string `json:"field" jsonschema:"description=错误字段"`
+}
+
 // 预定义 Schema 模板函数
 
 // SentimentSchema 返回情感分析 Schema
@@ -105,4 +162,19 @@ func SummarySchema() *SchemaDef {
 // ExtractiveSummarySchema 返回抽取式摘要 Schema
 func ExtractiveSummarySchema() *SchemaDef {
 	return SchemaFromStruct(ExtractiveSummaryOutput{}, WithSchemaName("extractive_summary"))
+}
+
+// CodeAnalysisSchema 返回代码分析 Schema
+func CodeAnalysisSchema() *SchemaDef {
+	return SchemaFromStruct(CodeAnalysisOutput{}, WithSchemaName("code_analysis"))
+}
+
+// DocumentExtractionSchema 返回文档提取 Schema
+func DocumentExtractionSchema() *SchemaDef {
+	return SchemaFromStruct(DocumentExtractionOutput{}, WithSchemaName("document_extraction"))
+}
+
+// APIResponseAnalysisSchema 返回API响应分析 Schema
+func APIResponseAnalysisSchema() *SchemaDef {
+	return SchemaFromStruct(APIResponseAnalysisOutput{}, WithSchemaName("api_response_analysis"))
 }

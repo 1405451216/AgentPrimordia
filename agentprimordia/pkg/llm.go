@@ -215,6 +215,9 @@ var (
 	MultiLabelClassificationSchema = llm.MultiLabelClassificationSchema
 	SummarySchema                  = llm.SummarySchema
 	ExtractiveSummarySchema        = llm.ExtractiveSummarySchema
+	CodeAnalysisSchema             = llm.CodeAnalysisSchema
+	DocumentExtractionSchema       = llm.DocumentExtractionSchema
+	APIResponseAnalysisSchema      = llm.APIResponseAnalysisSchema
 )
 
 // 预定义模板输出类型
