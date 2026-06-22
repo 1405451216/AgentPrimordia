@@ -12,9 +12,26 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 ## 2. 技术栈约束
 
 - **语言**: Go 1.26+（`go.mod` 已声明 `go 1.26`）
-- **外部依赖**: 仅允许 `modernc.org/sqlite`（纯 Go SQLite 驱动，无 CGO）与 `gopkg.in/yaml.v3`
-- **所有新模块使用 Go 标准库**（net/http, database/sql, os/exec 等）
-- **不引入**：任何 Web 框架、ORM、配置库等第三方包
+- **默认原则：所有新模块仅使用 Go 标准库**（net/http、database/sql、os/exec 等）
+- **不引入**：任何 Web 框架、ORM、配置解析库、CLI 框架等第三方包
+
+### 2.1 已批准的第三方依赖（白名单）
+
+下列依赖因历史原因存在于 `go.mod`，新增代码**不得引入**白名单之外的第三方包：
+
+- `modernc.org/sqlite` — 纯 Go SQLite 驱动（无 CGO），用于 `internal/memory` 与 `ecosystem/plugins/kv` 等需要持久化的场景
+- `gopkg.in/yaml.v3` — 仅用于 `cmd/ap` 脚手架子命令的 YAML 模板渲染（agent.yaml 等），不作为通用配置库
+- `google.golang.org/grpc` + `google.golang.org/protobuf` + 间接依赖 `google.golang.org/genproto/googleapis/rpc` — **仅限 `internal/agent/a2a/` 及其子包** 使用，用于实现 Agent2Agent 协议（gRPC + protobuf 是该协议的事实标准）
+
+### 2.2 依赖扩展的审批流程
+
+如需新增白名单外的第三方包，必须满足以下条件之一：
+
+- 存在无法用 Go 标准库复现的硬性需求（例如某个行业协议的标准实现）
+- 新增功能位于 `internal/agent/a2a/` 范围内（沿用 A2A 协议栈）
+- 任何其他场景需先在 PR 中说明理由并征得维护者同意
+
+依赖的真实使用边界以 `go mod why -m <package>` 输出为准；如发现某依赖被白名单外的包引用，应立即调整或回滚。
 
 ## 3. 代码规范
 
