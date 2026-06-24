@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 )
 
-func runCompletion(args []string) {
+func runCompletion(args []string) error {
 	if len(args) == 0 {
 		fmt.Print(`ap completion — generate shell completion scripts
 
@@ -22,7 +21,7 @@ Examples:
   ap completion zsh > ~/.zsh/completions/_ap
   ap completion fish > ~/.config/fish/completions/ap.fish
 `)
-		return
+		return nil
 	}
 
 	shell := args[0]
@@ -34,9 +33,9 @@ Examples:
 	case "fish":
 		fmt.Print(fishCompletion)
 	default:
-		errorf("unsupported shell %q, supported: bash, zsh, fish", shell)
-		os.Exit(1)
+		return fmt.Errorf("unsupported shell %q, supported: bash, zsh, fish", shell)
 	}
+	return nil
 }
 
 const bashCompletion = `# Bash completion for ap
@@ -82,7 +81,7 @@ _ap() {
             return 0
             ;;
         --template|-t)
-            COMPREPLY=($(compgen -W "basic with-tools multi-agent agent-with-cache agent-with-rag agent-with-metrics" -- ${cur}))
+            COMPREPLY=($(compgen -W "quickstart basic with-tools multi-agent agent-with-cache agent-with-rag agent-with-metrics" -- ${cur}))
             return 0
             ;;
         --port|-p)
@@ -122,7 +121,7 @@ _ap() {
             case $words[1] in
                 init)
                     _arguments \
-                        '(-t --template)'{-t,--template}'[template name]:template:(basic with-tools multi-agent agent-with-cache agent-with-rag agent-with-metrics)' \
+                        '(-t --template)'{-t,--template}'[template name]:template:(quickstart basic with-tools multi-agent agent-with-cache agent-with-rag agent-with-metrics)' \
                         '--dry-run[preview files without creating]' \
                         '(-h --help)'{-h,--help}'[show help]'
                     ;;
@@ -177,7 +176,7 @@ complete -c ap -n '__fish_use_subcommand' -a completion -d 'generate shell compl
 complete -c ap -n '__fish_use_subcommand' -a version -d 'show version'
 
 # init options
-complete -c ap -n '__fish_seen_subcommand_from init' -s t -l template -d 'template name' -a 'basic with-tools multi-agent agent-with-cache agent-with-rag agent-with-metrics'
+complete -c ap -n '__fish_seen_subcommand_from init' -s t -l template -d 'template name' -a 'quickstart basic with-tools multi-agent agent-with-cache agent-with-rag agent-with-metrics'
 complete -c ap -n '__fish_seen_subcommand_from init' -l dry-run -d 'preview files without creating'
 complete -c ap -n '__fish_seen_subcommand_from init' -s h -l help -d 'show help'
 

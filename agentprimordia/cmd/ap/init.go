@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -9,33 +8,30 @@ import (
 	"strings"
 )
 
-//go:embed scaffold/basic scaffold/with-tools scaffold/multi-agent
-//go:embed scaffold/agent-with-cache scaffold/agent-with-rag scaffold/agent-with-metrics
-//go:embed scaffold/quickstart
-var scaffoldFS embed.FS
-
-func runInit(args []string) {
+func runInit(args []string) error {
 	var (
-		name     string
-		template string
-		dryRun   bool
+		name        string
+		template    string
+		dryRun      bool
+		interactive bool
 	)
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--template", "-t":
 			i++
 			if i >= len(args) {
-				errorf("--template 需要指定模板名称")
-				os.Exit(1)
+				return fmt.Errorf("--template 需要指定模板名称")
 			}
 			template = args[i]
 		case "--dry-run":
 			dryRun = true
+		case "--interactive", "-i":
+			interactive = true
 		case "--help", "-h":
 			fmt.Print(`ap init — create a new agent project
 
 Usage:
-  ap init <项目名> [--template NAME] [--dry-run]
+  ap init <项目名> [--template NAME] [--dry-run] [--interactive]
 
 Templates:
   quickstart         5分钟快速入门 (推荐新手)
@@ -48,13 +44,15 @@ Templates:
 
 Options:
   --dry-run          preview files without creating
+  --interactive, -i  interactive wizard mode
 
 Examples:
   ap init my-agent
   ap init my-agent --template with-tools
   ap init my-agent --template agent-with-rag --dry-run
+  ap init --interactive
 `)
-			return
+			return nil
 		default:
 			if name == "" {
 				name = args[i]
@@ -62,27 +60,27 @@ Examples:
 		}
 	}
 
+	// 交互式向导模式
+	if interactive {
+		wizard := NewWizard(os.Stdin, os.Stdout)
+		opts, err := wizard.Run()
+		if err != nil {
+			return err
+		}
+		name = opts.Name
+		template = opts.Template
+	}
+
 	if name == "" {
-		errorf("please specify project name\nUsage: ap init <name>")
-		os.Exit(1)
+		return fmt.Errorf("please specify project name\nUsage: ap init <name>")
 	}
 	if template == "" {
 		template = "basic"
 	}
 
-	// 验证模板
-	validTemplates := map[string]bool{
-		"quickstart":         true,
-		"basic":              true,
-		"with-tools":         true,
-		"multi-agent":        true,
-		"agent-with-cache":   true,
-		"agent-with-rag":     true,
-		"agent-with-metrics": true,
-	}
+	// 验证模板（validTemplates 定义在 scaffold.go）
 	if !validTemplates[template] {
-		errorf("unknown template %q, supported: quickstart, basic, with-tools, multi-agent, agent-with-cache, agent-with-rag, agent-with-metrics", template)
-		os.Exit(1)
+		return fmt.Errorf("unknown template %q, supported: quickstart, basic, with-tools, multi-agent, agent-with-cache, agent-with-rag, agent-with-metrics", template)
 	}
 
 	// dry-run 模式：只预览
@@ -104,20 +102,18 @@ Examples:
 		infof("%s/.gitignore", name)
 		infof("%s/go.mod", name)
 		fmt.Printf("\nTemplates: %s\n", template)
-		return
+		return nil
 	}
 
 	// 检查目标目录
 	targetDir := name
 	if _, err := os.Stat(targetDir); err == nil {
-		errorf("directory %q already exists", targetDir)
-		os.Exit(1)
+		return fmt.Errorf("directory %q already exists", targetDir)
 	}
 
 	// 创建目录
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		errorf("create directory failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("create directory failed: %w", err)
 	}
 
 	// 复制模板文件
@@ -147,8 +143,7 @@ Examples:
 		return os.WriteFile(targetPath, []byte(content), 0o644)
 	})
 	if err != nil {
-		errorf("create project failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("create project failed: %w", err)
 	}
 
 	// 生成 .ap.yaml
@@ -169,7 +164,9 @@ agent:
   max_turns: 20
   system_prompt: "you are a helpful assistant"
 `, name, template)
-	os.WriteFile(filepath.Join(targetDir, ".ap.yaml"), []byte(apConfigYAML), 0o644)
+	if err := os.WriteFile(filepath.Join(targetDir, ".ap.yaml"), []byte(apConfigYAML), 0o644); err != nil {
+		return fmt.Errorf("write .ap.yaml failed: %w", err)
+	}
 
 	// 生成 .gitignore
 	gitignore := `# AgentPrimordia
@@ -183,18 +180,22 @@ data/
 *.db
 .env
 `
-	os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(gitignore), 0o644)
+	if err := os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(gitignore), 0o644); err != nil {
+		return fmt.Errorf("write .gitignore failed: %w", err)
+	}
 
 	// 生成 go.mod
 	goMod := fmt.Sprintf(`module %s
 
-go 1.22
+go 1.23
 
 require agentprimordia v0.0.0
 
 replace agentprimordia => ..
 `, name)
-	os.WriteFile(filepath.Join(targetDir, "go.mod"), []byte(goMod), 0o644)
+	if err := os.WriteFile(filepath.Join(targetDir, "go.mod"), []byte(goMod), 0o644); err != nil {
+		return fmt.Errorf("write go.mod failed: %w", err)
+	}
 
 	successf("项目 %q 已创建 (Templates: %s)", name, template)
 	fmt.Println()
@@ -203,4 +204,5 @@ replace agentprimordia => ..
 	infof("go mod tidy")
 	infof("set AP_LLM_API_KEY=sk-xxx")
 	infof("ap run")
+	return nil
 }

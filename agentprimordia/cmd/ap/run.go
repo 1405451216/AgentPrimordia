@@ -2,15 +2,19 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
-func runRun(args []string) {
+func runRun(args []string) error {
 	var watch bool
 	prompt := ""
 
@@ -21,8 +25,7 @@ func runRun(args []string) {
 		case "--prompt", "-p":
 			i++
 			if i >= len(args) {
-				errorf("--prompt requires a value")
-				os.Exit(1)
+				return fmt.Errorf("--prompt requires a value")
 			}
 			prompt = args[i]
 		case "--help", "-h":
@@ -46,7 +49,7 @@ func runRun(args []string) {
   ap run --prompt "分析这段代码"
   ap run --watch
 `)
-			return
+			return nil
 		}
 	}
 
@@ -59,8 +62,7 @@ func runRun(args []string) {
 	// 查找项目目录
 	dir, err := findProjectDir()
 	if err != nil {
-		errorf("%v", err)
-		os.Exit(1)
+		return err
 	}
 
 	binaryName := filepath.Base(dir) + "-agent"
@@ -69,10 +71,9 @@ func runRun(args []string) {
 		infof("watch mode: auto-rebuild on file changes (Ctrl+C to exit)")
 		fmt.Println()
 		if err := watchAndRun(dir, binaryName, prompt); err != nil {
-			errorf("%v", err)
-			os.Exit(1)
+			return err
 		}
-		return
+		return nil
 	}
 
 	// 编译（带 spinner）
@@ -83,9 +84,7 @@ func runRun(args []string) {
 	spinner.Stop()
 
 	if buildErr != nil {
-		errorf("build failed: %s", strings.TrimSpace(string(buildOutput)))
-		fmt.Fprintf(os.Stderr, "  hint: run %s for details\n", bold("go build ."))
-		os.Exit(1)
+		return fmt.Errorf("build failed: %s\n  hint: run %s for details", strings.TrimSpace(string(buildOutput)), bold("go build ."))
 	}
 	defer os.Remove(filepath.Join(dir, binaryName))
 
@@ -94,6 +93,7 @@ func runRun(args []string) {
 	fmt.Println()
 	runCmd := exec.Command(filepath.Join(".", binaryName))
 	runCmd.Dir = dir
+	runCmd.Stdin = os.Stdin
 	runCmd.Stdout = os.Stdout
 	runCmd.Stderr = os.Stderr
 
@@ -106,15 +106,16 @@ func runRun(args []string) {
 	runCmd.Env = env
 
 	if err := runCmd.Run(); err != nil {
-		errorf("run failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("run failed: %w", err)
 	}
+	return nil
 }
 
 // appendConfigEnv 读取 .ap.yaml 的 llm 配置并注入为环境变量。
 // 环境变量优先级：已有环境变量 > .ap.yaml 配置。
+// 优化（perf-v3）：直接使用已有目录加载配置，避免冗余的 findProjectDir() 调用
 func appendConfigEnv(env []string, dir string) []string {
-	config := loadAPConfig()
+	config := loadAPConfigFromDir(dir)
 	if config.LLM == nil {
 		return env
 	}
@@ -171,11 +172,20 @@ func watchAndRun(dir, binaryName, prompt string) error {
 	lastHash := ""
 	var runCmd *exec.Cmd
 
-	defer func() {
+	// 监听中断信号，优雅退出
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(quit)
+
+	// cleanup 杀掉正在运行的子进程
+	cleanup := func() {
 		if runCmd != nil && runCmd.Process != nil {
 			_ = runCmd.Process.Kill()
+			_ = runCmd.Wait()
+			runCmd = nil
 		}
-	}()
+	}
+	defer cleanup()
 
 	for {
 		currentHash, err := getFileHash(dir)
@@ -226,26 +236,46 @@ func watchAndRun(dir, binaryName, prompt string) error {
 			}
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		// 等待信号或定时轮询
+		select {
+		case <-quit:
+			fmt.Println()
+			infof("收到退出信号，正在停止...")
+			cleanup()
+			fmt.Println("已退出")
+			return nil
+		case <-time.After(500 * time.Millisecond):
+		}
 	}
 }
 
 func getFileHash(dir string) (string, error) {
 	var sb strings.Builder
-	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	// 优化（perf-v3）：使用 WalkDir 替代 Walk，避免每个文件的 Lstat 调用
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		if strings.HasPrefix(info.Name(), ".") || info.Name() == "vendor" || info.Name() == "node_modules" {
-			if info.IsDir() {
+		if d.IsDir() {
+			name := d.Name()
+			// 跳过隐藏目录、vendor、node_modules、.git、testdata 等
+			if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" || name == "testdata" {
 				return filepath.SkipDir
 			}
 			return nil
 		}
+		// 只关注 .go 文件
 		if strings.HasSuffix(path, ".go") {
-			sb.WriteString(fmt.Sprintf("%s:%d", path, info.ModTime().UnixNano()))
+			info, err := d.Info()
+			if err != nil {
+				return nil
+			}
+			sb.WriteString(path)
+			sb.WriteByte(':')
+			sb.WriteString(strconv.FormatInt(info.ModTime().UnixNano(), 10))
+			sb.WriteByte(';')
 		}
 		return nil
 	})
-	return sb.String(), nil
+	return sb.String(), err
 }

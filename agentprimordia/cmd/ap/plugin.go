@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func runPlugin(args []string) {
+func runPlugin(args []string) error {
 	if len(args) == 0 {
 		fmt.Print(`ap plugin — manage plugins
 
@@ -26,7 +26,7 @@ Examples:
   ap plugin list
   ap plugin create ap-plugin-weather
 `)
-		return
+		return nil
 	}
 
 	subcmd := args[0]
@@ -34,30 +34,27 @@ Examples:
 
 	switch subcmd {
 	case "install":
-		pluginInstall(subargs)
+		return pluginInstall(subargs)
 	case "list":
-		pluginList()
+		return pluginList()
 	case "create":
-		pluginCreate(subargs)
+		return pluginCreate(subargs)
 	case "remove":
-		pluginRemove(subargs)
+		return pluginRemove(subargs)
 	default:
-		errorf("unknown subcommand: %s", subcmd)
-		os.Exit(1)
+		return fmt.Errorf("unknown subcommand: %s", subcmd)
 	}
 }
 
-func pluginInstall(args []string) {
+func pluginInstall(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify Go module path\nUsage: ap plugin install github.com/user/ap-plugin-xxx")
-		os.Exit(1)
+		return fmt.Errorf("please specify Go module path\nUsage: ap plugin install github.com/user/ap-plugin-xxx")
 	}
 
 	module := args[0]
 	dir, err := findProjectDir()
 	if err != nil {
-		errorf("%v", err)
-		os.Exit(1)
+		return err
 	}
 
 	infof("installing plugin: %s", module)
@@ -67,8 +64,7 @@ func pluginInstall(args []string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		errorf("install failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("install failed: %w", err)
 	}
 
 	config := loadAPConfig()
@@ -87,15 +83,16 @@ func pluginInstall(args []string) {
 	fmt.Printf("  // then in init(): pluginLoader.Load(%q.NewPlugin())\n", module)
 	fmt.Println()
 	fmt.Println("run ap run to activate the plugin")
+	return nil
 }
 
-func pluginList() {
+func pluginList() error {
 	config := loadAPConfig()
 	if len(config.Plugins) == 0 {
 		fmt.Println("no plugins installed")
 		fmt.Println()
 		fmt.Println("use ap plugin install <module> to install plugins")
-		return
+		return nil
 	}
 
 	fmt.Printf("%-40s %s\n", "Module Path", "Status")
@@ -103,36 +100,36 @@ func pluginList() {
 	for _, p := range config.Plugins {
 		fmt.Printf("%-40s %s\n", p, "installed")
 	}
+	return nil
 }
 
-func pluginCreate(args []string) {
+func pluginCreate(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify plugin name\nUsage: ap plugin create ap-plugin-xxx")
-		os.Exit(1)
+		return fmt.Errorf("please specify plugin name\nUsage: ap plugin create ap-plugin-xxx")
 	}
 
 	name := args[0]
 	if _, err := os.Stat(name); err == nil {
-		errorf("directory %q already exists", name)
-		os.Exit(1)
+		return fmt.Errorf("directory %q already exists", name)
 	}
 
 	dirs := []string{name, filepath.Join(name, "tools")}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0o755); err != nil {
-			errorf("create directory failed: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("create directory failed: %w", err)
 		}
 	}
 
 	// go.mod
 	goMod := fmt.Sprintf(`module %s
 
-go 1.22
+go 1.23
 
 require agentprimordia v0.0.0
 `, name)
-	os.WriteFile(filepath.Join(name, "go.mod"), []byte(goMod), 0o644)
+	if err := os.WriteFile(filepath.Join(name, "go.mod"), []byte(goMod), 0o644); err != nil {
+		return fmt.Errorf("write go.mod failed: %w", err)
+	}
 
 	// plugin.go
 	pluginCode := fmt.Sprintf(`package %s
@@ -176,7 +173,9 @@ func (p *Plugin) Close() error {
 	return nil
 }
 `, strings.ReplaceAll(name, "-", "_"), name)
-	os.WriteFile(filepath.Join(name, "plugin.go"), []byte(pluginCode), 0o644)
+	if err := os.WriteFile(filepath.Join(name, "plugin.go"), []byte(pluginCode), 0o644); err != nil {
+		return fmt.Errorf("write plugin.go failed: %w", err)
+	}
 
 	// README
 	readme := "# " + name + "\n\nAgentPrimordia plugin.\n\n" +
@@ -186,7 +185,9 @@ func (p *Plugin) Close() error {
 		"```go\nimport _ \"" + name + "\"\n\n// plugin auto-registers to ToolRegistry\n```\n\n" +
 		"## Development\n\n" +
 		"```bash\ncd " + name + "\ngo mod tidy\ngo test ./...\n```\n"
-	os.WriteFile(filepath.Join(name, "README.md"), []byte(readme), 0o644)
+	if err := os.WriteFile(filepath.Join(name, "README.md"), []byte(readme), 0o644); err != nil {
+		return fmt.Errorf("write README.md failed: %w", err)
+	}
 
 	successf("plugin project %q created", name)
 	fmt.Println()
@@ -199,12 +200,12 @@ func (p *Plugin) Close() error {
 	infof("cd %s", name)
 	infof("# edit plugin.go to add your tools")
 	infof("go mod tidy")
+	return nil
 }
 
-func pluginRemove(args []string) {
+func pluginRemove(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify plugin name")
-		os.Exit(1)
+		return fmt.Errorf("please specify plugin name")
 	}
 
 	module := args[0]
@@ -221,14 +222,12 @@ func pluginRemove(args []string) {
 	}
 
 	if !found {
-		errorf("plugin %q not installed", module)
-		os.Exit(1)
+		return fmt.Errorf("plugin %q not installed", module)
 	}
 
 	config.Plugins = newPlugins
 	if err := saveAPConfig(config); err != nil {
-		errorf("save config failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("save config failed: %w", err)
 	}
 
 	successf("plugin %q removed from config", module)
@@ -243,4 +242,5 @@ func pluginRemove(args []string) {
 			successf("go mod tidy completed")
 		}
 	}
+	return nil
 }

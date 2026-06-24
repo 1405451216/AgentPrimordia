@@ -70,7 +70,9 @@ func TestRunInit_BasicTemplate(t *testing.T) {
 	os.Chdir(tmpDir)
 
 	// 模拟 ap init my-agent
-	runInit([]string{"my-agent"})
+	if err := runInit([]string{"my-agent"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "my-agent")
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -120,7 +122,9 @@ func TestRunInit_WithToolsTemplate(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	runInit([]string{"my-agent", "--template", "with-tools"})
+	if err := runInit([]string{"my-agent", "--template", "with-tools"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "my-agent")
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -145,7 +149,9 @@ func TestRunInit_MultiAgentTemplate(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	runInit([]string{"my-agent", "--template", "multi-agent"})
+	if err := runInit([]string{"my-agent", "--template", "multi-agent"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "my-agent")
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -170,7 +176,9 @@ func TestRunInit_GeneratedProjectBuilds(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	runInit([]string{"buildable-agent"})
+	if err := runInit([]string{"buildable-agent"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "buildable-agent")
 
@@ -211,23 +219,35 @@ func TestRunInit_DirExists(t *testing.T) {
 	// 创建已存在的目录
 	os.Mkdir(filepath.Join(tmpDir, "my-agent"), 0o755)
 
-	// 验证目录已存在时 init 会检测到
-	targetDir := filepath.Join(tmpDir, "my-agent")
-	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
-		t.Fatal("测试前置：目录应已存在")
+	// runInit 现在返回 error，可以测试错误路径
+	err := runInit([]string{"my-agent"})
+	if err == nil {
+		t.Fatal("期望返回错误（目录已存在），实际返回 nil")
 	}
-	// runInit 内部会 os.Exit(1)，无法在测试中直接调用
-	// 此测试仅验证前置条件
 }
 
 func TestRunInit_InvalidTemplate(t *testing.T) {
-	// 无效模板的校验逻辑在 runInit 内部 os.Exit
-	// 无法在 go test 中直接测试 os.Exit 路径
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	err := runInit([]string{"my-agent", "--template", "does-not-exist"})
+	if err == nil {
+		t.Fatal("期望返回错误（未知模板），实际返回 nil")
+	}
 }
 
 func TestRunInit_NoName(t *testing.T) {
-	// 无名称的校验逻辑在 runInit 内部 os.Exit
-	// 无法在 go test 中直接测试 os.Exit 路径
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	err := runInit([]string{})
+	if err == nil {
+		t.Fatal("期望返回错误（未指定项目名），实际返回 nil")
+	}
 }
 
 func TestAPConfig_LoadSave(t *testing.T) {
@@ -267,7 +287,9 @@ func TestRunInit_AgentWithCacheTemplate(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	runInit([]string{"cache-agent", "--template", "agent-with-cache"})
+	if err := runInit([]string{"cache-agent", "--template", "agent-with-cache"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "cache-agent")
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -286,7 +308,9 @@ func TestRunInit_AgentWithRAGTemplate(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	runInit([]string{"rag-agent", "--template", "agent-with-rag"})
+	if err := runInit([]string{"rag-agent", "--template", "agent-with-rag"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "rag-agent")
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -305,7 +329,9 @@ func TestRunInit_AgentWithMetricsTemplate(t *testing.T) {
 	defer os.Chdir(origDir)
 	os.Chdir(tmpDir)
 
-	runInit([]string{"metrics-agent", "--template", "agent-with-metrics"})
+	if err := runInit([]string{"metrics-agent", "--template", "agent-with-metrics"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
 
 	targetDir := filepath.Join(tmpDir, "metrics-agent")
 	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
@@ -318,5 +344,205 @@ func TestRunInit_AgentWithMetricsTemplate(t *testing.T) {
 	}
 	if !contains(string(content), "/metrics") {
 		t.Error("agent-with-metrics 模板应暴露 /metrics 端点")
+	}
+}
+
+// ===== P1: 新增错误路径与关键路径测试 =====
+
+// TestRunInit_QuickstartTemplate 验证 quickstart 模板使用 pkg 而非 internal
+func TestRunInit_QuickstartTemplate(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	if err := runInit([]string{"qs-agent", "--template", "quickstart"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
+
+	targetDir := filepath.Join(tmpDir, "qs-agent")
+	mainGo := filepath.Join(targetDir, "main.go")
+	content, _ := os.ReadFile(mainGo)
+
+	if contains(string(content), "agentprimordia/internal/") {
+		t.Error("quickstart 模板不应直接引用 internal/ 包，应使用 pkg/")
+	}
+	if !contains(string(content), `ap "agentprimordia/pkg"`) {
+		t.Error("quickstart 模板应通过 pkg/ 公共 API 引用框架")
+	}
+}
+
+// TestRunInit_GoModVersion 验证生成的 go.mod 使用 go 1.23
+func TestRunInit_GoModVersion(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	if err := runInit([]string{"ver-agent"}); err != nil {
+		t.Fatalf("runInit 失败: %v", err)
+	}
+
+	modContent, _ := os.ReadFile(filepath.Join(tmpDir, "ver-agent", "go.mod"))
+	if !contains(string(modContent), "go 1.23") {
+		t.Errorf("生成的 go.mod 应包含 go 1.23，实际: %s", string(modContent))
+	}
+}
+
+// TestRunInit_Help 验证 --help 返回 nil 且不创建目录
+func TestRunInit_Help(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	err := runInit([]string{"--help"})
+	if err != nil {
+		t.Errorf("--help 应返回 nil，实际: %v", err)
+	}
+	// 确保没有创建任何目录
+	entries, _ := os.ReadDir(tmpDir)
+	if len(entries) != 0 {
+		t.Errorf("--help 不应创建文件，实际创建了 %d 个", len(entries))
+	}
+}
+
+// TestRunInit_DryRun 验证 --dry-run 不创建文件
+func TestRunInit_DryRun(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	err := runInit([]string{"dry-agent", "--dry-run"})
+	if err != nil {
+		t.Fatalf("--dry-run 失败: %v", err)
+	}
+	// 确保没有创建项目目录
+	if _, err := os.Stat(filepath.Join(tmpDir, "dry-agent")); err == nil {
+		t.Error("--dry-run 不应创建目录")
+	}
+}
+
+// ===== Completion 测试 =====
+
+func TestRunCompletion_Bash(t *testing.T) {
+	err := runCompletion([]string{"bash"})
+	if err != nil {
+		t.Fatalf("bash 补全失败: %v", err)
+	}
+}
+
+func TestRunCompletion_Zsh(t *testing.T) {
+	err := runCompletion([]string{"zsh"})
+	if err != nil {
+		t.Fatalf("zsh 补全失败: %v", err)
+	}
+}
+
+func TestRunCompletion_Fish(t *testing.T) {
+	err := runCompletion([]string{"fish"})
+	if err != nil {
+		t.Fatalf("fish 补全失败: %v", err)
+	}
+}
+
+func TestRunCompletion_InvalidShell(t *testing.T) {
+	err := runCompletion([]string{"powershell"})
+	if err == nil {
+		t.Fatal("期望返回错误（不支持的 shell），实际返回 nil")
+	}
+}
+
+func TestRunCompletion_NoArgs(t *testing.T) {
+	err := runCompletion([]string{})
+	if err != nil {
+		t.Errorf("无参数应返回 nil（显示帮助），实际: %v", err)
+	}
+}
+
+// ===== Doctor 测试 =====
+
+func TestRunDoctor_Run(t *testing.T) {
+	// doctor 不依赖项目目录，应正常执行
+	err := runDoctor([]string{})
+	if err != nil {
+		t.Errorf("doctor 不应返回错误: %v", err)
+	}
+}
+
+// ===== appendConfigEnv 测试 =====
+
+func TestAppendConfigEnv_NoConfig(t *testing.T) {
+	setupTestProject(t)
+
+	// 无 .ap.yaml 时应原样返回
+	env := []string{"PATH=/usr/bin"}
+	result := appendConfigEnv(env, "")
+	if len(result) != 1 {
+		t.Errorf("无配置时不应追加环境变量，实际长度 %d", len(result))
+	}
+}
+
+func TestAppendConfigEnv_WithConfig(t *testing.T) {
+	dir := setupTestProject(t)
+
+	// 创建 .ap.yaml
+	apYaml := `name: test
+llm:
+  provider: openai
+  model: gpt-4o
+  api_key: sk-test-key
+`
+	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+
+	env := []string{"PATH=/usr/bin"}
+	result := appendConfigEnv(env, dir)
+
+	// 验证追加的环境变量
+	hasProvider := false
+	hasModel := false
+	hasKey := false
+	for _, e := range result {
+		if e == "AP_LLM_PROVIDER=openai" {
+			hasProvider = true
+		}
+		if e == "AP_LLM_MODEL=gpt-4o" {
+			hasModel = true
+		}
+		if e == "AP_LLM_API_KEY=sk-test-key" {
+			hasKey = true
+		}
+	}
+	if !hasProvider {
+		t.Error("应包含 AP_LLM_PROVIDER=openai")
+	}
+	if !hasModel {
+		t.Error("应包含 AP_LLM_MODEL=gpt-4o")
+	}
+	if !hasKey {
+		t.Error("应包含 AP_LLM_API_KEY=sk-test-key")
+	}
+}
+
+func TestAppendConfigEnv_EnvNotOverwritten(t *testing.T) {
+	dir := setupTestProject(t)
+
+	// 创建 .ap.yaml
+	apYaml := `name: test
+llm:
+  provider: openai
+  model: gpt-4o
+`
+	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+
+	// 已有环境变量不应被覆盖
+	env := []string{"PATH=/usr/bin", "AP_LLM_PROVIDER=anthropic"}
+	result := appendConfigEnv(env, dir)
+
+	for _, e := range result {
+		if e == "AP_LLM_PROVIDER=openai" {
+			t.Error("已有的 AP_LLM_PROVIDER 不应被 .ap.yaml 覆盖")
+		}
 	}
 }

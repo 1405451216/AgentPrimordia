@@ -17,13 +17,23 @@ const saveMemoryChBuffer = 256
 // saveMemory 将消息保存到 Memory。
 // 优化（Task 1）：将 mem.Add() 写入异步化到独立的 goroutine 中，
 // 避免 SQLite 同步写入阻塞 ReAct 主循环。
+// 优化（perf-v3）：优先使用 capCache 缓存的 memoryStore 和 summarizer，避免每轮重复类型断言。
 func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
-	mem := a.getMemoryStore()
+	// 优先使用 capCache 中缓存的能力引用，避免每轮重复类型断言
+	var mem MemoryStore
+	var summarizer memory.SummaryExtractor
+	if a.capCache != nil {
+		mem = a.capCache.memoryStore
+		summarizer = a.capCache.summarizer
+	} else {
+		mem = a.getMemoryStore()
+		summarizer = a.getSummarizer()
+	}
 	if mem == nil {
 		return
 	}
 	ep := &memory.Episode{
-		ID:        nextMemoryID(),
+		ID:        a.idGen.next(),
 		SessionID: a.config.SessionID,
 		Role:      string(msg.Role),
 		Content:   msg.Content,
@@ -48,7 +58,7 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 	}
 
 	// 异步提取摘要（绑定到 agent 的 hookCtx 防止泄漏）
-	summarizer := a.getSummarizer()
+	// 优化（perf-v3）：summarizer 已从 capCache 获取，无需再次调用 getSummarizer()
 	if summarizer != nil && ep.ID != "" {
 		epID := ep.ID
 		epContent := ep.Content
@@ -175,8 +185,15 @@ const defaultMaxHistoryMessages = 100
 // trimContext 应用上下文窗口策略裁剪历史
 // perf-v4 Task 11：当未配置自定义策略时，默认使用滑动窗口
 // （保留系统提示词 + 最近 N 条消息），避免长对话无界增长
+// 优化（perf-v3）：优先使用 capCache 缓存的 contextWindow，避免每轮重复类型断言
 func (a *ReActAgent) trimContext(history []Message, maxMessages int) []Message {
-	if cw := a.getContextWindowStrategy(); cw != nil {
+	var cw ContextWindowStrategy
+	if a.capCache != nil {
+		cw = a.capCache.contextWindow
+	} else {
+		cw = a.getContextWindowStrategy()
+	}
+	if cw != nil {
 		return cw.Trim(history, maxMessages)
 	}
 	// 默认滑动窗口策略

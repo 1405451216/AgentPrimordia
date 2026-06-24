@@ -50,12 +50,13 @@ func main() {
 		MinScore: 0.3,
 	}
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "{{.ProjectName}}",
-		SystemPrompt: "你是一个基于知识库回答问题的助手",
-		Model:        provider,
-		MaxTurns:     10,
-	}).WithRAG(ragConfig)
+	agent, err := ap.NewAgent("{{.ProjectName}}", "你是一个基于知识库回答问题的助手", provider,
+		ap.WithMaxTurns(10),
+		ap.WithRAG(ragConfig),
+	)
+	if err != nil {
+		log.Fatalf("create agent failed: %v", err)
+	}
 
 	// 用户提问
 	question := "知识库里有什么内容?"

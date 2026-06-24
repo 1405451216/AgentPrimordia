@@ -36,12 +36,13 @@ func main() {
 		MinScore: 0.8,
 	})
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "{{.ProjectName}}",
-		SystemPrompt: "you are a helpful assistant",
-		Model:        provider,
-		MaxTurns:     10,
-	}).WithCache(cache)
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant", provider,
+		ap.WithMaxTurns(10),
+		ap.WithCache(cache),
+	)
+	if err != nil {
+		log.Fatalf("create agent failed: %v", err)
+	}
 
 	// 第一次调用 — 真实请求 LLM
 	fmt.Println("=== First call ===")

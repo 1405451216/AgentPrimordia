@@ -11,7 +11,7 @@ import (
 	"agentprimordia/internal/debugger"
 )
 
-func runDebug(args []string) {
+func runDebug(args []string) error {
 	var port string
 
 	for i := 0; i < len(args); i++ {
@@ -19,8 +19,7 @@ func runDebug(args []string) {
 		case "--port", "-p":
 			i++
 			if i >= len(args) {
-				errorf("--port requires a value")
-				os.Exit(1)
+				return fmt.Errorf("--port requires a value")
 			}
 			port = args[i]
 		case "--help", "-h":
@@ -40,7 +39,7 @@ func runDebug(args []string) {
   ap debug
   ap debug --port 3000
 `)
-			return
+			return nil
 		}
 	}
 	if port == "" {
@@ -61,8 +60,7 @@ func runDebug(args []string) {
 	fmt.Println()
 
 	if err := server.Start(); err != nil {
-		errorf("server start failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("server start failed: %w", err)
 	}
 
 	// 等待中断信号以优雅退出
@@ -77,4 +75,5 @@ func runDebug(args []string) {
 		errorf("server shutdown error: %v", err)
 	}
 	fmt.Println("调试服务器已退出")
+	return nil
 }

@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
-func runTest(args []string) {
+func runTest(args []string) error {
 	var verbose bool
 
 	for i := 0; i < len(args); i++ {
@@ -29,36 +32,36 @@ Examples:
   ap test
   ap test --verbose
 `)
-			return
+			return nil
 		}
 	}
 
 	dir, err := findProjectDir()
 	if err != nil {
-		errorf("%v", err)
-		os.Exit(1)
+		return err
 	}
 
-	// 检查是否有 eval_test.go 文件
+	// 检查是否有 eval_test.go 文件（递归扫描子目录）
 	hasEval := false
-	entries, err := os.ReadDir(dir)
-	if err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && len(e.Name()) > 8 && e.Name()[:5] == "eval_" && e.Name()[len(e.Name())-8:] == "_test.go" {
-				hasEval = true
-				break
-			}
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
 		}
-	}
+		name := d.Name()
+		if strings.HasPrefix(name, "eval_") && strings.HasSuffix(name, "_test.go") {
+			hasEval = true
+			return filepath.SkipDir // 找到即可退出
+		}
+		return nil
+	})
 
 	if !hasEval {
 		infof("eval test file not found, generating template...")
 		if err := generateEvalTemplate(dir); err != nil {
-			errorf("generate eval template failed: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("generate eval template failed: %w", err)
 		}
 		successf("generated eval_agent_test.go, edit it then re-run ap test")
-		return
+		return nil
 	}
 
 	// 运行 eval 测试
@@ -73,11 +76,11 @@ Examples:
 	//nolint:gosec // go test 命令参数受控
 	result, err := runCommand(dir, "go", goTestArgs...)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, result)
-		os.Exit(1)
+		return fmt.Errorf("%s", result)
 	}
 
 	fmt.Println(result)
+	return nil
 }
 
 func generateEvalTemplate(dir string) error {
@@ -85,6 +88,7 @@ func generateEvalTemplate(dir string) error {
 
 import (
 	"context"
+	"log"
 	"testing"
 
 	ap "agentprimordia/pkg"
@@ -96,12 +100,12 @@ func EvalTestSuite(t *testing.T) {
 	// TODO: replace with your actual LLM Provider
 	mockLLM := &testMockLLM{}
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "TestAgent",
-		SystemPrompt: "you are a test assistant",
-		Model:        mockLLM,
-		MaxTurns:     5,
-	})
+	agent, err := ap.NewAgent("TestAgent", "you are a test assistant", mockLLM,
+		ap.WithMaxTurns(5),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	t.Run("basic reply", func(t *testing.T) {
 		resp, err := agent.Run(context.Background(), ap.UserMessage("hello"))

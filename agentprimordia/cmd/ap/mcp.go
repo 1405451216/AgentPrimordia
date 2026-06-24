@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	ap "agentprimordia/pkg"
 )
 
-func runMCP(args []string) {
+func runMCP(args []string) error {
 	if len(args) == 0 {
 		fmt.Print(`ap mcp — manage MCP servers
 
@@ -32,7 +31,7 @@ Examples:
   ap mcp list
   ap mcp test filesystem
 `)
-		return
+		return nil
 	}
 
 	subcmd := args[0]
@@ -40,53 +39,56 @@ Examples:
 
 	switch subcmd {
 	case "list":
-		mcpList()
+		return mcpList()
 	case "add":
-		mcpAdd(subargs)
+		return mcpAdd(subargs)
 	case "remove":
-		mcpRemove(subargs)
+		return mcpRemove(subargs)
 	case "start":
-		mcpStart(subargs)
+		return mcpStart(subargs)
 	case "stop":
-		mcpStop(subargs)
+		return mcpStop(subargs)
 	case "test":
-		mcpTest(subargs)
+		return mcpTest(subargs)
 	case "tools":
-		mcpTools(subargs)
+		return mcpTools(subargs)
 	default:
-		errorf("unknown subcommand %q, run %s for help", subcmd, bold("ap mcp --help"))
-		os.Exit(1)
+		return fmt.Errorf("unknown subcommand %q, run %s for help", subcmd, bold("ap mcp --help"))
 	}
 }
 
-func mcpList() {
+func mcpList() error {
 	config := loadAPConfig()
 	if config.MCP == nil || len(config.MCP.Servers) == 0 {
 		fmt.Println("no MCP servers registered")
 		fmt.Println()
 		fmt.Println("use ap mcp add <name> to register a server")
-		return
+		return nil
 	}
 
-	fmt.Printf("%-20s %-30s %-10s %-10s\n", "Name", "Command", "AutoStart", "URL")
-	fmt.Println(strings.Repeat("-", 75))
+	fmt.Printf("%-20s %-30s %-10s %-20s\n", "Name", "Command", "AutoStart", "Endpoint")
+	fmt.Println(strings.Repeat("-", 85))
 	for name, srv := range config.MCP.Servers {
 		autoStart := "no"
 		if srv.AutoStart {
 			autoStart = "yes"
 		}
-		url := srv.BaseURL
-		if url == "" {
-			url = fmt.Sprintf("%s %s", srv.Command, strings.Join(srv.Args, " "))
+		cmd := srv.Command
+		if cmd == "" {
+			cmd = "-"
 		}
-		fmt.Printf("%-20s %-30s %-10s %-10s\n", name, truncate(url, 28), autoStart, srv.BaseURL)
+		endpoint := srv.BaseURL
+		if endpoint == "" {
+			endpoint = fmt.Sprintf("%s %s", srv.Command, strings.Join(srv.Args, " "))
+		}
+		fmt.Printf("%-20s %-30s %-10s %-20s\n", name, truncate(cmd, 28), autoStart, truncate(endpoint, 18))
 	}
+	return nil
 }
 
-func mcpAdd(args []string) {
+func mcpAdd(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify server name\nUsage: ap mcp add <name> --command <cmd> [--args ...] [--url <url>]")
-		os.Exit(1)
+		return fmt.Errorf("please specify server name\nUsage: ap mcp add <name> --command <cmd> [--args ...] [--url <url>]")
 	}
 
 	name := args[0]
@@ -103,22 +105,19 @@ func mcpAdd(args []string) {
 		case "--command", "-c":
 			i++
 			if i >= len(args) {
-				errorf("--command requires a value")
-				os.Exit(1)
+				return fmt.Errorf("--command requires a value")
 			}
 			command = args[i]
 		case "--args", "-a":
 			i++
 			if i >= len(args) {
-				errorf("--args requires a value")
-				os.Exit(1)
+				return fmt.Errorf("--args requires a value")
 			}
 			argsList = strings.Split(args[i], ",")
 		case "--url", "-u":
 			i++
 			if i >= len(args) {
-				errorf("--url requires a value")
-				os.Exit(1)
+				return fmt.Errorf("--url requires a value")
 			}
 			baseURL = args[i]
 		case "--auto-start":
@@ -126,16 +125,14 @@ func mcpAdd(args []string) {
 		case "--env", "-e":
 			i++
 			if i >= len(args) {
-				errorf("--env requires KEY=VALUE")
-				os.Exit(1)
+				return fmt.Errorf("--env requires KEY=VALUE")
 			}
 			envVars = strings.Split(args[i], ",")
 		}
 	}
 
 	if command == "" && baseURL == "" {
-		errorf("either --command or --url is required")
-		os.Exit(1)
+		return fmt.Errorf("either --command or --url is required")
 	}
 
 	config := loadAPConfig()
@@ -163,55 +160,53 @@ func mcpAdd(args []string) {
 	}
 
 	if err := saveAPConfig(config); err != nil {
-		errorf("save config failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("save config failed: %w", err)
 	}
 
 	successf("MCP server %q registered", name)
 	if autoStart {
 		infof("auto-start: enabled")
 	}
+	return nil
 }
 
-func mcpRemove(args []string) {
+func mcpRemove(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify server name")
-		os.Exit(1)
+		return fmt.Errorf("please specify server name")
 	}
 
 	name := args[0]
 	config := loadAPConfig()
 	if config.MCP == nil || config.MCP.Servers == nil {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
 	if _, ok := config.MCP.Servers[name]; !ok {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
 	delete(config.MCP.Servers, name)
 	if err := saveAPConfig(config); err != nil {
-		errorf("save config failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("save config failed: %w", err)
 	}
 
 	successf("MCP server %q removed", name)
+	return nil
 }
 
-func mcpStart(args []string) {
+func mcpStart(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify server name")
-		os.Exit(1)
+		return fmt.Errorf("please specify server name")
 	}
 
 	name := args[0]
 	config := loadAPConfig()
+	if config.MCP == nil || config.MCP.Servers == nil {
+		return fmt.Errorf("MCP server %q not found", name)
+	}
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
 	registry := ap.NewMCPRegistry()
@@ -227,34 +222,43 @@ func mcpStart(args []string) {
 	defer cancel()
 
 	if err := registry.Start(ctx, name); err != nil {
-		errorf("start failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("start failed: %w", err)
 	}
 
 	successf("MCP server %q started", name)
+	return nil
 }
 
-func mcpStop(args []string) {
+func mcpStop(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify server name")
-		os.Exit(1)
+		return fmt.Errorf("please specify server name")
 	}
 
 	name := args[0]
 	config := loadAPConfig()
 	if config.MCP == nil || config.MCP.Servers == nil {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
-	// 对于 URL 类型的 server，从配置中移除 auto-start
-	// 对于 command 类型的 server，目前没有进程管理，仅标记
+	// 尝试通过 MCPRegistry.Stop 停止进程
+	// 注意：由于 ap 是 CLI 工具，mcpStart 启动的进程的 registry 引用在进程退出时已丢失。
+	// 此处重新创建 registry 并注册配置后尝试 Stop，对 URL 类型 server 会关闭客户端连接，
+	// 对 command 类型 server 由于缺少进程句柄可能无法真正终止。
+	registry := ap.NewMCPRegistry()
+	registry.Register(ap.MCPClientConfig{
+		Name:    name,
+		Command: srvCfg.Command,
+		Args:    srvCfg.Args,
+		BaseURL: srvCfg.BaseURL,
+	})
+	stopErr := registry.Stop(name)
+
+	// 无论 Stop 是否成功，都禁用 auto-start
 	if srvCfg.AutoStart {
 		srvCfg.AutoStart = false
 		config.MCP.Servers[name] = srvCfg
@@ -263,27 +267,38 @@ func mcpStop(args []string) {
 		}
 	}
 
-	successf("MCP server %q stopped (auto-start disabled)", name)
-	infof("note: command-based servers cannot be stopped remotely; restart with 'ap mcp start %s'", name)
+	if stopErr != nil {
+		// Stop 失败（通常是进程未在当前 registry 中运行）
+		warnf("could not stop process for %q: %v", name, stopErr)
+		if srvCfg.Command != "" {
+			infof("auto-start has been disabled")
+			infof("to kill the running process manually: taskkill /f /im %s (Windows) or pkill %s (Unix)", srvCfg.Command, srvCfg.Command)
+		} else {
+			infof("auto-start has been disabled for URL-based server")
+		}
+	} else {
+		successf("MCP server %q stopped", name)
+	}
+	return nil
 }
 
-func mcpTest(args []string) {
+func mcpTest(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify server name")
-		os.Exit(1)
+		return fmt.Errorf("please specify server name")
 	}
 
 	name := args[0]
 	config := loadAPConfig()
+	if config.MCP == nil || config.MCP.Servers == nil {
+		return fmt.Errorf("MCP server %q not found", name)
+	}
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
 	if srvCfg.BaseURL == "" {
-		errorf("MCP server %q has no URL configured, cannot test", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q has no URL configured, cannot test", name)
 	}
 
 	client := ap.NewMCPClient(srvCfg.BaseURL)
@@ -292,8 +307,7 @@ func mcpTest(args []string) {
 
 	infof("testing MCP server %q connectivity...", name)
 	if err := client.Initialize(ctx); err != nil {
-		errorf("connection failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("connection failed: %w", err)
 	}
 
 	tools := client.Tools()
@@ -301,25 +315,26 @@ func mcpTest(args []string) {
 	for _, t := range tools {
 		fmt.Printf("  - %s: %s\n", t.Name, t.Description)
 	}
+	return nil
 }
 
-func mcpTools(args []string) {
+func mcpTools(args []string) error {
 	if len(args) == 0 {
-		errorf("please specify server name")
-		os.Exit(1)
+		return fmt.Errorf("please specify server name")
 	}
 
 	name := args[0]
 	config := loadAPConfig()
+	if config.MCP == nil || config.MCP.Servers == nil {
+		return fmt.Errorf("MCP server %q not found", name)
+	}
 	srvCfg, ok := config.MCP.Servers[name]
 	if !ok {
-		errorf("MCP server %q not found", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q not found", name)
 	}
 
 	if srvCfg.BaseURL == "" {
-		errorf("MCP server %q has no URL, please start it first", name)
-		os.Exit(1)
+		return fmt.Errorf("MCP server %q has no URL, please start it first", name)
 	}
 
 	client := ap.NewMCPClient(srvCfg.BaseURL)
@@ -327,14 +342,13 @@ func mcpTools(args []string) {
 	defer cancel()
 
 	if err := client.Initialize(ctx); err != nil {
-		errorf("initialize failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("initialize failed: %w", err)
 	}
 
 	tools := client.Tools()
 	if len(tools) == 0 {
 		fmt.Println("no tools registered on this server")
-		return
+		return nil
 	}
 
 	for _, t := range tools {
@@ -346,6 +360,7 @@ func mcpTools(args []string) {
 		}
 		fmt.Println()
 	}
+	return nil
 }
 
 // ===== Config types =====
@@ -363,8 +378,12 @@ type mcpConfig struct {
 }
 
 func truncate(s string, n int) string {
-	if len(s) <= n {
+	if n <= 3 {
 		return s
 	}
-	return s[:n-3] + "..."
+	runes := []rune(s)
+	if len(runes) <= n {
+		return s
+	}
+	return string(runes[:n-3]) + "..."
 }

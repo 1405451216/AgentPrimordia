@@ -43,7 +43,12 @@ func loadAPConfig() *apConfig {
 	if err != nil {
 		return &apConfig{}
 	}
+	return loadAPConfigFromDir(dir)
+}
 
+// loadAPConfigFromDir 从指定目录读取 .ap.yaml 或 .ap.json 配置
+// 优化（perf-v3）：当调用方已有项目目录时，避免冗余的 findProjectDir() 调用
+func loadAPConfigFromDir(dir string) *apConfig {
 	// 优先读取 .ap.yaml（主要配置格式）
 	yamlPath := filepath.Join(dir, ".ap.yaml")
 	if data, err := os.ReadFile(yamlPath); err == nil {

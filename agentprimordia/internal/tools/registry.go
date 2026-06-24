@@ -14,7 +14,7 @@ var (
 	ErrConfirmDenied = errors.New("tool confirmation denied")
 )
 
-// Registry manages tool registration and lookup
+// Registry 管理工具注册和查找
 // 优化（Task 9）：
 //   - 使用 sync.Map 替代 map+RWMutex，适配读多写少场景
 //   - Definitions() 缓存"原始 tool def 列表"，每次返回前再深克隆。
@@ -25,6 +25,9 @@ type Registry struct {
 	toolDefs    sync.Map // map[string]map[string]any（每个工具的原始 def 模板）
 	permissions sync.Map // map[string]*Permission
 
+	// 优化（perf-v3）：原子计数器，避免 Count() 每次 Range 遍历
+	count atomic.Int64
+
 	// Definitions() 缓存：避免每次都遍历 sync.Map + cloneToolDef 每个元素
 	// 缓存内容：原始 def 列表（共享）；每次调用返回前再 cloneToolDef 一遍以保证隔离。
 	defsCache    atomic.Pointer[[]map[string]any]
@@ -33,12 +36,12 @@ type Registry struct {
 	defsMu       sync.Mutex // 保证缓存只被一个 goroutine 重建
 }
 
-// NewRegistry creates an empty tool registry
+// NewRegistry 创建一个空的工具注册表
 func NewRegistry() *Registry {
 	return &Registry{}
 }
 
-// Register adds a tool to the registry
+// Register 向注册表添加工具
 // 重复注册同名工具为幂等操作，直接覆盖
 func (r *Registry) Register(tool Tool) error {
 	name := tool.Name()
@@ -46,6 +49,10 @@ func (r *Registry) Register(tool Tool) error {
 		return ErrInvalidConfig
 	}
 
+	// 优化（perf-v3）：仅在首次注册时递增计数器（覆盖注册不增加数量）
+	if _, exists := r.tools.Load(name); !exists {
+		r.count.Add(1)
+	}
 	r.tools.Store(name, tool)
 	r.toolDefs.Store(name, buildToolDef(tool))
 	if _, exists := r.permissions.Load(name); !exists {
@@ -107,7 +114,7 @@ func (r *Registry) invalidateDefsCache() {
 	r.defsCacheLen.Store(0)
 }
 
-// RegisterMultiple registers multiple tools at once
+// RegisterMultiple 一次注册多个工具
 func (r *Registry) RegisterMultiple(tools ...Tool) error {
 	for _, tool := range tools {
 		if err := r.Register(tool); err != nil {
@@ -117,7 +124,7 @@ func (r *Registry) RegisterMultiple(tools ...Tool) error {
 	return nil
 }
 
-// Get retrieves a tool by name
+// Get 按名称获取工具
 func (r *Registry) Get(name string) (Tool, bool) {
 	v, exists := r.tools.Load(name)
 	if !exists {
@@ -130,7 +137,7 @@ func (r *Registry) Get(name string) (Tool, bool) {
 	return tool, true
 }
 
-// List returns all registered tool names
+// List 返回所有已注册的工具名称
 func (r *Registry) List() []string {
 	names := make([]string, 0)
 	r.tools.Range(func(key, _ any) bool {
@@ -144,14 +151,10 @@ func (r *Registry) List() []string {
 	return names
 }
 
-// Count returns the number of registered tools
+// Count 返回已注册工具的数量
+// 优化（perf-v3）：使用原子计数器，O(1) 复杂度
 func (r *Registry) Count() int {
-	count := 0
-	r.tools.Range(func(_, _ any) bool {
-		count++
-		return true
-	})
-	return count
+	return int(r.count.Load())
 }
 
 // Definitions 返回所有工具的 LLM FunctionDefinitions。
@@ -197,7 +200,7 @@ func (r *Registry) rebuildDefsCache() {
 	r.defsValid.Store(true)
 }
 
-// SetPermission configures access control for a specific tool
+// SetPermission 为指定工具配置访问控制
 func (r *Registry) SetPermission(name string, perm Permission) error {
 	if _, exists := r.tools.Load(name); !exists {
 		return ErrToolNotFound
@@ -206,7 +209,7 @@ func (r *Registry) SetPermission(name string, perm Permission) error {
 	return nil
 }
 
-// GetPermission returns the permission settings for a tool
+// GetPermission 返回工具的权限设置
 func (r *Registry) GetPermission(name string) (*Permission, bool) {
 	v, exists := r.permissions.Load(name)
 	if !exists {
@@ -220,7 +223,12 @@ func (r *Registry) GetPermission(name string) (*Permission, bool) {
 }
 
 func (r *Registry) Unregister(name string) {
-	r.tools.Delete(name)
+	// 优化（perf-v3）：仅在工具存在时递减计数器
+	if _, exists := r.tools.LoadAndDelete(name); exists {
+		r.count.Add(-1)
+	} else {
+		r.tools.Delete(name)
+	}
 	r.toolDefs.Delete(name)
 	r.permissions.Delete(name)
 	r.invalidateDefsCache()
@@ -235,6 +243,10 @@ func (r *Registry) RegisterPlugin(plugin ToolPlugin) error {
 		toolName := tool.Name()
 		if toolName == "" {
 			return ErrInvalidConfig
+		}
+		// 优化（perf-v3）：仅在首次注册时递增计数器
+		if _, exists := r.tools.Load(toolName); !exists {
+			r.count.Add(1)
 		}
 		r.tools.Store(toolName, tool)
 		r.toolDefs.Store(toolName, buildToolDef(tool))

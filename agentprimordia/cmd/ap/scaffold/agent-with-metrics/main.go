@@ -45,12 +45,13 @@ func main() {
 	fmt.Println("📊 Metrics 端点: http://localhost:9090/metrics")
 
 	// 接入 Agent
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "{{.ProjectName}}",
-		SystemPrompt: "you are a helpful assistant",
-		Model:        provider,
-		MaxTurns:     10,
-	}).WithMetrics(metrics)
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant", provider,
+		ap.WithMaxTurns(10),
+		ap.WithMetrics(metrics),
+	)
+	if err != nil {
+		log.Fatalf("create agent failed: %v", err)
+	}
 
 	// 跑几轮对话
 	questions := []string{

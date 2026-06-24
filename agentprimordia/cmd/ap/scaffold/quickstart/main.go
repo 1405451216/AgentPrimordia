@@ -1,12 +1,12 @@
 package main
 
 import (
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/llm"
 	"context"
 	"fmt"
 	"log"
 	"os"
+
+	ap "agentprimordia/pkg"
 )
 
 // 🚀 AgentPrimordia 快速入门示例
@@ -28,7 +28,7 @@ func main() {
 	}
 
 	// 创建LLM提供者（这里使用OpenAI兼容接口）
-	provider, err := llm.NewOpenAIProvider(llm.Config{
+	provider, err := ap.NewOpenAIProvider(ap.Config{
 		APIKey:  apiKey,
 		Model:   "gpt-4o-mini", // 快速且经济
 		BaseURL: "https://api.openai.com/v1",
@@ -38,13 +38,13 @@ func main() {
 	}
 
 	// 步骤2: 创建Agent
-	// 使用ReActAgent，配置基本参数
-	myAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "QuickStartAgent",
-		SystemPrompt: "你是一个友好的AI助手，用简洁的中文回答问题。",
-		Model:        provider,
-		MaxTurns:     10, // 最大对话轮数
-	})
+	// 使用NewAgent，配置基本参数
+	myAgent, err := ap.NewAgent("QuickStartAgent", "你是一个友好的AI助手，用简洁的中文回答问题。", provider,
+		ap.WithMaxTurns(10), // 最大对话轮数
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建Agent失败: %v", err)
+	}
 
 	fmt.Println("✅ Agent已创建")
 	fmt.Printf("   名称: %s\n", myAgent.Name())
@@ -57,7 +57,7 @@ func main() {
 	ctx := context.Background()
 
 	// 发送第一条消息
-	userMessage := agent.UserMessage("你好！请用一句话介绍自己")
+	userMessage := ap.UserMessage("你好！请用一句话介绍自己")
 	response, err := myAgent.Run(ctx, userMessage)
 	if err != nil {
 		log.Fatalf("❌ Agent运行失败: %v", err)

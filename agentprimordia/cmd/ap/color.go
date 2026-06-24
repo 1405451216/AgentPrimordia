@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -66,6 +67,7 @@ func bold(s string) string {
 type Spinner struct {
 	msg  string
 	done chan struct{}
+	once sync.Once
 }
 
 func newSpinner(msg string) *Spinner {
@@ -76,25 +78,29 @@ func newSpinner(msg string) *Spinner {
 
 func (s *Spinner) run() {
 	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	ticker := time.NewTicker(80 * time.Millisecond)
+	defer ticker.Stop()
 	i := 0
 	for {
 		select {
 		case <-s.done:
 			return
-		default:
+		case <-ticker.C:
 			if noColor {
 				fmt.Fprintf(os.Stderr, "\r%s ...", s.msg)
 			} else {
 				fmt.Fprintf(os.Stderr, "\r%s %s", colorize(colorCyan, frames[i%len(frames)]), s.msg)
 			}
 			i++
-			time.Sleep(80 * time.Millisecond)
 		}
 	}
 }
 
 // Stop 停止 spinner 并清除该行。
+// 使用 sync.Once 确保多次调用安全，且 ticker 模式保证不会在 Stop 后多写一帧。
 func (s *Spinner) Stop() {
-	close(s.done)
+	s.once.Do(func() {
+		close(s.done)
+	})
 	fmt.Fprintf(os.Stderr, "\r\033[K")
 }

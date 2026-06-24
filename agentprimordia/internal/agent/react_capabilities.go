@@ -169,11 +169,15 @@ func (a *ReActAgent) getToolkit() *tools.Registry {
 func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	if a.hooks != nil {
 		hctx.Point = point
-		// 自动填充请求 ID 和 Agent ID
+		// 优化（perf-v3）：优先使用 capCache 中的 requestID，避免每次 fireHook 都获取互斥锁
 		if hctx.RequestID == "" {
-			a.mu.Lock()
-			hctx.RequestID = a.currentRequestID
-			a.mu.Unlock()
+			if a.capCache != nil {
+				hctx.RequestID = a.capCache.requestID
+			} else {
+				a.mu.Lock()
+				hctx.RequestID = a.currentRequestID
+				a.mu.Unlock()
+			}
 		}
 		if hctx.AgentID == "" {
 			hctx.AgentID = a.config.Name

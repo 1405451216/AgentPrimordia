@@ -5,10 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func runDoctor(args []string) {
+func runDoctor(args []string) error {
 	fmt.Printf("%s\n\n", bold("AgentPrimordia Health Check"))
 
 	allOK := true
@@ -39,6 +40,7 @@ func runDoctor(args []string) {
 	} else {
 		warnf("some checks failed, see above for details")
 	}
+	return nil
 }
 
 func checkGoVersion() bool {
@@ -60,9 +62,9 @@ func checkGoVersion() bool {
 		v = strings.TrimPrefix(v, "go")
 		dotParts := strings.SplitN(v, ".", 3)
 		if len(dotParts) >= 2 {
-			major := dotParts[0]
-			minor := dotParts[1]
-			if major == "1" && minor < "22" {
+			major, _ := strconv.Atoi(dotParts[0])
+			minor, _ := strconv.Atoi(dotParts[1])
+			if major < 1 || (major == 1 && minor < 22) {
 				warnf("Go version %s below minimum 1.22, please upgrade", v)
 				return false
 			}

@@ -18,6 +18,7 @@ Commands:
   run          build and run the current project
   debug        start debug server
   test         run eval test suite
+  config       manage configuration
   mcp          manage MCP servers
   plugin       manage plugins
   doctor       health check
@@ -37,27 +38,37 @@ func main() {
 	cmd := os.Args[1]
 	args := os.Args[2:]
 
+	var err error
 	switch cmd {
 	case "init":
-		runInit(args)
+		err = runInit(args)
 	case "run":
-		runRun(args)
+		err = runRun(args)
 	case "debug":
-		runDebug(args)
+		err = runDebug(args)
 	case "test":
-		runTest(args)
+		err = runTest(args)
+	case "config":
+		err = runConfig(args)
 	case "mcp":
-		runMCP(args)
+		err = runMCP(args)
 	case "plugin":
-		runPlugin(args)
+		err = runPlugin(args)
 	case "doctor":
-		runDoctor(args)
+		err = runDoctor(args)
 	case "completion":
-		runCompletion(args)
+		err = runCompletion(args)
 	case "version", "-v", "--version":
 		fmt.Printf("AgentPrimordia CLI %s\n", Version)
+	case "--help", "-h", "help":
+		fmt.Print(usage)
 	default:
 		errorf("unknown command %q, run %s to see available commands", cmd, bold("ap --help"))
+		os.Exit(1)
+	}
+
+	if err != nil {
+		errorf("%v", err)
 		os.Exit(1)
 	}
 }

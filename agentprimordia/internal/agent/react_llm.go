@@ -32,8 +32,15 @@ func (a *ReActAgent) getOrInitExecutor() *tools.Executor {
 }
 
 // executeTool runs a single tool call
+// 优化（perf-v3）：优先使用 capCache 缓存的 toolkit，避免每次工具调用都做类型断言
 func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult, error) {
-	if a.getToolkit() == nil {
+	var tk *tools.Registry
+	if a.capCache != nil {
+		tk = a.capCache.toolkit
+	} else {
+		tk = a.getToolkit()
+	}
+	if tk == nil {
 		return &ToolResult{
 			ToolCallID: tc.ID,
 			Content:    "error: no toolkit configured",

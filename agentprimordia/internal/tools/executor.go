@@ -19,26 +19,35 @@ const (
 	defaultBatchConcurrency = 10
 )
 
-// FunctionCall represents a request to execute a tool function
+// ExecutorConfig 执行器配置
+type ExecutorConfig struct {
+	DefaultTimeout time.Duration            // 默认工具超时
+	PerToolTimeout map[string]time.Duration // 按工具名设置超时（覆盖默认值）
+	CacheConfig    *CacheConfig             // 缓存配置，nil 表示不启用缓存
+}
+
+// FunctionCall 表示执行工具函数的请求
 type FunctionCall struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Args string `json:"args"`
 }
 
-// Executor handles tool execution with logging, timing, and error handling
+// Executor 处理工具执行，包含日志、计时和错误处理
 // perf-v5 Task 20：内部新增 slogLogger 字段（结构化日志）；保留 logger *log.Logger 兼容旧 API
 type Executor struct {
-	registry    *Registry
-	logger      *log.Logger
-	slogger     *slog.Logger // perf-v5 Task 20：结构化日志（slog），优先使用
-	timeout     time.Duration
-	scopePolicy ScopePolicy
-	scopeAgent  string
-	fileLock    *concurrency.FileLockManager
+	registry       *Registry
+	logger         *log.Logger
+	slogger        *slog.Logger // perf-v5 Task 20：结构化日志（slog），优先使用
+	timeout        time.Duration
+	perToolTimeout map[string]time.Duration // 按工具名设置超时（覆盖默认值）
+	scopePolicy    ScopePolicy
+	scopeAgent     string
+	fileLock       *concurrency.FileLockManager
+	cache          *Cache // 工具结果缓存，nil 表示不启用
 }
 
-// NewExecutor creates a new tool executor
+// NewExecutor 创建新的工具执行器
 func NewExecutor(registry *Registry) *Executor {
 	return &Executor{
 		registry: registry,
@@ -48,13 +57,33 @@ func NewExecutor(registry *Registry) *Executor {
 	}
 }
 
+// NewExecutorWithConfig 使用配置创建工具执行器
+func NewExecutorWithConfig(registry *Registry, cfg ExecutorConfig) *Executor {
+	timeout := defaultToolTimeout
+	if cfg.DefaultTimeout > 0 {
+		timeout = cfg.DefaultTimeout
+	}
+	e := &Executor{
+		registry:       registry,
+		logger:         log.Default(),
+		slogger:        slog.Default(),
+		timeout:        timeout,
+		perToolTimeout: cfg.PerToolTimeout,
+	}
+	// 启用缓存（如果配置了）
+	if cfg.CacheConfig != nil {
+		e.cache = NewCache(*cfg.CacheConfig)
+	}
+	return e
+}
+
 // WithSlogLogger 注入自定义 *slog.Logger（perf-v5 Task 20）
 func (e *Executor) WithSlogLogger(l *slog.Logger) *Executor {
 	e.slogger = l
 	return e
 }
 
-// WithTimeout sets the execution timeout for all tools
+// WithTimeout 设置所有工具的执行超时
 func (e *Executor) WithTimeout(d time.Duration) *Executor {
 	e.timeout = d
 	return e
@@ -75,7 +104,7 @@ func (e *Executor) WithFileLock(fl *concurrency.FileLockManager) *Executor {
 	return e
 }
 
-// Execute runs a tool call by name
+// Execute 按名称执行工具调用
 func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, error) {
 	start := time.Now()
 
@@ -103,17 +132,13 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 		}
 	}
 
-	if perm, ok := e.registry.GetPermission(tc.Name); ok {
-		if perm.RequireConfirmation {
-			e.logger.Printf("[TOOL] Tool %s requires confirmation", tc.Name)
-		}
-	}
-
 	var args json.RawMessage = json.RawMessage(tc.Args)
 
 	// 权限检查：需要确认的工具必须通过确认回调
+	// 优化：合并两次 GetPermission 调用为一次，避免冗余的 sync.Map.Load
 	if perm, ok := e.registry.GetPermission(tc.Name); ok {
 		if perm.RequireConfirmation {
+			e.logger.Printf("[TOOL] Tool %s requires confirmation", tc.Name)
 			if perm.ConfirmFunc != nil {
 				if !perm.ConfirmFunc(tc.Name, args) {
 					return NewErrorResult(fmt.Sprintf("tool %s requires confirmation and was denied", tc.Name)), ErrConfirmDenied
@@ -125,7 +150,33 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 		}
 	}
 
-	execCtx, cancel := context.WithTimeout(ctx, e.timeout)
+	// 检查缓存（如果启用）
+	cacheKey := ""
+	if e.cache != nil {
+		cacheKey = e.buildCacheKey(tc.Name, tc.Args)
+		if cached, ok := e.cache.Get(cacheKey); ok {
+			if e.slogger != nil {
+				e.slogger.Debug("tool cache hit", "tool", tc.Name, "cache_key", cacheKey)
+			}
+			// 复制缓存结果，避免修改原始数据
+			result := &Result{
+				Content:  cached.Content,
+				Metadata: make(map[string]any),
+			}
+			for k, v := range cached.Metadata {
+				result.Metadata[k] = v
+			}
+			result.Metadata["cached"] = true
+			return result, nil
+		}
+	}
+
+	// 按工具名查找专属超时，未配置则使用默认超时
+	timeout := e.timeout
+	if perTool, ok := e.perToolTimeout[tc.Name]; ok {
+		timeout = perTool
+	}
+	execCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// perf-v5 Task 1：工具 panic recover，避免任意工具 panic 杀死整个 agent 进程
@@ -149,7 +200,19 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	result.Metadata["duration_ms"] = duration.Milliseconds()
 	result.Metadata["tool_name"] = tc.Name
 
+	// 写入缓存（如果启用且执行成功）
+	if e.cache != nil && cacheKey != "" {
+		e.cache.Set(cacheKey, result)
+	}
+
 	return result, nil
+}
+
+// buildCacheKey 构建缓存键
+func (e *Executor) buildCacheKey(toolName, args string) string {
+	// 使用工具名 + 参数哈希作为缓存键
+	// 简单实现：直接拼接，实际可根据需要添加哈希
+	return toolName + ":" + args
 }
 
 // safeExecute 包装工具调用并捕获 panic（perf-v5 Task 1）
@@ -168,7 +231,7 @@ func (e *Executor) safeExecute(ctx context.Context, tool Tool, args json.RawMess
 	return tool.Execute(ctx, args)
 }
 
-// ExecuteBatch executes multiple tool calls concurrently
+// ExecuteBatch 并发执行多个工具调用
 func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*Result, error) {
 	if len(calls) == 0 {
 		return nil, nil
@@ -285,11 +348,25 @@ func isPathKey(key string) bool {
 	return false
 }
 
+// sensitiveKeyPatterns 预编译所有敏感字段的正则表达式（perf 优化：避免每次调用都 MustCompile）
+var sensitiveKeyPatterns = func() []*regexp.Regexp {
+	sensitiveKeys := []string{
+		"password", "passwd", "secret", "token", "api_key", "apikey",
+		"access_key", "secret_key", "authorization", "auth", "credential",
+		"private_key", "session_token", "cookie",
+	}
+	patterns := make([]*regexp.Regexp, len(sensitiveKeys))
+	for i, key := range sensitiveKeys {
+		patterns[i] = regexp.MustCompile(`(?i)("` + regexp.QuoteMeta(key) + `"\s*:\s*)"[^"]*"`)
+	}
+	return patterns
+}()
+
 // redactSensitiveArgs 扫描 JSON 参数，将敏感字段值替换为 "***REDACTED***"
 // 返回脱敏后的 JSON 字符串（截断到 256 字符）
 // perf-v5 Task 20：避免 password / token / api_key 等敏感字段泄漏到日志
 //
-// 实现说明：使用正则匹配常见 flat JSON 的 "key":"value" 模式。
+// 实现说明：使用预编译正则匹配常见 flat JSON 的 "key":"value" 模式。
 // 对嵌套对象的深度不在本函数覆盖范围（只脱敏顶层 key），
 // 复杂场景可改用 json.Decoder + 递归遍历。
 func redactSensitiveArgs(args string) string {
@@ -302,15 +379,8 @@ func redactSensitiveArgs(args string) string {
 	}
 
 	redacted := args
-	sensitiveKeys := []string{
-		"password", "passwd", "secret", "token", "api_key", "apikey",
-		"access_key", "secret_key", "authorization", "auth", "credential",
-		"private_key", "session_token", "cookie",
-	}
-	for _, key := range sensitiveKeys {
-		// 匹配 "key":"value" 或 "key": "value" 模式（大小写不敏感）
+	for _, pattern := range sensitiveKeyPatterns {
 		// 用 ReplaceAllStringFunc 保留原 key 的大小写
-		pattern := regexp.MustCompile(`(?i)("` + regexp.QuoteMeta(key) + `"\s*:\s*)"[^"]*"`)
 		redacted = pattern.ReplaceAllStringFunc(redacted, func(match string) string {
 			// match 形如 "PASSWORD":"hunter2" → 保留 "PASSWORD": 部分
 			submatch := pattern.FindStringSubmatch(match)
