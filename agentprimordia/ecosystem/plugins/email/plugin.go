@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"agentprimordia/internal/tools"
+	ap "agentprimordia/pkg"
 )
 
 // Plugin 是邮件发送插件，提供 SMTP 邮件发送能力
@@ -28,8 +28,8 @@ func (p *Plugin) Name() string { return "email" }
 func (p *Plugin) Version() string { return "0.1.0" }
 
 // Tools 返回插件提供的工具列表
-func (p *Plugin) Tools() []tools.Tool {
-	return []tools.Tool{p.tool}
+func (p *Plugin) Tools() []ap.Tool {
+	return []ap.Tool{p.tool}
 }
 
 // Init 初始化插件，从 config 中读取 SMTP 配置
@@ -127,7 +127,7 @@ func (t *EmailTool) Parameters() json.RawMessage {
 func (t *EmailTool) Category() string { return "communication" }
 
 // Execute 执行邮件发送
-func (t *EmailTool) Execute(ctx context.Context, input json.RawMessage) (*tools.Result, error) {
+func (t *EmailTool) Execute(ctx context.Context, input json.RawMessage) (*ap.ToolResult, error) {
 	var params map[string]any
 	if err := json.Unmarshal(input, &params); err != nil {
 		return nil, fmt.Errorf("解析参数错误: %w", err)
@@ -135,15 +135,15 @@ func (t *EmailTool) Execute(ctx context.Context, input json.RawMessage) (*tools.
 
 	to, _ := params["to"].(string)
 	if to == "" {
-		return tools.NewErrorResult("参数 'to' 不能为空"), nil
+		return ap.NewToolErrorResult("参数 'to' 不能为空"), nil
 	}
 	subject, _ := params["subject"].(string)
 	if subject == "" {
-		return tools.NewErrorResult("参数 'subject' 不能为空"), nil
+		return ap.NewToolErrorResult("参数 'subject' 不能为空"), nil
 	}
 	body, _ := params["body"].(string)
 	if body == "" {
-		return tools.NewErrorResult("参数 'body' 不能为空"), nil
+		return ap.NewToolErrorResult("参数 'body' 不能为空"), nil
 	}
 
 	contentType := "text/plain"
@@ -182,7 +182,7 @@ func (t *EmailTool) Execute(ctx context.Context, input json.RawMessage) (*tools.
 
 	err := smtp.SendMail(addr, auth, t.fromAddress, allRecipients, []byte(msg.String()))
 	if err != nil {
-		return tools.NewErrorResult(fmt.Sprintf("邮件发送失败: %v", err)), nil
+		return ap.NewToolErrorResult(fmt.Sprintf("邮件发送失败: %v", err)), nil
 	}
 
 	result := map[string]any{
@@ -195,7 +195,7 @@ func (t *EmailTool) Execute(ctx context.Context, input json.RawMessage) (*tools.
 		"content_type": contentType,
 	}
 	output, _ := json.MarshalIndent(result, "", "  ")
-	return &tools.Result{Content: string(output)}, nil
+	return &ap.ToolResult{Content: string(output)}, nil
 }
 
 // splitAddresses 将逗号分隔的地址字符串拆分为地址列表

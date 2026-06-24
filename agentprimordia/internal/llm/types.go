@@ -29,7 +29,7 @@ type Config struct {
 type CompletionRequest struct {
 	Messages       []ChatMessage   `json:"messages"`
 	Model          string          `json:"model,omitempty"`
-	Temperature    *float64        `json:"temperature,omitempty"` // pointer to distinguish "not set" from explicit 0
+	Temperature    *float64        `json:"temperature,omitempty"` // 指针类型，用于区分"未设置"和显式设为 0
 	MaxTokens      int             `json:"max_tokens,omitempty"`
 	Stream         bool            `json:"stream,omitempty"`
 	ResponseFormat *ResponseFormat `json:"response_format,omitempty"` // 结构化输出格式控制
@@ -100,9 +100,9 @@ type Usage struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
-// ResolveTemperature resolves the effective temperature from request and config.
-// Priority: req.Temperature (if set) > config.Temperature (if > 0) > not set.
-// Returns nil if no temperature is explicitly set.
+// ResolveTemperature 从请求和配置中解析有效温度。
+// 优先级：req.Temperature（如果已设置）> config.Temperature（如果 > 0）> 未设置。
+// 如果没有显式设置温度，则返回 nil。
 func ResolveTemperature(reqTemp *float64, configTemp float64) *float64 {
 	if reqTemp != nil {
 		return reqTemp
@@ -113,7 +113,7 @@ func ResolveTemperature(reqTemp *float64, configTemp float64) *float64 {
 	return nil
 }
 
-// Float64Ptr is a helper to create a *float64 from a literal value.
+// Float64Ptr 是从字面值创建 *float64 的辅助函数。
 func Float64Ptr(v float64) *float64 {
 	return &v
 }

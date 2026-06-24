@@ -6,11 +6,10 @@ import (
 	"agentprimordia/internal/llm"
 )
 
-// AgentOption 是 NewAgent 的函数式选项（已废弃，使用 Option 代替）。
+// AgentOption 是 NewAgent 的函数式选项类型。
 //
-// Deprecated: 使用 Option 代替。保留为类型别名以维持向后兼容，
-// v0.7.0 起 NewAgent 直接接受 Option 类型。
-// Removed in v2.0.0.
+// 注意：pkg/options.go 中另有一个 Option 类型（func(*options)）用于 ApplyOptions，
+// 与此处的 AgentOption 不同。NewAgent 接受的是 AgentOption。
 type AgentOption = Option
 
 // NewAgent 是创建 Agent 的推荐入口（v0.7.0 起）。

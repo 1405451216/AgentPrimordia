@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"agentprimordia/internal/llm"
+	"agentprimordia/internal/memory"
 )
 
 // capTestMemoryStore 是 CapabilityAgent 测试专用的 MemoryStore 实现
 type capTestMemoryStore struct {
-	episodes []*MemoryEpisode
+	episodes []*memory.Episode
 }
 
-func (m *capTestMemoryStore) Add(ctx context.Context, episode *MemoryEpisode) error {
+func (m *capTestMemoryStore) Add(ctx context.Context, episode *memory.Episode) error {
 	m.episodes = append(m.episodes, episode)
 	return nil
 }
@@ -58,11 +59,10 @@ func TestCapabilityAgent_ImplementsMemoryCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test response")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "test-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	a, err := NewAgent("test-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	mem := &capTestMemoryStore{}
 	capAgent := a.WithMemory(mem)
@@ -73,7 +73,7 @@ func TestCapabilityAgent_ImplementsMemoryCapable(t *testing.T) {
 	// 验证接口发现
 	if c, ok := any(capAgent).(MemoryCapable); !ok {
 		t.Error("CapabilityAgent 应实现 MemoryCapable 接口")
-	} else if c.GetMemoryStore() != mem {
+	} else if c.GetMemoryStore() != MemoryStore(mem) {
 		t.Error("GetMemoryStore 应返回注入的 MemoryStore")
 	}
 }
@@ -82,11 +82,10 @@ func TestCapabilityAgent_ImplementsRAGCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test response")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "test-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	a, err := NewAgent("test-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	ragCfg := RAGConfig{Mode: RAGModeAuto, TopK: 3}
 	capAgent := a.WithRAG(ragCfg)
@@ -104,11 +103,10 @@ func TestCapabilityAgent_ImplementsEventCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test response")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "test-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	a, err := NewAgent("test-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	ep := &capTestEventPublisher{}
 	capAgent := a.WithEvents(ep)
@@ -126,11 +124,10 @@ func TestCapabilityAgent_ImplementsMetricsCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test response")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "test-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	a, err := NewAgent("test-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	mr := &capTestMetricsRecorder{}
 	capAgent := a.WithMetrics(mr)
@@ -154,11 +151,11 @@ func TestChainAPI_MultipleCapabilities(t *testing.T) {
 	ep := &capTestEventPublisher{}
 	mr := &capTestMetricsRecorder{}
 
-	capAgent := NewReActAgent(ReActConfig{
-		Name:     "chain-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	}).WithMemory(mem).WithEvents(ep).WithMetrics(mr)
+	capAgent, err := NewAgent("chain-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	capAgent = capAgent.WithMemory(mem).WithEvents(ep).WithMetrics(mr)
 
 	// 验证已注入的能力可发现且非 nil
 	if c, ok := any(capAgent).(MemoryCapable); !ok {
@@ -198,16 +195,15 @@ func TestChainAPI_SyncsToInnerConfig(t *testing.T) {
 	mem := &capTestMemoryStore{}
 	mr := &capTestMetricsRecorder{}
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "sync-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("sync-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
-	capAgent := a.WithMemory(mem).WithMetrics(mr)
+	capAgent = capAgent.WithMemory(mem).WithMetrics(mr)
 
 	// 验证通过 CapabilityAgent 接口能获取注入的能力
-	if capAgent.GetMemoryStore() != mem {
+	if capAgent.GetMemoryStore() != MemoryStore(mem) {
 		t.Error("GetMemoryStore 应返回注入的 MemoryStore")
 	}
 	if capAgent.GetMetricsRecorder() != mr {
@@ -215,10 +211,11 @@ func TestChainAPI_SyncsToInnerConfig(t *testing.T) {
 	}
 
 	// 验证内部 ReActAgent 通过接口发现也能获取能力
-	if innerMem := a.getMemoryStore(); innerMem != mem {
+	inner := capAgent.Inner()
+	if innerMem := inner.getMemoryStore(); innerMem != MemoryStore(mem) {
 		t.Error("内部 ReActAgent 应通过接口发现获取 MemoryStore")
 	}
-	if innerMr := a.getMetricsRecorder(); innerMr != mr {
+	if innerMr := inner.getMetricsRecorder(); innerMr != mr {
 		t.Error("内部 ReActAgent 应通过接口发现获取 MetricsRecorder")
 	}
 }
@@ -229,14 +226,13 @@ func TestCapabilityAgent_DelegatesAgentInterface(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("delegated response")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "delegate-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("delegate-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	mem := &capTestMemoryStore{}
-	capAgent := a.WithMemory(mem)
+	capAgent = capAgent.WithMemory(mem)
 
 	// 验证 Agent 接口
 	var _ Agent = capAgent
@@ -265,17 +261,16 @@ func TestCapabilityAgent_InnerMethod(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "inner-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("inner-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
-	capAgent := a.WithMemory(&capTestMemoryStore{})
+	capAgent = capAgent.WithMemory(&capTestMemoryStore{})
 
-	// 验证 Inner 返回原始 ReActAgent
-	if capAgent.Inner() != a {
-		t.Error("Inner 应返回原始 ReActAgent")
+	// 验证 Inner 返回非 nil 的 ReActAgent
+	if capAgent.Inner() == nil {
+		t.Error("Inner 不应返回 nil")
 	}
 }
 
@@ -284,18 +279,20 @@ func TestCapabilityAgent_InnerMethod(t *testing.T) {
 func TestReActAgent_DoesNotImplementCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "bare-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("bare-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+
+	// 通过 Inner() 获取原始 ReActAgent，验证其不实现 Capable 接口
+	inner := capAgent.Inner()
 
 	// ReActAgent 本身不实现 Capable 接口（没有 GetXxx 方法）
 	// 这是协议式微内核的关键：只有通过 WithXxx 包装后才具备 Capable 接口
-	if _, ok := any(a).(MemoryCapable); ok {
+	if _, ok := any(inner).(MemoryCapable); ok {
 		t.Error("ReActAgent 不应满足 MemoryCapable 接口（无 GetMemoryStore 方法）")
 	}
-	if _, ok := any(a).(RAGCapable); ok {
+	if _, ok := any(inner).(RAGCapable); ok {
 		t.Error("ReActAgent 不应满足 RAGCapable 接口（无 GetRAGConfig 方法）")
 	}
 }
@@ -309,18 +306,18 @@ func TestChainAPI_ContinueOnCapabilityAgent(t *testing.T) {
 	mem := &capTestMemoryStore{}
 	ep := &capTestEventPublisher{}
 
-	// 先用 ReActAgent.WithMemory 创建 CapabilityAgent
-	capAgent := NewReActAgent(ReActConfig{
-		Name:     "continue-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	}).WithMemory(mem)
+	// 先用 NewAgent 创建 CapabilityAgent，再注入 Memory
+	capAgent, err := NewAgent("continue-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	capAgent = capAgent.WithMemory(mem)
 
 	// 在 CapabilityAgent 上继续注入
 	capAgent = capAgent.WithEvents(ep)
 
 	// 验证两个能力都存在
-	if capAgent.GetMemoryStore() != mem {
+	if capAgent.GetMemoryStore() != MemoryStore(mem) {
 		t.Error("Memory 应保留")
 	}
 	if capAgent.GetEventPublisher() != ep {
@@ -334,14 +331,13 @@ func TestCapabilityAgent_ImplementsContextWindowCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "ctx-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("ctx-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	cw := NewDefaultStrategy(50)
-	capAgent := a.WithContextWindow(cw)
+	capAgent = capAgent.WithContextWindow(cw)
 
 	var _ ContextWindowCapable = capAgent
 
@@ -358,14 +354,13 @@ func TestCapabilityAgent_ImplementsHookCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "hook-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("hook-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	hooks := NewHookManager()
-	capAgent := a.WithHooks(hooks)
+	capAgent = capAgent.WithHooks(hooks)
 
 	var _ HookCapable = capAgent
 
@@ -382,14 +377,13 @@ func TestCapabilityAgent_ImplementsFileScopeCapable(t *testing.T) {
 	mockLLM := llm.NewMockLLM(t)
 	mockLLM.WithResponse("test")
 
-	a := NewReActAgent(ReActConfig{
-		Name:     "scope-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	})
+	capAgent, err := NewAgent("scope-agent", "", mockLLM, WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 
 	scopes := []string{"/workspace/data", "/workspace/src"}
-	capAgent := a.WithFileScope(scopes)
+	capAgent = capAgent.WithFileScope(scopes)
 
 	var _ FileScopeCapable = capAgent
 

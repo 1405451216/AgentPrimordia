@@ -46,6 +46,7 @@ type Pool struct {
 	toolkit      *tools.Registry
 	agentFactory AgentFactory
 	closeOnce    sync.Once
+	shutdown     atomic.Bool // 优雅关闭标志，置位后拒绝新任务
 
 	// 优化（perf-v2）：会话索引，将 GetTasksBySession/CancelBySession 从 O(n) 优化为 O(k)
 	sessionIndex map[string]map[string]struct{} // sessionID -> set of taskIDs
@@ -55,6 +56,11 @@ type Pool struct {
 	queuedCount    atomic.Int64
 	completedCount atomic.Int64
 	failedCount    atomic.Int64
+
+	// Task 9：动态 Agent 池（自动扩缩容）
+	autoScaler        *AutoScaler
+	autoScalerRunning atomic.Bool
+	dynamicConcurrency atomic.Int64 // 动态并发度限制，由 AutoScaler 更新
 }
 
 type poolTask struct {
@@ -95,7 +101,7 @@ func NewPool(cfg PoolConfig) *Pool {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &Pool{
+	p := &Pool{
 		config:       cfg,
 		semaphore:    make(chan struct{}, cfg.MaxConcurrency),
 		tasks:        make(map[string]*poolTask),
@@ -108,6 +114,14 @@ func NewPool(cfg PoolConfig) *Pool {
 		ctx:    ctx,
 		cancel: cancel,
 	}
+
+	// Task 9：初始化 AutoScaler 和动态并发度
+	p.dynamicConcurrency.Store(int64(cfg.MaxConcurrency))
+	if cfg.AutoScaler != nil {
+		p.autoScaler = NewAutoScaler(*cfg.AutoScaler)
+	}
+
+	return p
 }
 
 type dispatchItem struct {
@@ -120,6 +134,11 @@ type dispatchItem struct {
 func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult, error) {
 	if len(tasks) == 0 {
 		return []*TaskResult{}, nil
+	}
+
+	// 优雅关闭期间拒绝新任务
+	if p.shutdown.Load() {
+		return nil, errors.New("pool is shutting down")
 	}
 
 	p.mu.Lock()
@@ -278,8 +297,23 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 
 		taskCtx, cancel := context.WithTimeout(ctx, p.config.Timeout)
 
-		agt := p.createAgentForTask(task)
-		result, err := agt.Run(taskCtx, agent.UserMessage(task.Prompt))
+		agt, err := p.createAgentForTask(task)
+		if err != nil {
+			cancel()
+			p.mu.Lock()
+			pt.storeStatus(PoolTaskFailed)
+			p.mu.Unlock()
+			p.failedCount.Add(1)
+			p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: err.Error()})
+			return &TaskResult{
+				TaskID: task.ID,
+				Task:   task,
+				Error:  err,
+				Status: PoolTaskFailed,
+			}, err
+		}
+		result, runErr := agt.Run(taskCtx, agent.UserMessage(task.Prompt))
+		err = runErr
 		taskCtxErr := taskCtx.Err()
 		cancel()
 
@@ -344,7 +378,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 	}
 }
 
-func (p *Pool) createAgentForTask(task TaskConfig) agent.Agent {
+func (p *Pool) createAgentForTask(task TaskConfig) (agent.Agent, error) {
 	p.mu.RLock()
 	factory := p.agentFactory
 	p.mu.RUnlock()
@@ -371,40 +405,43 @@ func (p *Pool) createAgentForTask(task TaskConfig) agent.Agent {
 		p.mu.Lock()
 		p.agents[task.ID] = agt
 		p.mu.Unlock()
-		return agt
+		return agt, nil
 	}
 
-	cfg := agent.ReActConfig{
-		Name:     task.Title,
-		MaxTurns: task.MaxTurns,
+	// 解析配置参数
+	name := task.Title
+	systemPrompt := p.config.DefaultAgent.SystemPrompt
+	model := p.model
+
+	maxTurns := task.MaxTurns
+	if maxTurns == 0 {
+		maxTurns = p.config.DefaultAgent.MaxTurns
+	}
+	if maxTurns == 0 {
+		maxTurns = defaultMaxTurns
 	}
 
-	if cfg.MaxTurns == 0 {
-		cfg.MaxTurns = p.config.DefaultAgent.MaxTurns
-	}
-	if cfg.MaxTurns == 0 {
-		cfg.MaxTurns = defaultMaxTurns
-	}
+	temperature := p.config.DefaultAgent.Temperature
 
-	if p.config.DefaultAgent.SystemPrompt != "" {
-		cfg.SystemPrompt = p.config.DefaultAgent.SystemPrompt
-	}
-
-	if p.model != nil {
-		cfg.Model = p.model
+	// 使用 NewAgent 创建 Agent，通过 Option 模式注入配置
+	reactAgt, err := agent.NewAgent(name, systemPrompt, model,
+		agent.WithMaxTurns(maxTurns),
+		agent.WithTemperature(temperature),
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	// v0.7.0: Toolkit 字段已废弃，通过链式 API 注入工具能力
-	reactAgt := agent.NewReActAgent(cfg)
 	var agt agent.Agent = reactAgt
 	if p.toolkit != nil {
-		agt = reactAgt.AsCapability().WithToolkit(p.toolkit)
+		agt = reactAgt.WithToolkit(p.toolkit)
 	}
 
 	p.mu.Lock()
 	p.agents[task.ID] = agt
 	p.mu.Unlock()
-	return agt
+	return agt, nil
 }
 
 // SetAgentFactory 设置 Agent 工厂函数，替代默认的 ReActAgent 创建逻辑
@@ -661,6 +698,38 @@ func (p *Pool) cleanupIfNeeded() {
 				}
 			}
 			delete(p.tasks, id)
+		}
+	}
+}
+
+// GracefulShutdown 优雅关闭：停止接受新任务，等待正在执行的任务完成
+func (p *Pool) GracefulShutdown(ctx context.Context) error {
+	// 标记为关闭状态，拒绝新任务
+	p.shutdown.Store(true)
+
+	// 如果 Pool 已关闭（cancel 已调用），直接返回
+	select {
+	case <-p.ctx.Done():
+		return nil
+	default:
+	}
+
+	// 等待正在执行的任务完成
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-p.ctx.Done():
+			// Pool 已被 Close()，直接返回
+			return nil
+		case <-ticker.C:
+			if p.runningCount.Load() == 0 {
+				p.Close()
+				return nil
+			}
 		}
 	}
 }

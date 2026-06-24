@@ -1,132 +1,74 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/multimodal"
 	"agentprimordia/internal/llm"
-	"time"
 )
 
+// ContentPart 表示消息内容的一部分（文本、图片、音频等）
+// 类型别名保持向后兼容
+type ContentPart = multimodal.ContentPart
+
 // MultimodalAdapter 多模态消息适配器
-// 将 agent.ContentPart 转换为 llm.MultimodalContent
-type MultimodalAdapter struct{}
+// 类型别名保持向后兼容
+type MultimodalAdapter = multimodal.MultimodalAdapter
 
-// ToLLMContents 将 agent ContentParts 转换为 llm.MultimodalContent 列表
-func (a *MultimodalAdapter) ToLLMContents(parts []ContentPart) []*llm.MultimodalContent {
-	if len(parts) == 0 {
-		return nil
-	}
+// MultimodalMessage 多模态消息（扩展 Message 支持图片/音频/视频）
+// 类型别名保持向后兼容
+type MultimodalMessage = multimodal.MultimodalMessage
 
-	result := make([]*llm.MultimodalContent, len(parts))
-	for i, p := range parts {
-		c := &llm.MultimodalContent{}
-
-		switch p.Type {
-		case "text":
-			c.Type = llm.ContentTypeText
-			c.Text = p.Text
-		case "image_url":
-			c.Type = llm.ContentTypeImageURL
-			c.URL = p.URL
-			if p.Detail != "" {
-				c.Detail = p.Detail
-			} else {
-				c.Detail = "auto"
-			}
-		case "image_b64":
-			c.Type = llm.ContentTypeImageB64
-			c.Data = p.Data
-			c.MIME = p.MIME
-			if p.Detail != "" {
-				c.Detail = p.Detail
-			} else {
-				c.Detail = "auto"
-			}
-		case "audio":
-			c.Type = llm.ContentTypeAudio
-			c.Data = p.Data
-			c.MIME = p.MIME
-		case "video":
-			c.Type = llm.ContentTypeVideo
-			c.Data = p.Data
-			c.MIME = p.MIME
-		default:
-			c.Type = llm.ContentTypeText
-			c.Text = p.Text
-		}
-
-		result[i] = c
-	}
-	return result
-}
-
-// HistoryHasMultimodal 检查历史消息中是否包含多模态内容
-func (a *MultimodalAdapter) HistoryHasMultimodal(history []Message) bool {
-	for _, m := range history {
-		if m.HasMultimodal() {
-			return true
-		}
-	}
-	return false
-}
-
-// ConvertHistoryToExt 将历史消息转换为 LLM ChatMessageExt 格式
-// 如果消息包含 ContentParts，使用多模态格式；否则降级为纯文本
-func (a *MultimodalAdapter) ConvertHistoryToExt(history []Message) []*llm.ChatMessageExt {
-	msgs := make([]*llm.ChatMessageExt, 0, len(history))
-	for _, m := range history {
-		ext := &llm.ChatMessageExt{
-			Role: string(m.Role),
-		}
-
-		if len(m.ContentParts) > 0 {
-			ext.Contents = a.ToLLMContents(m.ContentParts)
-		} else {
-			ext.Contents = []*llm.MultimodalContent{
-				llm.NewTextContent(m.Content),
-			}
-		}
-
-		if m.Role == RoleAssistant && len(m.ToolCalls) > 0 {
-			ext.ToolCalls = make([]llm.FunctionCall, len(m.ToolCalls))
-			for j, tc := range m.ToolCalls {
-				ext.ToolCalls[j] = llm.FunctionCall{
-					ID:        tc.ID,
-					Name:      tc.Name,
-					Arguments: tc.Args,
-				}
-			}
-		}
-
-		if m.Role == RoleTool {
-			if id, ok := m.Metadata.Extra["tool_call_id"]; ok {
-				ext.ToolCallID = id
-			}
-			if isError, ok := m.Metadata.Extra["is_error"]; ok && isError == "true" {
-				ext.IsToolError = true
-			}
-		}
-
-		msgs = append(msgs, ext)
-	}
-	return msgs
-}
+// MultimodalResponse 多模态响应
+// 类型别名保持向后兼容
+type MultimodalResponse = multimodal.MultimodalResponse
 
 // UserMultimodalMessage 创建多模态用户消息
 func UserMultimodalMessage(parts ...ContentPart) Message {
+	mm := multimodal.UserMultimodalMessage(parts...)
 	return Message{
-		Role:         RoleUser,
-		ContentParts: parts,
-		Metadata:     Metadata{Timestamp: time.Now()},
+		Role:         Role(mm.Role),
+		Content:      mm.Content,
+		ContentParts: mm.ContentParts,
+		Metadata:     Metadata{Timestamp: mm.Metadata.Timestamp, Extra: mm.Metadata.Extra},
 	}
 }
 
 // UserImageMessage 便捷函数：创建图片用户消息
 func UserImageMessage(text, imageURL string) Message {
+	mm := multimodal.UserImageMessage(text, imageURL)
 	return Message{
-		Role: RoleUser,
-		ContentParts: []ContentPart{
-			{Type: "text", Text: text},
-			{Type: "image_url", URL: imageURL, Detail: "auto"},
-		},
-		Metadata: Metadata{Timestamp: time.Now()},
+		Role:         Role(mm.Role),
+		Content:      mm.Content,
+		ContentParts: mm.ContentParts,
+		Metadata:     Metadata{Timestamp: mm.Metadata.Timestamp, Extra: mm.Metadata.Extra},
 	}
+}
+
+// NewUserMultimodalMessage 创建用户多模态消息
+func NewUserMultimodalMessage(contents ...*llm.MultimodalContent) *MultimodalMessage {
+	return multimodal.NewUserMultimodalMessage(contents...)
+}
+
+// NewAssistantMultimodalMessage 创建助手多模态消息
+func NewAssistantMultimodalMessage(contents ...*llm.MultimodalContent) *MultimodalMessage {
+	return multimodal.NewAssistantMultimodalMessage(contents...)
+}
+
+// NewSystemMultimodalMessage 创建系统多模态消息
+func NewSystemMultimodalMessage(contents ...*llm.MultimodalContent) *MultimodalMessage {
+	return multimodal.NewSystemMultimodalMessage(contents...)
+}
+
+// UserImageB64Message 创建包含 Base64 图片的用户消息（便捷方法）
+func UserImageB64Message(text string, imageBase64 string, mimeType string) *MultimodalMessage {
+	return multimodal.UserImageB64Message(text, imageBase64, mimeType)
+}
+
+// UserImageURLMessage 创建包含图片 URL 的用户消息（便捷方法）
+func UserImageURLMessage(text string, imageURL string) *MultimodalMessage {
+	return multimodal.UserImageURLMessage(text, imageURL)
+}
+
+// IsMultimodalProvider 检查 LLM Provider 是否支持多模态
+func IsMultimodalProvider(p llm.Provider) bool {
+	return multimodal.IsMultimodalProvider(p)
 }

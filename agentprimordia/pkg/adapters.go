@@ -139,3 +139,35 @@ func (a *knowledgeSearcherAdapter) SearchKnowledge(ctx context.Context, query st
 func formatSources(sources []string) string {
 	return strings.Join(sources, "+")
 }
+
+// ===== SummarizerLLM 适配器 =====
+
+// summarizerLLMAdapter 将 llm.Provider 适配为 memory.SummarizerLLM，解耦 memory→llm 依赖
+type summarizerLLMAdapter struct {
+	provider llm.Provider
+}
+
+// NewSummarizerLLMAdapter 将 llm.Provider 适配为 memory.SummarizerLLM，用于创建 Summarizer
+func NewSummarizerLLMAdapter(provider llm.Provider) memory.SummarizerLLM {
+	return &summarizerLLMAdapter{provider: provider}
+}
+
+func (a *summarizerLLMAdapter) Complete(ctx context.Context, messages []memory.ChatMessageForSummary, model string) (string, error) {
+	chatMsgs := make([]llm.ChatMessage, len(messages))
+	for i, m := range messages {
+		chatMsgs[i] = llm.ChatMessage{Role: m.Role, Content: m.Content}
+	}
+
+	req := &llm.CompletionRequest{
+		Messages: chatMsgs,
+	}
+	if model != "" {
+		req.Model = model
+	}
+
+	resp, err := a.provider.Complete(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return resp.Content, nil
+}

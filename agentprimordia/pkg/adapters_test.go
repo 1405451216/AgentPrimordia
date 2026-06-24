@@ -73,13 +73,11 @@ func TestAgentIntegration_WithMemoryEventBusMetrics(t *testing.T) {
 	mockLLM := &integrationMockLLM{response: "I can help you with that!"}
 
 	// 创建 Agent，集成所有模块
-	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "IntegrationAgent",
-		SystemPrompt: "You are a helpful assistant.",
-		Model:        mockLLM,
-		MaxTurns:     10,
-	}).AsCapability().
-		WithToolkit(ap.NewToolRegistry()).
+	a, err := ap.NewAgent("IntegrationAgent", "You are a helpful assistant.", mockLLM, ap.WithMaxTurns(10))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = a.WithToolkit(ap.NewToolRegistry()).
 		WithMemory(memStore).
 		WithEvents(ap.NewEventBusAdapter(bus)).
 		WithMetrics(m)
@@ -139,13 +137,11 @@ func TestAgentIntegration_WithCheckpoint(t *testing.T) {
 	mockLLM := &integrationMockLLM{response: "Task completed!"}
 
 	// 创建 Agent with Checkpoint
-	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:      "CheckpointAgent",
-		Model:     mockLLM,
-		SessionID: "session-checkpoint-1",
-		MaxTurns:  10,
-	}).AsCapability().
-		WithToolkit(ap.NewToolRegistry()).
+	a, err := ap.NewAgent("CheckpointAgent", "", mockLLM, ap.WithMaxTurns(10), ap.WithSessionID("session-checkpoint-1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = a.WithToolkit(ap.NewToolRegistry()).
 		WithCheckpointStore(cpStore)
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Do something"))
@@ -179,12 +175,11 @@ func TestAgentIntegration_WithContextWindow(t *testing.T) {
 
 	strategy := ap.NewDefaultStrategy(3) // 只保留最后3条
 
-	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:     "ContextWindowAgent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().
-		WithToolkit(ap.NewToolRegistry()).
+	a, err := ap.NewAgent("ContextWindowAgent", "", mockLLM, ap.WithMaxTurns(10))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = a.WithToolkit(ap.NewToolRegistry()).
 		WithContextWindow(strategy)
 
 	resp, err := a.Run(context.Background(), ap.UserMessage("Test"))
@@ -200,11 +195,11 @@ func TestAgentIntegration_Stop(t *testing.T) {
 	t.Parallel()
 	mockLLM := &integrationMockLLM{response: "Running..."}
 
-	a := ap.NewReActAgent(ap.ReActConfig{
-		Name:     "StopAgent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(ap.NewToolRegistry())
+	a, err := ap.NewAgent("StopAgent", "", mockLLM, ap.WithMaxTurns(10))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a = a.WithToolkit(ap.NewToolRegistry())
 
 	// 在另一个 goroutine 中停止
 	go func() {

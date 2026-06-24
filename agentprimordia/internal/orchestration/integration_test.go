@@ -24,26 +24,35 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 	})
 
 	// 2. 创建专业化的Agents
-	researcherAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Researcher",
-		SystemPrompt: "你是市场研究员，负责收集和分析市场数据",
-		Model:        demo.NewDemoLLM(`{"market_data": {"trend": "up", "growth": 15.3, "competitors": ["A", "B"]}}`),
-		MaxTurns:     1,
-	})
+	researcherAgent, err := agent.NewAgent(
+		"Researcher",
+		"你是市场研究员，负责收集和分析市场数据",
+		demo.NewDemoLLM(`{"market_data": {"trend": "up", "growth": 15.3, "competitors": ["A", "B"]}}`),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	analystAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Analyst",
-		SystemPrompt: "你是数据分析师，负责分析数据并提供洞察",
-		Model:        demo.NewDemoLLM(`{"analysis": {"insight": "市场增长强劲", "recommendation": "扩大投资"}}`),
-		MaxTurns:     1,
-	})
+	analystAgent, err := agent.NewAgent(
+		"Analyst",
+		"你是数据分析师，负责分析数据并提供洞察",
+		demo.NewDemoLLM(`{"analysis": {"insight": "市场增长强劲", "recommendation": "扩大投资"}}`),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	reporterAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Reporter",
-		SystemPrompt: "你是报告撰写专家，负责生成最终报告",
-		Model:        demo.NewDemoLLM("## 市场分析报告\n\n基于数据分析，我们建议..."),
-		MaxTurns:     1,
-	})
+	reporterAgent, err := agent.NewAgent(
+		"Reporter",
+		"你是报告撰写专家，负责生成最终报告",
+		demo.NewDemoLLM("## 市场分析报告\n\n基于数据分析，我们建议..."),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// 3. 添加步骤到Orchestrator
 	_ = orch.AddStep(&AgentStep{
@@ -157,19 +166,25 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		EnableCritique: true,
 	})
 
-	proAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ProStrategist",
-		SystemPrompt: "你是支持方战略顾问，请提出支持论点",
-		Model:        demo.NewDemoLLM("我强烈支持这个战略方向，因为市场数据显示增长潜力巨大"),
-		MaxTurns:     1,
-	})
+	proAgent, err := agent.NewAgent(
+		"ProStrategist",
+		"你是支持方战略顾问，请提出支持论点",
+		demo.NewDemoLLM("我强烈支持这个战略方向，因为市场数据显示增长潜力巨大"),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	conAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ConStrategist",
-		SystemPrompt: "你是反对方战略顾问，请提出反对论点",
-		Model:        demo.NewDemoLLM("我反对这个方向，因为存在执行风险和资源限制"),
-		MaxTurns:     1,
-	})
+	conAgent, err := agent.NewAgent(
+		"ConStrategist",
+		"你是反对方战略顾问，请提出反对论点",
+		demo.NewDemoLLM("我反对这个方向，因为存在执行风险和资源限制"),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = debateSession.AddCollaborator(&Collaborator{
 		ID:          "pro",
@@ -217,19 +232,25 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		},
 	})
 
-	decisionAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DecisionMaker",
-		SystemPrompt: "决策制定者",
-		Model:        demo.NewDemoLLM(`{"should_proceed": true, "confidence": 0.85}`),
-		MaxTurns:     1,
-	})
+	decisionAgent, err := agent.NewAgent(
+		"DecisionMaker",
+		"决策制定者",
+		demo.NewDemoLLM(`{"should_proceed": true, "confidence": 0.85}`),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	actionAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ActionTaker",
-		SystemPrompt: "行动执行者",
-		Model:        demo.NewDemoLLM("行动已执行，目标达成"),
-		MaxTurns:     1,
-	})
+	actionAgent, err := agent.NewAgent(
+		"ActionTaker",
+		"行动执行者",
+		demo.NewDemoLLM("行动已执行，目标达成"),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = workflow.AddNode(&WorkflowNode{
 		ID:    "decision",
@@ -307,12 +328,15 @@ func TestMultiAgentSystem_ParallelExecution(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		idx := i
-		ag := agent.NewReActAgent(agent.ReActConfig{
-			Name:         fmt.Sprintf("Worker-%d", idx),
-			SystemPrompt: fmt.Sprintf("你是工作者%d，处理分配的任务", idx),
-			Model:        demo.NewDemoLLM(fmt.Sprintf("任务%d已完成", idx)),
-			MaxTurns:     1,
-		})
+		ag, err := agent.NewAgent(
+			fmt.Sprintf("Worker-%d", idx),
+			fmt.Sprintf("你是工作者%d，处理分配的任务", idx),
+			demo.NewDemoLLM(fmt.Sprintf("任务%d已完成", idx)),
+			agent.WithMaxTurns(1),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		_ = orch.AddStep(&AgentStep{
 			ID:        fmt.Sprintf("task_%d", idx),
@@ -360,19 +384,25 @@ func TestMultiAgentSystem_ErrorRecovery(t *testing.T) {
 		MaxRetries:  2,
 	})
 
-	failingAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "FailingAgent",
-		SystemPrompt: "模拟失败后恢复的Agent",
-		Model:        demo.NewDemoLLM("恢复成功！"),
-		MaxTurns:     1,
-	})
+	failingAgent, err := agent.NewAgent(
+		"FailingAgent",
+		"模拟失败后恢复的Agent",
+		demo.NewDemoLLM("恢复成功！"),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	recoveryAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "RecoveryAgent",
-		SystemPrompt: "错误恢复专用Agent",
-		Model:        demo.NewDemoLLM("错误已处理，系统恢复正常"),
-		MaxTurns:     1,
-	})
+	recoveryAgent, err := agent.NewAgent(
+		"RecoveryAgent",
+		"错误恢复专用Agent",
+		demo.NewDemoLLM("错误已处理，系统恢复正常"),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{
 		ID:        "risky_step",
@@ -425,12 +455,15 @@ func TestMultiAgentSystem_StatePersistence(t *testing.T) {
 		MaxRounds: 1,
 	})
 
-	reviewer1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Reviewer1",
-		SystemPrompt: "评审者1",
-		Model:        demo.NewDemoLLM("代码质量良好，建议增加单元测试覆盖"),
-		MaxTurns:     1,
-	})
+	reviewer1, err := agent.NewAgent(
+		"Reviewer1",
+		"评审者1",
+		demo.NewDemoLLM("代码质量良好，建议增加单元测试覆盖"),
+		agent.WithMaxTurns(1),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:     "reviewer1",

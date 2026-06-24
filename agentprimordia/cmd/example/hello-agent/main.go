@@ -17,12 +17,10 @@ func main() {
 	demoLLM := demo.NewDemoLLM("Hello! How can I help you today?")
 
 	agentName := "HelloAgent"
-	helloAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         agentName,
-		SystemPrompt: "You are a helpful assistant. Respond concisely and politely.",
-		Model:        demoLLM,
-		MaxTurns:     5,
-	})
+	helloAgent, err := agent.NewAgent(agentName, "", demoLLM, agent.WithMaxTurns(5))
+	if err != nil {
+		log.Fatalf("Agent 创建失败: %v", err)
+	}
 
 	startTime := time.Now()
 	resp, err := helloAgent.Run(context.Background(), agent.UserMessage("Hello!"))

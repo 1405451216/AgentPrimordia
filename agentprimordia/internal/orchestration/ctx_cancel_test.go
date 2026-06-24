@@ -23,18 +23,14 @@ func TestOrchestrator_SequentialCancel(t *testing.T) {
 	})
 
 	// 第一个步骤使用慢 LLM，给 cancel 留出时间窗口
-	step1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "SlowStep1",
-		SystemPrompt: "你很慢",
-		Model:        slowDemoLLM("slow"),
-		MaxTurns:     1,
-	})
-	step2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "SlowStep2",
-		SystemPrompt: "你也很慢",
-		Model:        slowDemoLLM("slow"),
-		MaxTurns:     1,
-	})
+	step1, err := agent.NewAgent("SlowStep1", "你很慢", slowDemoLLM("slow"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	step2, err := agent.NewAgent("SlowStep2", "你也很慢", slowDemoLLM("slow"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{
 		ID:     "slow1",
@@ -58,7 +54,7 @@ func TestOrchestrator_SequentialCancel(t *testing.T) {
 	}()
 
 	start := time.Now()
-	_, err := orch.Execute(ctx, map[string]any{"data": "test"})
+	_, err = orch.Execute(ctx, map[string]any{"data": "test"})
 	elapsed := time.Since(start)
 
 	if err == nil {
@@ -82,12 +78,10 @@ func TestOrchestrator_ParallelCancel(t *testing.T) {
 	// 添加 5 个慢步骤，预期 cancel 后不会全部执行
 	for i := 0; i < 5; i++ {
 		idx := i
-		stepAgent := agent.NewReActAgent(agent.ReActConfig{
-			Name:         "SlowParallel",
-			SystemPrompt: "你很慢",
-			Model:        slowDemoLLM("slow"),
-			MaxTurns:     1,
-		})
+		stepAgent, err := agent.NewAgent("SlowParallel", "你很慢", slowDemoLLM("slow"), agent.WithMaxTurns(1))
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		_ = orch.AddStep(&AgentStep{
 			ID:        "pslow_" + time.Now().Format("150405") + string(rune('0'+idx)),
@@ -126,21 +120,18 @@ func TestOrchestrator_DAGCancel(t *testing.T) {
 	})
 
 	// 3 个串行依赖的慢步骤
-	step1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "DAGSlow1",
-		Model:    slowDemoLLM("dagslow"),
-		MaxTurns: 1,
-	})
-	step2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "DAGSlow2",
-		Model:    slowDemoLLM("dagslow"),
-		MaxTurns: 1,
-	})
-	step3 := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "DAGSlow3",
-		Model:    slowDemoLLM("dagslow"),
-		MaxTurns: 1,
-	})
+	step1, err := agent.NewAgent("DAGSlow1", "", slowDemoLLM("dagslow"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	step2, err := agent.NewAgent("DAGSlow2", "", slowDemoLLM("dagslow"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	step3, err := agent.NewAgent("DAGSlow3", "", slowDemoLLM("dagslow"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{ID: "d1", Name: "DAG慢1", Agent: step1, Prompt: "慢"})
 	_ = orch.AddStep(&AgentStep{ID: "d2", Name: "DAG慢2", Agent: step2, Prompt: "慢"})
@@ -157,7 +148,7 @@ func TestOrchestrator_DAGCancel(t *testing.T) {
 	}()
 
 	start := time.Now()
-	_, err := orch.Execute(ctx, map[string]any{"data": "test"})
+	_, err = orch.Execute(ctx, map[string]any{"data": "test"})
 	elapsed := time.Since(start)
 
 	if err == nil {
@@ -176,16 +167,14 @@ func TestOrchestrator_SequentialNoCancel(t *testing.T) {
 		Mode: SequentialMode,
 	})
 
-	step1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "FastStep1",
-		Model:    demo.NewDemoLLM("fast1"),
-		MaxTurns: 1,
-	})
-	step2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "FastStep2",
-		Model:    demo.NewDemoLLM("fast2"),
-		MaxTurns: 1,
-	})
+	step1, err := agent.NewAgent("FastStep1", "", demo.NewDemoLLM("fast1"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	step2, err := agent.NewAgent("FastStep2", "", demo.NewDemoLLM("fast2"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{ID: "f1", Name: "快步骤1", Agent: step1, Prompt: "快"})
 	_ = orch.AddStep(&AgentStep{ID: "f2", Name: "快步骤2", Agent: step2, Prompt: "快"})

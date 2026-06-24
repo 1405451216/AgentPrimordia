@@ -9,12 +9,10 @@ import (
 )
 
 func TestExecutionEngine_Parallel(t *testing.T) {
-	ag := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Test-Agent",
-		SystemPrompt: "你是测试助手",
-		Model:        demo.NewDemoLLM("ok"),
-		MaxTurns:     1,
-	})
+	ag, err := agent.NewAgent("Test-Agent", "你是测试助手", demo.NewDemoLLM("ok"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	steps := []*AgentStep{
 		{ID: "p1", Name: "p1", Agent: ag, Prompt: "go"},

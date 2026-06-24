@@ -9,12 +9,10 @@ import (
 )
 
 func TestDefaultStepExecutor_ExecutesAgent(t *testing.T) {
-	ag := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Step-Agent",
-		SystemPrompt: "你是测试助手",
-		Model:        demo.NewDemoLLM("hello"),
-		MaxTurns:     1,
-	})
+	ag, err := agent.NewAgent("Step-Agent", "你是测试助手", demo.NewDemoLLM("hello"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	step := &AgentStep{ID: "s1", Name: "s1", Agent: ag, Prompt: "say hello"}
 	exec := NewDefaultStepExecutor(nil)

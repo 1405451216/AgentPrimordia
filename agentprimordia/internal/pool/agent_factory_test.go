@@ -15,13 +15,11 @@ func TestPool_WithAgentFactory(t *testing.T) {
 	var factoryCalled bool
 	factory := func(config AgentFactoryConfig) agent.Agent {
 		factoryCalled = true
-		cfg := agent.ReActConfig{
-			Name:         config.Name,
-			SystemPrompt: config.SystemPrompt,
-			MaxTurns:     config.MaxTurns,
-			Model:        mockLLM,
+		a, err := agent.NewAgent(config.Name, config.SystemPrompt, mockLLM, agent.WithMaxTurns(config.MaxTurns))
+		if err != nil {
+			t.Fatalf("failed to create agent: %v", err)
 		}
-		return agent.NewReActAgent(cfg)
+		return a
 	}
 
 	pool := NewPool(PoolConfig{
@@ -59,14 +57,14 @@ func TestPool_AgentFactoryReceivesFullConfig(t *testing.T) {
 	var receivedConfig AgentFactoryConfig
 	factory := func(config AgentFactoryConfig) agent.Agent {
 		receivedConfig = config
-		cfg := agent.ReActConfig{
-			Name:         config.Name,
-			SystemPrompt: config.SystemPrompt,
-			MaxTurns:     config.MaxTurns,
-			Temperature:  config.Temperature,
-			Model:        mockLLM,
+		a, err := agent.NewAgent(config.Name, config.SystemPrompt, mockLLM,
+			agent.WithMaxTurns(config.MaxTurns),
+			agent.WithTemperature(config.Temperature),
+		)
+		if err != nil {
+			t.Fatalf("failed to create agent: %v", err)
 		}
-		return agent.NewReActAgent(cfg)
+		return a
 	}
 
 	pool := NewPool(PoolConfig{

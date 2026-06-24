@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/llm"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -34,7 +33,7 @@ func demonstrateBasicResilience() {
 		return
 	}
 
-	primary, err := llm.NewOpenAIProvider(llm.Config{
+	primary, err := ap.NewOpenAIProvider(ap.Config{
 		APIKey: openaiKey,
 		Model:  "gpt-4o",
 	})
@@ -44,22 +43,21 @@ func demonstrateBasicResilience() {
 		return
 	}
 
-	resilient, err := llm.NewResilientProvider(primary, llm.DefaultResilientConfig())
+	resilient, err := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
 	if err != nil {
 		fmt.Printf("❌ 创建 ResilientProvider 失败: %v\n", err)
 		return
 	}
 
-	testAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ResilientBot",
-		SystemPrompt: "你是一个具有弹性能力的 AI 助手",
-		Model:        resilient,
-	})
+	testAgent, err := ap.NewAgent("ResilientBot", "你是一个具有弹性能力的 AI 助手", resilient)
+	if err != nil {
+		log.Fatalf("❌ 创建 Agent 失败: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	resp, err := testAgent.Run(ctx, agent.UserMessage("你好，请简单介绍一下你自己"))
+	resp, err := testAgent.Run(ctx, ap.UserMessage("你好，请简单介绍一下你自己"))
 	if err != nil {
 		log.Printf("❌ 调用失败: %v\n", err)
 		return
@@ -72,7 +70,7 @@ func demonstrateBasicResilience() {
 
 func demoBasicResilience() {
 	mockPrimary := demo.NewDemoLLM("来自主 Provider 的响应")
-	resilient, err := llm.NewResilientProvider(mockPrimary, llm.DefaultResilientConfig())
+	resilient, err := ap.NewResilientProvider(mockPrimary, ap.DefaultResilientConfig())
 	if err != nil {
 		fmt.Printf("❌ 创建 ResilientProvider 失败: %v\n", err)
 		return
@@ -80,8 +78,8 @@ func demoBasicResilience() {
 
 	ctx := context.Background()
 
-	resp, _ := resilient.Complete(ctx, &llm.CompletionRequest{
-		Messages: []llm.ChatMessage{{Role: "user", Content: "测试消息"}},
+	resp, _ := resilient.Complete(ctx, &ap.CompletionRequest{
+		Messages: []ap.ChatMessage{{Role: "user", Content: "测试消息"}},
 	})
 
 	fmt.Printf("✅ Demo 模式响应: %s\n", resp.Content)
@@ -100,12 +98,12 @@ func demonstrateFallbackChain() {
 		return
 	}
 
-	primary, _ := llm.NewOpenAIProvider(llm.Config{
+	primary, _ := ap.NewOpenAIProvider(ap.Config{
 		APIKey: os.Getenv("OPENAI_API_KEY"),
 		Model:  "gpt-4o",
 	})
 
-	fallback1, _ := llm.NewQwenProvider(llm.Config{
+	fallback1, _ := ap.NewQwenProvider(ap.Config{
 		APIKey:  os.Getenv("QWEN_API_KEY"),
 		BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 		Model:   "qwen-plus",
@@ -113,7 +111,7 @@ func demonstrateFallbackChain() {
 
 	fallback2 := demo.NewDemoLLM("这是最后的兜底响应")
 
-	resilient, err := llm.NewResilientProvider(primary, llm.DefaultResilientConfig())
+	resilient, err := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
 	if err != nil {
 		fmt.Printf("❌ 创建 ResilientProvider 失败: %v\n", err)
 		return
@@ -127,8 +125,8 @@ func demonstrateFallbackChain() {
 	fmt.Println("   3. Fallback 2: Demo LLM (兜底)")
 
 	ctx := context.Background()
-	resp, _ := resilient.Complete(ctx, &llm.CompletionRequest{
-		Messages: []llm.ChatMessage{{Role: "user", Content: "测试降级链"}},
+	resp, _ := resilient.Complete(ctx, &ap.CompletionRequest{
+		Messages: []ap.ChatMessage{{Role: "user", Content: "测试降级链"}},
 	})
 
 	fmt.Printf("\n🤖 响应内容: %s\n", resp.Content)
@@ -140,7 +138,7 @@ func demoFallbackChain() {
 	fallback1 := demo.NewDemoLLM("备选 Provider 响应")
 	fallback2 := demo.NewDemoLLM("兜底 Provider 响应")
 
-	resilient, err := llm.NewResilientProvider(primary, llm.ResilientConfig{
+	resilient, err := ap.NewResilientProvider(primary, ap.ResilientConfig{
 		MaxRetries:   2,
 		RetryBackoff: 100 * time.Millisecond,
 	})
@@ -158,8 +156,8 @@ func demoFallbackChain() {
 
 	ctx := context.Background()
 	startTime := time.Now()
-	resp, _ := resilient.Complete(ctx, &llm.CompletionRequest{
-		Messages: []llm.ChatMessage{{Role: "user", Content: "测试"}},
+	resp, _ := resilient.Complete(ctx, &ap.CompletionRequest{
+		Messages: []ap.ChatMessage{{Role: "user", Content: "测试"}},
 	})
 	duration := time.Since(startTime)
 
@@ -172,14 +170,14 @@ func demonstrateCircuitBreaker() {
 	fmt.Println("⚡ 熔断器机制演示")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	config := llm.ResilientConfig{
+	config := ap.ResilientConfig{
 		MaxRetries:          0,
 		CircuitThreshold:    3,
 		CircuitRecoverAfter: 5 * time.Second,
 	}
 
-	failingProvider := demo.NewDemoLLM("失败响应").WithError(llm.ErrLLMCallFailed)
-	resilient, err := llm.NewResilientProvider(failingProvider, config)
+	failingProvider := demo.NewDemoLLM("失败响应").WithError(ap.ErrLLMCallFailed)
+	resilient, err := ap.NewResilientProvider(failingProvider, config)
 	if err != nil {
 		fmt.Printf("❌ 创建 ResilientProvider 失败: %v\n", err)
 		return
@@ -195,8 +193,8 @@ func demonstrateCircuitBreaker() {
 
 	ctx := context.Background()
 	for i := 1; i <= 6; i++ {
-		resp, err := resilient.Complete(ctx, &llm.CompletionRequest{
-			Messages: []llm.ChatMessage{{Role: "user", Content: fmt.Sprintf("请求 %d", i)}},
+		resp, err := resilient.Complete(ctx, &ap.CompletionRequest{
+			Messages: []ap.ChatMessage{{Role: "user", Content: fmt.Sprintf("请求 %d", i)}},
 		})
 
 		status := "✅ 成功"
@@ -219,7 +217,7 @@ func demonstrateCustomConfig() {
 	fmt.Println("⚙️  自定义配置演示")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	customConfig := llm.ResilientConfig{
+	customConfig := ap.ResilientConfig{
 		MaxRetries:          5,
 		RetryBackoff:        500 * time.Millisecond,
 		MaxBackoff:          10 * time.Second,

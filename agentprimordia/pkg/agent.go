@@ -25,8 +25,7 @@
 //	              用户应准备升级时调整调用方代码。
 //
 //	Deprecated:   已废弃，下个 minor 版本起将在编译期 warning，
-//	              v2.0 移除。ReActConfig 中 9 个字段已加 Deprecated 标记，
-//	              使用链式 API 替代。
+//	              v2.0 移除。使用链式 API 替代直接字段赋值。
 //
 //	Internal:     仅供 pkg/ 内部使用，不属于公共 API 承诺范围。
 //	              文件内未导出符号默认属于此等级。
@@ -209,7 +208,7 @@ var (
 	//
 	// Deprecated: 使用 NewAgent 代替。NewReActAgent 暴露了 14 个已废弃的 ReActConfig 字段，
 	// 容易导致误用。NewAgent 通过 Functional Options 注入能力，构造后不可变。
-	// Removed in v2.0.0.
+	// 将在 v1.0.0 中移除。
 	// 迁移指南: ecosystem/docs/migration/v0-deprecations.md
 	NewReActAgent = agent.NewReActAgent
 	// NewPromptTemplate 创建支持变量注入的提示词模板
@@ -223,7 +222,7 @@ var (
 
 	// FormatRAGDocuments 将 RAG 文档列表格式化为可注入 Prompt 的上下文字符串
 	FormatRAGDocuments = agent.FormatRAGDocuments
-	// NewSummarizer 创建基于 LLM 的摘要提取器
+	// NewSummarizer 创建基于 LLM 的摘要提取器（接受 SummarizerLLM 接口）
 	NewSummarizer = memory.NewSummarizer
 	// DefaultCleanupConfig 返回记忆自动清理的默认配置（30 天过期、24 小时间隔、保留 tool 角色）
 	DefaultCleanupConfig = memory.DefaultCleanupConfig

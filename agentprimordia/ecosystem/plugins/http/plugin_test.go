@@ -48,7 +48,7 @@ func TestHTTPClientTool_EndToEnd_GET(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New()
+	p := New().WithAllowPrivate(true)
 	tool := p.Tools()[0]
 
 	args, _ := json.Marshal(map[string]any{
@@ -82,7 +82,7 @@ func TestHTTPClientTool_EndToEnd_POST(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New()
+	p := New().WithAllowPrivate(true)
 	tool := p.Tools()[0]
 
 	args, _ := json.Marshal(map[string]any{

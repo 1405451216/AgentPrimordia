@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go-version: ['1.23', '1.24']
+        go-version: ['1.24', '1.26']
     steps:
       - uses: actions/checkout@v4
 
@@ -51,7 +51,7 @@ jobs:
         run: go test -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: "Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 soft gate)"
-        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26'
         run: |
           # Total coverage (reference metric)
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
@@ -96,7 +96,7 @@ jobs:
           echo "OK: tiered coverage gates passed"
 
       - name: Upload coverage
-        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.23'
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -130,7 +130,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
@@ -146,7 +146,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Run govulncheck
         run: |
@@ -182,7 +182,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Check Go API compatibility
         run: |
@@ -245,10 +245,45 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Build ap CLI
         run: go build -ldflags="-X main.Version=${{ github.ref_name }}" -o ap ./cmd/ap/
 
       - name: Verify CLI
         run: ./ap version
+
+  operator-envtest:
+    name: Operator EnvTest (E2E)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-1.26-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-1.26-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Install setup-envtest
+        run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+      - name: Fetch envtest binaries
+        run: |
+          ENVTEST_DIR=$(setup-envtest use -p path 1.31.x)
+          echo "KUBEBUILDER_ASSETS=$ENVTEST_DIR" >> $GITHUB_ENV
+          echo "Fetched envtest assets at: $ENVTEST_DIR"
+
+      - name: Run envtest E2E tests
+        env:
+          CGO_ENABLED: 0
+        run: go test -tags=envtest -v -timeout=120s ./operator/controller/...

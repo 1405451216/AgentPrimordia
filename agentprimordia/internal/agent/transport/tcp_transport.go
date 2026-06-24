@@ -1,6 +1,8 @@
-package agent
+package transport
 
 import (
+	"agentprimordia/internal/agent/bus"
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,6 +18,7 @@ const (
 	defaultMaxRetries    = 3
 	defaultRetryInterval = 500 * time.Millisecond
 	defaultPoolSize      = 8
+	connIdleTimeout      = 60 * time.Second
 )
 
 // 安全警告：TCPTransport 以明文传输消息，不适合在生产环境中传输敏感数据
@@ -40,7 +43,7 @@ func DefaultTCPTransportConfig() TCPTransportConfig {
 type TCPTransport struct {
 	config  TCPTransportConfig
 	client  *net.Dialer
-	inbound chan *BusMessage
+	inbound chan *bus.BusMessage
 	addr    string
 	mu      sync.RWMutex
 	started bool
@@ -74,7 +77,7 @@ func NewTCPTransportWithConfig(cfg TCPTransportConfig) *TCPTransport {
 	return &TCPTransport{
 		config:  cfg,
 		client:  &net.Dialer{Timeout: 30 * time.Second},
-		inbound: make(chan *BusMessage, inboundBufSize),
+		inbound: make(chan *bus.BusMessage, inboundBufSize),
 		logger:  slog.Default(),
 		acks:    make(map[uint64]chan struct{}),
 	}
@@ -104,7 +107,7 @@ func (t *TCPTransport) Start(addr string) error {
 	return nil
 }
 
-func (t *TCPTransport) Send(ctx context.Context, target string, msg *BusMessage) error {
+func (t *TCPTransport) Send(ctx context.Context, target string, msg *bus.BusMessage) error {
 	t.mu.RLock()
 	started := t.started
 	t.mu.RUnlock()
@@ -116,7 +119,7 @@ func (t *TCPTransport) Send(ctx context.Context, target string, msg *BusMessage)
 	return t.sendWithRetry(ctx, target, msg, t.config.MaxRetries)
 }
 
-func (t *TCPTransport) SendWithAck(ctx context.Context, target string, msg *BusMessage) error {
+func (t *TCPTransport) SendWithAck(ctx context.Context, target string, msg *bus.BusMessage) error {
 	t.mu.RLock()
 	started := t.started
 	t.mu.RUnlock()
@@ -159,12 +162,16 @@ func (t *TCPTransport) SendWithAck(ctx context.Context, target string, msg *BusM
 	}
 }
 
-// sendWithRetry 发送消息，对于需要ACK的消息保持连接以读取响应
-func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *BusMessage, maxRetries int) error {
+// sendWithRetry 发送消息，使用长连接复用连接池中的连接。
+// 消息以 newline-delimited JSON 格式发送，支持连接复用。
+func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *bus.BusMessage, maxRetries int) error {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("marshal message failed: %w", err)
 	}
+
+	// 添加换行符作为消息分隔符
+	data = append(data, '\n')
 
 	needAck := msg.Metadata != nil && msg.Metadata["_ack_required"] == "true"
 
@@ -182,14 +189,12 @@ func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *Bu
 		conn, err := t.pool.Get(ctx, target)
 		if err != nil {
 			lastErr = fmt.Errorf("dial %s failed: %w", target, err)
-			t.pool.Invalidate(target)
 			continue
 		}
 
 		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 		if _, err := conn.Write(data); err != nil {
 			conn.Close()
-			t.pool.Invalidate(target)
 			lastErr = fmt.Errorf("write to %s failed: %w", target, err)
 			continue
 		}
@@ -197,15 +202,13 @@ func (t *TCPTransport) sendWithRetry(ctx context.Context, target string, msg *Bu
 		if needAck {
 			if err := t.readAckResponse(conn, msg.ID, t.config.AckTimeout); err != nil {
 				conn.Close()
-				t.pool.Invalidate(target)
 				lastErr = fmt.Errorf("read ack from %s failed: %w", target, err)
 				continue
 			}
-			// ACK 成功，接收端会关闭连接，无需归还连接池
-			return nil
 		}
 
-		// 非 ACK 消息，接收端会关闭连接，无需归还连接池
+		// 归还连接到连接池以供复用
+		t.pool.Put(target, conn)
 		return nil
 	}
 
@@ -238,7 +241,7 @@ func (t *TCPTransport) readAckResponse(conn net.Conn, msgID string, timeout time
 	return nil
 }
 
-func (t *TCPTransport) Receive() <-chan *BusMessage {
+func (t *TCPTransport) Receive() <-chan *bus.BusMessage {
 	return t.inbound
 }
 
@@ -287,26 +290,38 @@ func (t *TCPTransport) acceptLoop() {
 	}
 }
 
+// handleConn 处理入站连接，支持长连接复用。
+// 使用 newline-delimited JSON 协议，在同一个连接上读取多条消息。
 func (t *TCPTransport) handleConn(conn net.Conn) {
 	defer conn.Close()
 
-	_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-	var msg BusMessage
-	if err := json.NewDecoder(conn).Decode(&msg); err != nil {
-		t.logger.Warn("TCP 解码消息失败", "error", err)
-		return
-	}
+	scanner := bufio.NewScanner(conn)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
-	if msg.Metadata != nil {
-		if ackSeq, ok := msg.Metadata["_ack_seq"]; ok && msg.Metadata["_ack_required"] == "true" {
-			t.sendAck(conn, ackSeq)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
 		}
-	}
 
-	select {
-	case t.inbound <- &msg:
-	default:
-		t.logger.Warn("入站通道已满，丢弃消息", "from", msg.From, "id", msg.ID)
+		var msg bus.BusMessage
+		if err := json.Unmarshal(line, &msg); err != nil {
+			t.logger.Warn("TCP 解码消息失败", "error", err)
+			continue
+		}
+
+		// 如果需要 ACK，立即回复
+		if msg.Metadata != nil {
+			if ackSeq, ok := msg.Metadata["_ack_seq"]; ok && msg.Metadata["_ack_required"] == "true" {
+				t.sendAck(conn, ackSeq)
+			}
+		}
+
+		select {
+		case t.inbound <- &msg:
+		default:
+			t.logger.Warn("入站通道已满，丢弃消息", "from", msg.From, "id", msg.ID)
+		}
 	}
 }
 
@@ -329,6 +344,8 @@ func (t *TCPTransport) handleAck(seq uint64) {
 	}
 }
 
+// ===== 连接池（支持连接复用）=====
+
 type connPool struct {
 	dialer  *net.Dialer
 	maxSize int
@@ -350,18 +367,52 @@ func newConnPool(maxSize int, dialer *net.Dialer) *connPool {
 	}
 }
 
+// Get 从连接池获取一个空闲连接，如果没有则新建。
+// 获取的空闲连接会进行健康检查（1ms 超时读取），确保连接仍然可用。
 func (p *connPool) Get(ctx context.Context, target string) (net.Conn, error) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 
 	if p.closed {
+		p.mu.Unlock()
 		return nil, fmt.Errorf("pool closed")
 	}
 
-	// 当前协议是每条消息一个连接，接收端会关闭连接
-	// 所以连接池只用于快速建立新连接，不复用已有连接
-	// 未来可以改为长连接协议以支持连接复用
+	// 尝试从空闲连接池中获取一个可用的连接
+	for len(p.conns[target]) > 0 {
+		pc := p.conns[target][len(p.conns[target])-1]
+		p.conns[target] = p.conns[target][:len(p.conns[target])-1]
 
+		// 健康检查：设置极短的超时尝试读取，如果连接已关闭会立即返回错误
+		_ = pc.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+		oneByte := make([]byte, 1)
+		// 重置 deadline
+		_ = pc.SetReadDeadline(time.Time{})
+
+		// 检查连接是否仍然活跃（非阻塞式）
+		// 如果连接被对端关闭，Read 会返回错误
+		pc.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+		n, err := pc.Read(oneByte)
+		pc.SetReadDeadline(time.Time{})
+
+		if err != nil {
+			if ne, ok := err.(net.Error); ok && ne.Timeout() && n == 0 {
+				// 超时且没有读到数据 = 连接仍然活跃（没有对端关闭的 EOF）
+				p.mu.Unlock()
+				return pc.Conn, nil
+			}
+			// 连接已关闭或其他错误，尝试下一个
+			pc.Close()
+			continue
+		}
+
+		// 如果读到了数据，说明连接状态异常（不应该有数据），关闭并尝试下一个
+		pc.Close()
+		continue
+	}
+
+	p.mu.Unlock()
+
+	// 没有空闲连接，新建一个
 	conn, err := p.dialer.DialContext(ctx, "tcp", target)
 	if err != nil {
 		return nil, err
@@ -370,6 +421,8 @@ func (p *connPool) Get(ctx context.Context, target string) (net.Conn, error) {
 	return conn, nil
 }
 
+// Put 将连接归还到连接池以供复用。
+// 如果连接池已满或已关闭，直接关闭连接。
 func (p *connPool) Put(target string, conn net.Conn) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -379,14 +432,31 @@ func (p *connPool) Put(target string, conn net.Conn) {
 		return
 	}
 
+	// 检查连接池是否已满
+	if len(p.conns[target]) >= p.maxSize {
+		conn.Close()
+		return
+	}
+
 	pc := &poolConn{Conn: conn, lastUsed: time.Now()}
 	p.conns[target] = append(p.conns[target], pc)
 
-	if len(p.conns[target]) > p.maxSize {
-		oldest := p.conns[target][0]
-		p.conns[target] = p.conns[target][1:]
-		oldest.Close()
+	// 清理过期的空闲连接
+	p.evictIdleLocked(target)
+}
+
+// evictIdleLocked 清理超过 connIdleTimeout 的空闲连接（调用者需持有锁）
+func (p *connPool) evictIdleLocked(target string) {
+	now := time.Now()
+	var alive []*poolConn
+	for _, pc := range p.conns[target] {
+		if now.Sub(pc.lastUsed) > connIdleTimeout {
+			pc.Close()
+		} else {
+			alive = append(alive, pc)
+		}
 	}
+	p.conns[target] = alive
 }
 
 func (p *connPool) Invalidate(target string) {

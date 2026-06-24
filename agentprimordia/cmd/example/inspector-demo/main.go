@@ -33,12 +33,10 @@ func main() {
 	demoLLM := demo.NewDemoLLM("你好！我是你的AI助手，很高兴为你服务。")
 
 	agentName := "DemoAgent"
-	a := agent.NewReActAgent(agent.ReActConfig{
-		Name:         agentName,
-		SystemPrompt: "你是一个友好的助手，帮助用户解答问题。",
-		Model:        demoLLM,
-		MaxTurns:     5,
-	})
+	a, err := agent.NewAgent(agentName, "你是一个友好的助手，帮助用户解答问题。", demoLLM, agent.WithMaxTurns(5))
+	if err != nil {
+		log.Fatalf("Agent 创建失败: %v", err)
+	}
 
 	// 模拟Agent执行过程，并记录追踪数据
 	ctx := context.Background()

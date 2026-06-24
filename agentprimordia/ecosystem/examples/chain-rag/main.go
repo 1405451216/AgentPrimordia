@@ -65,17 +65,20 @@ func main() {
 	fmt.Println()
 
 	// 创建 Agent 并注入多种能力
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "rag-agent",
-		SystemPrompt: "你是一个知识库问答助手，根据检索到的信息回答用户问题。",
-		Model:        &MockLLM{},
-		MaxTurns:     5,
-	}).WithRAG(ap.RAGConfig{
-		Mode:     ap.RAGModeAuto,
-		Provider: &mockRAGProvider{},
-		TopK:     3,
-		MinScore: 0.5,
-	}).WithEvents(&mockEventPublisher{}).WithMetrics(&mockMetricsRecorder{})
+	agent, err := ap.NewAgent("rag-agent", "你是一个知识库问答助手，根据检索到的信息回答用户问题。", &MockLLM{},
+		ap.WithMaxTurns(5),
+		ap.WithRAG(ap.RAGConfig{
+			Mode:     ap.RAGModeAuto,
+			Provider: &mockRAGProvider{},
+			TopK:     3,
+			MinScore: 0.5,
+		}),
+		ap.WithEvents(&mockEventPublisher{}),
+		ap.WithMetrics(&mockMetricsRecorder{}),
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	// 运行
 	resp, err := agent.Run(context.Background(), ap.UserMessage("Go 1.22 有什么新特性？"))

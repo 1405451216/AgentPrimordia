@@ -1,5 +1,6 @@
 import type { ProviderConfig, CompletionRequest, CompletionResponse, ToolCallRequest, ToolCallResponse, Chunk, ModelInfo } from '../types.js';
 import type { Provider } from './provider.js';
+import { requireApiKey, validateTemperature, validateMaxTokens } from '../validate.js';
 
 export class APIError extends Error {
   code: string;
@@ -23,9 +24,9 @@ export class OpenAIProvider implements Provider {
   private config: Required<ProviderConfig>;
 
   constructor(config: ProviderConfig) {
-    if (!config.apiKey) {
-      throw new Error('API key is required');
-    }
+    requireApiKey(config.apiKey, 'OpenAI');
+    validateTemperature(config.temperature);
+    validateMaxTokens(config.maxTokens);
     this.config = {
       apiKey: config.apiKey,
       baseURL: (config.baseURL ?? DEFAULT_BASE_URL).replace(/\/+$/, ''),

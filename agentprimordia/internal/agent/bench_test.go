@@ -44,12 +44,10 @@ func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
 
 	mockLLM := llm.NewMockLLM(nil).WithResponse("done")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "bench-simple",
-		Model:    mockLLM,
-		MaxTurns: 10,
-		Logger:   benchLogger,
-	})
+	agent, err := NewAgent("bench-simple", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	ctx := context.Background()
 	input := UserMessage("hello")
@@ -62,7 +60,7 @@ func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
 			b.Fatalf("unexpected error: %v", err)
 		}
 		// 重置 Lifecycle 以支持重复 Run
-		_ = agent.lifecycle.SetStatus(StatusIdle)
+		_ = agent.Inner().lifecycle.SetStatus(StatusIdle)
 	}
 }
 
@@ -84,14 +82,13 @@ func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
 			}).
 			WithResponse("task done")
 
-		agent := NewReActAgent(ReActConfig{
-			Name:     "bench-tool",
-			Model:    mockLLM,
-			MaxTurns: 10,
-			Logger:   benchLogger,
-		}).AsCapability().WithToolkit(registry)
+		agent, err := NewAgent("bench-tool", "", mockLLM, WithMaxTurns(10))
+		if err != nil {
+			b.Fatal(err)
+		}
+		agent = agent.WithToolkit(registry)
 
-		_, err := agent.Run(context.Background(), UserMessage("use tool"))
+		_, err = agent.Run(context.Background(), UserMessage("use tool"))
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}
@@ -117,14 +114,13 @@ func BenchmarkReActAgent_MaxTurns(b *testing.B) {
 		}
 		mockLLM.WithResponse("finally done")
 
-		agent := NewReActAgent(ReActConfig{
-			Name:     "bench-maxturns",
-			Model:    mockLLM,
-			MaxTurns: 10,
-			Logger:   benchLogger,
-		}).AsCapability().WithToolkit(registry)
+		agent, err := NewAgent("bench-maxturns", "", mockLLM, WithMaxTurns(10))
+		if err != nil {
+			b.Fatal(err)
+		}
+		agent = agent.WithToolkit(registry)
 
-		_, err := agent.Run(context.Background(), UserMessage("multi-turn"))
+		_, err = agent.Run(context.Background(), UserMessage("multi-turn"))
 		if err != nil {
 			b.Fatalf("unexpected error: %v", err)
 		}

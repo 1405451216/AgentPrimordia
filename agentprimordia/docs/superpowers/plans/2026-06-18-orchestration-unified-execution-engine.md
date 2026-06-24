@@ -1,5 +1,8 @@
 # 编排层统一执行引擎实现计划
 
+> **状态：已完成** ✅
+> **完成日期：2026-06-22**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在 `internal/orchestration` 中引入统一执行引擎，将 `Sequential / Parallel / DAG` 三种模式的并发控制、重试、取消逻辑收敛到同一套 Scheduler + WorkerPool 实现，从而消除 goroutine 爆炸、修复 retry 覆盖 bug、提升 DAG 同层并行度，并保持 `Orchestrator` 公共 API 不变。

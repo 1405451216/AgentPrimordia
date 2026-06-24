@@ -4,41 +4,22 @@ import (
 	"context"
 	"fmt"
 	"testing"
-
-	"agentprimordia/internal/llm"
 )
 
-// mockProvider 实现 llm.Provider 接口用于测试
-type mockProvider struct {
+// mockSummarizerLLM 实现 SummarizerLLM 接口用于测试
+type mockSummarizerLLM struct {
 	response string
 }
 
-func (m *mockProvider) Complete(ctx context.Context, req *llm.CompletionRequest) (*llm.CompletionResponse, error) {
-	return &llm.CompletionResponse{
-		Content: m.response,
-	}, nil
-}
-
-func (m *mockProvider) Stream(ctx context.Context, req *llm.CompletionRequest) (<-chan llm.Chunk, error) {
-	ch := make(chan llm.Chunk, 1)
-	ch <- llm.Chunk{Content: m.response}
-	close(ch)
-	return ch, nil
-}
-
-func (m *mockProvider) CallTools(ctx context.Context, req *llm.ToolCallRequest) (*llm.ToolCallResponse, error) {
-	return &llm.ToolCallResponse{}, nil
-}
-
-func (m *mockProvider) Info() llm.ModelInfo {
-	return llm.ModelInfo{}
+func (m *mockSummarizerLLM) Complete(ctx context.Context, messages []ChatMessageForSummary, model string) (string, error) {
+	return m.response, nil
 }
 
 func TestSummarizer_ExtractSummary(t *testing.T) {
 	mockResp := `这是一段测试内容的摘要
 topics: 测试,摘要,提取`
 
-	provider := &mockProvider{response: mockResp}
+	provider := &mockSummarizerLLM{response: mockResp}
 	summarizer := NewSummarizer(provider)
 
 	ctx := context.Background()
@@ -62,7 +43,7 @@ topics: 测试,摘要,提取`
 }
 
 func TestSummarizer_WithModel(t *testing.T) {
-	provider := &mockProvider{response: "测试摘要\ntopics: 测试"}
+	provider := &mockSummarizerLLM{response: "测试摘要\ntopics: 测试"}
 	summarizer := NewSummarizer(provider)
 	summarizer.WithModel("gpt-3.5-turbo")
 
@@ -290,7 +271,7 @@ func TestSummaryEngine_Run(t *testing.T) {
 	}
 
 	mockResp := "这是自动生成的摘要\ntopics: 测试,自动摘要"
-	provider := &mockProvider{response: mockResp}
+	provider := &mockSummarizerLLM{response: mockResp}
 	summarizer := NewSummarizer(provider)
 
 	strategy := NewWindowSummaryStrategy(5)
@@ -336,7 +317,7 @@ func TestSummaryEngine_RunAndStore(t *testing.T) {
 	}
 
 	mockResp := "这是自动生成的摘要\ntopics: 测试,自动摘要"
-	provider := &mockProvider{response: mockResp}
+	provider := &mockSummarizerLLM{response: mockResp}
 	summarizer := NewSummarizer(provider)
 
 	strategy := NewWindowSummaryStrategy(5)

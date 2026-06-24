@@ -18,19 +18,15 @@ func TestOrchestrator_SequentialMode(t *testing.T) {
 		Mode:        SequentialMode,
 	})
 
-	step1Agent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Step1-Agent",
-		SystemPrompt: "你是步骤1，请简单回复'步骤1完成'",
-		Model:        demo.NewDemoLLM("步骤1完成"),
-		MaxTurns:     1,
-	})
+	step1Agent, err := agent.NewAgent("Step1-Agent", "你是步骤1，请简单回复'步骤1完成'", demo.NewDemoLLM("步骤1完成"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	step2Agent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Step2-Agent",
-		SystemPrompt: "你是步骤2，请回复'步骤2完成'",
-		Model:        demo.NewDemoLLM("步骤2完成"),
-		MaxTurns:     1,
-	})
+	step2Agent, err := agent.NewAgent("Step2-Agent", "你是步骤2，请回复'步骤2完成'", demo.NewDemoLLM("步骤2完成"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{
 		ID:        "step1",
@@ -83,12 +79,15 @@ func TestOrchestrator_ParallelMode(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		idx := i
-		stepAgent := agent.NewReActAgent(agent.ReActConfig{
-			Name:         fmt.Sprintf("Parallel-Agent-%d", idx),
-			SystemPrompt: fmt.Sprintf("你是并行任务%d", idx),
-			Model:        demo.NewDemoLLM(fmt.Sprintf("并行任务%d完成", idx)),
-			MaxTurns:     1,
-		})
+		stepAgent, err := agent.NewAgent(
+			fmt.Sprintf("Parallel-Agent-%d", idx),
+			fmt.Sprintf("你是并行任务%d", idx),
+			demo.NewDemoLLM(fmt.Sprintf("并行任务%d完成", idx)),
+			agent.WithMaxTurns(1),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		_ = orch.AddStep(&AgentStep{
 			ID:        fmt.Sprintf("parallel_step_%d", idx),
@@ -134,33 +133,25 @@ func TestOrchestrator_DAGMode(t *testing.T) {
 		Mode:        DAGMode,
 	})
 
-	dataAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DataCollector",
-		SystemPrompt: "收集数据",
-		Model:        demo.NewDemoLLM("数据已收集"),
-		MaxTurns:     1,
-	})
+	dataAgent, err := agent.NewAgent("DataCollector", "收集数据", demo.NewDemoLLM("数据已收集"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	processA_Agent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ProcessA",
-		SystemPrompt: "处理方式A",
-		Model:        demo.NewDemoLLM("处理A完成"),
-		MaxTurns:     1,
-	})
+	processA_Agent, err := agent.NewAgent("ProcessA", "处理方式A", demo.NewDemoLLM("处理A完成"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	processB_Agent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ProcessB",
-		SystemPrompt: "处理方式B",
-		Model:        demo.NewDemoLLM("处理B完成"),
-		MaxTurns:     1,
-	})
+	processB_Agent, err := agent.NewAgent("ProcessB", "处理方式B", demo.NewDemoLLM("处理B完成"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	mergeAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Merger",
-		SystemPrompt: "合并结果",
-		Model:        demo.NewDemoLLM("合并完成"),
-		MaxTurns:     1,
-	})
+	mergeAgent, err := agent.NewAgent("Merger", "合并结果", demo.NewDemoLLM("合并完成"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// 添加步骤
 	_ = orch.AddStep(&AgentStep{ID: "collect", Name: "数据收集", Agent: dataAgent, Prompt: "收集原始数据"})
@@ -211,12 +202,10 @@ func TestOrchestrator_DAGMode(t *testing.T) {
 }
 
 func TestOrchestrator_RetryMechanism(t *testing.T) {
-	retryAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "RetryAgent",
-		SystemPrompt: "会重试的步骤",
-		Model:        demo.NewDemoLLM("最终成功!"),
-		MaxTurns:     1,
-	})
+	retryAgent, err := agent.NewAgent("RetryAgent", "会重试的步骤", demo.NewDemoLLM("最终成功!"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	orch := NewOrchestrator(OrchestratorConfig{
 		Name:       "test-retry",
@@ -250,12 +239,10 @@ func TestOrchestrator_ConditionalExecution(t *testing.T) {
 		Mode: SequentialMode,
 	})
 
-	simpleAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ConditionalAgent",
-		SystemPrompt: "条件执行测试",
-		Model:        demo.NewDemoLLM("已执行"),
-		MaxTurns:     1,
-	})
+	simpleAgent, err := agent.NewAgent("ConditionalAgent", "条件执行测试", demo.NewDemoLLM("已执行"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{
 		ID:        "conditional_step",
@@ -283,12 +270,10 @@ func TestOrchestrator_ConditionalExecution(t *testing.T) {
 }
 
 func TestOrchestrator_TimeoutHandling(t *testing.T) {
-	slowAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "SlowAgent",
-		SystemPrompt: "非常慢的响应",
-		Model:        demo.NewDemoLLM("慢速响应"),
-		MaxTurns:     5,
-	})
+	slowAgent, err := agent.NewAgent("SlowAgent", "非常慢的响应", demo.NewDemoLLM("慢速响应"), agent.WithMaxTurns(5))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	orch := NewOrchestrator(OrchestratorConfig{
 		Name:    "test-timeout",
@@ -325,12 +310,10 @@ func TestOrchestrator_EventEmission(t *testing.T) {
 		Mode: SequentialMode,
 	})
 
-	testAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "EventTestAgent",
-		SystemPrompt: "事件测试",
-		Model:        demo.NewDemoLLM("事件测试完成"),
-		MaxTurns:     1,
-	})
+	testAgent, err := agent.NewAgent("EventTestAgent", "事件测试", demo.NewDemoLLM("事件测试完成"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{
 		ID:     "event_step",
@@ -349,7 +332,7 @@ func TestOrchestrator_EventEmission(t *testing.T) {
 		}
 	}()
 
-	_, err := orch.Execute(context.Background(), nil)
+	_, err = orch.Execute(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("Execute error: %v", err)
 	}
@@ -392,17 +375,20 @@ func TestOrchestrator_MetricsCalculation(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		idx := i
-		agent := agent.NewReActAgent(agent.ReActConfig{
-			Name:         fmt.Sprintf("MetricsAgent-%d", idx),
-			SystemPrompt: fmt.Sprintf("指标测试%d", idx),
-			Model:        demo.NewDemoLLM(fmt.Sprintf("结果%d", idx)),
-			MaxTurns:     1,
-		})
+		metricsAgent, err := agent.NewAgent(
+			fmt.Sprintf("MetricsAgent-%d", idx),
+			fmt.Sprintf("指标测试%d", idx),
+			demo.NewDemoLLM(fmt.Sprintf("结果%d", idx)),
+			agent.WithMaxTurns(1),
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		_ = orch.AddStep(&AgentStep{
 			ID:       fmt.Sprintf("metric_step_%d", idx),
 			Name:     fmt.Sprintf("指标步骤 %d", idx+1),
-			Agent:    agent,
+			Agent:    metricsAgent,
 			Priority: idx,
 		})
 	}
@@ -435,12 +421,10 @@ func TestOrchestrator_ExportImport(t *testing.T) {
 		Metadata:    map[string]string{"version": "1.0"},
 	})
 
-	testAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ExportAgent",
-		SystemPrompt: "导出测试",
-		Model:        demo.NewDemoLLM("导出成功"),
-		MaxTurns:     1,
-	})
+	testAgent, err := agent.NewAgent("ExportAgent", "导出测试", demo.NewDemoLLM("导出成功"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = orch.AddStep(&AgentStep{
 		ID:    "export_step",
@@ -482,12 +466,15 @@ func BenchmarkOrchestrator_Sequential(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		idx := i
-		benchAgent := agent.NewReActAgent(agent.ReActConfig{
-			Name:         fmt.Sprintf("BenchAgent-%d", idx),
-			SystemPrompt: "基准测试",
-			Model:        demo.NewDemoLLM(fmt.Sprintf("响应%d", idx)),
-			MaxTurns:     1,
-		})
+		benchAgent, err := agent.NewAgent(
+			fmt.Sprintf("BenchAgent-%d", idx),
+			"基准测试",
+			demo.NewDemoLLM(fmt.Sprintf("响应%d", idx)),
+			agent.WithMaxTurns(1),
+		)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		_ = orch.AddStep(&AgentStep{
 			ID:    fmt.Sprintf("bench_step_%d", idx),
@@ -511,12 +498,15 @@ func BenchmarkOrchestrator_Parallel(b *testing.B) {
 	steps := make([]*AgentStep, 10)
 	for i := range steps {
 		idx := i
-		benchAgent := agent.NewReActAgent(agent.ReActConfig{
-			Name:         fmt.Sprintf("ParallelBench-%d", idx),
-			SystemPrompt: "并行基准",
-			Model:        demo.NewDemoLLM(fmt.Sprintf("并行响应%d", idx)),
-			MaxTurns:     1,
-		})
+		benchAgent, err := agent.NewAgent(
+			fmt.Sprintf("ParallelBench-%d", idx),
+			"并行基准",
+			demo.NewDemoLLM(fmt.Sprintf("并行响应%d", idx)),
+			agent.WithMaxTurns(1),
+		)
+		if err != nil {
+			b.Fatal(err)
+		}
 
 		steps[idx] = &AgentStep{
 			ID:       fmt.Sprintf("parallel_bench_%d", idx),

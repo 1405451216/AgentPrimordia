@@ -33,14 +33,7 @@ func main() {
 	fmt.Println("=== 链式 API：渐进式添加能力 ===")
 	fmt.Println()
 
-	// 第 1 步：创建最简 Agent（4 个必填字段）
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:     "capable-agent",
-		Model:    &MockLLM{},
-		MaxTurns: 5,
-	})
-
-	// 第 2 步：按需注入能力 —— 工具 + 记忆 + Hook
+	// 第 1 步：按需准备能力 —— 工具 + 记忆 + Hook
 	registry, err := ap.DefaultToolkit(ap.ToolkitConfig{
 		RootDir:     ".",
 		EnableFS:    true,
@@ -67,11 +60,16 @@ func main() {
 		return nil
 	})
 
-	// 链式注入所有能力
-	capableAgent := agent.
-		WithToolkit(registry).
-		WithMemory(mem).
-		WithHooks(hooks)
+	// 第 2 步：创建 Agent 并一次性注入所有能力
+	capableAgent, err := ap.NewAgent("capable-agent", "", &MockLLM{},
+		ap.WithMaxTurns(5),
+		ap.WithToolkit(registry),
+		ap.WithMemory(mem),
+		ap.WithHooks(hooks),
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	// 运行
 	resp, err := capableAgent.Run(context.Background(), ap.UserMessage("读取当前目录的文件"))

@@ -44,15 +44,50 @@ type RAGResult = memory.RAGResult
 // CleanupConfig 是记忆自动清理配置，包含过期天数、清理间隔和保留角色
 type CleanupConfig = memory.CleanupConfig
 
+// HNSWIndex 是 HNSW 向量索引，支持快速近似最近邻搜索
+type HNSWIndex = memory.HNSWIndex
+
+// HNSWConfig 是 HNSW 索引配置
+type HNSWConfig = memory.HNSWConfig
+
+// HNSWSearchResult 是 HNSW 搜索结果
+type HNSWSearchResult = memory.HNSWSearchResult
+
 var (
 	// NewSQLiteStore 创建基于 SQLite 的记忆存储实例，参数为数据库文件路径
 	NewSQLiteStore = memory.NewSQLiteStore
 	// WithInMemory 创建内存模式的 SQLite 记忆存储，适用于测试
 	WithInMemory = memory.WithInMemory
+	// NewInMemoryStore 创建纯内存记忆存储实例（无持久化）
+	NewInMemoryStore = memory.NewInMemoryStore
+	// NewMemory 通过工厂函数创建记忆存储实例，根据 Config.Type 选择后端
+	NewMemory = memory.NewMemory
 	// NewVectorStore 创建内存向量存储实例，参数为向量维度
 	NewVectorStore = memory.NewVectorStore
+	// NewVectorStoreWithHNSW 创建带 HNSW 索引的向量存储
+	NewVectorStoreWithHNSW = memory.NewVectorStoreWithHNSW
+	// NewHNSWIndex 创建 HNSW 向量索引
+	NewHNSWIndex = memory.NewHNSWIndex
 	// FormatRAGContext 将 RAG 检索结果格式化为可注入 Prompt 的上下文字符串
 	FormatRAGContext = memory.FormatRAGContext
+)
+
+// ===== 记忆存储工厂配置 =====
+
+// BackendType 是记忆存储后端类型（sqlite / memory）
+type BackendType = memory.BackendType
+
+// StoreConfig 是记忆存储工厂配置，指定后端类型和路径
+type StoreConfig = memory.Config
+
+// InMemoryStore 是纯内存记忆存储实现，适用于测试和临时场景
+type InMemoryStore = memory.InMemoryStore
+
+const (
+	// BackendSQLite 表示 SQLite 持久化后端
+	BackendSQLite = memory.BackendSQLite
+	// BackendMemory 表示纯内存后端
+	BackendMemory = memory.BackendMemory
 )
 
 // ===== RAG 端到端生成 =====

@@ -41,7 +41,7 @@ func main() {
 	}
 	fmt.Printf("已加载 %d 个知识库文档\n", len(docs))
 
-	// 构造 RAG 配置
+	// 构造 RAG 的配置
 	ragConfig := ap.RAGConfig{
 		Provider: newSimpleRAG(docs),
 		Mode:     ap.RAGModeAuto, // 每一轮都检索
@@ -49,12 +49,13 @@ func main() {
 		MinScore: 0.3,
 	}
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "{{.ProjectName}}",
-		SystemPrompt: "你是一个基于知识库回答问题的助手",
-		Model:        provider,
-		MaxTurns:     10,
-	}).WithRAG(ragConfig)
+	agent, err := ap.NewAgent("{{.ProjectName}}", "你是一个基于知识库回答问题的助手", provider,
+		ap.WithMaxTurns(10),
+		ap.WithRAG(ragConfig),
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	// 用户提问
 	question := "知识库里有什么内容?"

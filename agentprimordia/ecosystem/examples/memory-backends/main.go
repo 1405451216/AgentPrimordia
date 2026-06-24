@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/memory"
 	ap "agentprimordia/pkg"
 )
 
@@ -26,12 +25,12 @@ func demonstrateInMemoryBackend() {
 	fmt.Println("🧠 InMemory 后端演示")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	store := memory.NewInMemoryStore()
+	store := ap.NewInMemoryStore()
 	defer store.Close()
 
 	ctx := context.Background()
 
-	episode1 := &memory.Episode{
+	episode1 := &ap.Episode{
 		ID:        "mem-001",
 		SessionID: "session-test",
 		Role:      "user",
@@ -62,7 +61,7 @@ func demonstrateSQLiteBackend() {
 	fmt.Println("-" + string(make([]byte, 40)))
 
 	tmpDir := "./temp_memory_test"
-	store, err := memory.NewSQLiteStore(tmpDir + "/test.db")
+	store, err := ap.NewSQLiteStore(tmpDir + "/test.db")
 	if err != nil {
 		log.Printf("❌ 创建 SQLite 后端失败: %v", err)
 		return
@@ -72,7 +71,7 @@ func demonstrateSQLiteBackend() {
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		episode := &memory.Episode{
+		episode := &ap.Episode{
 			ID:        fmt.Sprintf("sqlite-%03d", i+1),
 			SessionID: fmt.Sprintf("session-%d", i%2+1),
 			Role:      "user",
@@ -93,7 +92,7 @@ func demonstrateSQLiteBackend() {
 	fmt.Printf("      总条目数: %d\n", stats.TotalEpisodes)
 	fmt.Printf("      会话数: %d\n", stats.TotalSessions)
 
-	results, _ := store.Search(ctx, "测试", &memory.SearchOptions{Limit: 3})
+	results, _ := store.Search(ctx, "测试", &ap.SearchOptions{Limit: 3})
 	fmt.Printf("   🔍 搜索 '测试' 找到 %d 条结果\n", len(results))
 
 	timeline, _ := store.GetMemoryTimeline(ctx, 7)
@@ -107,28 +106,28 @@ func demonstrateFactoryPattern() {
 
 	configs := []struct {
 		name     string
-		cfg      memory.Config
+		cfg      ap.StoreConfig
 		expected string
 	}{
 		{
 			name: "SQLite 后端",
-			cfg: memory.Config{
-				Type: memory.BackendSQLite,
+			cfg: ap.StoreConfig{
+				Type: ap.BackendSQLite,
 				Path: "./factory_test.db",
 			},
 			expected: "*memory.SQLiteStore",
 		},
 		{
 			name: "InMemory 后端",
-			cfg: memory.Config{
-				Type: memory.BackendMemory,
+			cfg: ap.StoreConfig{
+				Type: ap.BackendMemory,
 			},
 			expected: "*memory.InMemoryStore",
 		},
 	}
 
 	for _, tc := range configs {
-		mem, err := memory.NewMemory(tc.cfg)
+		mem, err := ap.NewMemory(tc.cfg)
 		if err != nil {
 			log.Printf("❌ 创建 %s 失败: %v", tc.name, err)
 			continue
@@ -157,8 +156,8 @@ func demonstrateAgentWithMemory() {
 	fmt.Println("🤖 Agent 集成 Memory 示例")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	memStore, _ := memory.NewMemory(memory.Config{
-		Type: memory.BackendMemory,
+	memStore, _ := ap.NewMemory(ap.StoreConfig{
+		Type: ap.BackendMemory,
 	})
 	defer memStore.Close()
 
@@ -191,7 +190,7 @@ func demonstrateAgentWithMemory() {
 	fmt.Println()
 }
 
-func preloadMemories(store memory.Memory) {
+func preloadMemories(store ap.Memory) {
 	ctx := context.Background()
 
 	memories := []struct {
@@ -205,7 +204,7 @@ func preloadMemories(store memory.Memory) {
 	}
 
 	for i, mem := range memories {
-		ep := &memory.Episode{
+		ep := &ap.Episode{
 			ID:        fmt.Sprintf("preload-%03d", i+1),
 			SessionID: "preloaded-session",
 			Role:      "assistant",

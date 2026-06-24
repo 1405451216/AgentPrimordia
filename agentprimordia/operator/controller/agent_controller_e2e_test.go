@@ -23,6 +23,11 @@ import (
 )
 
 func TestAgentControllerE2E(t *testing.T) {
+	// Skip if KUBEBUILDER_ASSETS is not set (e.g., local dev without envtest)
+	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
+		t.Skip("KUBEBUILDER_ASSETS not set; run 'setup-envtest use -p path' to set up envtest binaries")
+	}
+
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
 		t.Fatal(err)

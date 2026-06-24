@@ -62,6 +62,8 @@ type PoolConfig struct {
 	// 0 表示不自动清理（向后兼容）。生产环境建议设置（如 1000）避免长期运行内存泄漏。
 	MaxRetainedTasks int              `json:"max_retained_tasks,omitempty"`
 	DefaultAgent     ReActAgentConfig `json:"default_agent"`
+	// Task 9：动态 Agent 池（自动扩缩容）
+	AutoScaler *AutoScalerConfig `json:"auto_scaler,omitempty"`
 }
 
 type RetryPolicy struct {

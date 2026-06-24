@@ -78,12 +78,13 @@ func main() {
 	}
 
 	// 创建带插件的 Agent
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "plugin-agent",
-		SystemPrompt: "你是一个数据处理助手，可以处理 JSON、存储键值对和发送邮件。",
-		Model:        &MockLLM{},
-		MaxTurns:     5,
-	}).WithToolkit(registry)
+	agent, err := ap.NewAgent("plugin-agent", "你是一个数据处理助手，可以处理 JSON、存储键值对和发送邮件。", &MockLLM{},
+		ap.WithMaxTurns(5),
+		ap.WithToolkit(registry),
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage("处理数据并发送通知"))
 	if err != nil {

@@ -82,19 +82,19 @@ func main() {
 	})
 
 	// 创建生产级 Agent：一次性注入全部能力
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "production-agent",
-		SystemPrompt: "你是一个代码审查助手，负责检查代码质量并提出改进建议。",
-		Model:        &MockLLM{},
-		MaxTurns:     10,
-		SessionID:    "prod-session-001",
-	}).
-		WithToolkit(registry).
-		WithMemory(mem).
-		WithHooks(hooks).
-		WithEvents(&mockEventPublisher{}).
-		WithMetrics(&mockMetricsRecorder{}).
-		WithFileScope([]string{"./src", "./test"})
+	agent, err := ap.NewAgent("production-agent", "你是一个代码审查助手，负责检查代码质量并提出改进建议。", &MockLLM{},
+		ap.WithMaxTurns(10),
+		ap.WithSessionID("prod-session-001"),
+		ap.WithToolkit(registry),
+		ap.WithMemory(mem),
+		ap.WithHooks(hooks),
+		ap.WithEvents(&mockEventPublisher{}),
+		ap.WithMetrics(&mockMetricsRecorder{}),
+		ap.WithFileScope([]string{"./src", "./test"}),
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	// 运行
 	resp, err := agent.Run(context.Background(), ap.UserMessage("审查 src/main.go 的代码质量"))

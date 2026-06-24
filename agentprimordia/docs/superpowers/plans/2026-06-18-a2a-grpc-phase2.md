@@ -1,5 +1,8 @@
 # A2A gRPC/protobuf Phase 2 Implementation Plan
 
+> **状态：已完成** ✅
+> **完成日期：2026-06-20**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 基于 Phase 1 的 proto 与 `A2AService`，实现 gRPC server/client、认证拦截器、类型转换，并完成端到端测试。

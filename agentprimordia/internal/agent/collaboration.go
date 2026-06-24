@@ -1,233 +1,209 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/collaboration"
 	"context"
-	"errors"
 	"fmt"
-	"log/slog"
-	"sync"
 	"time"
 )
 
-// perf-v6 round 4 Task 2：协作模式静态错误
-var (
-	ErrDebateParticipants = errors.New("debate requires at least 2 participants")
-	ErrReviewParticipants = errors.New("review requires at least 2 participants: author + reviewer")
-)
-
-// ===== Agent 间协作模式 =====
-
 // CollaborationPattern 协作模式
-type CollaborationPattern string
-
-const (
-	CollabSequential CollaborationPattern = "sequential" // 顺序
-	CollabParallel   CollaborationPattern = "parallel"   // 并行
-	CollabDebate     CollaborationPattern = "debate"     // 辩论
-	CollabReview     CollaborationPattern = "review"     // 评审
-)
+type CollaborationPattern = collaboration.CollaborationPattern
 
 // CollaborationConfig 协作配置
-type CollaborationConfig struct {
-	Pattern      CollaborationPattern
-	Participants []string // Agent ID 列表
-	MaxRounds    int      // 最大轮次（用于辩论/评审）
-	Timeout      time.Duration
-}
+type CollaborationConfig = collaboration.CollaborationConfig
 
 // CollaborationResult 协作结果
-type CollaborationResult struct {
-	Pattern  CollaborationPattern `json:"pattern"`
-	Rounds   int                  `json:"rounds"`
-	Outputs  map[string]string    `json:"outputs"`          // agentID -> output
-	Winner   string               `json:"winner,omitempty"` // 辩论胜者
-	Duration time.Duration        `json:"duration"`
+type CollaborationResult = collaboration.CollaborationResult
+
+// 协作模式常量
+const (
+	CollabSequential = collaboration.CollabSequential
+	CollabParallel   = collaboration.CollabParallel
+	CollabDebate     = collaboration.CollabDebate
+	CollabReview     = collaboration.CollabReview
+)
+
+// 错误变量
+var (
+	ErrDebateParticipants = collaboration.ErrDebateParticipants
+	ErrReviewParticipants = collaboration.ErrReviewParticipants
+)
+
+// collabAgentAdapter 将 agent.Agent 适配为 collaboration.Agent
+type collabAgentAdapter struct {
+	a Agent
 }
 
-// Collaborator 协作管理器（使用 LocalMessageBus）
+func (w *collabAgentAdapter) Name() string {
+	return w.a.Name()
+}
+
+func (w *collabAgentAdapter) Run(ctx context.Context, msg collaboration.Message) (collaboration.Message, error) {
+	in := Message{
+		Role:     Role(msg.Role),
+		Content:  msg.Content,
+		Metadata: Metadata{},
+	}
+	if msg.Metadata != nil {
+		if ts, ok := msg.Metadata["timestamp"].(time.Time); ok {
+			in.Metadata.Timestamp = ts
+		}
+		if extra, ok := msg.Metadata["extra"].(map[string]string); ok {
+			in.Metadata.Extra = extra
+		}
+	}
+	resp, err := w.a.Run(ctx, in)
+	if err != nil {
+		return collaboration.Message{}, err
+	}
+	return collaboration.Message{
+		Role:    string(RoleAssistant),
+		Content: resp.Content,
+		Metadata: map[string]interface{}{
+			"timestamp": resp.Metrics.Duration,
+		},
+	}, nil
+}
+
+// Collaborator 协作管理器
 type Collaborator struct {
-	bus    *LocalMessageBus
-	logger *slog.Logger
+	collab *collaboration.Collaborator
 }
 
 // NewCollaborator 创建协作管理器
 func NewCollaborator(bus *LocalMessageBus) *Collaborator {
 	return &Collaborator{
-		bus:    bus,
-		logger: slog.Default(),
+		collab: collaboration.NewCollaborator(bus),
 	}
 }
 
 // Run 运行协作
 func (c *Collaborator) Run(ctx context.Context, config CollaborationConfig, input string) (*CollaborationResult, error) {
-	start := time.Now()
-
-	switch config.Pattern {
-	case CollabSequential:
-		return c.runSequential(ctx, config, input, start)
-	case CollabParallel:
-		return c.runParallel(ctx, config, input, start)
-	case CollabDebate:
-		return c.runDebate(ctx, config, input, start)
-	case CollabReview:
-		return c.runReview(ctx, config, input, start)
-	default:
-		return nil, fmt.Errorf("unknown collaboration pattern: %s", config.Pattern)
-	}
+	return c.collab.Run(ctx, config, input)
 }
 
-func (c *Collaborator) runSequential(ctx context.Context, config CollaborationConfig, input string, start time.Time) (*CollaborationResult, error) {
-	result := &CollaborationResult{
-		Pattern: CollabSequential,
-		Outputs: make(map[string]string),
-	}
+// SpeakerSelector 发言者选择函数类型
+type SpeakerSelector = collaboration.SpeakerSelector
 
-	currentInput := input
-	for i, agentID := range config.Participants {
-		msg := &BusMessage{
-			ID:      fmt.Sprintf("collab-seq-%d", i),
-			From:    "collaborator",
-			To:      agentID,
-			Type:    BusMsgTaskRequest,
-			Content: currentInput,
-		}
-		resp, err := c.bus.Send(ctx, msg)
-		if err != nil {
-			return nil, fmt.Errorf("sequential step %d failed: %w", i, err)
-		}
-		result.Outputs[agentID] = resp.Content
-		currentInput = resp.Content
-		result.Rounds = i + 1
-	}
-
-	result.Duration = time.Since(start)
-	return result, nil
+// GroupChatConfig GroupChat 配置
+type GroupChatConfig struct {
+	Agents        []Agent
+	MaxRounds     int
+	SelectSpeaker SpeakerSelector
+	Bus           MessageBus
 }
 
-func (c *Collaborator) runParallel(ctx context.Context, config CollaborationConfig, input string, start time.Time) (*CollaborationResult, error) {
-	result := &CollaborationResult{
-		Pattern: CollabParallel,
-		Outputs: make(map[string]string),
-	}
-
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	var firstErr error
-
-	for _, agentID := range config.Participants {
-		wg.Add(1)
-		go func(id string) {
-			defer wg.Done()
-			msg := &BusMessage{
-				ID:      fmt.Sprintf("collab-par-%s", id),
-				From:    "collaborator",
-				To:      id,
-				Type:    BusMsgTaskRequest,
-				Content: input,
-			}
-			resp, err := c.bus.Send(ctx, msg)
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil && firstErr == nil {
-				firstErr = err
-			} else if err == nil {
-				result.Outputs[id] = resp.Content
-			}
-		}(agentID)
-	}
-
-	wg.Wait()
-	result.Duration = time.Since(start)
-	result.Rounds = 1
-	if firstErr != nil {
-		return result, firstErr
-	}
-	return result, nil
+// GroupChat 多 Agent 对话管理器
+type GroupChat struct {
+	gc *collaboration.GroupChat
 }
 
-func (c *Collaborator) runDebate(ctx context.Context, config CollaborationConfig, input string, start time.Time) (*CollaborationResult, error) {
-	if len(config.Participants) < 2 {
-		return nil, ErrDebateParticipants // perf-v6 round 4 Task 2
-	}
-	if config.MaxRounds <= 0 {
-		config.MaxRounds = 3
+// GroupChatResult GroupChat 运行结果
+type GroupChatResult = collaboration.GroupChatResult
+
+// NewGroupChat 创建 GroupChat 实例
+func NewGroupChat(cfg GroupChatConfig) (*GroupChat, error) {
+	// 适配 Agent 列表
+	agents := make([]collaboration.Agent, len(cfg.Agents))
+	for i, a := range cfg.Agents {
+		agents[i] = &collabAgentAdapter{a: a}
 	}
 
-	result := &CollaborationResult{
-		Pattern: CollabDebate,
-		Outputs: make(map[string]string),
+	// 适配 SpeakerSelector
+	var selector collaboration.SpeakerSelector
+	if cfg.SelectSpeaker != nil {
+		selector = cfg.SelectSpeaker
 	}
 
-	currentInput := input
-	for round := 0; round < config.MaxRounds; round++ {
-		for _, agentID := range config.Participants {
-			msg := &BusMessage{
-				ID:      fmt.Sprintf("collab-debate-%d-%s", round, agentID),
-				From:    "collaborator",
-				To:      agentID,
-				Type:    BusMsgTaskRequest,
-				Content: currentInput,
-			}
-			resp, err := c.bus.Send(ctx, msg)
-			if err != nil {
-				result.Duration = time.Since(start)
-				return result, fmt.Errorf("debate round %d failed: %w", round, err)
-			}
-			result.Outputs[agentID] = resp.Content
-			currentInput = resp.Content
-		}
-		result.Rounds = round + 1
-	}
-
-	result.Winner = config.Participants[len(config.Participants)-1]
-	result.Duration = time.Since(start)
-	return result, nil
-}
-
-func (c *Collaborator) runReview(ctx context.Context, config CollaborationConfig, input string, start time.Time) (*CollaborationResult, error) {
-	if len(config.Participants) < 2 {
-		return nil, ErrReviewParticipants // perf-v6 round 4 Task 2
-	}
-
-	result := &CollaborationResult{
-		Pattern: CollabReview,
-		Outputs: make(map[string]string),
-	}
-
-	authorID := config.Participants[0]
-	msg := &BusMessage{
-		ID:      "collab-review-author",
-		From:    "collaborator",
-		To:      authorID,
-		Type:    BusMsgTaskRequest,
-		Content: input,
-	}
-	resp, err := c.bus.Send(ctx, msg)
+	gc, err := collaboration.NewGroupChat(collaboration.GroupChatConfig{
+		Agents:        agents,
+		MaxRounds:     cfg.MaxRounds,
+		SelectSpeaker: selector,
+		Bus:           cfg.Bus,
+	})
 	if err != nil {
-		return result, err
+		return nil, err
 	}
-	result.Outputs[authorID] = resp.Content
-	currentInput := resp.Content
-
-	for i := 1; i < len(config.Participants); i++ {
-		reviewerID := config.Participants[i]
-		reviewMsg := &BusMessage{
-			ID:      fmt.Sprintf("collab-review-%d", i),
-			From:    "collaborator",
-			To:      reviewerID,
-			Type:    BusMsgTaskRequest,
-			Content: fmt.Sprintf("Review the following:\n\n%s", currentInput),
-		}
-		reviewResp, err := c.bus.Send(ctx, reviewMsg)
-		if err != nil {
-			c.logger.Warn("评审失败", "reviewer", reviewerID, "error", err)
-			continue
-		}
-		result.Outputs[reviewerID] = reviewResp.Content
-		currentInput = reviewResp.Content
-		result.Rounds = i
-	}
-
-	result.Duration = time.Since(start)
-	return result, nil
+	return &GroupChat{gc: gc}, nil
 }
+
+// Run 运行多 Agent 对话
+func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChatResult, error) {
+	msg := collaboration.Message{
+		Role:    string(initialMessage.Role),
+		Content: initialMessage.Content,
+	}
+	return g.gc.Run(ctx, msg)
+}
+
+// RunConsensus 运行共识决策
+func (g *GroupChat) RunConsensus(ctx context.Context, question Message) (*ConsensusResult, error) {
+	msg := collaboration.Message{
+		Role:    string(question.Role),
+		Content: question.Content,
+	}
+	return g.gc.RunConsensus(ctx, msg)
+}
+
+// collabAgentReverseAdapter 将 collaboration.Agent 适配为 agent.Agent
+type collabAgentReverseAdapter struct {
+	a collaboration.Agent
+}
+
+func (w *collabAgentReverseAdapter) Name() string {
+	return w.a.Name()
+}
+
+func (w *collabAgentReverseAdapter) Run(ctx context.Context, msg Message) (*Response, error) {
+	collabMsg := collaboration.Message{
+		Role:    string(msg.Role),
+		Content: msg.Content,
+	}
+	resp, err := w.a.Run(ctx, collabMsg)
+	if err != nil {
+		return nil, err
+	}
+	return &Response{
+		Content: resp.Content,
+	}, nil
+}
+
+func (w *collabAgentReverseAdapter) StreamRun(ctx context.Context, msg Message) (<-chan StreamEvent, error) {
+	return nil, fmt.Errorf("StreamRun not supported by collaboration agent adapter")
+}
+
+func (w *collabAgentReverseAdapter) Stop() {}
+
+func (w *collabAgentReverseAdapter) Stats() AgentStats {
+	return AgentStats{}
+}
+
+// RoundRobinSelector 轮询选择器
+func RoundRobinSelector() SpeakerSelector {
+	return collaboration.RoundRobinSelector()
+}
+
+// RandomSelector 随机选择器
+func RandomSelector() SpeakerSelector {
+	return collaboration.RandomSelector()
+}
+
+// LastSpeakerSelector 选择上一位发言者的回复者
+func LastSpeakerSelector() SpeakerSelector {
+	return collaboration.LastSpeakerSelector()
+}
+
+// AgentRole Agent 在 GroupChat 中的角色定义
+type AgentRole = collaboration.AgentRole
+
+// RoleBasedConfig 基于角色的配置
+type RoleBasedConfig = collaboration.RoleBasedConfig
+
+// RoleBasedSelector 基于角色/关键词的发言者选择器
+func RoleBasedSelector(cfg RoleBasedConfig) SpeakerSelector {
+	return collaboration.RoleBasedSelector(cfg)
+}
+
+// ConsensusResult 共识结果
+type ConsensusResult = collaboration.ConsensusResult

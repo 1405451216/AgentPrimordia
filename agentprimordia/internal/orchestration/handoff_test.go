@@ -197,12 +197,10 @@ func TestHandoffManager_Integration(t *testing.T) {
 		RequireAck:       true,
 	})
 
-	targetAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "TargetAgent",
-		SystemPrompt: "接收交接并继续工作",
-		Model:        demo.NewDemoLLM("已接收交接，继续处理"),
-		MaxTurns:     1,
-	})
+	targetAgent, err := agent.NewAgent("TargetAgent", "接收交接并继续工作", demo.NewDemoLLM("已接收交接，继续处理"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 	manager.RegisterAgent("TargetAgent", targetAgent)
 
 	// 添加规则：高优先级必须接受
@@ -371,11 +369,10 @@ func BenchmarkHandoffProtocol_Initiate(b *testing.B) {
 func BenchmarkHandoffManager_Execute(b *testing.B) {
 	manager := NewHandoffManager(HandoffConfig{EnableValidation: false})
 
-	targetAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "BenchmarkTarget",
-		Model:    demo.NewDemoLLM("done"),
-		MaxTurns: 1,
-	})
+	targetAgent, err := agent.NewAgent("BenchmarkTarget", "", demo.NewDemoLLM("done"), agent.WithMaxTurns(1))
+	if err != nil {
+		b.Fatal(err)
+	}
 	manager.RegisterAgent("BenchmarkTarget", targetAgent)
 
 	ctx := CreateStandardContext("bench", nil, 5)

@@ -47,11 +47,11 @@ func TestReActAgent_RAG_AutoMode(t *testing.T) {
 
 	registry := tools.NewRegistry()
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "rag-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry).WithRAG(RAGConfig{
+	agent, err := NewAgent("rag-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(registry).WithRAG(RAGConfig{
 		Provider: ragProvider,
 		Mode:     RAGModeAuto,
 		TopK:     5,
@@ -118,11 +118,11 @@ func TestReActAgent_RAG_FirstMode(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockEchoTool{name: "echo_tool"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "rag-first-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry).WithRAG(RAGConfig{
+	agent, err := NewAgent("rag-first-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(registry).WithRAG(RAGConfig{
 		Provider: ragProvider,
 		Mode:     RAGModeFirst,
 		TopK:     3,
@@ -151,11 +151,11 @@ func TestReActAgent_RAG_OnDemandMode(t *testing.T) {
 
 	mockLLM := llm.NewMockLLM(t).WithResponse("No auto RAG")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "rag-ondemand-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+	agent, err := NewAgent("rag-ondemand-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
 		Provider: ragProvider,
 		Mode:     RAGModeOnDemand,
 	})
@@ -177,11 +177,11 @@ func TestReActAgent_RAG_NoProvider(t *testing.T) {
 	// 没有配置 RAG Provider 时，不应该报错
 	mockLLM := llm.NewMockLLM(t).WithResponse("Normal response")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "no-rag-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("no-rag-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(tools.NewRegistry())
 
 	resp, err := agent.Run(context.Background(), UserMessage("Hello"))
 	if err != nil {
@@ -200,11 +200,11 @@ func TestReActAgent_RAG_ErrorHandling(t *testing.T) {
 
 	mockLLM := llm.NewMockLLM(t).WithResponse("Fallback without RAG")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "rag-error-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+	agent, err := NewAgent("rag-error-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
 		Provider: ragProvider,
 		Mode:     RAGModeAuto,
 	})
@@ -229,11 +229,11 @@ func TestReActAgent_RAG_MinScore(t *testing.T) {
 
 	mockLLM := llm.NewMockLLM(t).WithResponse("Filtered response")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "rag-minscore-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+	agent, err := NewAgent("rag-minscore-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
 		Provider: ragProvider,
 		Mode:     RAGModeAuto,
 		MinScore: 0.5,
@@ -281,16 +281,16 @@ func TestReActAgent_RAG_HooksFired(t *testing.T) {
 		return nil
 	})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "rag-hooks-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
+	agent, err := NewAgent("rag-hooks-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
+	}
+	agent.WithToolkit(tools.NewRegistry()).WithRAG(RAGConfig{
 		Provider: ragProvider,
 		Mode:     RAGModeAuto,
 	}).WithHooks(hooks)
 
-	_, err := agent.Run(context.Background(), UserMessage("Test RAG hooks"))
+	_, err = agent.Run(context.Background(), UserMessage("Test RAG hooks"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

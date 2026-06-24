@@ -133,16 +133,6 @@ const (
 	RoleTool      Role = "tool"
 )
 
-// ContentPart 消息内容片段（多模态）
-type ContentPart struct {
-	Type   string `json:"type"`
-	Text   string `json:"text,omitempty"`
-	URL    string `json:"url,omitempty"`
-	Data   string `json:"data,omitempty"`
-	MIME   string `json:"mime,omitempty"`
-	Detail string `json:"detail,omitempty"`
-}
-
 // Message represents a single message in the conversation
 type Message struct {
 	Role         Role          `json:"role"`
@@ -282,19 +272,6 @@ type Metrics struct {
 	LLMLatency  time.Duration `json:"llm_latency_ms"`
 	ToolLatency time.Duration `json:"tool_latency_ms"`
 }
-
-// AgentStatus represents the current state of an agent
-type AgentStatus string
-
-const (
-	StatusIdle            AgentStatus = "idle"
-	StatusRunning         AgentStatus = "running"
-	StatusPaused          AgentStatus = "paused"
-	StatusWaitingForInput AgentStatus = "waiting_for_input"
-	StatusCompleted       AgentStatus = "completed"
-	StatusFailed          AgentStatus = "failed"
-	StatusCancelled       AgentStatus = "cancelled"
-)
 
 // AgentStats provides runtime statistics about an agent
 type AgentStats struct {

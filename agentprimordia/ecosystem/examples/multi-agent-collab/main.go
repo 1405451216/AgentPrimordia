@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/pool"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -23,35 +22,35 @@ func main() {
 	fmt.Println()
 
 	// 创建不同角色的 Agent
-	researcher := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "研究员",
-		SystemPrompt: "你是需求分析师，负责收集和分析用户需求。",
-		Model:        demo.NewDemoLLM("需求分析完成：用户需要一个登录功能。"),
-		MaxTurns:     3,
-	})
+	researcher, err := ap.NewAgent("研究员", "你是需求分析师，负责收集和分析用户需求。", demo.NewDemoLLM("需求分析完成：用户需要一个登录功能。"),
+		ap.WithMaxTurns(3),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建研究员失败: %v", err)
+	}
 
-	coder := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "开发者",
-		SystemPrompt: "你是后端开发工程师，负责实现API接口。",
-		Model:        demo.NewDemoLLM("代码开发完成：已实现 /api/login 接口。"),
-		MaxTurns:     3,
-	})
+	coder, err := ap.NewAgent("开发者", "你是后端开发工程师，负责实现API接口。", demo.NewDemoLLM("代码开发完成：已实现 /api/login 接口。"),
+		ap.WithMaxTurns(3),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建开发者失败: %v", err)
+	}
 
-	tester := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "测试员",
-		SystemPrompt: "你是QA工程师，负责编写测试用例。",
-		Model:        demo.NewDemoLLM("测试完成：所有用例通过，覆盖率达95%。"),
-		MaxTurns:     3,
-	})
+	tester, err := ap.NewAgent("测试员", "你是QA工程师，负责编写测试用例。", demo.NewDemoLLM("测试完成：所有用例通过，覆盖率达95%。"),
+		ap.WithMaxTurns(3),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建测试员失败: %v", err)
+	}
 
 	// ===== 模式1: Pipeline 流水线 =====
 	fmt.Println("🔄 模式1: Pipeline 流水线（顺序协作）")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	pipeline := agent.NewPipeline(
-		agent.PipelineStep{Name: "需求分析", Agent: researcher},
-		agent.PipelineStep{Name: "编码实现", Agent: coder},
-		agent.PipelineStep{Name: "质量测试", Agent: tester},
+	pipeline := ap.NewPipeline(
+		ap.PipelineStep{Name: "需求分析", Agent: researcher},
+		ap.PipelineStep{Name: "编码实现", Agent: coder},
+		ap.PipelineStep{Name: "质量测试", Agent: tester},
 	)
 
 	pipelineResult, err := pipeline.Run(ctx, "开发一个用户登录功能")
@@ -76,7 +75,7 @@ func main() {
 	fmt.Println("🚀 模式2: Pool 并发调度（并行协作）")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	p := pool.NewPool(pool.PoolConfig{
+	p := ap.NewPool(ap.PoolConfig{
 		MaxConcurrency: 3,
 		Timeout:        30 * time.Second,
 	})
@@ -89,7 +88,7 @@ func main() {
 	)
 	p.SetModel(demoLLM)
 
-	tasks := []pool.TaskConfig{
+	tasks := []ap.TaskConfig{
 		{ID: "t1", Title: "分析需求A", Prompt: "分析登录功能需求"},
 		{ID: "t2", Title: "开发模块B", Prompt: "开发认证模块"},
 		{ID: "t3", Title: "测试接口C", Prompt: "测试API接口"},
@@ -119,8 +118,8 @@ func main() {
 	fmt.Println("🎯 模式3: Handoff 动态交接（智能路由）")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	handoff := agent.NewHandoff(agent.HandoffConfig{
-		Agents: []agent.Agent{researcher, coder, tester},
+	handoff := ap.NewHandoff(ap.HandoffConfig{
+		Agents: []ap.Agent{researcher, coder, tester},
 		Router: func(ctx context.Context, input string) int {
 			if containsAny(input, "bug", "错误", "问题") {
 				return 2 // 路由到测试员
@@ -148,8 +147,8 @@ func main() {
 	fmt.Println("💬 模式4: GroupChat 群组讨论（团队会议）")
 	fmt.Println("-" + string(make([]byte, 40)))
 
-	group, err := agent.NewGroupChat(agent.GroupChatConfig{
-		Agents:    []agent.Agent{researcher, coder, tester},
+	group, err := ap.NewGroupChat(ap.GroupChatConfig{
+		Agents:    []ap.Agent{researcher, coder, tester},
 		MaxRounds: 3,
 	})
 	if err != nil {
@@ -157,7 +156,7 @@ func main() {
 	}
 
 	groupStart := time.Now()
-	groupResult, err := group.Run(ctx, agent.UserMessage("讨论如何优化登录性能"))
+	groupResult, err := group.Run(ctx, ap.UserMessage("讨论如何优化登录性能"))
 	if err != nil {
 		log.Fatalf("GroupChat 执行失败: %v", err)
 	}

@@ -87,13 +87,13 @@ func (calculatorTool) Execute(_ context.Context, args json.RawMessage) (*tools.R
 func TestIntegration_ReActAgent_SimpleCompletion(t *testing.T) {
 	provider := newTestProvider(t)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "test-simple",
-		Model:        provider,
-		SystemPrompt: "You are a helpful assistant. Follow instructions exactly.",
-		MaxTurns:     3,
-		Temperature:  0,
-	})
+	agent, err := NewAgent("test-simple", "You are a helpful assistant. Follow instructions exactly.", provider,
+		WithMaxTurns(3),
+		WithTemperature(0),
+	)
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -125,13 +125,14 @@ func TestIntegration_ReActAgent_ToolCall(t *testing.T) {
 		t.Fatalf("Register() error = %v", err)
 	}
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "test-tool",
-		Model:        provider,
-		SystemPrompt: "You are a helpful assistant. Use the calculator tool when asked to perform arithmetic.",
-		MaxTurns:     5,
-		Temperature:  0,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("test-tool", "You are a helpful assistant. Use the calculator tool when asked to perform arithmetic.", provider,
+		WithMaxTurns(5),
+		WithTemperature(0),
+		WithToolkit(registry),
+	)
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -176,13 +177,13 @@ func TestIntegration_ResilientProvider(t *testing.T) {
 	}
 	resilient.AddFallback(mockFallback)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "test-resilient",
-		Model:        resilient,
-		SystemPrompt: "You are a helpful assistant. Follow instructions exactly.",
-		MaxTurns:     3,
-		Temperature:  0,
-	})
+	agent, err := NewAgent("test-resilient", "You are a helpful assistant. Follow instructions exactly.", resilient,
+		WithMaxTurns(3),
+		WithTemperature(0),
+	)
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -220,13 +221,13 @@ func TestIntegration_ResilientProvider_FallbackUsed(t *testing.T) {
 	}
 	resilient.AddFallback(fallback)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "test-resilient-fallback",
-		Model:        resilient,
-		SystemPrompt: "You are a helpful assistant.",
-		MaxTurns:     3,
-		Temperature:  0,
-	})
+	agent, err := NewAgent("test-resilient-fallback", "You are a helpful assistant.", resilient,
+		WithMaxTurns(3),
+		WithTemperature(0),
+	)
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -250,13 +251,13 @@ func TestIntegration_ResilientProvider_FallbackUsed(t *testing.T) {
 func TestIntegration_ReActAgent_StreamRun(t *testing.T) {
 	provider := newTestProvider(t)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "test-stream",
-		Model:        provider,
-		SystemPrompt: "You are a helpful assistant. Follow instructions exactly.",
-		MaxTurns:     3,
-		Temperature:  0,
-	})
+	agent, err := NewAgent("test-stream", "You are a helpful assistant. Follow instructions exactly.", provider,
+		WithMaxTurns(3),
+		WithTemperature(0),
+	)
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

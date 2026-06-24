@@ -94,11 +94,11 @@ func TestReActAgent_StreamRun_BasicCompletion(t *testing.T) {
 		finalResp: "Hello world!",
 	}
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-basic",
-		Model:    mock,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("stream-basic", "", mock, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(tools.NewRegistry())
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("Hi"))
 	if err != nil {
@@ -151,11 +151,11 @@ func TestReActAgent_StreamRun_WithToolCall(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockTimeTool{name: "get_time"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-tool",
-		Model:    mock,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("stream-tool", "", mock, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(registry)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("What time?"))
 	if err != nil {
@@ -193,11 +193,11 @@ func TestReActAgent_StreamRun_MaxTurnsExceeded(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockTool{name: "loop_tool", response: "more data"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-max-turns",
-		Model:    loopMock,
-		MaxTurns: 3,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("stream-max-turns", "", loopMock, WithMaxTurns(3))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(registry)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("Loop"))
 	if err != nil {
@@ -222,11 +222,11 @@ func TestReActAgent_StreamRun_ContextCancelled(t *testing.T) {
 		finalResp: "slow response",
 	}
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-cancel",
-		Model:    slowMock,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("stream-cancel", "", slowMock, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(tools.NewRegistry())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -250,11 +250,11 @@ func TestReActAgent_StreamRun_StreamErrorFallback(t *testing.T) {
 		completeErr: nil,
 	}
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-fallback",
-		Model:    mock,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("stream-fallback", "", mock, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(tools.NewRegistry())
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("test"))
 	if err != nil {
@@ -286,11 +286,11 @@ func TestReActAgent_StreamRun_WithMetrics(t *testing.T) {
 
 	recorder := &mockMetricsRecorder{}
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-metrics",
-		Model:    mock,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithMetrics(recorder)
+	agent, err := NewAgent("stream-metrics", "", mock, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(tools.NewRegistry()).WithMetrics(recorder)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("test"))
 	if err != nil {
@@ -319,11 +319,11 @@ func TestReActAgent_StreamRun_WithEventPublisher(t *testing.T) {
 
 	pub := &mockEventPublisher{}
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stream-events",
-		Model:    mock,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithEvents(pub)
+	agent, err := NewAgent("stream-events", "", mock, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("NewAgent() error = %v", err)
+	}
+	agent = agent.WithToolkit(tools.NewRegistry()).WithEvents(pub)
 
 	ch, err := agent.StreamRun(context.Background(), UserMessage("test"))
 	if err != nil {

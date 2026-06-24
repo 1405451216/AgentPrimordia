@@ -15,12 +15,10 @@ func BenchmarkToolCalling(b *testing.B) {
 	fs, _ := ap.NewFileSystem(".")
 	registry.Register(fs)
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "BenchAgent",
-		SystemPrompt: "你是一个助手，使用工具完成任务。",
-		Model:        &benchMockLLM{},
-		MaxTurns:     5,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := ap.NewAgent("BenchAgent", "你是一个助手，使用工具完成任务。", &benchMockLLM{}, ap.WithMaxTurns(5), ap.WithToolkit(registry))
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -30,12 +28,10 @@ func BenchmarkToolCalling(b *testing.B) {
 
 // BenchmarkAgentRun 基准：单次 Agent 运行吞吐量
 func BenchmarkAgentRun(b *testing.B) {
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "ThroughputAgent",
-		SystemPrompt: "你是助手",
-		Model:        &benchMockLLM{},
-		MaxTurns:     3,
-	})
+	agent, err := ap.NewAgent("ThroughputAgent", "你是助手", &benchMockLLM{}, ap.WithMaxTurns(3))
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

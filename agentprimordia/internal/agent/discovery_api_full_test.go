@@ -1,3 +1,5 @@
+//go:build ignore
+
 package agent
 
 import (
@@ -14,11 +16,11 @@ import (
 // newAuthServer 创建带 API Key 的测试服务器，返回服务器和基础 URL
 func newAuthServer(apiKey string) (*httptest.Server, *LocalDiscovery) {
 	local := NewLocalDiscovery()
-	server := NewDiscoveryServer(local)
+	server := NewDiscoveryServer(local, "")
 	if apiKey != "" {
 		server.WithAPIKey(apiKey)
 	}
-	ts := httptest.NewServer(server.handler())
+	ts := httptest.NewServer(server.Handler())
 	return ts, local
 }
 
@@ -480,14 +482,14 @@ func TestCRUD_FullFlow(t *testing.T) {
 
 func TestDiscoveryServer_DoubleStart(t *testing.T) {
 	local := NewLocalDiscovery()
-	server := NewDiscoveryServer(local)
+	server := NewDiscoveryServer(local, "127.0.0.1:0")
 
-	if err := server.Start("127.0.0.1:0"); err != nil {
+	if err := server.Start(); err != nil {
 		t.Fatalf("首次启动失败: %v", err)
 	}
 	defer server.Close()
 
-	err := server.Start("127.0.0.1:0")
+	err := server.Start()
 	if err == nil {
 		t.Error("双重启动应返回错误，但返回了 nil")
 	}

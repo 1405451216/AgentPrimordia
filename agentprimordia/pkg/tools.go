@@ -113,6 +113,42 @@ type PluginLoader = tools.PluginLoader
 // PluginInfo 描述已加载插件的信息
 type PluginInfo = tools.PluginInfo
 
+// ===== 数据处理工具 =====
+// Stability: Experimental — 数据处理工具（JSON / CSV / Git / SQLite），API 可能随使用场景调整。
+
+// JSONTool 是 JSON 数据处理工具，支持查询、提取、转换等操作
+type JSONTool = tools.JSONTool
+
+// CSVTool 是 CSV 数据处理工具，支持解析、查询、转换等操作
+type CSVTool = tools.CSVTool
+
+// GitTool 是 Git 版本控制工具，支持 status、log、diff 等常用操作
+type GitTool = tools.GitTool
+
+// SQLiteTool 是 SQLite 数据库工具，支持 query 和 execute 操作
+type SQLiteTool = tools.SQLiteTool
+
+// CalculatorTool 是计算器工具，支持加减乘除等基本运算
+type CalculatorTool = builtin.CalculatorTool
+
+// DateTimeTool 是日期时间工具，支持获取当前时间和格式化
+type DateTimeTool = builtin.DateTimeTool
+
+var (
+	// NewJSONTool 创建 JSON 数据处理工具
+	NewJSONTool = tools.NewJSONTool
+	// NewCSVTool 创建 CSV 数据处理工具
+	NewCSVTool = tools.NewCSVTool
+	// NewGitTool 创建 Git 版本控制工具
+	NewGitTool = tools.NewGitTool
+	// NewSQLiteTool 创建 SQLite 数据库工具
+	NewSQLiteTool = tools.NewSQLiteTool
+	// NewCalculator 创建计算器工具
+	NewCalculator = builtin.NewCalculator
+	// NewDateTime 创建日期时间工具
+	NewDateTime = builtin.NewDateTime
+)
+
 // ===== v3.0.0 前沿能力：内置工具扩展 =====
 // Stability: Experimental — v3.0.0 新增，API 可能随使用场景演进而调整。
 

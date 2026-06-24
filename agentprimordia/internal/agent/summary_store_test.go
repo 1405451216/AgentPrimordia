@@ -56,17 +56,16 @@ func TestReActAgent_AsyncSummaryStored(t *testing.T) {
 	// 用一个返回固定摘要的 Summarizer（通过 SummaryExtractor 接口）
 	mockLLM := llm.NewMockLLM(t).WithResponse("done")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "summary-store-agent",
-		Model:    mockLLM,
-		MaxTurns: 1,
-	})
+	agent, err := NewAgent("summary-store-agent", "", mockLLM, WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// 注入 Summarizer：通过 CapabilityAgent 的 WithSummarizer
-	cap := agent.AsCapability().WithMemory(store)
+	cap := agent.WithMemory(store)
 	cap.WithSummarizer(&stubSummarizer{summary: "这是摘要", topics: "topic1,topic2"})
 
-	_, err := agent.Run(context.Background(), UserMessage("some content to summarize"))
+	_, err = agent.Run(context.Background(), UserMessage("some content to summarize"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

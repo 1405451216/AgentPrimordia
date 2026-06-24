@@ -48,7 +48,7 @@ sudo yum install golang
 
 ```bash
 go version
-# 应该显示: go version go1.22.x linux/amd64 (或类似)
+# 应该显示: go version go1.26.x linux/amd64 (或类似)
 ```
 
 ### 安装 AgentPrimordia CLI

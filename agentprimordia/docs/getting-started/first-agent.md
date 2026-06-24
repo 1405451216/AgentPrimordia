@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-- Go 1.22+ 已安装
+- Go 1.26+ 已安装
 - 已阅读 [安装指南](installation.md) 和 [5分钟入门](quickstart.md)
 
 ## 项目结构

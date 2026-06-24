@@ -18,19 +18,15 @@ func TestWorkflow_LinearExecution(t *testing.T) {
 		Description: "测试线性执行",
 	})
 
-	step1Agent := NewReActAgent(ReActConfig{
-		Name:         "Step1",
-		SystemPrompt: "你是步骤1，请返回'步骤1完成'",
-		Model:        demo.NewDemoLLM("步骤1完成"),
-		MaxTurns:     1,
-	})
+	step1Agent, err := NewAgent("Step1", "", demo.NewDemoLLM("步骤1完成"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	step2Agent := NewReActAgent(ReActConfig{
-		Name:         "Step2",
-		SystemPrompt: "你是步骤2，请返回'步骤2完成'",
-		Model:        demo.NewDemoLLM("步骤2完成"),
-		MaxTurns:     1,
-	})
+	step2Agent, err := NewAgent("Step2", "", demo.NewDemoLLM("步骤2完成"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "step1",
@@ -81,26 +77,20 @@ func TestWorkflow_ConditionalBranching(t *testing.T) {
 		},
 	})
 
-	checkAgent := NewReActAgent(ReActConfig{
-		Name:         "CheckCondition",
-		SystemPrompt: "检查条件",
-		Model:        demo.NewDemoLLM(`{"condition_result": true}`),
-		MaxTurns:     1,
-	})
+	checkAgent, err := NewAgent("CheckCondition", "", demo.NewDemoLLM(`{"condition_result": true}`), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	branchAAgent := NewReActAgent(ReActConfig{
-		Name:         "BranchA",
-		SystemPrompt: "分支A逻辑",
-		Model:        demo.NewDemoLLM("执行分支A逻辑"),
-		MaxTurns:     1,
-	})
+	branchAAgent, err := NewAgent("BranchA", "", demo.NewDemoLLM("执行分支A逻辑"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	branchBAgent := NewReActAgent(ReActConfig{
-		Name:         "BranchB",
-		SystemPrompt: "分支B逻辑",
-		Model:        demo.NewDemoLLM("执行分支B逻辑"),
-		MaxTurns:     1,
-	})
+	branchBAgent, err := NewAgent("BranchB", "", demo.NewDemoLLM("执行分支B逻辑"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "check",
@@ -162,12 +152,10 @@ func TestWorkflow_LoopExecution(t *testing.T) {
 		MaxIterations: 3,
 	})
 
-	loopAgent := NewReActAgent(ReActConfig{
-		Name:         "LoopTask",
-		SystemPrompt: "循环任务",
-		Model:        demo.NewDemoLLM("循环迭代 {{_iteration}} 完成"),
-		MaxTurns:     1,
-	})
+	loopAgent, err := NewAgent("LoopTask", "", demo.NewDemoLLM("循环迭代 {{_iteration}} 完成"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "loop_task",
@@ -215,26 +203,20 @@ func TestWorkflow_ParallelForkJoin(t *testing.T) {
 		Description: "测试并行分叉合并",
 	})
 
-	task1Agent := NewReActAgent(ReActConfig{
-		Name:         "ParallelTask1",
-		SystemPrompt: "并行任务1",
-		Model:        demo.NewDemoLLM("任务1结果"),
-		MaxTurns:     1,
-	})
+	task1Agent, err := NewAgent("ParallelTask1", "", demo.NewDemoLLM("任务1结果"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	task2Agent := NewReActAgent(ReActConfig{
-		Name:         "ParallelTask2",
-		SystemPrompt: "并行任务2",
-		Model:        demo.NewDemoLLM("任务2结果"),
-		MaxTurns:     1,
-	})
+	task2Agent, err := NewAgent("ParallelTask2", "", demo.NewDemoLLM("任务2结果"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	mergeAgent := NewReActAgent(ReActConfig{
-		Name:         "MergeResults",
-		SystemPrompt: "合并结果",
-		Model:        demo.NewDemoLLM("合并完成"),
-		MaxTurns:     1,
-	})
+	mergeAgent, err := NewAgent("MergeResults", "", demo.NewDemoLLM("合并完成"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:   "fork",
@@ -315,16 +297,16 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 		},
 	})
 
+	retryAgent, err := NewAgent("FailingAgent", "", failingAgent, WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	_ = wf.AddNode(&WorkflowNode{
-		ID:   "failing_step",
-		Name: "可能失败的步骤",
-		Type: TaskNode,
-		Agent: NewReActAgent(ReActConfig{
-			Name:         "FailingAgent",
-			SystemPrompt: "模拟失败后成功",
-			Model:        failingAgent,
-			MaxTurns:     1,
-		}),
+		ID:    "failing_step",
+		Name:  "可能失败的步骤",
+		Type:  TaskNode,
+		Agent: retryAgent,
 	})
 
 	_ = wf.SetStartNode("failing_step")
@@ -345,19 +327,15 @@ func TestWorkflow_ErrorHandling_Retry(t *testing.T) {
 func TestWorkflow_ErrorHandling_Fallback(t *testing.T) {
 	failingAgent := &alwaysFailAgent{}
 
-	mainAgent := NewReActAgent(ReActConfig{
-		Name:         "MainAgent",
-		SystemPrompt: "主任务（会失败）",
-		Model:        failingAgent,
-		MaxTurns:     1,
-	})
+	mainAgent, err := NewAgent("MainAgent", "", failingAgent, WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	fallbackAgent := NewReActAgent(ReActConfig{
-		Name:         "FallbackAgent",
-		SystemPrompt: "回退任务",
-		Model:        demo.NewDemoLLM("回退方案已执行"),
-		MaxTurns:     1,
-	})
+	fallbackAgent, err := NewAgent("FallbackAgent", "", demo.NewDemoLLM("回退方案已执行"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	wf := NewWorkflowExecution(WorkflowConfig{
 		Type: LinearWorkflow,
@@ -412,26 +390,20 @@ func TestWorkflow_StateMachine(t *testing.T) {
 		Description: "状态机工作流",
 	})
 
-	state1Agent := NewReActAgent(ReActConfig{
-		Name:         "State1",
-		SystemPrompt: "状态1：初始化",
-		Model:        demo.NewDemoLLM(`{"next_state": "processing"}`),
-		MaxTurns:     1,
-	})
+	state1Agent, err := NewAgent("State1", "", demo.NewDemoLLM(`{"next_state": "processing"}`), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	state2Agent := NewReActAgent(ReActConfig{
-		Name:         "State2",
-		SystemPrompt: "状态2：处理中",
-		Model:        demo.NewDemoLLM(`{"next_state": "completed"}`),
-		MaxTurns:     1,
-	})
+	state2Agent, err := NewAgent("State2", "", demo.NewDemoLLM(`{"next_state": "completed"}`), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	state3Agent := NewReActAgent(ReActConfig{
-		Name:         "State3",
-		SystemPrompt: "状态3：完成",
-		Model:        demo.NewDemoLLM("处理完成"),
-		MaxTurns:     1,
-	})
+	state3Agent, err := NewAgent("State3", "", demo.NewDemoLLM("处理完成"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "initial",
@@ -491,12 +463,10 @@ func TestWorkflow_VariablesAndMapping(t *testing.T) {
 		Name: "test-variables",
 	})
 
-	processAgent := NewReActAgent(ReActConfig{
-		Name:         "ProcessAgent",
-		SystemPrompt: "处理变量",
-		Model:        demo.NewDemoLLM(`{"processed_data": "processed_value", "score": 95}`),
-		MaxTurns:     1,
-	})
+	processAgent, err := NewAgent("ProcessAgent", "", demo.NewDemoLLM(`{"processed_data": "processed_value", "score": 95}`), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "process",
@@ -540,12 +510,10 @@ func TestWorkflow_PauseResumeCancel(t *testing.T) {
 		Timeout: 10 * time.Second,
 	})
 
-	simpleAgent := NewReActAgent(ReActConfig{
-		Name:         "SimpleAgent",
-		SystemPrompt: "简单任务",
-		Model:        demo.NewDemoLLM("done"),
-		MaxTurns:     1,
-	})
+	simpleAgent, err := NewAgent("SimpleAgent", "", demo.NewDemoLLM("done"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "task1",
@@ -596,12 +564,10 @@ func TestWorkflow_MetricsCollection(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		nodeID := fmt.Sprintf("node_%d", i)
-		nodeAgent := NewReActAgent(ReActConfig{
-			Name:         fmt.Sprintf("Node%d", i),
-			SystemPrompt: fmt.Sprintf("节点%d", i),
-			Model:        demo.NewDemoLLM(fmt.Sprintf("node_%d_result", i)),
-			MaxTurns:     1,
-		})
+		nodeAgent, err := NewAgent(fmt.Sprintf("Node%d", i), "", demo.NewDemoLLM(fmt.Sprintf("node_%d_result", i)), WithMaxTurns(1))
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		nodeType := TaskNode
 		if i%2 == 0 {
@@ -649,12 +615,10 @@ func TestWorkflow_ExportImport(t *testing.T) {
 		Description: "导出测试工作流",
 	})
 
-	exportAgent := NewReActAgent(ReActConfig{
-		Name:         "ExportAgent",
-		SystemPrompt: "导出测试",
-		Model:        demo.NewDemoLLM("exported data"),
-		MaxTurns:     1,
-	})
+	exportAgent, err := NewAgent("ExportAgent", "", demo.NewDemoLLM("exported data"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "export_step",
@@ -670,7 +634,7 @@ func TestWorkflow_ExportImport(t *testing.T) {
 	_ = wf.SetStartNode("export_step")
 
 	input := map[string]any{"export_key": "export_value"}
-	_, err := wf.Execute(input)
+	_, err = wf.Execute(input)
 	if err != nil {
 		t.Fatalf("Execute error: %v", err)
 	}
@@ -701,12 +665,10 @@ func TestWorkflow_EventSystem(t *testing.T) {
 		EnableLogging: true,
 	})
 
-	eventAgent := NewReActAgent(ReActConfig{
-		Name:         "EventAgent",
-		SystemPrompt: "事件测试",
-		Model:        demo.NewDemoLLM("event test done"),
-		MaxTurns:     1,
-	})
+	eventAgent, err := NewAgent("EventAgent", "", demo.NewDemoLLM("event test done"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = wf.AddNode(&WorkflowNode{
 		ID:    "event_step",
@@ -730,7 +692,7 @@ func TestWorkflow_EventSystem(t *testing.T) {
 		}
 	}()
 
-	_, err := wf.Execute(map[string]any{"event_test": true})
+	_, err = wf.Execute(map[string]any{"event_test": true})
 	if err != nil {
 		t.Fatalf("Execute error: %v", err)
 	}

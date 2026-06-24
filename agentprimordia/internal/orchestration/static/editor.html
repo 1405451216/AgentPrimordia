@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>AP DAG Editor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; }
+  #canvas { width: 100vw; height: 80vh; background: #16213e; position: relative; overflow: hidden; }
+  .node { position: absolute; background: #0f3460; border: 2px solid #533483; border-radius: 8px; padding: 12px 20px; cursor: move; min-width: 120px; text-align: center; user-select: none; }
+  .node:hover { border-color: #e94560; }
+  .toolbar { padding: 12px; background: #0f3460; display: flex; gap: 12px; }
+  .toolbar button { padding: 8px 16px; background: #533483; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  .toolbar button:hover { background: #e94560; }
+  svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  svg line { stroke: #533483; stroke-width: 2; }
+  #export-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; }
+  #export-overlay pre { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #16213e; padding: 24px; border-radius: 8px; max-width: 80%; max-height: 80%; overflow: auto; color: #eee; }
+  #export-overlay .close { position: absolute; top: 8px; right: 12px; cursor: pointer; color: #e94560; font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="loadDAG()">Reload</button>
+  <button onclick="exportJSON()">Export JSON</button>
+</div>
+<div id="canvas">
+  <svg id="edges"></svg>
+</div>
+<div id="export-overlay">
+  <span class="close" onclick="closeExport()">&times;</span>
+  <pre id="export-content"></pre>
+</div>
+<script>
+let dagData = null;
+async function loadDAG() {
+  const resp = await fetch('/api/dag/export');
+  dagData = await resp.json();
+  renderDAG();
+}
+function renderDAG() {
+  const canvas = document.getElementById('canvas');
+  canvas.querySelectorAll('.node').forEach(n => n.remove());
+  dagData.nodes.forEach((node, i) => {
+    const el = document.createElement('div');
+    el.className = 'node';
+    el.id = 'node-' + node.id;
+    el.textContent = node.name || node.id;
+    el.style.left = (100 + i * 200) + 'px';
+    el.style.top = '200px';
+    makeDraggable(el);
+    canvas.appendChild(el);
+  });
+  renderEdges();
+}
+function renderEdges() {
+  const svg = document.getElementById('edges');
+  svg.innerHTML = '';
+  dagData.edges.forEach(edge => {
+    const from = document.getElementById('node-' + edge.from);
+    const to = document.getElementById('node-' + edge.to);
+    if (!from || !to) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', from.offsetLeft + from.offsetWidth / 2);
+    line.setAttribute('y1', from.offsetTop + from.offsetHeight / 2);
+    line.setAttribute('x2', to.offsetLeft + to.offsetWidth / 2);
+    line.setAttribute('y2', to.offsetTop + to.offsetHeight / 2);
+    svg.appendChild(line);
+  });
+}
+function makeDraggable(el) {
+  let offsetX, offsetY, dragging = false;
+  el.addEventListener('mousedown', e => {
+    dragging = true;
+    offsetX = e.clientX - el.offsetLeft;
+    offsetY = e.clientY - el.offsetTop;
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    el.style.left = (e.clientX - offsetX) + 'px';
+    el.style.top = (e.clientY - offsetY) + 'px';
+    renderEdges();
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+}
+function exportJSON() {
+  document.getElementById('export-content').textContent = JSON.stringify(dagData, null, 2);
+  document.getElementById('export-overlay').style.display = 'block';
+}
+function closeExport() {
+  document.getElementById('export-overlay').style.display = 'none';
+}
+loadDAG();
+</script>
+</body>
+</html>

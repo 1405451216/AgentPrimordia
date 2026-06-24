@@ -1,15 +1,41 @@
 package agent
 
-import "context"
+import (
+	"agentprimordia/internal/agent/transport"
+)
 
 // Transport 跨进程 Agent 通信传输层接口
-type Transport interface {
-	// Send 向目标地址发送消息
-	Send(ctx context.Context, target string, msg *BusMessage) error
-	// Receive 返回入站消息通道
-	Receive() <-chan *BusMessage
-	// Start 在指定地址启动传输服务
-	Start(addr string) error
-	// Close 优雅关闭传输服务
-	Close() error
+// 类型别名保持向后兼容
+type Transport = transport.Transport
+
+// HTTPTransport 基于 HTTP 的跨进程 Agent 通信传输层
+// 类型别名保持向后兼容
+type HTTPTransport = transport.HTTPTransport
+
+// TCPTransport 基于 TCP 的跨进程 Agent 通信传输层
+// 类型别名保持向后兼容
+type TCPTransport = transport.TCPTransport
+
+// TCPTransportConfig TCP 传输层配置
+// 类型别名保持向后兼容
+type TCPTransportConfig = transport.TCPTransportConfig
+
+// NewHTTPTransport 创建 HTTP 传输层实例
+func NewHTTPTransport() *HTTPTransport {
+	return transport.NewHTTPTransport()
+}
+
+// NewTCPTransport 创建 TCP 传输层实例
+func NewTCPTransport() *TCPTransport {
+	return transport.NewTCPTransport()
+}
+
+// NewTCPTransportWithConfig 使用配置创建 TCP 传输层实例
+func NewTCPTransportWithConfig(cfg TCPTransportConfig) *TCPTransport {
+	return transport.NewTCPTransportWithConfig(cfg)
+}
+
+// DefaultTCPTransportConfig 返回默认 TCP 传输层配置
+func DefaultTCPTransportConfig() TCPTransportConfig {
+	return transport.DefaultTCPTransportConfig()
 }

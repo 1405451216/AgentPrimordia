@@ -81,6 +81,9 @@ type CohereProvider = llm.CohereProvider
 // MistralProvider 实现 Mistral AI 模型调用
 type MistralProvider = llm.MistralProvider
 
+// GeminiMultimodalProvider 实现 Google Gemini 多模态模型调用（文本+图片+音频+视频）
+type GeminiMultimodalProvider = llm.GeminiMultimodalProvider
+
 var (
 	// NewOpenAIProvider 创建 OpenAI 提供者实例
 	NewOpenAIProvider = llm.NewOpenAIProvider
@@ -88,6 +91,12 @@ var (
 	NewAnthropicProvider = llm.NewAnthropicProvider
 	// NewGeminiProvider 创建 Gemini 提供者实例
 	NewGeminiProvider = llm.NewGeminiProvider
+	// NewGeminiMultimodalProvider 创建 Gemini 多模态提供者实例
+	NewGeminiMultimodalProvider = llm.NewGeminiMultimodalProvider
+	// NewOpenAIMultimodalProvider 创建 OpenAI 多模态提供者实例（支持图片/音频输入）
+	NewOpenAIMultimodalProvider = llm.NewOpenAIMultimodalProvider
+	// NewAnthropicVisionProvider 创建 Anthropic 视觉提供者实例（支持图片输入）
+	NewAnthropicVisionProvider = llm.NewAnthropicVisionProvider
 	// NewOllamaProvider 创建 Ollama 提供者实例
 	NewOllamaProvider = llm.NewOllamaProvider
 	// NewAzureOpenAIProvider 创建 Azure OpenAI 提供者实例
@@ -278,12 +287,12 @@ var (
 	NewUserMultimodalMessage = llm.NewUserMultimodalMessage
 )
 
-// ModelPricing defines per-model pricing for cost estimation
+// ModelPricing 定义按模型计费的价格信息，用于成本估算
 type ModelPricing = llm.ModelPricing
 
 var (
-	// DefaultPricingTable returns the default pricing table for mainstream models
+	// DefaultPricingTable 返回主流模型的默认价格表
 	DefaultPricingTable = llm.DefaultPricingTable
-	// EstimateCost estimates the cost of a single LLM call
+	// EstimateCost 估算单次 LLM 调用的成本
 	EstimateCost = llm.EstimateCost
 )

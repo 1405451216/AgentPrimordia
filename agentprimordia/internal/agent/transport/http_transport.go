@@ -1,6 +1,7 @@
-package agent
+package transport
 
 import (
+	"agentprimordia/internal/agent/bus"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -20,7 +21,7 @@ import (
 type HTTPTransport struct {
 	client    *http.Client
 	server    *http.Server
-	inbound   chan *BusMessage
+	inbound   chan *bus.BusMessage
 	addr      string
 	mu        sync.RWMutex
 	started   bool
@@ -43,7 +44,7 @@ func NewHTTPTransport() *HTTPTransport {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		inbound: make(chan *BusMessage, inboundBufSize),
+		inbound: make(chan *bus.BusMessage, inboundBufSize),
 		logger:  slog.Default(),
 	}
 }
@@ -101,7 +102,7 @@ func (t *HTTPTransport) Start(addr string) error {
 }
 
 // Send 向目标地址发送消息
-func (t *HTTPTransport) Send(ctx context.Context, target string, msg *BusMessage) error {
+func (t *HTTPTransport) Send(ctx context.Context, target string, msg *bus.BusMessage) error {
 	t.mu.RLock()
 	started := t.started
 	t.mu.RUnlock()
@@ -141,7 +142,7 @@ func (t *HTTPTransport) Send(ctx context.Context, target string, msg *BusMessage
 }
 
 // Receive 返回入站消息通道
-func (t *HTTPTransport) Receive() <-chan *BusMessage {
+func (t *HTTPTransport) Receive() <-chan *bus.BusMessage {
 	return t.inbound
 }
 
@@ -189,7 +190,7 @@ func (t *HTTPTransport) handleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var msg BusMessage
+	var msg bus.BusMessage
 	if err := json.Unmarshal(body, &msg); err != nil {
 		http.Error(w, "invalid message format", http.StatusBadRequest)
 		return

@@ -178,13 +178,11 @@ func TestPool_Dispatch_WithSessionID(t *testing.T) {
 	var receivedSessionID string
 	factory := func(config AgentFactoryConfig) agent.Agent {
 		receivedSessionID = config.SessionID
-		cfg := agent.ReActConfig{
-			Name:         config.Name,
-			SystemPrompt: config.SystemPrompt,
-			MaxTurns:     config.MaxTurns,
-			Model:        mockLLM,
+		a, err := agent.NewAgent(config.Name, config.SystemPrompt, mockLLM, agent.WithMaxTurns(config.MaxTurns))
+		if err != nil {
+			t.Fatalf("failed to create agent: %v", err)
 		}
-		return agent.NewReActAgent(cfg)
+		return a
 	}
 
 	pool := NewPool(PoolConfig{

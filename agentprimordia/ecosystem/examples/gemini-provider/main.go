@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/llm"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -34,7 +33,7 @@ func runGeminiProvider(apiKey string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	provider, err := llm.NewGeminiMultimodalProvider(llm.Config{
+	provider, err := ap.NewGeminiMultimodalProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "gemini-2.0-flash",
 	})
@@ -46,18 +45,18 @@ func runGeminiProvider(apiKey string) {
 	fmt.Println("   Model: gemini-2.0-flash")
 	fmt.Println()
 
-	geminiAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "GeminiBot",
-		SystemPrompt: "你是一个使用 Google Gemini 的 AI 助手，请用中文回答。",
-		Model:        provider,
-		MaxTurns:     5,
-	})
+	geminiAgent, err := ap.NewAgent("GeminiBot", "你是一个使用 Google Gemini 的 AI 助手，请用中文回答。", provider,
+		ap.WithMaxTurns(5),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建 Agent 失败: %v", err)
+	}
 
 	fmt.Println("📝 测试1: 基础对话")
 	fmt.Println("   用户输入: 请用一句话介绍你自己")
 
 	startTime := time.Now()
-	resp, err := geminiAgent.Run(ctx, agent.UserMessage("请用一句话介绍你自己"))
+	resp, err := geminiAgent.Run(ctx, ap.UserMessage("请用一句话介绍你自己"))
 	if err != nil {
 		log.Fatalf("❌ 运行失败: %v", err)
 	}
@@ -72,7 +71,7 @@ func runGeminiProvider(apiKey string) {
 	fmt.Println("📝 测试2: 数学计算")
 	fmt.Println("   用户输入: 计算 123 * 456 的结果")
 
-	resp2, _ := geminiAgent.Run(ctx, agent.UserMessage("计算 123 * 456 的结果，只输出数字"))
+	resp2, _ := geminiAgent.Run(ctx, ap.UserMessage("计算 123 * 456 的结果，只输出数字"))
 	fmt.Printf("   🤖 回复: %s\n", resp2.Content)
 	fmt.Println()
 
@@ -91,13 +90,12 @@ func runDemoMode() {
 		"你好！我是基于 Google Gemini 的 AI 助手。我可以帮助你回答问题、分析内容和进行各种任务。",
 	)
 
-	demoAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DemoGeminiBot",
-		SystemPrompt: "模拟 Google Gemini 的响应",
-		Model:        demoLLM,
-	})
+	demoAgent, err := ap.NewAgent("DemoGeminiBot", "模拟 Google Gemini 的响应", demoLLM)
+	if err != nil {
+		log.Fatalf("❌ 创建 Agent 失败: %v", err)
+	}
 
-	resp, _ := demoAgent.Run(context.Background(), agent.UserMessage("你好"))
+	resp, _ := demoAgent.Run(context.Background(), ap.UserMessage("你好"))
 	fmt.Printf("   🤖 Demo 回复: %s\n", resp.Content)
 	fmt.Println()
 	fmt.Println("ℹ️  要使用真实的 Gemini API，请设置 GEMINI_API_KEY 环境变量")

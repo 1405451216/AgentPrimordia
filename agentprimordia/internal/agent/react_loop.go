@@ -15,15 +15,17 @@ import (
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
+	"agentprimordia/pkg/logger"
 )
 
-// memoryIDCounter 用于生成唯一 MemoryEpisode ID
-var memoryIDCounter int64
+// idCounter 用于生成唯一 ID 的原子计数器
+type idCounter struct {
+	n int64
+}
 
-// nextMemoryID 生成唯一的记忆 ID（优化：避免 fmt.Sprintf）
-func nextMemoryID() string {
-	n := atomic.AddInt64(&memoryIDCounter, 1)
-	// 使用固定格式，避免运行时格式化
+// next 生成唯一的记忆 ID（优化：避免 fmt.Sprintf）
+func (c *idCounter) next() string {
+	n := atomic.AddInt64(&c.n, 1)
 	ts := time.Now().UnixNano()
 	return "msg_" + strconv.FormatInt(ts, 10) + "_" + strconv.FormatInt(n, 10)
 }
@@ -37,11 +39,7 @@ type MemoryStore interface {
 	UpdateSummary(ctx context.Context, id, summary, topics string) error
 }
 
-// MemoryEpisode 是 Agent 使用的一集记忆（已废弃，使用 memory.Episode）
-//
-// Deprecated: 使用 memory.Episode 代替。
-// Removed in v2.0.0.
-type MemoryEpisode = memory.Episode
+
 
 // EventPublisher 是 Agent 所需的事件发布接口
 type EventPublisher interface {
@@ -82,7 +80,7 @@ type ReActConfig struct {
 	// Lifecycle 生命周期管理器（默认自动创建）
 	Lifecycle *Lifecycle
 
-	// Logger 结构化日志，默认使用 slog.Default()
+	// Logger 结构化日志，默认使用 logger.Default()
 	Logger *slog.Logger
 }
 
@@ -98,6 +96,7 @@ type ReActAgent struct {
 	runMu     sync.Mutex
 	mu        sync.Mutex
 	hitlMgr   *HITLManager
+	idGen     idCounter // 实例级 ID 生成器，消除全局可变状态
 
 	// currentRequestID 当前运行的请求 ID，用于可观测性关联
 	currentRequestID string
@@ -132,11 +131,11 @@ type ReActAgent struct {
 	capCache *capabilityCache
 }
 
-// NewReActAgent creates a new ReAct-based agent
+// NewReActAgent 创建基于 ReAct 循环的 Agent 实例
 //
 // Deprecated: 使用 NewAgent 代替。NewReActAgent 仅接受标量配置，能力通过链式 API 注入。
-// Removed in v2.0.0.
 // NewAgent 通过 Functional Options 注入能力，构造后不可变。
+// 将在 v1.0.0 中移除。
 // 迁移指南: ecosystem/docs/migration/v0-deprecations.md
 func NewReActAgent(cfg ReActConfig) *ReActAgent {
 	if cfg.MaxTurns == 0 {
@@ -146,7 +145,7 @@ func NewReActAgent(cfg ReActConfig) *ReActAgent {
 		cfg.Lifecycle = NewLifecycle()
 	}
 	if cfg.Logger == nil {
-		cfg.Logger = slog.Default()
+		cfg.Logger = logger.Default()
 	}
 
 	a := &ReActAgent{

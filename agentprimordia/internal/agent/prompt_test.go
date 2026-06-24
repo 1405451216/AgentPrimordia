@@ -109,14 +109,10 @@ func TestReActAgent_WithPromptTemplate(t *testing.T) {
 
 	mockLLM := llm.NewMockLLM(t).WithResponse("done")
 
-	cfg := ReActConfig{
-		Name:           "TestAgent",
-		PromptTemplate: tmpl,
-		Model:          mockLLM,
-		MaxTurns:       1,
+	agt, err := NewAgent("TestAgent", "", mockLLM, WithPromptTemplate(tmpl), WithMaxTurns(1))
+	if err != nil {
+		t.Fatalf("failed to create agent: %v", err)
 	}
-
-	agt := NewReActAgent(cfg)
 	resp, err := agt.Run(t.Context(), UserMessage("hello"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

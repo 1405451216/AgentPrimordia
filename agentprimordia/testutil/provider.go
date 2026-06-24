@@ -6,6 +6,7 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -204,15 +205,13 @@ func NewTestAgent(cfg TestAgentConfig) *agent.CapabilityAgent {
 
 	mock := NewMockProvider(cfg.Responses...)
 
-	a := agent.NewReActAgent(agent.ReActConfig{
-		Name:         cfg.Name,
-		SystemPrompt: cfg.SystemPrompt,
-		Model:        mock,
-		MaxTurns:     cfg.MaxTurns,
-	})
+	a, err := agent.NewAgent(cfg.Name, cfg.SystemPrompt, mock, agent.WithMaxTurns(cfg.MaxTurns))
+	if err != nil {
+		panic(fmt.Sprintf("NewTestAgent: failed to create agent: %v", err))
+	}
 
 	// 返回 CapabilityAgent 支持链式注入
-	return a.AsCapability()
+	return a
 }
 
 // ensure MockProvider implements interfaces

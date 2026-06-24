@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"agentprimordia/internal/tools"
+	ap "agentprimordia/pkg"
 
 	_ "modernc.org/sqlite" // 纯 Go SQLite 驱动
 )
@@ -29,8 +29,8 @@ func (p *Plugin) Name() string { return "kv" }
 func (p *Plugin) Version() string { return "0.1.0" }
 
 // Tools 返回插件提供的工具列表
-func (p *Plugin) Tools() []tools.Tool {
-	return []tools.Tool{p.tool}
+func (p *Plugin) Tools() []ap.Tool {
+	return []ap.Tool{p.tool}
 }
 
 // Init 初始化插件，从 config 中读取 db_path 并创建数据库连接
@@ -109,7 +109,7 @@ func (t *KVStoreTool) Parameters() json.RawMessage {
 func (t *KVStoreTool) Category() string { return "database" }
 
 // Execute 执行 KV 存储操作
-func (t *KVStoreTool) Execute(ctx context.Context, input json.RawMessage) (*tools.Result, error) {
+func (t *KVStoreTool) Execute(ctx context.Context, input json.RawMessage) (*ap.ToolResult, error) {
 	var params map[string]any
 	if err := json.Unmarshal(input, &params); err != nil {
 		return nil, fmt.Errorf("解析参数错误: %w", err)
@@ -117,7 +117,7 @@ func (t *KVStoreTool) Execute(ctx context.Context, input json.RawMessage) (*tool
 
 	action, _ := params["action"].(string)
 	if action == "" {
-		return tools.NewErrorResult("参数 'action' 不能为空"), nil
+		return ap.NewToolErrorResult("参数 'action' 不能为空"), nil
 	}
 
 	switch action {
@@ -130,15 +130,15 @@ func (t *KVStoreTool) Execute(ctx context.Context, input json.RawMessage) (*tool
 	case "list":
 		return t.list(ctx)
 	default:
-		return tools.NewErrorResult(fmt.Sprintf("未知操作: %s，支持 get/set/delete/list", action)), nil
+		return ap.NewToolErrorResult(fmt.Sprintf("未知操作: %s，支持 get/set/delete/list", action)), nil
 	}
 }
 
 // get 获取键对应的值
-func (t *KVStoreTool) get(ctx context.Context, params map[string]any) (*tools.Result, error) {
+func (t *KVStoreTool) get(ctx context.Context, params map[string]any) (*ap.ToolResult, error) {
 	key, _ := params["key"].(string)
 	if key == "" {
-		return tools.NewErrorResult("get 操作需要 'key' 参数"), nil
+		return ap.NewToolErrorResult("get 操作需要 'key' 参数"), nil
 	}
 
 	var value, createdAt, updatedAt string
@@ -146,7 +146,7 @@ func (t *KVStoreTool) get(ctx context.Context, params map[string]any) (*tools.Re
 		"SELECT value, created_at, updated_at FROM ap_kv_store WHERE key = ?", key,
 	).Scan(&value, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
-		return tools.NewErrorResult(fmt.Sprintf("键 %q 不存在", key)), nil
+		return ap.NewToolErrorResult(fmt.Sprintf("键 %q 不存在", key)), nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("查询失败: %w", err)
@@ -159,14 +159,14 @@ func (t *KVStoreTool) get(ctx context.Context, params map[string]any) (*tools.Re
 		"updated_at": updatedAt,
 	}
 	output, _ := json.MarshalIndent(result, "", "  ")
-	return &tools.Result{Content: string(output)}, nil
+	return &ap.ToolResult{Content: string(output)}, nil
 }
 
 // set 设置键值对
-func (t *KVStoreTool) set(ctx context.Context, params map[string]any) (*tools.Result, error) {
+func (t *KVStoreTool) set(ctx context.Context, params map[string]any) (*ap.ToolResult, error) {
 	key, _ := params["key"].(string)
 	if key == "" {
-		return tools.NewErrorResult("set 操作需要 'key' 参数"), nil
+		return ap.NewToolErrorResult("set 操作需要 'key' 参数"), nil
 	}
 	value, _ := params["value"].(string)
 
@@ -188,14 +188,14 @@ func (t *KVStoreTool) set(ctx context.Context, params map[string]any) (*tools.Re
 		"updated_at": now,
 	}
 	output, _ := json.MarshalIndent(result, "", "  ")
-	return &tools.Result{Content: string(output)}, nil
+	return &ap.ToolResult{Content: string(output)}, nil
 }
 
 // delete 删除键
-func (t *KVStoreTool) delete(ctx context.Context, params map[string]any) (*tools.Result, error) {
+func (t *KVStoreTool) delete(ctx context.Context, params map[string]any) (*ap.ToolResult, error) {
 	key, _ := params["key"].(string)
 	if key == "" {
-		return tools.NewErrorResult("delete 操作需要 'key' 参数"), nil
+		return ap.NewToolErrorResult("delete 操作需要 'key' 参数"), nil
 	}
 
 	res, err := t.db.ExecContext(ctx, "DELETE FROM ap_kv_store WHERE key = ?", key)
@@ -205,7 +205,7 @@ func (t *KVStoreTool) delete(ctx context.Context, params map[string]any) (*tools
 
 	affected, _ := res.RowsAffected()
 	if affected == 0 {
-		return tools.NewErrorResult(fmt.Sprintf("键 %q 不存在", key)), nil
+		return ap.NewToolErrorResult(fmt.Sprintf("键 %q 不存在", key)), nil
 	}
 
 	result := map[string]any{
@@ -214,11 +214,11 @@ func (t *KVStoreTool) delete(ctx context.Context, params map[string]any) (*tools
 		"deleted": true,
 	}
 	output, _ := json.MarshalIndent(result, "", "  ")
-	return &tools.Result{Content: string(output)}, nil
+	return &ap.ToolResult{Content: string(output)}, nil
 }
 
 // list 列出所有键值对
-func (t *KVStoreTool) list(ctx context.Context) (*tools.Result, error) {
+func (t *KVStoreTool) list(ctx context.Context) (*ap.ToolResult, error) {
 	rows, err := t.db.QueryContext(ctx, "SELECT key, value, created_at, updated_at FROM ap_kv_store ORDER BY key")
 	if err != nil {
 		return nil, fmt.Errorf("查询失败: %w", err)
@@ -243,5 +243,5 @@ func (t *KVStoreTool) list(ctx context.Context) (*tools.Result, error) {
 		"count": len(items),
 		"items": items,
 	}, "", "  ")
-	return &tools.Result{Content: string(output)}, nil
+	return &ap.ToolResult{Content: string(output)}, nil
 }

@@ -162,7 +162,7 @@ Go (goroutine):        ~1M 并发连接  ← 100x 提升！
 
 ```dockerfile
 # Go: 单一二进制文件
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 RUN CGO_ENABLED=0 go build -o app .
 FROM alpine:latest
 COPY app .

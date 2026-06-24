@@ -42,6 +42,22 @@ var (
 	ParallelRun = agent.ParallelRun
 )
 
+// ===== GroupChat 群组讨论 =====
+
+// GroupChat 是多 Agent 群组讨论管理器，支持轮次发言、终止条件和共识机制
+type GroupChat = agent.GroupChat
+
+// GroupChatConfig 是 GroupChat 的配置，包含参与 Agent 列表、最大轮次等
+type GroupChatConfig = agent.GroupChatConfig
+
+// GroupChatResult 是 GroupChat 的运行结果，包含消息列表和讨论轮次
+type GroupChatResult = agent.GroupChatResult
+
+var (
+	// NewGroupChat 创建群组讨论实例
+	NewGroupChat = agent.NewGroupChat
+)
+
 // Document 是加载后的文档，包含 ID、内容、元数据和来源路径
 type Document = memory.Document
 

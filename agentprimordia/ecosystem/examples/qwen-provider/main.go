@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/llm"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -34,7 +33,7 @@ func runQwenProvider(apiKey string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	provider, err := llm.NewQwenProvider(llm.Config{
+	provider, err := ap.NewQwenProvider(ap.Config{
 		APIKey:  apiKey,
 		BaseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
 		Model:   "qwen-plus",
@@ -47,12 +46,12 @@ func runQwenProvider(apiKey string) {
 	fmt.Println("   Model: qwen-plus (阿里云通义千问)")
 	fmt.Println()
 
-	qwenAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "QwenBot",
-		SystemPrompt: "你是一个使用阿里云通义千问的 AI 助手，请用中文回答。",
-		Model:        provider,
-		MaxTurns:     5,
-	})
+	qwenAgent, err := ap.NewAgent("QwenBot", "你是一个使用阿里云通义千问的 AI 助手，请用中文回答。", provider,
+		ap.WithMaxTurns(5),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建 Agent 失败: %v", err)
+	}
 
 	testCases := []struct {
 		name    string
@@ -68,7 +67,7 @@ func runQwenProvider(apiKey string) {
 		fmt.Printf("   用户输入: %s\n", tc.message)
 
 		startTime := time.Now()
-		resp, err := qwenAgent.Run(ctx, agent.UserMessage(tc.message))
+		resp, err := qwenAgent.Run(ctx, ap.UserMessage(tc.message))
 		if err != nil {
 			log.Printf("❌ 测试失败: %v", err)
 			continue
@@ -103,13 +102,12 @@ func runDemoMode() {
 		"你好！我是基于阿里云通义千问的 AI 助手。我可以帮助你回答问题、生成代码和分析内容。作为国产大模型，我在中文理解方面表现出色。",
 	)
 
-	demoAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DemoQwenBot",
-		SystemPrompt: "模拟通义千问的响应",
-		Model:        demoLLM,
-	})
+	demoAgent, err := ap.NewAgent("DemoQwenBot", "模拟通义千问的响应", demoLLM)
+	if err != nil {
+		log.Fatalf("❌ 创建 Agent 失败: %v", err)
+	}
 
-	resp, _ := demoAgent.Run(context.Background(), agent.UserMessage("你好"))
+	resp, _ := demoAgent.Run(context.Background(), ap.UserMessage("你好"))
 	fmt.Printf("   🤖 Demo 回复: %s\n", resp.Content)
 	fmt.Println()
 	fmt.Println("ℹ️  要使用真实的通义千问 API，请设置 QWEN_API_KEY 环境变量")

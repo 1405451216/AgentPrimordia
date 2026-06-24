@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"agentprimordia/internal/tools"
+	ap "agentprimordia/pkg"
 
 	emailplugin "agentprimordia/ecosystem/plugins/email"
 	gitplugin "agentprimordia/ecosystem/plugins/git"
@@ -13,8 +13,8 @@ import (
 
 // LoadAll 加载所有官方插件到 Registry
 // configs 为每个插件提供可选配置，key 为插件名称，value 为配置字典
-func LoadAll(registry *tools.Registry, configs map[string]map[string]any) error {
-	loader := tools.NewPluginLoader(registry)
+func LoadAll(registry *ap.ToolRegistry, configs map[string]map[string]any) error {
+	loader := ap.NewPluginLoader(registry)
 
 	// HTTP 插件（无需配置）
 	if err := loader.Load(httpplugin.New()); err != nil {

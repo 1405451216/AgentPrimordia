@@ -32,6 +32,9 @@ type LogExporter = metrics.LogExporter
 // JSONExporter 是 JSON 格式的指标导出器
 type JSONExporter = metrics.JSONExporter
 
+// MetricsHandler 提供 Prometheus /metrics 端点（可组合 http.Handler）
+type MetricsHandler = metrics.Handler
+
 // MetricsExporter 是指标导出器的通用接口
 type MetricsExporter = metrics.MetricsExporter
 
@@ -42,6 +45,8 @@ var (
 	NewHistogram = metrics.NewHistogram
 	// NewPrometheusHandler 创建 Prometheus 格式的 HTTP 处理器
 	NewPrometheusHandler = metrics.NewPrometheusHandler
+	// NewHandler 创建可组合的 Prometheus /metrics HTTP handler
+	NewHandler = metrics.NewHandler
 	// NewMultiExporter 创建多目标导出器
 	NewMultiExporter = metrics.NewMultiExporter
 	// NewLogExporter 创建日志格式导出器

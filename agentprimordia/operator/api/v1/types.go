@@ -26,7 +26,7 @@ type AgentDeploymentSpec struct {
 	// Agent 模板
 	Template AgentTemplateSpec `json:"template"`
 
-	// 自动扩缩容配置 (TODO: controller 未实现 HPA 创建)
+	// 自动扩缩容配置（HPA，基于 concurrent_tasks_per_pod 自定义指标）
 	// +optional
 	Autoscaling *AutoscalingSpec `json:"autoscaling,omitempty"`
 
@@ -211,7 +211,6 @@ type HTTPGetAction struct {
 }
 
 // AgentDeploymentStatus 定义 Agent 部署的观测状态
-// TODO: AverageTurnLatencySeconds/TotalTokens/EstimatedCostUSD 字段尚未由 controller 填充
 // +kubebuilder:object:generate=true
 type AgentDeploymentStatus struct {
 	// 活跃副本数

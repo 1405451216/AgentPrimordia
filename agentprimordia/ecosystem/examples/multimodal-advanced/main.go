@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/llm"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -33,7 +32,7 @@ func demonstrateTextAndImage() {
 		return
 	}
 
-	provider, err := llm.NewGeminiMultimodalProvider(llm.Config{
+	provider, err := ap.NewGeminiMultimodalProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "gemini-2.0-flash",
 	})
@@ -46,13 +45,13 @@ func demonstrateTextAndImage() {
 
 	imageData := loadSampleImage()
 
-	resp, _ := provider.CompleteMultimodal(ctx, &llm.CompletionRequestExt{
-		Messages: []*llm.ChatMessageExt{
+	resp, _ := provider.CompleteMultimodal(ctx, &ap.CompletionRequestExt{
+		Messages: []*ap.ChatMessageExt{
 			{
 				Role: "user",
-				Contents: []*llm.MultimodalContent{
-					llm.NewTextContent("请描述这张图片的内容"),
-					llm.NewImageB64Content(string(imageData), "image/jpeg"),
+				Contents: []*ap.MultimodalContent{
+					ap.NewTextContent("请描述这张图片的内容"),
+					ap.NewImageB64Content(string(imageData), "image/jpeg"),
 				},
 			},
 		},
@@ -71,8 +70,8 @@ func demoMultimodal() {
 	)
 
 	ctx := context.Background()
-	resp, _ := mockProvider.Complete(ctx, &llm.CompletionRequest{
-		Messages: []llm.ChatMessage{
+	resp, _ := mockProvider.Complete(ctx, &ap.CompletionRequest{
+		Messages: []ap.ChatMessage{
 			{Role: "user", Content: "[图片] 请描述这张图片"},
 		},
 	})
@@ -92,17 +91,17 @@ func demonstrateVisionAgent() {
 		return
 	}
 
-	visionProvider, _ := llm.NewGeminiMultimodalProvider(llm.Config{
+	visionProvider, _ := ap.NewGeminiMultimodalProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "gemini-2.0-flash",
 	})
 
-	visionAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "VisionBot",
-		SystemPrompt: "你是一个具有视觉能力的 AI 助手。你可以分析图片、理解图表、识别文字等。",
-		Model:        visionProvider,
-		MaxTurns:     5,
-	})
+	visionAgent, err := ap.NewAgent("VisionBot", "你是一个具有视觉能力的 AI 助手。你可以分析图片、理解图表、识别文字等。", visionProvider,
+		ap.WithMaxTurns(5),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建 VisionBot 失败: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -117,7 +116,7 @@ func demonstrateVisionAgent() {
 		fmt.Printf("📋 任务%d: %s\n", i+1, task)
 
 		startTime := time.Now()
-		resp, _ := visionAgent.Run(ctx, agent.UserMessage(task))
+		resp, _ := visionAgent.Run(ctx, ap.UserMessage(task))
 		duration := time.Since(startTime)
 
 		fmt.Printf("   ⏱️  耗时: %v\n", duration)
@@ -131,14 +130,13 @@ func demoVisionAgent() {
 		"作为视觉 Agent，我分析了图片并提取了以下信息：这是一张包含图表的数据可视化图片，显示了2024年各季度的销售趋势。主要颜色是蓝色和绿色。建议用于商业报告或数据分析场景。",
 	)
 
-	visionAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DemoVisionBot",
-		SystemPrompt: "模拟视觉 Agent 的能力",
-		Model:        demoLLM,
-	})
+	visionAgent, err := ap.NewAgent("DemoVisionBot", "模拟视觉 Agent 的能力", demoLLM)
+	if err != nil {
+		log.Fatalf("❌ 创建 DemoVisionBot 失败: %v", err)
+	}
 
 	ctx := context.Background()
-	resp, _ := visionAgent.Run(ctx, agent.UserMessage("分析这张图片"))
+	resp, _ := visionAgent.Run(ctx, ap.UserMessage("分析这张图片"))
 
 	fmt.Printf("🤖 Demo 视觉 Agent 响应:\n")
 	fmt.Printf("   %s\n", resp.Content)

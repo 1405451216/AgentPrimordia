@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -622,5 +623,149 @@ func TestBuildProbe(t *testing.T) {
 				t.Error("HTTPGet should be nil when not specified")
 			}
 		})
+	}
+}
+
+// ===== HPA Tests =====
+
+func TestReconcile_CreatesHPA_WhenAutoscalingConfigured(t *testing.T) {
+	scheme := newScheme()
+	ad := makeAgentDeployment("hpa-agent", "default", 2)
+	ad.Spec.Autoscaling = &agentv1.AutoscalingSpec{
+		MinReplicas:            2,
+		MaxReplicas:            10,
+		TargetConcurrentTasks:  5,
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(ad).
+		WithStatusSubresource(&agentv1.AgentDeployment{}).
+		Build()
+
+	r := &AgentDeploymentReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	_, err := r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "hpa-agent", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	// HPA should exist
+	var hpa autoscalingv2.HorizontalPodAutoscaler
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "hpa-agent-hpa", Namespace: "default"}, &hpa)
+	if err != nil {
+		t.Fatalf("Expected HPA to be created: %v", err)
+	}
+
+	if hpa.Spec.MaxReplicas != 10 {
+		t.Errorf("HPA MaxReplicas = %d, want 10", hpa.Spec.MaxReplicas)
+	}
+	if hpa.Spec.MinReplicas == nil || *hpa.Spec.MinReplicas != 2 {
+		t.Errorf("HPA MinReplicas = %v, want 2", hpa.Spec.MinReplicas)
+	}
+	// Verify the custom metric
+	if len(hpa.Spec.Metrics) != 1 {
+		t.Fatalf("Expected 1 metric, got %d", len(hpa.Spec.Metrics))
+	}
+	if hpa.Spec.Metrics[0].Pods == nil {
+		t.Fatal("Expected Pods metric")
+	}
+	if hpa.Spec.Metrics[0].Pods.Metric.Name != "concurrent_tasks_per_pod" {
+		t.Errorf("Metric name = %s, want concurrent_tasks_per_pod", hpa.Spec.Metrics[0].Pods.Metric.Name)
+	}
+	// Verify scale target
+	if hpa.Spec.ScaleTargetRef.Name != "hpa-agent-agent" {
+		t.Errorf("ScaleTargetRef Name = %s, want hpa-agent-agent", hpa.Spec.ScaleTargetRef.Name)
+	}
+}
+
+func TestReconcile_NoHPA_WhenAutoscalingNil(t *testing.T) {
+	scheme := newScheme()
+	ad := makeAgentDeployment("no-hpa-agent", "default", 1)
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(ad).
+		WithStatusSubresource(&agentv1.AgentDeployment{}).
+		Build()
+
+	r := &AgentDeploymentReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	_, err := r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "no-hpa-agent", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("Reconcile failed: %v", err)
+	}
+
+	// HPA should NOT exist
+	var hpa autoscalingv2.HorizontalPodAutoscaler
+	err = fakeClient.Get(context.Background(), types.NamespacedName{Name: "no-hpa-agent-hpa", Namespace: "default"}, &hpa)
+	if err == nil {
+		t.Error("HPA should not be created when Autoscaling is nil")
+	}
+}
+
+func TestReconcile_UpdatesHPA_WhenSpecChanges(t *testing.T) {
+	scheme := newScheme()
+	ad := makeAgentDeployment("hpa-update", "default", 2)
+	ad.Spec.Autoscaling = &agentv1.AutoscalingSpec{
+		MinReplicas:            2,
+		MaxReplicas:            5,
+		TargetConcurrentTasks:  5,
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(ad).
+		WithStatusSubresource(&agentv1.AgentDeployment{}).
+		Build()
+
+	r := &AgentDeploymentReconciler{
+		Client: fakeClient,
+		Scheme: scheme,
+	}
+
+	// First reconcile creates HPA
+	_, err := r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "hpa-update", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("First reconcile failed: %v", err)
+	}
+
+	// Update autoscaling spec
+	ad.Spec.Autoscaling.MaxReplicas = 20
+	ad.Spec.Autoscaling.MinReplicas = 3
+	if err := fakeClient.Update(context.Background(), ad); err != nil {
+		t.Fatalf("Failed to update AgentDeployment: %v", err)
+	}
+
+	// Second reconcile should update HPA
+	_, err = r.Reconcile(context.Background(), reconcile.Request{
+		NamespacedName: types.NamespacedName{Name: "hpa-update", Namespace: "default"},
+	})
+	if err != nil {
+		t.Fatalf("Second reconcile failed: %v", err)
+	}
+
+	var hpa autoscalingv2.HorizontalPodAutoscaler
+	if err := fakeClient.Get(context.Background(), types.NamespacedName{Name: "hpa-update-hpa", Namespace: "default"}, &hpa); err != nil {
+		t.Fatalf("Failed to get HPA: %v", err)
+	}
+
+	if hpa.Spec.MaxReplicas != 20 {
+		t.Errorf("HPA MaxReplicas = %d, want 20", hpa.Spec.MaxReplicas)
+	}
+	if hpa.Spec.MinReplicas == nil || *hpa.Spec.MinReplicas != 3 {
+		t.Errorf("HPA MinReplicas = %v, want 3", hpa.Spec.MinReplicas)
 	}
 }

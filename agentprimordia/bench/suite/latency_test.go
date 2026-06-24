@@ -10,12 +10,10 @@ import (
 
 // BenchmarkLatency 基准：Agent 延迟
 func BenchmarkLatency(b *testing.B) {
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "LatencyAgent",
-		SystemPrompt: "你是助手",
-		Model:        &benchMockLLM{},
-		MaxTurns:     1,
-	})
+	agent, err := ap.NewAgent("LatencyAgent", "你是助手", &benchMockLLM{}, ap.WithMaxTurns(1))
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -52,12 +50,10 @@ func BenchmarkConcurrent(b *testing.B) {
 
 // BenchmarkFirstTokenLatency 基准：首 Token 延迟
 func BenchmarkFirstTokenLatency(b *testing.B) {
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "StreamAgent",
-		SystemPrompt: "你是助手",
-		Model:        &benchMockLLM{},
-		MaxTurns:     1,
-	})
+	agent, err := ap.NewAgent("StreamAgent", "你是助手", &benchMockLLM{}, ap.WithMaxTurns(1))
+	if err != nil {
+		b.Fatal(err)
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

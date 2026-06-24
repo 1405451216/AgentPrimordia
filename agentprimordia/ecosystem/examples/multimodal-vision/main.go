@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"agentprimordia/internal/llm"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -72,17 +72,17 @@ func runDemoWithMockData() {
 func showExampleCode() {
 	example := `
 // 创建 OpenAI 多模态 Provider
-provider, _ := llm.NewOpenAIMultimodalProvider(llm.Config{
+provider, _ := ap.NewOpenAIMultimodalProvider(ap.Config{
     APIKey: "your-api-key",
     Model:  "gpt-4o",
 })
 
 // 构建多模态请求（文本 + 图片）
-req := &llm.CompletionRequestExt{
-    Messages: []*llm.ChatMessageExt{
-        llm.NewUserMultimodalMessage(
-            llm.NewTextContent("请描述这张图片："),
-            llm.NewImageB64Content(base64Image, "image/png"),
+req := &ap.CompletionRequestExt{
+    Messages: []*ap.ChatMessageExt{
+        ap.NewUserMultimodalMessage(
+            ap.NewTextContent("请描述这张图片："),
+            ap.NewImageB64Content(base64Image, "image/png"),
         ),
     },
 }
@@ -128,11 +128,11 @@ func demonstrateMultimodalCapabilities(base64Image string, mimeType string) {
 
 		startTime := time.Now()
 
-		req := &llm.CompletionRequestExt{
-			Messages: []*llm.ChatMessageExt{
-				llm.NewUserMultimodalMessage(
-					llm.NewTextContent("请用中文描述这张图片的内容、颜色和主要元素："),
-					llm.NewImageB64Content(base64Image, mimeType),
+		req := &ap.CompletionRequestExt{
+			Messages: []*ap.ChatMessageExt{
+				ap.NewUserMultimodalMessage(
+					ap.NewTextContent("请用中文描述这张图片的内容、颜色和主要元素："),
+					ap.NewImageB64Content(base64Image, mimeType),
 				),
 			},
 		}
@@ -169,7 +169,7 @@ func createOpenAIProvider() interface{} {
 	if apiKey == "" {
 		return nil
 	}
-	provider, _ := llm.NewOpenAIMultimodalProvider(llm.Config{
+	provider, _ := ap.NewOpenAIMultimodalProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "gpt-4o",
 	})
@@ -181,7 +181,7 @@ func createAnthropicProvider() interface{} {
 	if apiKey == "" {
 		return nil
 	}
-	provider, _ := llm.NewAnthropicVisionProvider(llm.Config{
+	provider, _ := ap.NewAnthropicVisionProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "claude-sonnet-4-20250514",
 	})
@@ -193,7 +193,7 @@ func createGeminiProvider() interface{} {
 	if apiKey == "" {
 		return nil
 	}
-	provider, _ := llm.NewGeminiMultimodalProvider(llm.Config{
+	provider, _ := ap.NewGeminiMultimodalProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "gemini-2.0-flash",
 	})
@@ -205,7 +205,7 @@ func createQwenProvider() interface{} {
 	if apiKey == "" {
 		return nil
 	}
-	provider, _ := llm.NewQwenProvider(llm.Config{
+	provider, _ := ap.NewQwenProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "qwen-vl-max-latest",
 	})
@@ -217,16 +217,16 @@ func createGLMProvider() interface{} {
 	if apiKey == "" {
 		return nil
 	}
-	provider, _ := llm.NewGLMProvider(llm.Config{
+	provider, _ := ap.NewGLMProvider(ap.Config{
 		APIKey: apiKey,
 		Model:  "glm-4v-flash",
 	})
 	return provider
 }
 
-func callMultimodalComplete(provider interface{}, req *llm.CompletionRequestExt) (*llm.CompletionResponse, error) {
+func callMultimodalComplete(provider interface{}, req *ap.CompletionRequestExt) (*ap.CompletionResponse, error) {
 	if mp, ok := provider.(interface {
-		CompleteMultimodal(ctx context.Context, req *llm.CompletionRequestExt) (*llm.CompletionResponse, error)
+		CompleteMultimodal(ctx context.Context, req *ap.CompletionRequestExt) (*ap.CompletionResponse, error)
 	}); ok {
 		return mp.CompleteMultimodal(context.Background(), req)
 	}

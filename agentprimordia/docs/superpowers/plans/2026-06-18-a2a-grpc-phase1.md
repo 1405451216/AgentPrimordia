@@ -1,5 +1,8 @@
 # A2A gRPC/protobuf Phase 1 Implementation Plan
 
+> **状态：已完成** ✅
+> **完成日期：2026-06-19**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 完成 A2A gRPC 支持的 Phase 1：proto IDL、Makefile 生成目标、传输无关的 `A2AService` 核心及单元测试。

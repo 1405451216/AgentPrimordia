@@ -1,13 +1,14 @@
 package sqlplugin
 
 import (
-	"agentprimordia/internal/tools"
 	"fmt"
+
+	ap "agentprimordia/pkg"
 )
 
-// Plugin 是 SQLite 数据库插件，封装 tools.SQLiteTool
+// Plugin 是 SQLite 数据库插件，封装 ap.SQLiteTool
 type Plugin struct {
-	tool *tools.SQLiteTool
+	tool *ap.SQLiteTool
 }
 
 // New 创建新的 SQL 插件实例（工具在 Init 中创建）
@@ -22,11 +23,11 @@ func (p *Plugin) Name() string { return "sql" }
 func (p *Plugin) Version() string { return "0.1.0" }
 
 // Tools 返回插件提供的工具列表
-func (p *Plugin) Tools() []tools.Tool {
+func (p *Plugin) Tools() []ap.Tool {
 	if p.tool == nil {
 		return nil
 	}
-	return []tools.Tool{p.tool}
+	return []ap.Tool{p.tool}
 }
 
 // Init 初始化插件，从 config 中读取 db_path 创建 SQLiteTool
@@ -36,7 +37,7 @@ func (p *Plugin) Init(config map[string]any) error {
 		dbPath = path
 	}
 
-	tool, err := tools.NewSQLiteTool(dbPath)
+	tool, err := ap.NewSQLiteTool(dbPath)
 	if err != nil {
 		return fmt.Errorf("创建 SQLiteTool 失败: %w", err)
 	}

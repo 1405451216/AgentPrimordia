@@ -1,0 +1,204 @@
+// sse_writer.go — 服务端推送事件（SSE）写入器
+// 实现完整的 SSE 协议，支持事件类型、ID、重试间隔、心跳保活
+// 并发安全，适用于 HTTP 流式响应场景
+package agent
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+)
+
+// SSEWriter 服务端推送事件写入器
+// 实现 SSE 协议的 data/event/id/retry 字段
+// 支持事件类型（token、tool_call、tool_result、error、done）
+// 线程安全，支持并发写入
+type SSEWriter struct {
+	w       io.Writer
+	flusher http.Flusher
+	mu      sync.Mutex
+
+	// eventID 当前事件 ID，每次写入后自增
+	eventID int
+	// retry 重连间隔（毫秒），0 表示不发送
+	retry int
+}
+
+// NewSSEWriter 创建 SSE 写入器
+// w 为输出目标，flusher 用于刷新缓冲区（可为 nil）
+func NewSSEWriter(w io.Writer, flusher http.Flusher) *SSEWriter {
+	return &SSEWriter{
+		w:       w,
+		flusher: flusher,
+	}
+}
+
+// SetRetry 设置重连间隔（毫秒）
+// 客户端断连后会以此间隔尝试重连
+func (w *SSEWriter) SetRetry(ms int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.retry = ms
+}
+
+// SetEventID 设置下一个事件的 ID
+func (w *SSEWriter) SetEventID(id string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	// 解析为整数以便后续自增
+	fmt.Sscanf(id, "%d", &w.eventID)
+}
+
+// writeEvent 写入一个 SSE 事件（内部方法，调用者需持有锁或自行加锁）
+// SSE 格式：
+//
+//	event: <type>\n
+//	id: <id>\n
+//	retry: <ms>\n
+//	data: <line1>\n
+//	data: <line2>\n
+//	\n
+func (w *SSEWriter) writeEvent(event string, data any) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	var sb strings.Builder
+
+	// 事件类型
+	if event != "" {
+		sb.WriteString("event: ")
+		sb.WriteString(event)
+		sb.WriteString("\n")
+	}
+
+	// 事件 ID
+	w.eventID++
+	sb.WriteString("id: ")
+	sb.WriteString(fmt.Sprintf("%d", w.eventID))
+	sb.WriteString("\n")
+
+	// 重连间隔
+	if w.retry > 0 {
+		sb.WriteString("retry: ")
+		sb.WriteString(fmt.Sprintf("%d", w.retry))
+		sb.WriteString("\n")
+	}
+
+	// 数据：序列化为 JSON，多行内容每行加 "data: " 前缀
+	var dataStr string
+	switch v := data.(type) {
+	case string:
+		dataStr = v
+	case []byte:
+		dataStr = string(v)
+	default:
+		jsonBytes, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("SSE 数据序列化失败: %w", err)
+		}
+		dataStr = string(jsonBytes)
+	}
+
+	// SSE 协议要求每行数据都以 "data: " 前缀
+	lines := strings.Split(dataStr, "\n")
+	for _, line := range lines {
+		sb.WriteString("data: ")
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
+
+	// 事件以空行结束
+	sb.WriteString("\n")
+
+	if _, err := w.w.Write([]byte(sb.String())); err != nil {
+		return fmt.Errorf("SSE 写入失败: %w", err)
+	}
+
+	// 刷新缓冲区
+	if w.flusher != nil {
+		w.flusher.Flush()
+	}
+
+	return nil
+}
+
+// Event 写入一个自定义 SSE 事件
+func (w *SSEWriter) Event(event string, data any) error {
+	return w.writeEvent(event, data)
+}
+
+// Token 写入一个 token 事件
+func (w *SSEWriter) Token(content string) error {
+	return w.writeEvent("token", content)
+}
+
+// ToolCall 写入工具调用事件
+func (w *SSEWriter) ToolCall(name string, args json.RawMessage) error {
+	data := map[string]any{
+		"name": name,
+		"args": json.RawMessage(args),
+	}
+	return w.writeEvent("tool_call", data)
+}
+
+// ToolResult 写入工具执行结果事件
+func (w *SSEWriter) ToolResult(tool string, content string) error {
+	data := map[string]string{
+		"tool":    tool,
+		"content": content,
+	}
+	return w.writeEvent("tool_result", data)
+}
+
+// Done 写入完成事件
+func (w *SSEWriter) Done() error {
+	return w.writeEvent("done", nil)
+}
+
+// Error 写入错误事件
+func (w *SSEWriter) Error(err error) error {
+	return w.writeEvent("error", map[string]string{
+		"error": err.Error(),
+	})
+}
+
+// Heartbeat 写入心跳注释
+// SSE 协议中以冒号开头的行是注释，客户端会忽略
+// 用于保持连接活跃，防止代理/负载均衡器超时断连
+func (w *SSEWriter) Heartbeat() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if _, err := w.w.Write([]byte(": heartbeat\n\n")); err != nil {
+		return fmt.Errorf("SSE 心跳写入失败: %w", err)
+	}
+
+	if w.flusher != nil {
+		w.flusher.Flush()
+	}
+
+	return nil
+}
+
+// StartHeartbeat 启动定时心跳
+// 返回停止函数，调用即可停止心跳
+func (w *SSEWriter) StartHeartbeat(interval time.Duration) (stop func()) {
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				_ = w.Heartbeat()
+			case <-done:
+				return
+			}
+		}
+	}()
+	return func() { close(done) }
+}

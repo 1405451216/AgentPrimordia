@@ -7,12 +7,15 @@
  */
 
 export { ReActAgent, HookManager, Lifecycle } from './agent/react-loop.js';
-export type { ReActConfig, HookPoint, HookContext, HookFunc } from './agent/react-loop.js';
+export type { ReActConfig, HookPoint, HookContext, HookFunc, StreamEvent } from './agent/react-loop.js';
 
 export { MockProvider } from './llm/provider.js';
 export type { Provider } from './llm/provider.js';
 export { OpenAIProvider, APIError } from './llm/openai.js';
 export { ResilientProvider } from './llm/resilient.js';
+export { AnthropicProvider } from './llm/anthropic.js';
+export { GeminiProvider } from './llm/gemini.js';
+export { OllamaProvider } from './llm/ollama.js';
 
 export { ToolRegistry } from './tools/registry.js';
 export { FileScopePolicy } from './tools/scope.js';
@@ -60,6 +63,8 @@ export type {
 
 export { VERSION, ErrorCodes } from './types.js';
 
+export { ValidationError, requireNonEmpty, requirePositiveInt, requireNonNegative, requireValidUrl, requireApiKey, requireInRange, validateTemperature, validateMaxTokens, validateMessages, validateToolName, validateAgentInput, validateModelName } from './validate.js';
+
 export { Pipeline, ParallelRun, Handoff } from './orchestration/pipeline.js';
 export type { PipelineStep, StepResult } from './orchestration/pipeline.js';
 
@@ -67,4 +72,4 @@ export { A2ABus } from './a2a/bus.js';
 export type { AgentMessage, MessageHandler } from './a2a/bus.js';
 
 export { MCPClient } from './mcp/types.js';
-export type { MCPServerConfig, MCPToolDefinition, MCPToolCall, MCPToolResult, MCPListToolsResponse } from './mcp/types.js';
+export type { MCPServerConfig, MCPToolDefinition, MCPToolCall, MCPToolResult, MCPListToolsResponse, MCPServerInfo, MCPResource, MCPContentBlock } from './mcp/types.js';

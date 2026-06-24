@@ -10,7 +10,7 @@ AgentPrimordia 是 **Go 原生** 的 Agent 开发框架，核心差异：
 
 | 特性 | AgentPrimordia | LangChain |
 |------|---------------|-----------|
-| 语言 | Go 1.22+ | Python / JS |
+| 语言 | Go 1.26+ | Python / JS |
 | 外部依赖 | 零（仅 `modernc.org/sqlite`） | 大量第三方包 |
 | 并发模型 | goroutine + channel 原生支持 | GIL 限制 / 异步回调 |
 | 架构风格 | 接口优先、协议式微内核 | 继承链 + 装饰器 |
@@ -38,7 +38,7 @@ AgentPrimordia 是 **Go 原生** 的 Agent 开发框架，核心差异：
 
 ### Q: 最低 Go 版本要求？
 
-**Go 1.22+**。框架使用了 1.22 引入的范围循环变量语义（`for i := range n`）等特性，更低版本无法编译。
+**Go 1.26+**。框架使用了 1.22 引入的范围循环变量语义（`for i := range n`）等特性，更低版本无法编译。
 
 ---
 

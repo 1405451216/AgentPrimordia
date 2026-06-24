@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"agentprimordia/cmd/example/demo"
-	"agentprimordia/internal/agent"
-	"agentprimordia/internal/debugger"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -23,7 +22,7 @@ func main() {
 
 func startDebugServer() {
 	fmt.Println("🚀 启动调试 HTTP 服务器...")
-	debugServer := debugger.NewDebugServer(":8080")
+	debugServer := ap.NewDebugServer(":8080")
 
 	go func() {
 		if err := debugServer.Start(); err != nil {
@@ -44,22 +43,22 @@ func runAgentWithDebugging() {
 		"这是一个测试响应，用于演示调试功能。",
 	)
 
-	testAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DebugTestBot",
-		SystemPrompt: "你是一个用于测试的 Agent",
-		Model:        demoLLM,
-		MaxTurns:     3,
-	})
+	testAgent, err := ap.NewAgent("DebugTestBot", "你是一个用于测试的 Agent", demoLLM,
+		ap.WithMaxTurns(3),
+	)
+	if err != nil {
+		log.Fatalf("❌ 创建 Agent 失败: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	debugServer := debugger.NewDebugServer(":8080")
+	debugServer := ap.NewDebugServer(":8080")
 
 	debugServer.AddEvent("info", "Agent 创建成功")
 	debugServer.AddEvent("info", fmt.Sprintf("Agent 名称: %s", testAgent.Name()))
 
-	resp, err := testAgent.Run(ctx, agent.UserMessage("测试消息"))
+	resp, err := testAgent.Run(ctx, ap.UserMessage("测试消息"))
 	if err != nil {
 		debugServer.AddEvent("error", fmt.Sprintf("Agent 运行失败: %v", err))
 		log.Printf("❌ Agent 运行失败: %v", err)
@@ -76,16 +75,16 @@ func runAgentWithDebugging() {
 func renderVisualizations() {
 	fmt.Println("📊 渲染可视化数据...")
 
-	visualizer := debugger.NewVisualizer()
+	visualizer := ap.NewVisualizer()
 
-	snapshot := &debugger.MemorySnapshot{
+	snapshot := &ap.MemorySnapshot{
 		TotalEpisodes: 150,
-		TopSessions: []debugger.SessionInfo{
+		TopSessions: []ap.SessionInfo{
 			{SessionID: "session-001", Count: 50},
 			{SessionID: "session-002", Count: 30},
 			{SessionID: "session-003", Count: 20},
 		},
-		RecentEvents: []debugger.RecentEvent{
+		RecentEvents: []ap.RecentEvent{
 			{Time: "16:39:02", Role: "user", Content: "你好"},
 			{Time: "16:39:03", Role: "assistant", Content: "你好！有什么可以帮助你的？"},
 			{Time: "16:39:05", Role: "user", Content: "解释量子计算"},
@@ -95,7 +94,7 @@ func renderVisualizations() {
 	fmt.Println("\n📈 Memory 快照:")
 	fmt.Println(visualizer.RenderMemorySnapshot(snapshot))
 
-	lifecycleSteps := []debugger.LifecycleStep{
+	lifecycleSteps := []ap.LifecycleStep{
 		{State: "CREATED", Timestamp: time.Now(), Message: "Agent 实例创建"},
 		{State: "STARTED", Timestamp: time.Now().Add(1 * time.Second), Message: "开始执行任务"},
 		{State: "THINKING", Timestamp: time.Now().Add(2 * time.Second), Message: "正在分析用户输入..."},

@@ -33,14 +33,13 @@ func (e echoTool) Execute(_ context.Context, args json.RawMessage) (*tools.Resul
 func TestReActAgent_LabeledMetricsOutput(t *testing.T) {
 	m := metrics.NewMetrics()
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "TestAgent",
-		SystemPrompt: "你是测试Agent",
-		Model:        demo.NewDemoLLM("测试回复").WithDelay(10 * time.Millisecond),
-		MaxTurns:     2,
-	}).WithMetrics(m)
+	agent, err := NewAgent("TestAgent", "你是测试Agent", demo.NewDemoLLM("测试回复").WithDelay(10*time.Millisecond), WithMaxTurns(2))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	agent = agent.WithMetrics(m)
 
-	_, err := agent.Run(context.Background(), UserMessage("测试"))
+	_, err = agent.Run(context.Background(), UserMessage("测试"))
 	if err != nil {
 		t.Fatalf("Run error: %v", err)
 	}
@@ -79,14 +78,13 @@ func TestReActAgent_LabeledMetricsWithToolCall(t *testing.T) {
 		llm.FunctionCall{Name: "echo", Arguments: `{"text":"hello"}`},
 	)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:         "ToolAgent",
-		SystemPrompt: "你使用工具",
-		Model:        llm,
-		MaxTurns:     3,
-	}).AsCapability().WithToolkit(registry).WithMetrics(m)
+	agent, err := NewAgent("ToolAgent", "你使用工具", llm, WithMaxTurns(3), WithToolkit(registry))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	agent = agent.WithMetrics(m)
 
-	_, err := agent.Run(context.Background(), UserMessage("用 echo 工具说 hello"))
+	_, err = agent.Run(context.Background(), UserMessage("用 echo 工具说 hello"))
 	if err != nil {
 		t.Fatalf("Run error: %v", err)
 	}
@@ -106,15 +104,13 @@ func TestReActAgent_LabeledMetricsWithToolCall(t *testing.T) {
 
 // TestReActAgent_LabeledMetricsNilRecorder 验证无 metrics recorder 时不 panic
 func TestReActAgent_LabeledMetricsNilRecorder(t *testing.T) {
-	agent := NewReActAgent(ReActConfig{
-		Name:         "NoMetricsAgent",
-		SystemPrompt: "测试",
-		Model:        demo.NewDemoLLM("ok"),
-		MaxTurns:     1,
-	})
+	agent, err := NewAgent("NoMetricsAgent", "测试", demo.NewDemoLLM("ok"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
 	// 不注入 Metrics
 
-	_, err := agent.Run(context.Background(), UserMessage("测试"))
+	_, err = agent.Run(context.Background(), UserMessage("测试"))
 	if err != nil {
 		t.Fatalf("Run error: %v", err)
 	}
@@ -126,14 +122,13 @@ func TestReActAgent_LabeledMetricsNilRecorder(t *testing.T) {
 func TestReActAgent_LabeledMetricsOnCapabilityAgent(t *testing.T) {
 	m := metrics.NewMetrics()
 
-	capAgent := NewReActAgent(ReActConfig{
-		Name:         "CapAgent",
-		SystemPrompt: "测试",
-		Model:        demo.NewDemoLLM("ok"),
-		MaxTurns:     1,
-	}).WithMetrics(m)
+	capAgent, err := NewAgent("CapAgent", "测试", demo.NewDemoLLM("ok"), WithMaxTurns(1))
+	if err != nil {
+		t.Fatalf("NewAgent error: %v", err)
+	}
+	capAgent = capAgent.WithMetrics(m)
 
-	_, err := capAgent.Run(context.Background(), UserMessage("测试"))
+	_, err = capAgent.Run(context.Background(), UserMessage("测试"))
 	if err != nil {
 		t.Fatalf("Run error: %v", err)
 	}

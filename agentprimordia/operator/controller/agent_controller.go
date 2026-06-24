@@ -3,7 +3,11 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
@@ -547,12 +551,11 @@ func (r *AgentDeploymentReconciler) updateStatus(ctx context.Context, agentDeplo
 		agentDeploy.Status.ErrorRate = 0
 	}
 
-	// TODO: These metrics would be populated from the metrics sidecar endpoint
-	// in production. The sidecar aggregates LLM token usage, turn latency, and
-	// cost data which the controller would periodically scrape and reflect here.
-	agentDeploy.Status.AverageTurnLatencySeconds = 0
-	agentDeploy.Status.TotalTokens = 0
-	agentDeploy.Status.EstimatedCostUSD = 0
+	// 从 metrics sidecar 抓取指标
+	metrics := r.scrapeMetrics(ctx, agentDeploy)
+	agentDeploy.Status.AverageTurnLatencySeconds = metrics.AverageTurnLatencySeconds
+	agentDeploy.Status.TotalTokens = metrics.TotalTokens
+	agentDeploy.Status.EstimatedCostUSD = metrics.EstimatedCostUSD
 
 	condition := agentv1.AgentDeploymentCondition{
 		Type:               "Available",
@@ -585,6 +588,59 @@ func (r *AgentDeploymentReconciler) updateStatus(ctx context.Context, agentDeplo
 	agentDeploy.Status.Conditions = []agentv1.AgentDeploymentCondition{condition, progressing}
 
 	return r.Status().Update(ctx, agentDeploy)
+}
+
+// agentMetricsSnapshot 从 metrics sidecar 抓取的指标快照
+type agentMetricsSnapshot struct {
+	AverageTurnLatencySeconds float64
+	TotalTokens               int64
+	EstimatedCostUSD          float64
+}
+
+// metricsResponse 是 metrics sidecar /stats 端点的 JSON 响应格式
+type metricsResponse struct {
+	AverageTurnLatencySeconds float64 `json:"averageTurnLatencySeconds"`
+	TotalTokens               int64   `json:"totalTokens"`
+	EstimatedCostUSD          float64 `json:"estimatedCostUSD"`
+}
+
+// scrapeMetrics 从 metrics sidecar 抓取指标。
+// 如果 sidecar 不可达或返回错误，返回零值（不阻塞 Reconcile）。
+func (r *AgentDeploymentReconciler) scrapeMetrics(ctx context.Context, agentDeploy *agentv1.AgentDeployment) agentMetricsSnapshot {
+	svcName := fmt.Sprintf("%s-metrics", agentDeploy.Name)
+	url := fmt.Sprintf("http://%s.%s.svc.cluster.local:9090/stats", svcName, agentDeploy.Namespace)
+
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return agentMetricsSnapshot{}
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return agentMetricsSnapshot{} // sidecar 不可达，跳过
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return agentMetricsSnapshot{}
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return agentMetricsSnapshot{}
+	}
+
+	var m metricsResponse
+	if err := json.Unmarshal(body, &m); err != nil {
+		return agentMetricsSnapshot{}
+	}
+
+	return agentMetricsSnapshot{
+		AverageTurnLatencySeconds: m.AverageTurnLatencySeconds,
+		TotalTokens:               m.TotalTokens,
+		EstimatedCostUSD:          m.EstimatedCostUSD,
+	}
 }
 
 // SetupWithManager 注册 Controller 到 Manager

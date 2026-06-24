@@ -1,5 +1,8 @@
 # A2A gRPC/protobuf Phase 4 Implementation Plan
 
+> **状态：已完成** ✅
+> **完成日期：2026-06-21**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 同步更新 api-reference.md 文档，补充 benchmark 对比 HTTP JSON-RPC 与 gRPC，完成最终完整性验证。

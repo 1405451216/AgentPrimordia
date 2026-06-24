@@ -118,13 +118,14 @@ func TestNewAgent_EquivalentToNewReActAgent(t *testing.T) {
 		t.Fatalf("NewAgent error: %v", err)
 	}
 
-	// 方式 2：NewReActAgent（旧方式）
-	agent2 := NewReActAgent(ReActConfig{
+	// 方式 2：NewReActAgent（旧方式，仅用于测试等价性）
+	reactAgent := NewReActAgent(ReActConfig{
 		Name:         "equivalent",
 		SystemPrompt: "prompt",
 		Model:        mock2,
 		MaxTurns:     7,
 	})
+	agent2 := reactAgent.AsCapability()
 
 	resp1, err1 := agent1.Run(context.Background(), UserMessage("hi"))
 	if err1 != nil {
@@ -144,8 +145,8 @@ func TestNewAgent_EquivalentToNewReActAgent(t *testing.T) {
 	}
 
 	// 验证两种方式创建的 agent 都有正确的配置
-	if agent1.inner.config.MaxTurns != agent2.config.MaxTurns {
-		t.Errorf("MaxTurns mismatch: %d vs %d", agent1.inner.config.MaxTurns, agent2.config.MaxTurns)
+	if agent1.inner.config.MaxTurns != agent2.inner.config.MaxTurns {
+		t.Errorf("MaxTurns mismatch: %d vs %d", agent1.inner.config.MaxTurns, agent2.inner.config.MaxTurns)
 	}
 }
 

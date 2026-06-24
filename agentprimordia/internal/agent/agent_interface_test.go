@@ -11,11 +11,10 @@ func TestAgentInterface_ReActAgent_Implements(t *testing.T) {
 }
 
 func TestAgentInterface_Name(t *testing.T) {
-	cfg := ReActConfig{
-		Name:  "test-agent",
-		Model: llm.NewMockLLM(t),
+	agt, err := NewAgent("test-agent", "", llm.NewMockLLM(t))
+	if err != nil {
+		t.Fatal(err)
 	}
-	agt := NewReActAgent(cfg)
 
 	if agt.Name() != "test-agent" {
 		t.Errorf("Name() = %q, want %q", agt.Name(), "test-agent")
@@ -23,25 +22,23 @@ func TestAgentInterface_Name(t *testing.T) {
 }
 
 func TestAgentInterface_Stop(t *testing.T) {
-	cfg := ReActConfig{
-		Name:  "stop-test",
-		Model: llm.NewMockLLM(t),
+	agt, err := NewAgent("stop-test", "", llm.NewMockLLM(t))
+	if err != nil {
+		t.Fatal(err)
 	}
-	agt := NewReActAgent(cfg)
 
 	agt.Stop()
 
-	if !agt.lifecycle.IsStopped() {
+	if !agt.Inner().lifecycle.IsStopped() {
 		t.Error("after Stop(), lifecycle.IsStopped() = false, want true")
 	}
 }
 
 func TestAgentInterface_Stats(t *testing.T) {
-	cfg := ReActConfig{
-		Name:  "stats-test",
-		Model: llm.NewMockLLM(t),
+	agt, err := NewAgent("stats-test", "", llm.NewMockLLM(t))
+	if err != nil {
+		t.Fatal(err)
 	}
-	agt := NewReActAgent(cfg)
 
 	stats := agt.Stats()
 	if stats.Status != StatusIdle {

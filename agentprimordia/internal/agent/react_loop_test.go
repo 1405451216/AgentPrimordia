@@ -17,11 +17,10 @@ func TestReActAgent_SimpleCompletion(t *testing.T) {
 
 	registry := tools.NewRegistry()
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "test-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("test-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(registry))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("Hi there"))
 
@@ -50,11 +49,10 @@ func TestReActAgent_SingleToolCall(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockTimeTool{name: "get_time"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "tool-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("tool-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(registry))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("What time is it?"))
 
@@ -85,11 +83,10 @@ func TestReActAgent_MultipleToolCalls(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockSearchTool{name: "search"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "multi-tool-agent",
-		Model:    mockLLM,
-		MaxTurns: 20,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("multi-tool-agent", "", mockLLM, WithMaxTurns(20), WithToolkit(registry))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("Compare Go, Rust, and Python"))
 
@@ -113,11 +110,10 @@ func TestReActAgent_MaxTurnsExceeded(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockTool{name: "loop_tool", response: "more data needed"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "loop-agent",
-		Model:    mockLLM,
-		MaxTurns: 5,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("loop-agent", "", mockLLM, WithMaxTurns(5), WithToolkit(registry))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("Keep going"))
 
@@ -136,11 +132,10 @@ func TestReActAgent_LLMError(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithError(errors.New("API rate limited"))
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "error-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("error-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("test"))
 
@@ -156,16 +151,15 @@ func TestReActAgent_ContextCanceled(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("slow response").WithDelay(2 * time.Second)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "cancel-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("cancel-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := agent.Run(ctx, UserMessage("test"))
+	_, err = agent.Run(ctx, UserMessage("test"))
 
 	if err == nil {
 		t.Error("expected context canceled error")
@@ -201,13 +195,12 @@ func TestReActAgent_Hooks_Fired(t *testing.T) {
 		return nil
 	})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "hooks-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry).WithHooks(hooks)
+	agent, err := NewAgent("hooks-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(registry), WithHooks(hooks))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
-	_, err := agent.Run(context.Background(), UserMessage("test with hooks"))
+	_, err = agent.Run(context.Background(), UserMessage("test with hooks"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -227,11 +220,10 @@ func TestReActAgent_NoToolkit(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Simple answer")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "no-toolkit-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	})
+	agent, err := NewAgent("no-toolkit-agent", "", mockLLM, WithMaxTurns(10))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("Simple question"))
 
@@ -247,13 +239,12 @@ func TestReActAgent_Stats(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Stats test")
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "stats-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("stats-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
-	_, err := agent.Run(context.Background(), UserMessage("test"))
+	_, err = agent.Run(context.Background(), UserMessage("test"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -333,11 +324,10 @@ func TestReActAgent_GracefulShutdown(t *testing.T) {
 	registry := tools.NewRegistry()
 	_ = registry.Register(&mockEchoTool{name: "echo"})
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "graceful-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(registry)
+	agent, err := NewAgent("graceful-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(registry))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	done := make(chan struct{})
 	go func() {
@@ -350,7 +340,7 @@ func TestReActAgent_GracefulShutdown(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	err := agent.GracefulShutdown(ctx)
+	err = agent.GracefulShutdown(ctx)
 	if err != nil {
 		t.Errorf("graceful shutdown should succeed, got %v", err)
 	}
@@ -367,11 +357,10 @@ func TestReActAgent_GracefulShutdown_TimeoutFallback(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("done").WithDelay(200 * time.Millisecond)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "graceful-timeout-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("graceful-timeout-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	done := make(chan struct{})
 	go func() {
@@ -384,7 +373,7 @@ func TestReActAgent_GracefulShutdown_TimeoutFallback(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	err := agent.GracefulShutdown(ctx)
+	err = agent.GracefulShutdown(ctx)
 	if err == nil {
 		t.Error("expected timeout error from graceful shutdown")
 	}
@@ -398,11 +387,10 @@ func TestReActAgent_WithCache(t *testing.T) {
 
 	cache := llm.NewFingerprintCache(100, 0)
 
-	agent := NewReActAgent(ReActConfig{
-		Name:     "cache-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry()).WithCache(cache)
+	agent, err := NewAgent("cache-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()), WithCache(cache))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("what is Go?"))
 	if err != nil {
@@ -421,11 +409,10 @@ func TestReActAgent_WithCache(t *testing.T) {
 func TestReActAgent_RequestID_AutoGenerated(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Hello!")
-	agent := NewReActAgent(ReActConfig{
-		Name:     "reqid-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("reqid-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	resp, err := agent.Run(context.Background(), UserMessage("Hi"))
 	if err != nil {
@@ -448,11 +435,10 @@ func TestReActAgent_RequestID_AutoGenerated(t *testing.T) {
 func TestReActAgent_RequestID_FromContext(t *testing.T) {
 	t.Parallel()
 	mockLLM := llm.NewMockLLM(t).WithResponse("Hello!")
-	agent := NewReActAgent(ReActConfig{
-		Name:     "reqid-ctx-agent",
-		Model:    mockLLM,
-		MaxTurns: 10,
-	}).AsCapability().WithToolkit(tools.NewRegistry())
+	agent, err := NewAgent("reqid-ctx-agent", "", mockLLM, WithMaxTurns(10), WithToolkit(tools.NewRegistry()))
+	if err != nil {
+		t.Fatalf("unexpected error creating agent: %v", err)
+	}
 
 	// 通过 context 传入自定义请求 ID
 	ctx := WithRequestID(context.Background(), "custom-req-123")

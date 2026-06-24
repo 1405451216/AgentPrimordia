@@ -6,8 +6,6 @@ import (
 	"log/slog"
 	"strings"
 	"time"
-
-	"agentprimordia/internal/llm"
 )
 
 const defaultSummarizerRetries = 1
@@ -23,16 +21,38 @@ type SummaryExtractor interface {
 	ExtractSummary(ctx context.Context, content string) (*SummaryResult, error)
 }
 
+// SummarizerLLM Summarizer 所需的 LLM 能力接口（解耦 memory→llm 依赖）
+type SummarizerLLM interface {
+	Complete(ctx context.Context, messages []ChatMessageForSummary, model string) (string, error)
+}
+
+// ChatMessageForSummary 摘要提取用的简化消息结构
+type ChatMessageForSummary struct {
+	Role    string
+	Content string
+}
+
+// llmAdapter 将 llm.Provider 适配为 SummarizerLLM 接口
+// 定义在此文件中以避免 memory 包直接依赖 llm 包
+type llmAdapter struct {
+	completeFn func(ctx context.Context, messages []ChatMessageForSummary, model string) (string, error)
+}
+
+func (a *llmAdapter) Complete(ctx context.Context, messages []ChatMessageForSummary, model string) (string, error) {
+	return a.completeFn(ctx, messages, model)
+}
+
 // Summarizer 使用 LLM 从内容中提取摘要和标签
 type Summarizer struct {
-	provider   llm.Provider
+	provider   SummarizerLLM
 	model      string
 	maxRetries int
 	logger     *slog.Logger
 }
 
 // NewSummarizer 创建摘要提取器
-func NewSummarizer(provider llm.Provider) *Summarizer {
+// 接受 SummarizerLLM 接口，通过适配器模式解耦 llm 包依赖
+func NewSummarizer(provider SummarizerLLM) *Summarizer {
 	return &Summarizer{
 		provider:   provider,
 		maxRetries: defaultSummarizerRetries,
@@ -57,25 +77,17 @@ func (s *Summarizer) ExtractSummary(ctx context.Context, content string) (*Summa
 第一行：摘要
 第二行：topics: 标签1,标签2,标签3`, content)
 
-	messages := []llm.ChatMessage{
+	messages := []ChatMessageForSummary{
 		{Role: "system", Content: "你是一个摘要提取助手。请简洁地提取摘要和标签。"},
 		{Role: "user", Content: prompt},
 	}
 
-	req := &llm.CompletionRequest{
-		Messages: messages,
-	}
-
-	if s.model != "" {
-		req.Model = s.model
-	}
-
-	resp, err := s.provider.Complete(ctx, req)
+	resp, err := s.provider.Complete(ctx, messages, s.model)
 	if err != nil {
 		return nil, fmt.Errorf("摘要提取失败: %w", err)
 	}
 
-	summary, topics := parseSummaryResponse(resp.Content)
+	summary, topics := parseSummaryResponse(resp)
 	return &SummaryResult{
 		Summary: summary,
 		Topics:  topics,

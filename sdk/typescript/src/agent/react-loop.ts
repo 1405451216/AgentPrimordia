@@ -1,6 +1,17 @@
 import type { Message, ToolCall, Response, AgentMetrics, AgentStatus, ToolResult } from '../types.js';
 import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
+import { validateAgentInput, requirePositiveInt, requireNonEmpty } from '../validate.js';
+
+// ===== Stream Event Types =====
+
+export type StreamEvent =
+  | { type: 'token'; content: string }
+  | { type: 'tool_call'; toolCall: ToolCall; turn: number }
+  | { type: 'tool_result'; result: ToolResult; turn: number }
+  | { type: 'turn_end'; turn: number }
+  | { type: 'done'; response: Response }
+  | { type: 'error'; error: Error };
 
 export type HookPoint =
   | 'before_run'
@@ -164,6 +175,7 @@ export class ReActAgent {
   }
 
   async run(input: string): Promise<Response> {
+    validateAgentInput(input);
     this.lifecycle.setStatus('running');
     const startTime = Date.now();
     let totalLLMLatency = 0;
@@ -313,8 +325,40 @@ export class ReActAgent {
     return response;
   }
 
+  /**
+   * Stream the agent's response as text tokens.
+   * 
+   * - When no tools are registered: streams LLM tokens directly (true token-by-token).
+   * - When tools are registered: runs the full ReAct loop, yielding content from each turn.
+   *   Tool results are NOT yielded (use streamEvents() for structured events).
+   */
   async *stream(input: string): AsyncIterable<string> {
+    for await (const event of this.streamEvents(input)) {
+      if (event.type === 'token' && event.content) {
+        yield event.content;
+      }
+    }
+  }
+
+  /**
+   * Stream structured events from the full ReAct loop.
+   * 
+   * Events include:
+   * - token: LLM text output (streamed token by token when possible)
+   * - tool_call: a tool was invoked by the LLM
+   * - tool_result: a tool execution completed
+   * - turn_end: a ReAct turn completed
+   * - done: the agent finished with a final response
+   * - error: an error occurred
+   */
+  async *streamEvents(input: string): AsyncIterable<StreamEvent> {
+    validateAgentInput(input);
     this.lifecycle.setStatus('running');
+    const startTime = Date.now();
+    let totalLLMLatency = 0;
+    let totalToolLatency = 0;
+    let toolCount = 0;
+    this.consecutiveFailures = 0;
 
     this.messages = [];
     if (this.systemPrompt) {
@@ -322,15 +366,179 @@ export class ReActAgent {
     }
     this.messages.push({ role: 'user', content: input });
 
-    if (this.model.stream) {
-      for await (const chunk of this.model.stream({ messages: this.messages })) {
-        if (chunk.content) yield chunk.content;
-        if (chunk.done) return;
+    await this.hooks.fire({
+      agentID: this.name, sessionID: this.sessionId, point: 'before_run', turn: 0,
+    });
+
+    const hasTools = this.toolkit.size() > 0;
+
+    let turn = 0;
+    for (; turn < this.maxTurns; turn++) {
+      if (this.lifecycle.isStopped()) break;
+
+      await this.hooks.fire({
+        agentID: this.name, sessionID: this.sessionId, point: 'before_turn', turn,
+      });
+
+      this.trimMessages();
+
+      const llmStart = Date.now();
+
+      if (!hasTools) {
+        // No tools: stream directly from LLM if supported
+        if (this.model.stream) {
+          let fullContent = '';
+          for await (const chunk of this.model.stream({ messages: this.messages })) {
+            if (chunk.content) {
+              fullContent += chunk.content;
+              yield { type: 'token', content: chunk.content };
+            }
+            if (chunk.done) break;
+          }
+          totalLLMLatency += Date.now() - llmStart;
+          this.messages.push({ role: 'assistant', content: fullContent });
+
+          const response: Response = {
+            content: fullContent,
+            metrics: {
+              totalTurns: turn + 1, totalTools: 0,
+              duration: Date.now() - startTime,
+              llmLatency: totalLLMLatency, toolLatency: 0,
+            },
+          };
+          this.lifecycle.setStatus('completed');
+          yield { type: 'done', response };
+          return;
+        } else {
+          const resp = await this.model.complete({ messages: this.messages });
+          totalLLMLatency += Date.now() - llmStart;
+          this.messages.push({ role: 'assistant', content: resp.content });
+          yield { type: 'token', content: resp.content };
+
+          const response: Response = {
+            content: resp.content,
+            metrics: {
+              totalTurns: turn + 1, totalTools: 0,
+              duration: Date.now() - startTime,
+              llmLatency: totalLLMLatency, toolLatency: 0,
+            },
+          };
+          this.lifecycle.setStatus('completed');
+          yield { type: 'done', response };
+          return;
+        }
       }
-    } else {
-      const resp = await this.model.complete({ messages: this.messages });
-      yield resp.content;
+
+      // Tools available: use callTools (non-streaming) for each turn
+      const resp = await this.model.callTools({
+        messages: this.messages,
+        tools: this.toolkit.definitions(),
+      });
+      totalLLMLatency += Date.now() - llmStart;
+
+      await this.hooks.fire({
+        agentID: this.name, sessionID: this.sessionId, point: 'after_llm', turn,
+      });
+
+      // Yield the LLM's thinking content as a token
+      if (resp.content) {
+        yield { type: 'token', content: resp.content };
+      }
+
+      this.messages.push({
+        role: 'assistant',
+        content: resp.content,
+        toolCalls: resp.toolCalls.length > 0 ? resp.toolCalls : undefined,
+      });
+
+      // No tool calls → final answer
+      if (resp.toolCalls.length === 0) {
+        const response: Response = {
+          content: resp.content,
+          metrics: {
+            totalTurns: turn + 1, totalTools: toolCount,
+            duration: Date.now() - startTime,
+            llmLatency: totalLLMLatency, toolLatency: totalToolLatency,
+          },
+        };
+        this.lifecycle.setStatus('completed');
+
+        await this.hooks.fire({
+          agentID: this.name, sessionID: this.sessionId,
+          point: 'on_complete', turn, response,
+        });
+        await this.hooks.fire({
+          agentID: this.name, sessionID: this.sessionId, point: 'after_turn', turn,
+        });
+
+        yield { type: 'done', response };
+        return;
+      }
+
+      // Execute tool calls
+      for (const tc of resp.toolCalls) {
+        await this.hooks.fire({
+          agentID: this.name, sessionID: this.sessionId,
+          point: 'before_tool', turn, toolCall: tc,
+        });
+
+        yield { type: 'tool_call', toolCall: tc, turn };
+
+        const toolStart = Date.now();
+        const result = await this.toolkit.execute(tc);
+        totalToolLatency += Date.now() - toolStart;
+        toolCount++;
+
+        yield { type: 'tool_result', result, turn };
+
+        if (result.isError) {
+          this.consecutiveFailures++;
+          if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+            const response: Response = {
+              content: `Agent stopped: ${this.consecutiveFailures} consecutive tool failures`,
+              metrics: {
+                totalTurns: turn + 1, totalTools: toolCount,
+                duration: Date.now() - startTime,
+                llmLatency: totalLLMLatency, toolLatency: totalToolLatency,
+              },
+            };
+            this.lifecycle.setStatus('completed');
+            yield { type: 'done', response };
+            return;
+          }
+        } else {
+          this.consecutiveFailures = 0;
+        }
+
+        this.messages.push({
+          role: 'tool', content: result.content,
+          toolCallId: tc.id, name: tc.name,
+        });
+
+        await this.hooks.fire({
+          agentID: this.name, sessionID: this.sessionId,
+          point: 'after_tool', turn, toolResult: result,
+        });
+      }
+
+      yield { type: 'turn_end', turn };
+
+      await this.hooks.fire({
+        agentID: this.name, sessionID: this.sessionId, point: 'after_turn', turn,
+      });
     }
+
+    // Max turns exceeded
+    const response: Response = {
+      content: this.messages[this.messages.length - 1]?.content ?? '',
+      metrics: {
+        totalTurns: turn, totalTools: toolCount,
+        duration: Date.now() - startTime,
+        llmLatency: totalLLMLatency, toolLatency: totalToolLatency,
+      },
+    };
+    this.lifecycle.setStatus('completed');
+    yield { type: 'done', response };
   }
 
   private async callLLM(): Promise<{ content: string; toolCalls?: ToolCall[] }> {

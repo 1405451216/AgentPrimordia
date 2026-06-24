@@ -1,17 +1,17 @@
 package http
 
 import (
-	"agentprimordia/internal/tools"
+	ap "agentprimordia/pkg"
 )
 
-// Plugin 是 HTTP 客户端插件，封装 tools.HTTPClientTool
+// Plugin 是 HTTP 客户端插件，封装 tools.API
 type Plugin struct {
-	tool *tools.HTTPClientTool
+	api *ap.API
 }
 
 // New 创建新的 HTTP 插件实例
 func New() *Plugin {
-	return &Plugin{tool: tools.NewHTTPClientTool()}
+	return &Plugin{api: ap.NewAPI()}
 }
 
 // Name 返回插件名称
@@ -21,8 +21,8 @@ func (p *Plugin) Name() string { return "http" }
 func (p *Plugin) Version() string { return "0.1.0" }
 
 // Tools 返回插件提供的工具列表
-func (p *Plugin) Tools() []tools.Tool {
-	return []tools.Tool{p.tool}
+func (p *Plugin) Tools() []ap.Tool {
+	return []ap.Tool{p.api}
 }
 
 // Init 初始化插件（HTTP 工具无需额外配置）
@@ -30,3 +30,9 @@ func (p *Plugin) Init(config map[string]any) error { return nil }
 
 // Close 关闭插件资源
 func (p *Plugin) Close() error { return nil }
+
+// WithAllowPrivate 允许访问内网地址（仅用于测试环境）
+func (p *Plugin) WithAllowPrivate(allow bool) *Plugin {
+	p.api = p.api.WithAllowPrivate(allow)
+	return p
+}

@@ -19,19 +19,15 @@ func TestCollaboration_DebateMode(t *testing.T) {
 		EnableCritique: true,
 	})
 
-	proAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ProAgent",
-		SystemPrompt: "你是支持方，请提出支持论点",
-		Model:        demo.NewDemoLLM("我强烈支持这个观点，因为..."),
-		MaxTurns:     1,
-	})
+	proAgent, err := agent.NewAgent("ProAgent", "你是支持方，请提出支持论点", demo.NewDemoLLM("我强烈支持这个观点，因为..."), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	conAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "ConAgent",
-		SystemPrompt: "你是反对方，请提出反对论点",
-		Model:        demo.NewDemoLLM("我反对这个观点，理由是..."),
-		MaxTurns:     1,
-	})
+	conAgent, err := agent.NewAgent("ConAgent", "你是反对方，请提出反对论点", demo.NewDemoLLM("我反对这个观点，理由是..."), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:          "pro",
@@ -85,19 +81,15 @@ func TestCollaboration_ReviewMode(t *testing.T) {
 		MaxRounds: 1,
 	})
 
-	reviewer1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Reviewer1",
-		SystemPrompt: "你是高级代码审查员",
-		Model:        demo.NewDemoLLM("代码整体结构良好，但需要注意错误处理"),
-		MaxTurns:     1,
-	})
+	reviewer1, err := agent.NewAgent("Reviewer1", "你是高级代码审查员", demo.NewDemoLLM("代码整体结构良好，但需要注意错误处理"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	reviewer2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Reviewer2",
-		SystemPrompt: "你是安全专家",
-		Model:        demo.NewDemoLLM("存在潜在的安全漏洞，建议加强输入验证"),
-		MaxTurns:     1,
-	})
+	reviewer2, err := agent.NewAgent("Reviewer2", "你是安全专家", demo.NewDemoLLM("存在潜在的安全漏洞，建议加强输入验证"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:    "rev1",
@@ -143,26 +135,20 @@ func TestCollaboration_ConsensusMode(t *testing.T) {
 		SaveHistory:     true,
 	})
 
-	techLead := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "TechLead",
-		SystemPrompt: "你是技术负责人",
-		Model:        demo.NewDemoLLM("我选择方案A，因为它性能更好"),
-		MaxTurns:     1,
-	})
+	techLead, err := agent.NewAgent("TechLead", "你是技术负责人", demo.NewDemoLLM("我选择方案A，因为它性能更好"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	architect := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Architect",
-		SystemPrompt: "你是架构师",
-		Model:        demo.NewDemoLLM("我倾向于方案B，因为可扩展性更强"),
-		MaxTurns:     1,
-	})
+	architect, err := agent.NewAgent("Architect", "你是架构师", demo.NewDemoLLM("我倾向于方案B，因为可扩展性更强"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	devOps := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "DevOps",
-		SystemPrompt: "你是运维工程师",
-		Model:        demo.NewDemoLLM("方案A更容易部署和维护"),
-		MaxTurns:     1,
-	})
+	devOps, err := agent.NewAgent("DevOps", "你是运维工程师", demo.NewDemoLLM("方案A更容易部署和维护"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:     "lead",
@@ -217,19 +203,15 @@ func TestCollaboration_BrainstormMode(t *testing.T) {
 		MaxRounds: 1,
 	})
 
-	ideaGen1 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Creative1",
-		SystemPrompt: "你是创意总监",
-		Model:        demo.NewDemoLLM("想法1: AI驱动的个性化推荐系统\n想法2: 增强现实购物体验\n想法3: 社交化产品评论"),
-		MaxTurns:     1,
-	})
+	ideaGen1, err := agent.NewAgent("Creative1", "你是创意总监", demo.NewDemoLLM("想法1: AI驱动的个性化推荐系统\n想法2: 增强现实购物体验\n想法3: 社交化产品评论"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	ideaGen2 := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "Creative2",
-		SystemPrompt: "你是用户体验设计师",
-		Model:        demo.NewDemoLLM("想法A: 游戏化用户激励体系\n想法B: 智能客服聊天机器人\n想法C: 语音交互界面"),
-		MaxTurns:     1,
-	})
+	ideaGen2, err := agent.NewAgent("Creative2", "你是用户体验设计师", demo.NewDemoLLM("想法A: 游戏化用户激励体系\n想法B: 智能客服聊天机器人\n想法C: 语音交互界面"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:          "creative1",
@@ -273,11 +255,10 @@ func TestCollaboration_Events(t *testing.T) {
 		MaxRounds: 1,
 	})
 
-	testAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "EventTester",
-		Model:    demo.NewDemoLLM("test response"),
-		MaxTurns: 1,
-	})
+	testAgent, err := agent.NewAgent("EventTester", "", demo.NewDemoLLM("test response"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:    "tester",
@@ -329,11 +310,10 @@ func TestCollaboration_Export(t *testing.T) {
 		MaxRounds:   1,
 	})
 
-	testAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "ExportAgent",
-		Model:    demo.NewDemoLLM("export content"),
-		MaxTurns: 1,
-	})
+	testAgent, err := agent.NewAgent("ExportAgent", "", demo.NewDemoLLM("export content"), agent.WithMaxTurns(1))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:    "exp",
@@ -376,11 +356,10 @@ func TestCollaboration_Metrics(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		idx := i
-		a := agent.NewReActAgent(agent.ReActConfig{
-			Name:     fmt.Sprintf("MetricsAgent-%d", idx),
-			Model:    demo.NewDemoLLM(fmt.Sprintf("response-%d", idx)),
-			MaxTurns: 1,
-		})
+		a, err := agent.NewAgent(fmt.Sprintf("MetricsAgent-%d", idx), "", demo.NewDemoLLM(fmt.Sprintf("response-%d", idx)), agent.WithMaxTurns(1))
+		if err != nil {
+			t.Fatal(err)
+		}
 		_ = session.AddCollaborator(&Collaborator{
 			ID:    fmt.Sprintf("m%d", idx),
 			Name:  fmt.Sprintf("Agent-%d", idx),
@@ -408,11 +387,10 @@ func TestCollaboration_Timeout(t *testing.T) {
 		Timeout: 100 * time.Millisecond,
 	})
 
-	slowAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:     "SlowAgent",
-		Model:    demo.NewDemoLLM("slow"),
-		MaxTurns: 5,
-	})
+	slowAgent, err := agent.NewAgent("SlowAgent", "", demo.NewDemoLLM("slow"), agent.WithMaxTurns(5))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_ = session.AddCollaborator(&Collaborator{
 		ID:    "slow",
@@ -443,11 +421,10 @@ func BenchmarkCollaboration_Debate(b *testing.B) {
 				MaxRounds: 1,
 			})
 
-			a := agent.NewReActAgent(agent.ReActConfig{
-				Name:     fmt.Sprintf("Bench-%d", i),
-				Model:    demo.NewDemoLLM("bench"),
-				MaxTurns: 1,
-			})
+			a, err := agent.NewAgent(fmt.Sprintf("Bench-%d", i), "", demo.NewDemoLLM("bench"), agent.WithMaxTurns(1))
+			if err != nil {
+				b.Fatal(err)
+			}
 
 			_ = session.AddCollaborator(&Collaborator{
 				ID:    fmt.Sprintf("b%d", i),

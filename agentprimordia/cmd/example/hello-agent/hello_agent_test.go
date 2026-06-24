@@ -19,12 +19,10 @@ import (
 func TestHelloAgent_BasicRun(t *testing.T) {
 	demoLLM := demo.NewDemoLLM("Hello! How can I help you today?")
 
-	a := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "TestHelloAgent",
-		SystemPrompt: "You are a helpful assistant.",
-		Model:        demoLLM,
-		MaxTurns:     5,
-	})
+	a, err := agent.NewAgent("TestHelloAgent", "You are a helpful assistant.", demoLLM, agent.WithMaxTurns(5))
+	if err != nil {
+		t.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	resp, err := a.Run(context.Background(), agent.UserMessage("Hello!"))
 	if err != nil {
@@ -75,12 +73,13 @@ func TestHelloAgent_WithTools(t *testing.T) {
 	}
 	_ = toolRegistry.Register(fs)
 
-	a := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "TestToolAgent",
-		SystemPrompt: "You are a file reading assistant.",
-		Model:        demoLLM,
-		MaxTurns:     10,
-	}).AsCapability().WithToolkit(toolRegistry)
+	a, err := agent.NewAgent("TestToolAgent", "You are a file reading assistant.", demoLLM,
+		agent.WithMaxTurns(10),
+		agent.WithToolkit(toolRegistry),
+	)
+	if err != nil {
+		t.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	resp, err := a.Run(context.Background(), agent.UserMessage("读取 test.txt 的内容"))
 	if err != nil {
@@ -120,12 +119,13 @@ func TestHelloAgent_MultiTurn(t *testing.T) {
 	}
 	_ = toolRegistry.Register(fs)
 
-	a := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "TestMultiTurnAgent",
-		SystemPrompt: "You are a data analysis assistant. Read files before answering.",
-		Model:        multiLLM,
-		MaxTurns:     10,
-	}).AsCapability().WithToolkit(toolRegistry)
+	a, err := agent.NewAgent("TestMultiTurnAgent", "You are a data analysis assistant. Read files before answering.", multiLLM,
+		agent.WithMaxTurns(10),
+		agent.WithToolkit(toolRegistry),
+	)
+	if err != nil {
+		t.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	resp, err := a.Run(context.Background(), agent.UserMessage("分析 data.json 文件"))
 	if err != nil {
@@ -244,8 +244,6 @@ func TestProduction_FullWorkflow(t *testing.T) {
 	_ = toolRegistry.Register(builtin.NewShell())
 	_ = toolRegistry.Register(builtin.NewWeb())
 
-	lifecycle := agent.NewLifecycle()
-
 	hooks := agent.NewHookManager()
 	hooks.Register(agent.HookAfterTurn, func(ctx context.Context, hctx *agent.HookContext) error {
 		hookTurns = append(hookTurns, hctx.Turn)
@@ -262,17 +260,16 @@ func TestProduction_FullWorkflow(t *testing.T) {
 		return nil
 	})
 
-	prodAgent := agent.NewReActAgent(agent.ReActConfig{
-		Name:         "FullWorkflowAgent",
-		SystemPrompt: "You are a senior coding assistant.",
-		Model:        prodLLM,
-		MaxTurns:     20,
-		Temperature:  0.7,
-		Lifecycle:    lifecycle,
-	}).AsCapability().
-		WithToolkit(toolRegistry).
-		WithMemory(memStore).
-		WithHooks(hooks)
+	prodAgent, err := agent.NewAgent("FullWorkflowAgent", "You are a senior coding assistant.", prodLLM,
+		agent.WithMaxTurns(20),
+		agent.WithTemperature(0.7),
+		agent.WithToolkit(toolRegistry),
+		agent.WithMemory(memStore),
+		agent.WithHooks(hooks),
+	)
+	if err != nil {
+		t.Fatalf("创建 Agent 失败: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -286,8 +283,10 @@ func TestProduction_FullWorkflow(t *testing.T) {
 		t.Fatal("完整工作流响应不应为空")
 	}
 
-	if lifecycle.Status() != agent.StatusCompleted {
-		t.Errorf("Lifecycle 最终状态应为 completed，实际 %s", lifecycle.Status())
+	// 检查 Agent 自身状态（lifecycle 是独立创建的，不关联 Agent）
+	stats := prodAgent.Stats()
+	if stats.Status != agent.StatusCompleted {
+		t.Errorf("Agent 最终状态应为 completed，实际 %s", stats.Status)
 	}
 
 	if !hookCompleted {
@@ -297,7 +296,6 @@ func TestProduction_FullWorkflow(t *testing.T) {
 	count, _ := memStore.Count(ctx, "")
 	t.Logf("Memory 记录数: %d", count)
 
-	stats := prodAgent.Stats()
 	t.Logf("Agent 状态: %s", stats.Status)
 	t.Logf("当前轮次: %d", stats.CurrentTurn)
 	t.Logf("消息总数: %d", stats.TotalMessages)

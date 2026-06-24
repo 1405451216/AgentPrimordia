@@ -1,5 +1,8 @@
 # A2A gRPC/protobuf Phase 3 Implementation Plan
 
+> **状态：已完成** ✅
+> **完成日期：2026-06-21**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将现有 HTTP JSON-RPC server 重构为 `A2AService` adapter，使 HTTP 与 gRPC 共享同一业务核心。

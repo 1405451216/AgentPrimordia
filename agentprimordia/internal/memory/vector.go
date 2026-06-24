@@ -35,6 +35,7 @@ type VectorStore struct {
 	mu      sync.RWMutex
 	entries map[string]*VectorEntry
 	dim     int
+	hnsw    *HNSWIndex
 }
 
 func NewVectorStore(dimensions int) *VectorStore {
@@ -45,6 +46,14 @@ func NewVectorStore(dimensions int) *VectorStore {
 		entries: make(map[string]*VectorEntry),
 		dim:     dimensions,
 	}
+}
+
+// NewVectorStoreWithHNSW 创建带 HNSW 索引的向量存储
+func NewVectorStoreWithHNSW(dimensions int, cfg HNSWConfig) *VectorStore {
+	cfg.Dimensions = dimensions
+	vs := NewVectorStore(dimensions)
+	vs.hnsw = NewHNSWIndex(cfg)
+	return vs
 }
 
 func (s *VectorStore) Add(ctx context.Context, id string, vector []float32, metadata map[string]string) error {
@@ -60,6 +69,12 @@ func (s *VectorStore) Add(ctx context.Context, id string, vector []float32, meta
 		Vector:   vector,
 		Metadata: metadata,
 	}
+
+	// 同步到 HNSW 索引
+	if s.hnsw != nil {
+		s.hnsw.Insert(ctx, id, vector, metadata)
+	}
+
 	return nil
 }
 
@@ -70,6 +85,26 @@ func (s *VectorStore) Search(ctx context.Context, query []float32, topK int) ([]
 
 	if topK <= 0 {
 		topK = defaultTopK
+	}
+
+	// 优先使用 HNSW 索引
+	if s.hnsw != nil {
+		hnswResults := s.hnsw.Search(ctx, query, topK)
+		if len(hnswResults) > 0 {
+			results := make([]*VectorSearchResult, 0, len(hnswResults))
+			for _, r := range hnswResults {
+				metadataCopy := make(map[string]string, len(r.Metadata))
+				for k, v := range r.Metadata {
+					metadataCopy[k] = v
+				}
+				results = append(results, &VectorSearchResult{
+					ID:       r.ID,
+					Score:    1.0 - r.Distance, // 距离转相似度
+					Metadata: metadataCopy,
+				})
+			}
+			return results, nil
+		}
 	}
 
 	s.mu.RLock()
@@ -109,6 +144,12 @@ func (s *VectorStore) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("%w: %s", ErrVectorNotFound, id)
 	}
 	delete(s.entries, id)
+
+	// 同步到 HNSW 索引
+	if s.hnsw != nil {
+		s.hnsw.Delete(id)
+	}
+
 	return nil
 }
 
