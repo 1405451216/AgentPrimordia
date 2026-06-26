@@ -66,7 +66,10 @@ func (m *memoryOutput) Query(f QueryFilter) ([]Event, error) {
 // TestAuditLogger_Log 测试记录审计事件
 func TestAuditLogger_Log(t *testing.T) {
 	out := newMemoryOutput()
-	logger := NewLogger(LoggerConfig{Output: out})
+	logger, err := NewLogger(LoggerConfig{Output: out})
+	if err != nil {
+		t.Fatalf("NewLogger 返回意外错误: %v", err)
+	}
 
 	ctx := context.Background()
 	evt := Event{
@@ -77,7 +80,7 @@ func TestAuditLogger_Log(t *testing.T) {
 		Result:   "success",
 	}
 
-	err := logger.Log(ctx, evt)
+	err = logger.Log(ctx, evt)
 	if err != nil {
 		t.Fatalf("Log 返回意外错误: %v", err)
 	}
@@ -113,7 +116,7 @@ func TestAuditLogger_Log(t *testing.T) {
 // TestAuditLogger_Query 测试按条件查询审计事件
 func TestAuditLogger_Query(t *testing.T) {
 	out := newMemoryOutput()
-	logger := NewLogger(LoggerConfig{Output: out})
+	logger, _ := NewLogger(LoggerConfig{Output: out})
 
 	ctx := context.Background()
 
@@ -172,7 +175,7 @@ func TestAuditLogger_Query(t *testing.T) {
 // TestAuditLogger_ComplianceReport 测试合规报告生成
 func TestAuditLogger_ComplianceReport(t *testing.T) {
 	out := newMemoryOutput()
-	logger := NewLogger(LoggerConfig{Output: out})
+	logger, _ := NewLogger(LoggerConfig{Output: out})
 
 	ctx := context.Background()
 

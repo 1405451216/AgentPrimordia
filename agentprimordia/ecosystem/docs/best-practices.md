@@ -288,9 +288,9 @@ default:
 
 ```go
 // 使用 ResilientProvider 自动重试
-resilient := ap.NewResilientProvider(primary, &ap.ResilientConfig{
+resilient, _ := ap.NewResilientProvider(primary, ap.ResilientConfig{
     MaxRetries:       3,
-    InitialBackoff:   1 * time.Second,
+    RetryBackoff:     1 * time.Second,
     MaxBackoff:       10 * time.Second,
 })
 
@@ -303,12 +303,12 @@ resilient.AddFallback(backupProvider)
 ResilientProvider 内置熔断器：
 
 ```go
-config := &ap.ResilientConfig{
+config := ap.ResilientConfig{
     MaxRetries:       3,
-    InitialBackoff:   500 * time.Millisecond,
+    RetryBackoff:     500 * time.Millisecond,
     MaxBackoff:       10 * time.Second,
 }
-resilient := ap.NewResilientProvider(primary, config)
+resilient, _ := ap.NewResilientProvider(primary, config)
 resilient.AddFallback(fallback)
 ```
 

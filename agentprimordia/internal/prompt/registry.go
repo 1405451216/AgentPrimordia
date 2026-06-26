@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 )
 
@@ -30,9 +31,11 @@ func (r *Registry) Register(name string, tmpl *Template) error {
 	return nil
 }
 
-// MustRegister 注册命名模板，已存在时 panic
+// MustRegister 注册命名模板，已存在时 panic。
+// 生产建议：仅在初始化阶段使用，运行时路径应调用 Register() 并处理 error。
 func (r *Registry) MustRegister(name string, tmpl *Template) {
 	if err := r.Register(name, tmpl); err != nil {
+		slog.Error("prompt.MustRegister 失败", "name", name, "error", err)
 		panic(err)
 	}
 }

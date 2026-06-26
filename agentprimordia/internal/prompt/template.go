@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 	"text/template"
@@ -95,10 +96,12 @@ func (t *Template) Render() (string, error) {
 	return buf.String(), nil
 }
 
-// MustRender 类似 Render，但出错时 panic
+// MustRender 类似 Render，但出错时 panic。
+// 生产建议：仅在初始化阶段使用，运行时路径应调用 Render() 并处理 error。
 func (t *Template) MustRender() string {
 	result, err := t.Render()
 	if err != nil {
+		slog.Error("prompt.MustRender 失败", "error", err, "template", t.template)
 		panic(fmt.Sprintf("prompt.MustRender() error: %v", err))
 	}
 	return result

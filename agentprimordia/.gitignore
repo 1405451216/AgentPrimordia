@@ -5,13 +5,30 @@
 *.so
 *.dylib
 dist/
+bin/
 
-# Test
+# Test / Coverage artifacts
 coverage.out
 coverage.html
 *.test
 *_cover/
+*_cover
+*_cover.out
 coverage/
+llm_cover
+pkg_cov
+pkg_cover
+metrics_cover
+tools_cover
+internal_cov
+cov
+cov_tools
+cover
+cover2
+cover_metrics
+cover_tools
+coverage_tools
+*.cover.out
 
 # IDE
 .idea/

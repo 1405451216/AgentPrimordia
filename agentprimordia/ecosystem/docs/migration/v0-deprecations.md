@@ -23,10 +23,15 @@ Phase 6 引入**协议式微内核**(`*Capable` 接口 + `WithXxx` 链式 API)�
 |------|------|
 | **v0.6.0** | 字段加 `// Deprecated:` 标注,godoc 显示替代方案 |
 | **v0.7.0** | 升级为编译期 warning(`go vet` 可检测) |
-| **v1.0.0** | 若字段非 nil,运行时 panic(强制迁移) |
-| **v2.0.0** (当前) | **字段已移除** — 编译期阻止误用 |
+| **v0.8.0** (当前) | 字段仍可用,链式 API 为推荐入口 |
+| **v1.0.0** (未来) | 若字段非 nil,运行时打印 `slog.Warn` 警告并自动回退到链式 API(不 panic) |
+| **v2.0.0** (未来) | **字段已移除** — 编译期阻止误用 |
 
-> 14 个字段已在 **v2.0.0** 完全移除。`Lifecycle` 与 `Logger` **不在移除范围**(它们是"默认值"而非"能力",链式 API 不适合)。
+> **v1.0.0 行为变更说明**: 原计划在 v1.0.0 对废弃字段 `panic`,经生产用户反馈后改为
+> `slog.Warn` 警告 + 优雅回退。理由: panic 会导致生产进程崩溃,不符合框架"生产优先"的承诺。
+> 链式 API 注入的能力会自动覆盖 Config 字段,因此即便用户未迁移,功能仍能正常工作。
+>
+> `Lifecycle` 与 `Logger` **不在移除范围**(它们是"默认值"而非"能力",链式 API 不适合)。
 
 ## 14 个废弃字段映射表
 
@@ -157,18 +162,18 @@ func (a *ReActAgent) getMemoryStore() MemoryStore {
 ```
 
 **含义**: 即便你混用两种写法,链式 API 注入的会**覆盖** Config 字段。
-v1.0.0 起 Config 字段会被移除,届时仅链式 API 生效。
+v1.0.0 起会打印 `slog.Warn` 警告提示迁移,v2.0.0 起 Config 字段会被移除,届时仅链式 API 生效。
 
 ## FAQ
 
 **Q: 我必须立刻迁移吗?**
-A: 不必。v0.6.0 - v0.7.0 期间 Config 字段完全可用,只是 godoc 标注 `Deprecated`。
+A: 不必。v0.6.0 - v0.8.0 期间 Config 字段完全可用,只是 godoc 标注 `Deprecated`。v1.0.0 起会打印运行时警告但功能不受影响。
 
 **Q: 链式 API 有什么好处?**
 A: 类型安全(编译期检查每个能力)、IDE 自动补全(`agent.With...` 显示所有能力)、接口发现统一(协议式微内核)。
 
 **Q: 我可以只迁移一部分字段吗?**
-A: 可以。每个能力独立,迁移一个不影响其他。但建议一次性全部迁移,避免 v1.0.0 升级时 panic。
+A: 可以。每个能力独立,迁移一个不影响其他。但建议一次性全部迁移,避免 v1.0.0 升级时出现大量运行时警告。
 
 **Q: `Lifecycle` 和 `Logger` 为什么不废弃?**
 A: 它们是默认值(默认自动创建 / 默认 `slog.Default()`),而非"用户注入的能力"。链式 API 不适合表达"自动"语义,Config 字段保留。
@@ -176,12 +181,13 @@ A: 它们是默认值(默认自动创建 / 默认 `slog.Default()`),而非"用�
 **Q: 我自定义的 `WithXxx` 扩展能工作吗?**
 A: 可以。`CapabilityAgent` 包装 `ReActAgent` 并实现所有 `*Capable` 接口。你可以基于 `CapabilityAgent` 进一步包装添加自定义能力(只要新接口被引擎识别)。
 
-**Q: 引擎 panic 会有友好提示吗?**
-A: 会。v1.0.0 起的 panic 消息会指引用户到本迁移指南 + 替代 API,例如:
+**Q: 引擎会在 v1.0.0 panic 吗?**
+A: 不会。原计划在 v1.0.0 panic,经生产用户反馈后已改为 `slog.Warn` 警告 + 优雅回退。
+v1.0.0 起若检测到废弃字段非 nil,会打印类似以下警告并自动使用链式 API 路径:
 ```
-panic: ReActConfig.Memory is removed in v1.0.0. Use .WithMemory(store) instead.
-See: docs/migration/v0-deprecations.md
+WARN ReActConfig.Memory is deprecated; use .WithMemory(store) instead. See: docs/migration/v0-deprecations.md
 ```
+功能不受影响,但建议尽早迁移以消除警告。
 
 ## 反馈
 

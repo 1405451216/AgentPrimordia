@@ -7,6 +7,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 )
 
@@ -90,13 +91,16 @@ type Logger struct {
 	config LoggerConfig
 }
 
+// ErrOutputRequired 当 LoggerConfig.Output 为 nil 时返回
+var ErrOutputRequired = errors.New("audit: LoggerConfig.Output 不能为 nil")
+
 // NewLogger 创建审计日志器。
-// cfg.Output 不能为 nil，否则会 panic。
-func NewLogger(cfg LoggerConfig) *Logger {
+// cfg.Output 不能为 nil，否则返回 ErrOutputRequired。
+func NewLogger(cfg LoggerConfig) (*Logger, error) {
 	if cfg.Output == nil {
-		panic("audit: LoggerConfig.Output 不能为 nil")
+		return nil, ErrOutputRequired
 	}
-	return &Logger{config: cfg}
+	return &Logger{config: cfg}, nil
 }
 
 // Log 记录一条审计事件。

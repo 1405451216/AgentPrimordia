@@ -3,6 +3,7 @@ package memory
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -36,10 +37,12 @@ func NewEpisode(sessionID, role, content string) (*Episode, error) {
 	return ep, nil
 }
 
-// MustEpisode 创建 Episode，在内容可信时使用（如测试中），panic on error
+// MustEpisode 创建 Episode，在内容可信时使用（如测试中），panic on error。
+// 生产建议：使用 NewEpisode() 并处理 error。
 func MustEpisode(sessionID, role, content string) *Episode {
 	ep, err := NewEpisode(sessionID, role, content)
 	if err != nil {
+		slog.Error("memory.MustEpisode 失败", "error", err)
 		panic(fmt.Sprintf("memory.MustEpisode: %v", err))
 	}
 	return ep

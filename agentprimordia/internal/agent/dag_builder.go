@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -84,10 +85,12 @@ func (b *DAGBuilder) Build() (*DAGWorkflow, error) {
 	return b.workflow, nil
 }
 
-// MustBuild 构建 DAG，panic on error
+// MustBuild 构建 DAG，panic on error。
+// 生产建议：使用 Build() 并处理 error。
 func (b *DAGBuilder) MustBuild() *DAGWorkflow {
 	dag, err := b.Build()
 	if err != nil {
+		slog.Error("dag MustBuild 失败", "error", err)
 		panic(fmt.Errorf("dag build failed: %w", err))
 	}
 	return dag
