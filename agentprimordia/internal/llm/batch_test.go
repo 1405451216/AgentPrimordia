@@ -11,12 +11,12 @@ import (
 // batchMockProvider 批量测试专用的 mock Provider
 // 记录调用次数和并发信息，用于验证批量行为
 type batchMockProvider struct {
-	mu         sync.Mutex
-	callCount  int
-	responses  []*CompletionResponse
-	err        error
+	mu        sync.Mutex
+	callCount int
+	responses []*CompletionResponse
+	err       error
 	// 记录最大并发调用数
-	maxConcurrent atomic.Int32
+	maxConcurrent     atomic.Int32
 	currentConcurrent atomic.Int32
 }
 

@@ -49,8 +49,8 @@ type LLMEvaluator = eval.LLMEvaluator
 
 // 组合模式常量
 const (
-	CompositeAll   = eval.CompositeAll
-	CompositeAny   = eval.CompositeAny
+	CompositeAll      = eval.CompositeAll
+	CompositeAny      = eval.CompositeAny
 	CompositeWeighted = eval.CompositeWeighted
 )
 
@@ -65,7 +65,7 @@ func (w *evalAgentAdapter) Run(ctx context.Context, input string) (*eval.Respons
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// 转换 ToolCalls
 	var toolCalls []eval.ToolCall
 	for _, tc := range resp.ToolCalls {
@@ -74,7 +74,7 @@ func (w *evalAgentAdapter) Run(ctx context.Context, input string) (*eval.Respons
 			Args: tc.Args,
 		})
 	}
-	
+
 	return &eval.Response{
 		Content:   resp.Content,
 		ToolCalls: toolCalls,
@@ -97,7 +97,7 @@ func NewEvalRunner(evaluators ...Evaluator) *EvalRunner {
 func (r *EvalRunner) RunSuite(ctx context.Context, agent Agent, cases []EvalCase) (*EvalSuiteResult, error) {
 	// 使用适配器将 agent.Agent 转换为 eval.Agent
 	adapter := &evalAgentAdapter{a: agent}
-	
+
 	// 创建 eval.EvalRunner 并委托执行
 	runner := eval.NewEvalRunner(r.evaluators...)
 	return runner.RunSuite(ctx, adapter, cases)

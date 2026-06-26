@@ -39,9 +39,9 @@ type Agent interface {
 
 // Message 消息结构
 type Message struct {
-	Role      Role
-	Content   string
-	Metadata  Metadata
+	Role     Role
+	Content  string
+	Metadata Metadata
 }
 
 // Role 消息角色

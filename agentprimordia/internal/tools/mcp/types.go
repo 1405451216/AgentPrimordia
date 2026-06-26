@@ -26,9 +26,9 @@ type ToolCallResult struct {
 // ContentBlock 内容块
 type ContentBlock struct {
 	Type     string `json:"type"`               // "text" 或 "image"
-	Text     string `json:"text,omitempty"`      // 文本内容
-	Data     string `json:"data,omitempty"`      // base64 编码的图片数据
-	MimeType string `json:"mimeType,omitempty"`  // 媒体类型
+	Text     string `json:"text,omitempty"`     // 文本内容
+	Data     string `json:"data,omitempty"`     // base64 编码的图片数据
+	MimeType string `json:"mimeType,omitempty"` // 媒体类型
 }
 
 // Resource MCP 资源
@@ -49,9 +49,9 @@ type ResourceContent struct {
 
 // PromptDefinition MCP 提示词模板
 type PromptDefinition struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description,omitempty"`
-	Arguments   []PromptArgument    `json:"arguments,omitempty"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
 // PromptArgument 提示词模板参数

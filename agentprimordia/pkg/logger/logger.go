@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	mu     sync.RWMutex
-	level  = slog.LevelInfo
+	mu      sync.RWMutex
+	level   = slog.LevelInfo
 	handler slog.Handler
 )
 

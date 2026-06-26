@@ -12,9 +12,9 @@ import (
 
 // CSVData 表示加载后的 CSV 数据
 type CSVData struct {
-	Headers []string              `json:"headers"`
-	Rows    []map[string]string   `json:"rows"`
-	Total   int                   `json:"total"`
+	Headers []string            `json:"headers"`
+	Rows    []map[string]string `json:"rows"`
+	Total   int                 `json:"total"`
 }
 
 // CSVLoader 从 CSV 文件加载结构化数据

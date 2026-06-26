@@ -131,8 +131,8 @@ func (d *DOCXLoader) loadFile(path string) (*tools.Result, error) {
 
 // wDocument 表示 word/document.xml 的根结构
 type wDocument struct {
-	XMLName xml.Name  `xml:"document"`
-	Body    wBody     `xml:"body"`
+	XMLName xml.Name `xml:"document"`
+	Body    wBody    `xml:"body"`
 }
 
 // wBody 表示文档 body

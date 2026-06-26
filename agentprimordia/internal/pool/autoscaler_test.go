@@ -8,7 +8,7 @@ import (
 func TestAutoScaler_ScaleUp(t *testing.T) {
 	cfg := AutoScalerConfig{
 		MinConcurrency:     2,
-		MaxConcurrency:     20, // 提高最大值，允许扩容
+		MaxConcurrency:     20,  // 提高最大值，允许扩容
 		ScaleUpThreshold:   0.8, // 80% 利用率时扩容
 		ScaleDownThreshold: 0.2, // 20% 利用率时缩容
 		CoolDownPeriod:     100 * time.Millisecond,

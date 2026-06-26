@@ -58,8 +58,8 @@ type Pool struct {
 	failedCount    atomic.Int64
 
 	// Task 9：动态 Agent 池（自动扩缩容）
-	autoScaler        *AutoScaler
-	autoScalerRunning atomic.Bool
+	autoScaler         *AutoScaler
+	autoScalerRunning  atomic.Bool
 	dynamicConcurrency atomic.Int64 // 动态并发度限制，由 AutoScaler 更新
 }
 

@@ -29,24 +29,24 @@ const (
 // Client MCP 客户端，通过 stdio JSON-RPC 与 MCP 服务器通信。
 // 客户端负责管理子进程的完整生命周期：启动、心跳检测、优雅关闭。
 type Client struct {
-	cmd       *exec.Cmd       // MCP 服务器子进程
-	stdin     io.WriteCloser  // 子进程标准输入
-	stdout    *bufio.Reader   // 子进程标准输出
-	mu        sync.Mutex      // 保护 stdin 写入和 pending 操作
-	requestID atomic.Int64    // 自增请求 ID
+	cmd       *exec.Cmd                       // MCP 服务器子进程
+	stdin     io.WriteCloser                  // 子进程标准输入
+	stdout    *bufio.Reader                   // 子进程标准输出
+	mu        sync.Mutex                      // 保护 stdin 写入和 pending 操作
+	requestID atomic.Int64                    // 自增请求 ID
 	pending   map[int64]chan *jsonRPCResponse // 等待响应的回调通道
-	pendingMu sync.Mutex      // 保护 pending map
+	pendingMu sync.Mutex                      // 保护 pending map
 
-	tools     []ToolDefinition  // 已发现的工具列表
-	resources []Resource        // 已发现的资源列表
-	prompts   []PromptDefinition // 已发现的提示词列表
-	serverInfo ServerInfo       // 服务器信息
-	dataMu    sync.RWMutex      // 保护 tools/resources/prompts/serverInfo
+	tools      []ToolDefinition   // 已发现的工具列表
+	resources  []Resource         // 已发现的资源列表
+	prompts    []PromptDefinition // 已发现的提示词列表
+	serverInfo ServerInfo         // 服务器信息
+	dataMu     sync.RWMutex       // 保护 tools/resources/prompts/serverInfo
 
-	logger    *slog.Logger      // 日志记录器
-	timeout   time.Duration     // 请求超时时间
-	done      chan struct{}     // 关闭信号
-	closed    bool              // 是否已关闭
+	logger  *slog.Logger  // 日志记录器
+	timeout time.Duration // 请求超时时间
+	done    chan struct{} // 关闭信号
+	closed  bool          // 是否已关闭
 }
 
 // Config MCP 客户端配置

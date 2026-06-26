@@ -8,10 +8,10 @@ import (
 
 // CompressorConfig 压缩配置
 type CompressorConfig struct {
-	WindowSize  int           // 保留最近的 N 条不压缩
-	MinEpisodes int           // 最少条目数才触发压缩
+	WindowSize  int                // 保留最近的 N 条不压缩
+	MinEpisodes int                // 最少条目数才触发压缩
 	Summarizer  CompressSummarizer // 摘要提取器
-	TTL         time.Duration // 超过此时间的条目可压缩
+	TTL         time.Duration      // 超过此时间的条目可压缩
 }
 
 // CompressSummarizer 压缩摘要接口

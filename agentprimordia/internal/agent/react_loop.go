@@ -39,8 +39,6 @@ type MemoryStore interface {
 	UpdateSummary(ctx context.Context, id, summary, topics string) error
 }
 
-
-
 // EventPublisher 是 Agent 所需的事件发布接口
 type EventPublisher interface {
 	PublishAsync(eventType string, source string, payload any) error
@@ -135,7 +133,7 @@ type ReActAgent struct {
 //
 // Deprecated: 使用 NewAgent 代替。NewReActAgent 仅接受标量配置，能力通过链式 API 注入。
 // NewAgent 通过 Functional Options 注入能力，构造后不可变。
-// 将在 v1.0.0 中移除。
+// Removed in v1.0.0.
 // 迁移指南: ecosystem/docs/migration/v0-deprecations.md
 func NewReActAgent(cfg ReActConfig) *ReActAgent {
 	if cfg.MaxTurns == 0 {

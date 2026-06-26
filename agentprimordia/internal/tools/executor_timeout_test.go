@@ -52,7 +52,7 @@ func TestExecutor_PerToolTimeout(t *testing.T) {
 	exec := NewExecutorWithConfig(registry, ExecutorConfig{
 		DefaultTimeout: 200 * time.Millisecond,
 		PerToolTimeout: map[string]time.Duration{
-			"fast": 1 * time.Second,   // fast 工具允许更长时间
+			"fast": 1 * time.Second,       // fast 工具允许更长时间
 			"slow": 50 * time.Millisecond, // slow 工具超时更短
 		},
 	})
@@ -84,9 +84,9 @@ type mockTimeoutTool struct {
 	delay time.Duration
 }
 
-func (m *mockTimeoutTool) Name() string                      { return m.name }
-func (m *mockTimeoutTool) Description() string               { return "mock tool" }
-func (m *mockTimeoutTool) Parameters() json.RawMessage       { return nil }
+func (m *mockTimeoutTool) Name() string                { return m.name }
+func (m *mockTimeoutTool) Description() string         { return "mock tool" }
+func (m *mockTimeoutTool) Parameters() json.RawMessage { return nil }
 func (m *mockTimeoutTool) Execute(ctx context.Context, args json.RawMessage) (*Result, error) {
 	select {
 	case <-ctx.Done():

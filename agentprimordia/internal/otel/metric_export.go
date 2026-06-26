@@ -185,7 +185,7 @@ func (e *MetricExporter) ExportOTLP() ([]byte, error) {
 			"data": map[string]any{
 				"dataPoints": []any{
 					map[string]any{
-						"asDouble": c.Value,
+						"asDouble":   c.Value,
 						"attributes": labelsToOTLP(c.Labels),
 					},
 				},
@@ -201,7 +201,7 @@ func (e *MetricExporter) ExportOTLP() ([]byte, error) {
 			"data": map[string]any{
 				"dataPoints": []any{
 					map[string]any{
-						"asDouble": g.Value,
+						"asDouble":   g.Value,
 						"attributes": labelsToOTLP(g.Labels),
 					},
 				},
@@ -222,11 +222,11 @@ func (e *MetricExporter) ExportOTLP() ([]byte, error) {
 			"data": map[string]any{
 				"dataPoints": []any{
 					map[string]any{
-						"sum":             h.Sum,
-						"count":           h.Count,
-						"explicitBounds":  explicitBounds,
-						"bucketCounts":    bucketCounts,
-						"attributes":      labelsToOTLP(h.Labels),
+						"sum":            h.Sum,
+						"count":          h.Count,
+						"explicitBounds": explicitBounds,
+						"bucketCounts":   bucketCounts,
+						"attributes":     labelsToOTLP(h.Labels),
 					},
 				},
 			},

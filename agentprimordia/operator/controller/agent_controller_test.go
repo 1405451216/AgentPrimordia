@@ -632,9 +632,9 @@ func TestReconcile_CreatesHPA_WhenAutoscalingConfigured(t *testing.T) {
 	scheme := newScheme()
 	ad := makeAgentDeployment("hpa-agent", "default", 2)
 	ad.Spec.Autoscaling = &agentv1.AutoscalingSpec{
-		MinReplicas:            2,
-		MaxReplicas:            10,
-		TargetConcurrentTasks:  5,
+		MinReplicas:           2,
+		MaxReplicas:           10,
+		TargetConcurrentTasks: 5,
 	}
 
 	fakeClient := fake.NewClientBuilder().
@@ -718,9 +718,9 @@ func TestReconcile_UpdatesHPA_WhenSpecChanges(t *testing.T) {
 	scheme := newScheme()
 	ad := makeAgentDeployment("hpa-update", "default", 2)
 	ad.Spec.Autoscaling = &agentv1.AutoscalingSpec{
-		MinReplicas:            2,
-		MaxReplicas:            5,
-		TargetConcurrentTasks:  5,
+		MinReplicas:           2,
+		MaxReplicas:           5,
+		TargetConcurrentTasks: 5,
 	}
 
 	fakeClient := fake.NewClientBuilder().

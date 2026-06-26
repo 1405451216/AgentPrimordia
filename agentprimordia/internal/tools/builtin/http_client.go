@@ -23,10 +23,10 @@ const (
 
 // HTTPClient 增强型 HTTP 客户端工具，支持多种认证方式和响应处理
 type HTTPClient struct {
-	timeout       time.Duration
-	maxBodySize   int64
-	maxRedirects  int
-	allowPrivate  bool // 是否允许访问私有 IP
+	timeout      time.Duration
+	maxBodySize  int64
+	maxRedirects int
+	allowPrivate bool // 是否允许访问私有 IP
 }
 
 // HTTPRequest HTTP 请求参数

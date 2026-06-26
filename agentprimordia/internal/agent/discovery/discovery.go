@@ -40,9 +40,9 @@ type Discovery interface {
 
 // LocalDiscovery 本地内存实现
 type LocalDiscovery struct {
-	mu      sync.RWMutex
-	agents  map[string]*AgentInfo
-	logger  *slog.Logger
+	mu     sync.RWMutex
+	agents map[string]*AgentInfo
+	logger *slog.Logger
 }
 
 // NewLocalDiscovery 创建本地发现服务
@@ -57,7 +57,7 @@ func NewLocalDiscovery() *LocalDiscovery {
 func (d *LocalDiscovery) Register(ctx context.Context, info *AgentInfo) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	info.LastSeen = time.Now()
 	d.agents[info.ID] = info
 	d.logger.Info("Agent registered", "id", info.ID, "name", info.Name)
@@ -68,7 +68,7 @@ func (d *LocalDiscovery) Register(ctx context.Context, info *AgentInfo) error {
 func (d *LocalDiscovery) Unregister(ctx context.Context, agentID string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	delete(d.agents, agentID)
 	d.logger.Info("Agent unregistered", "id", agentID)
 	return nil
@@ -92,7 +92,7 @@ func (d *LocalDiscovery) Discover(ctx context.Context, agentID string) (*AgentIn
 func (d *LocalDiscovery) ListAgents(ctx context.Context) ([]*AgentInfo, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	
+
 	result := make([]*AgentInfo, 0, len(d.agents))
 	for _, info := range d.agents {
 		result = append(result, info)
@@ -104,7 +104,7 @@ func (d *LocalDiscovery) ListAgents(ctx context.Context) ([]*AgentInfo, error) {
 func (d *LocalDiscovery) Heartbeat(ctx context.Context, agentID string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	info, ok := d.agents[agentID]
 	if !ok {
 		return fmt.Errorf("agent not found: %s", agentID)

@@ -29,10 +29,10 @@ type HookContext struct {
 
 // Hook 点常量
 const (
-	HookBeforePipelineStep = "before_pipeline_step"
-	HookAfterPipelineStep  = "after_pipeline_step"
-	HookBeforeHandoff      = "before_handoff"
-	HookAfterHandoff       = "after_handoff"
+	HookBeforePipelineStep  = "before_pipeline_step"
+	HookAfterPipelineStep   = "after_pipeline_step"
+	HookBeforeHandoff       = "before_handoff"
+	HookAfterHandoff        = "after_handoff"
 	HookBeforeParallelAgent = "before_parallel_agent"
 	HookAfterParallelAgent  = "after_parallel_agent"
 )

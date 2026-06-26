@@ -17,7 +17,7 @@ type DynamicDAG struct {
 	mu         sync.RWMutex
 	name       string
 	nodes      map[string]*dynamicNode
-	edges      map[string][]string         // from -> []to
+	edges      map[string][]string          // from -> []to
 	conditions map[string]map[string]string // from -> {output -> toID}
 }
 

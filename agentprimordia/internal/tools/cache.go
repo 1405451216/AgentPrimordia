@@ -36,7 +36,7 @@ type Cache struct {
 	hits      atomic.Int64
 	misses    atomic.Int64
 	stopCh    chan struct{} // 停止清理 goroutine
-	closeOnce sync.Once    // 防止重复 Close 导致 panic
+	closeOnce sync.Once     // 防止重复 Close 导致 panic
 }
 
 // NewCache 创建工具结果缓存

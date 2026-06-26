@@ -17,11 +17,11 @@ type ToolCallInfo struct {
 
 // CollectedResult 收集结果
 type CollectedResult struct {
-	Content   string        `json:"content"`
+	Content   string         `json:"content"`
 	ToolCalls []ToolCallInfo `json:"tool_calls,omitempty"`
-	Tokens    int           `json:"tokens"`
-	Duration  time.Duration `json:"duration"`
-	Usage     *Usage        `json:"usage,omitempty"`
+	Tokens    int            `json:"tokens"`
+	Duration  time.Duration  `json:"duration"`
+	Usage     *Usage         `json:"usage,omitempty"`
 }
 
 // StreamError 流式输出错误

@@ -173,9 +173,9 @@ func TestDefaultRegistry_AgentSystem(t *testing.T) {
 	r := DefaultRegistry()
 
 	result, err := r.Render("agent.system", map[string]any{
-		"role":        "代码审查专家",
+		"role":         "代码审查专家",
 		"capabilities": []string{"代码审查", "安全检测", "性能优化"},
-		"language":    "中文",
+		"language":     "中文",
 	})
 	if err != nil {
 		t.Fatalf("渲染 agent.system 失败: %v", err)
@@ -226,9 +226,9 @@ func TestDefaultRegistry_TranslateUser(t *testing.T) {
 	r := DefaultRegistry()
 
 	result, err := r.Render("translate.user", map[string]any{
-		"source_lang":  "英文",
-		"target_lang":  "中文",
-		"content":      "Hello, World!",
+		"source_lang": "英文",
+		"target_lang": "中文",
+		"content":     "Hello, World!",
 	})
 	if err != nil {
 		t.Fatalf("渲染 translate.user 失败: %v", err)

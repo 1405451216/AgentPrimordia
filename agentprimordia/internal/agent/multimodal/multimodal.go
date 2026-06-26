@@ -28,11 +28,11 @@ const (
 
 // Message 标准消息结构
 type Message struct {
-	Role         Role         `json:"role"`
-	Content      string       `json:"content"`
+	Role         Role          `json:"role"`
+	Content      string        `json:"content"`
 	ContentParts []ContentPart `json:"content_parts,omitempty"`
-	ToolCalls    []ToolCall   `json:"tool_calls,omitempty"`
-	Metadata     Metadata     `json:"metadata,omitempty"`
+	ToolCalls    []ToolCall    `json:"tool_calls,omitempty"`
+	Metadata     Metadata      `json:"metadata,omitempty"`
 }
 
 // Metadata 消息元数据

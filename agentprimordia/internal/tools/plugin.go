@@ -108,5 +108,3 @@ func (l *PluginLoader) Get(name string) (ToolPlugin, bool) {
 	p, ok := l.plugins[name]
 	return p, ok
 }
-
-
