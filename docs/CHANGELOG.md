@@ -4,6 +4,31 @@
 
 ## [Unreleased]
 
+### Changed (Breaking)
+
+- **`audit.NewLogger` 签名变更**: `func NewLogger(cfg LoggerConfig) *Logger` → `func NewLogger(cfg LoggerConfig) (*Logger, error)`
+  - 原 `panic("audit: LoggerConfig.Output 不能为 nil")` 改为返回 `ErrOutputRequired`
+  - 符合生产规范（构造器不应 panic），调用方需处理 error
+  - 内部调用者已同步更新
+
+### Changed
+
+- **`Must*` 系列函数增加日志与文档警告** (v0.8.0 生产加固):
+  - `agent.DAGBuilder.MustBuild()` — panic 前增加 `slog.Error` 日志
+  - `memory.MustEpisode()` — panic 前增加 `slog.Error` 日志
+  - `prompt.Registry.MustRegister()` — panic 前增加 `slog.Error` 日志
+  - `prompt.Template.MustRender()` — panic 前增加 `slog.Error` 日志
+  - 文档统一标注「生产建议：使用对应的 error 版本」
+- **`pkg/version.go` 版本号修正**: 从 `3.0.0` 修正为 `0.8.0`，与 README / Release Notes / 迁移文档一致
+- **Dockerfile 基础镜像升级**: `golang:1.23-alpine` → `golang:1.26-alpine`，与 `go.mod` 声明的 `go 1.26` 对齐
+- **`.gitignore` 补全**: 新增 `bin/` 和各类覆盖率产物（`llm_cover`、`pkg_cov`、`pkg_cover` 等）的忽略规则
+
+### Fixed
+
+- **Dockerfile 构建失败**: 原 `golang:1.23-alpine` 无法构建 `go 1.26` 项目，升级到 `1.26-alpine` 修复
+- **版本号不一致**: `pkg/version.go` 中 `3.0.0` 与文档（v0.8.0）严重不一致，已修正
+- **误提交的覆盖率文件**: `llm_cover`、`pkg_cov`、`pkg_cover` 已从仓库移除并加入 `.gitignore`
+
 ### Added
 
 - **GitHub Issue Triage Bot** (Phase 18): `ecosystem/examples/github-issue-triage/`

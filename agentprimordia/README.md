@@ -192,7 +192,14 @@ if err != nil {
 
 ---
 
-## 🆕 v0.7.0 亮点
+## 🆕 v0.8.0 亮点
+
+- 🚀 **开发者体验重构**: `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
+- 🔌 **`WithRAGMemory()` 一步 RAG**: 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
+- 🧪 **`testutil` 测试包**: `MockProvider` + `NewTestAgent()`，无需手写 Mock
+- ✅ **向后兼容**: 旧 `ap.NewReActAgent()` API 仍然可用
+
+## v0.7.0 亮点
 
 - 🔒 **安全加固**: symlink 逃逸修复、熔断器逻辑修复、YAML 注入防护、License 统一
 - ☸️ **Operator 完善**: Service 暴露、HPA 自动扩缩、真实 Pod 指标采集

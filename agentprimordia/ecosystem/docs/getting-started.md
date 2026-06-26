@@ -26,7 +26,7 @@ go build ./...
 在你的 `go.mod` 中添加：
 
 ```
-require agentprimordia v0.7.0
+require agentprimordia v0.8.0
 ```
 
 ## 第一个 Agent（无需 API Key）
