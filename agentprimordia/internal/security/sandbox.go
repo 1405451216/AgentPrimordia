@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -13,6 +14,7 @@ var (
 	ErrCommandNotAllowed = errors.New("command is not in allowed list")
 	ErrAccessDenied      = errors.New("access denied")
 	ErrPathTraversal     = errors.New("path traversal detected")
+	ErrInvalidArg        = errors.New("invalid command argument")
 )
 
 var dangerousChars = []string{";", "|", "&", "$", "`", ">", "<", "\n", "\r", "(", ")"}
@@ -114,7 +116,32 @@ type Sandbox struct {
 	acl         *ACL
 	allowedCmds map[string]bool
 	blockedCmds map[string]bool
+	// argPatterns 命令参数白名单模式：命令名 → 参数模式列表
+	// 若某命令配置了模式，则其参数必须至少匹配其中一个模式
+	argPatterns map[string][]ArgPattern
 	mu          sync.RWMutex
+}
+
+// ArgPattern 命令参数白名单模式
+// Regex 编译后的正则表达式，用于验证命令参数
+// Message 为不匹配时的提示信息
+type ArgPattern struct {
+	Regex   *regexp.Regexp
+	Message string
+}
+
+// NewArgPattern 创建一个参数模式，若 regex 编译失败则 panic
+func NewArgPattern(regex, message string) ArgPattern {
+	return ArgPattern{Regex: regexp.MustCompile(regex), Message: message}
+}
+
+// NewArgPatternSafe 创建一个参数模式，返回编译错误（不 panic）
+func NewArgPatternSafe(regex, message string) (ArgPattern, error) {
+	re, err := regexp.Compile(regex)
+	if err != nil {
+		return ArgPattern{}, fmt.Errorf("compile arg pattern %q: %w", regex, err)
+	}
+	return ArgPattern{Regex: re, Message: message}, nil
 }
 
 func NewSandbox(acl *ACL) *Sandbox {
@@ -122,6 +149,7 @@ func NewSandbox(acl *ACL) *Sandbox {
 		acl:         acl,
 		allowedCmds: make(map[string]bool),
 		blockedCmds: make(map[string]bool),
+		argPatterns: make(map[string][]ArgPattern),
 	}
 }
 
@@ -139,6 +167,68 @@ func (s *Sandbox) BlockCommand(cmd string) {
 	delete(s.allowedCmds, cmd)
 }
 
+// AllowCommandWithArgs 允许命令并指定参数白名单模式。
+// 若不指定 patterns，则仅允许命令执行，不校验参数。
+func (s *Sandbox) AllowCommandWithArgs(cmd string, patterns ...ArgPattern) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.allowedCmds[cmd] = true
+	delete(s.blockedCmds, cmd)
+	if len(patterns) > 0 {
+		s.argPatterns[cmd] = patterns
+	}
+}
+
+// SetArgPatterns 为已允许的命令设置参数白名单模式。
+func (s *Sandbox) SetArgPatterns(cmd string, patterns ...ArgPattern) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(patterns) > 0 {
+		s.argPatterns[cmd] = patterns
+	} else {
+		delete(s.argPatterns, cmd)
+	}
+}
+
+// validateArgs 验证命令参数：
+// 1. 检查参数中是否包含路径遍历
+// 2. 检查参数是否匹配白名单模式（若配置了）
+func (s *Sandbox) validateArgs(cmdName string, args []string) error {
+	for _, arg := range args {
+		// 跳过选项标志（如 -l, --verbose）
+		if strings.HasPrefix(arg, "-") {
+			continue
+		}
+
+		// 检查路径遍历：参数中不应包含 ".."
+		cleanArg := filepath.Clean(arg)
+		if strings.Contains(cleanArg, "..") {
+			return fmt.Errorf("%w: path traversal in argument %q", ErrPathTraversal, arg)
+		}
+
+		// 检查参数中是否包含 shell 元字符（防止参数注入）
+		if hasMeta, ch := ContainsShellMetacharacter(arg); hasMeta {
+			return fmt.Errorf("%w: argument %q contains shell metacharacter '%s'", ErrCommandBlocked, arg, ch)
+		}
+	}
+
+	// 检查参数白名单模式
+	patterns, hasPatterns := s.argPatterns[cmdName]
+	if !hasPatterns || len(patterns) == 0 {
+		return nil
+	}
+
+	// 将参数拼接为空格分隔的字符串进行模式匹配
+	argStr := strings.Join(args, " ")
+	for _, p := range patterns {
+		if p.Regex.MatchString(argStr) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("%w: arguments %q do not match allowed patterns for command %q", ErrInvalidArg, argStr, cmdName)
+}
+
 func (s *Sandbox) CanExecute(agentID, cmd string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -148,7 +238,7 @@ func (s *Sandbox) CanExecute(agentID, cmd string) error {
 		return fmt.Errorf("%w: command contains shell metacharacter '%s'", ErrCommandBlocked, ch)
 	}
 
-	// 提取命令名（空格前的第一个词）
+	// 提取命令名和参数
 	cmdName := ""
 	fields := strings.Fields(cmd)
 	if len(fields) > 0 {
@@ -163,6 +253,12 @@ func (s *Sandbox) CanExecute(agentID, cmd string) error {
 
 	if len(s.allowedCmds) > 0 && !s.allowedCmds[cmdName] {
 		return fmt.Errorf("%w: %q", ErrCommandNotAllowed, cmdName)
+	}
+
+	// 验证命令参数（路径遍历、元字符、白名单模式）
+	args := fields[1:]
+	if err := s.validateArgs(cmdName, args); err != nil {
+		return err
 	}
 
 	return nil

@@ -335,3 +335,291 @@ export class GuardrailEngine {
     return { passed: true, modifiedOutput: modified, violations };
   }
 }
+
+// ===== Trie 多模式匹配（与 Go 端 trie_rule.go 对齐） =====
+
+/** Trie 树节点 */
+interface TrieNode {
+  children: Map<string, TrieNode>;
+  isEnd: boolean;
+}
+
+/** Trie 多模式匹配树，与 Go 端 Trie 对齐。
+ *
+ * 用于高效匹配大量敏感词，支持 O(k) 复杂度查找（k 为文本长度）。
+ *
+ * 使用方式：
+ *   const trie = new Trie();
+ *   trie.insertBatch(['敏感词1', '敏感词2']);
+ *   const matches = trie.match('文本包含敏感词1');
+ */
+export class Trie {
+  private root: TrieNode = { children: new Map(), isEnd: false };
+
+  /** 插入单个词 */
+  insert(word: string): void {
+    let node = this.root;
+    for (const ch of word) {
+      if (!node.children.has(ch)) {
+        node.children.set(ch, { children: new Map(), isEnd: false });
+      }
+      node = node.children.get(ch)!;
+    }
+    node.isEnd = true;
+  }
+
+  /** 批量插入词 */
+  insertBatch(words: string[]): void {
+    for (const w of words) {
+      this.insert(w);
+    }
+  }
+
+  /** 在文本中查找所有匹配的敏感词 */
+  match(text: string): string[] {
+    const matches: string[] = [];
+    const seen = new Set<string>();
+    const chars = [...text];
+
+    for (let i = 0; i < chars.length; i++) {
+      let node = this.root;
+      for (let j = i; j < chars.length; j++) {
+        const child = node.children.get(chars[j]);
+        if (!child) break;
+        node = child;
+        if (node.isEnd) {
+          const word = chars.slice(i, j + 1).join('');
+          if (!seen.has(word)) {
+            matches.push(word);
+            seen.add(word);
+          }
+        }
+      }
+    }
+
+    return matches;
+  }
+
+  /** 检查文本是否包含任何敏感词 */
+  containsAny(text: string): boolean {
+    const chars = [...text];
+    for (let i = 0; i < chars.length; i++) {
+      let node = this.root;
+      for (let j = i; j < chars.length; j++) {
+        const child = node.children.get(chars[j]);
+        if (!child) break;
+        node = child;
+        if (node.isEnd) return true;
+      }
+    }
+    return false;
+  }
+
+  /** 获取 Trie 中词的总数 */
+  count(): number {
+    let c = 0;
+    const stack: TrieNode[] = [this.root];
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      if (node.isEnd) c++;
+      for (const child of node.children.values()) {
+        stack.push(child);
+      }
+    }
+    return c;
+  }
+}
+
+// ===== Sanitizer 脱敏处理器（与 Go 端 sanitizer.go 对齐） =====
+
+/** 脱敏策略，与 Go 端 SanitizeStrategy 对齐 */
+export type SanitizeStrategy = 'mask' | 'redact' | 'replace' | 'hash';
+
+/** 脱敏位置 */
+export interface Position {
+  start: number;
+  end: number;
+  label: string;
+}
+
+/** 脱敏处理器配置 */
+export interface SanitizerConfig {
+  strategy?: SanitizeStrategy;
+  maskChar?: string;
+  replText?: string;
+}
+
+/** 脱敏处理器，与 Go 端 Sanitizer 对齐。
+ *
+ * 支持四种脱敏策略：
+ * - mask: 用 maskChar 替换中间字符，保留首尾
+ * - redact: 用 replText 替换整个匹配
+ * - replace: 用 replText 替换整个匹配
+ * - hash: 用 SHA-256 哈希替换
+ *
+ * 使用方式：
+ *   const sanitizer = new Sanitizer({ strategy: 'mask' });
+ *   const result = sanitizer.sanitize('13800138000', [{ start: 0, end: 11, label: 'phone' }]);
+ */
+export class Sanitizer {
+  private strategy: SanitizeStrategy;
+  private maskChar: string;
+  private replText: string;
+
+  constructor(config?: SanitizerConfig) {
+    this.strategy = config?.strategy ?? 'redact';
+    this.maskChar = config?.maskChar ?? '*';
+    this.replText = config?.replText ?? '[REDACTED]';
+  }
+
+  /** 对文本进行脱敏处理 */
+  sanitize(text: string, positions: Position[]): string {
+    if (positions.length === 0) return text;
+
+    // 按位置排序（从后往前处理，避免偏移问题）
+    const sorted = [...positions].sort((a, b) => b.start - a.start);
+    let result = text;
+
+    for (const pos of sorted) {
+      if (pos.start < 0 || pos.end > result.length || pos.start >= pos.end) continue;
+      const before = result.slice(0, pos.start);
+      const after = result.slice(pos.end);
+      const replacement = this.applyStrategy(pos.end - pos.start, pos.label);
+      result = before + replacement + after;
+    }
+
+    return result;
+  }
+
+  private applyStrategy(length: number, label: string): string {
+    switch (this.strategy) {
+      case 'mask':
+        return this.maskText(length);
+      case 'redact':
+        return this.replText;
+      case 'replace':
+        return `[${label.toUpperCase()}]`;
+      case 'hash':
+        return this.simpleHash(label + length.toString());
+      default:
+        return this.replText;
+    }
+  }
+
+  private maskText(length: number): string {
+    if (length <= 2) return this.maskChar.repeat(length);
+    // 保留首尾字符，中间用 maskChar 替换
+    const first = 1;
+    const last = Math.min(1, length - 1);
+    const middle = length - first - last;
+    return this.maskChar.repeat(Math.max(0, middle));
+  }
+
+  private simpleHash(input: string): string {
+    // 简单哈希（用于脱敏标记，非加密用途）
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      const ch = input.charCodeAt(i);
+      hash = ((hash << 5) - hash) + ch;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return `[HASH:${Math.abs(hash).toString(16).slice(0, 8)}]`;
+  }
+}
+
+// ===== GuardrailHook（与 Go 端 hook.go 对齐） =====
+
+/** Guardrail Hook 上下文 */
+export interface GuardrailHookContext {
+  agentID?: string;
+  sessionID?: string;
+  message?: { content: string };
+  response?: { content: string };
+  setMetadata?: (key: string, value: unknown) => void;
+}
+
+/** Guardrail Hook 配置 */
+export interface GuardrailHookConfig {
+  engine: GuardrailEngine;
+  /** 是否在输入时检查 */
+  checkInput?: boolean;
+  /** 是否在输出时检查 */
+  checkOutput?: boolean;
+  /** 检查失败时的处理方式 */
+  onReject?: 'throw' | 'silent' | 'callback';
+  /** 回调函数 */
+  onViolation?: (ctx: GuardrailHookContext, violations: GuardrailResult['violations']) => void;
+}
+
+/** Guardrail Hook，与 Go 端 GuardrailHook 对齐。
+ *
+ * 将 GuardrailEngine 集成到 Agent Hook 系统中，
+ * 自动在输入/输出阶段进行安全检查。
+ *
+ * 使用方式：
+ *   const hook = new GuardrailHook({ engine: guardrailEngine });
+ *   agent.hooks.register('before_llm', hook.inputCheck);
+ *   agent.hooks.register('after_llm', hook.outputCheck);
+ */
+export class GuardrailHook {
+  private config: GuardrailHookConfig;
+
+  constructor(config: GuardrailHookConfig) {
+    this.config = {
+      checkInput: true,
+      checkOutput: true,
+      onReject: 'throw',
+      ...config,
+    };
+  }
+
+  /** 输入检查 — 在 LLM 调用前检查用户输入 */
+  inputCheck = async (ctx: GuardrailHookContext): Promise<void> => {
+    if (!this.config.checkInput) return;
+    const content = ctx.message?.content;
+    if (!content) return;
+
+    const result = this.config.engine.checkInput(content);
+    if (!result.passed) {
+      this.config.onViolation?.(ctx, result.violations);
+      if (this.config.onReject === 'throw') {
+        throw new Error(`Guardrail rejected input: ${result.violations.map((v) => v.description).join('; ')}`);
+      }
+    }
+
+    // 应用脱敏后的输入
+    if (result.modifiedInput && ctx.message) {
+      ctx.message.content = result.modifiedInput;
+    }
+
+    if (result.violations.length > 0) {
+      ctx.setMetadata?.('guardrail_flagged', true);
+      ctx.setMetadata?.('guardrail_results', result.violations);
+    }
+  };
+
+  /** 输出检查 — 在 LLM 返回后检查输出 */
+  outputCheck = async (ctx: GuardrailHookContext): Promise<void> => {
+    if (!this.config.checkOutput) return;
+    const content = ctx.response?.content;
+    if (!content) return;
+
+    const result = this.config.engine.checkOutput(content);
+    if (!result.passed) {
+      this.config.onViolation?.(ctx, result.violations);
+      if (this.config.onReject === 'throw') {
+        throw new Error(`Guardrail rejected output: ${result.violations.map((v) => v.description).join('; ')}`);
+      }
+    }
+
+    // 应用脱敏后的输出
+    if (result.modifiedOutput && ctx.response) {
+      ctx.response.content = result.modifiedOutput;
+    }
+
+    if (result.violations.length > 0) {
+      ctx.setMetadata?.('guardrail_flagged', true);
+      ctx.setMetadata?.('guardrail_results', result.violations);
+    }
+  };
+}

@@ -14,6 +14,15 @@ export { Session } from './agent/session.js';
 export type { SessionOption } from './agent/session.js';
 export { PromptTemplate, defaultSystemPrompt, codeAssistantTemplate, ragContextTemplate, formatRAGDocuments } from './agent/prompt-template.js';
 export type { RAGDoc } from './agent/prompt-template.js';
+
+// ===== Phase 27: Prompt System + Document Loader =====
+export { TemplateRegistry } from './prompt/registry.js';
+export { FewShotTemplate, KeywordSelector } from './prompt/few-shot.js';
+export type { Example, ExampleSelector, FewShotConfig } from './prompt/few-shot.js';
+export { JSONParser, MarkdownParser, RegexParser } from './prompt/parser.js';
+export type { OutputParser, JSONParserConfig } from './prompt/parser.js';
+export { TextLoader, MDLoader, JSONDocLoader, CodeLoader, DirectoryLoader } from './prompt/document-loader.js';
+export type { ExtractedDocument, FileDocLoader, TextLoaderConfig } from './prompt/document-loader.js';
 export {
   newRequestID, withRequestID, getRequestID,
   KeepLastNStrategy, TokenBudgetStrategy,
@@ -27,6 +36,8 @@ export type {
   ModelPricing, CostRecord, BudgetConfig, CostSummary,
 } from './agent/request-id.js';
 export { CapabilityAgent, newAgent, NoopTracer } from './agent/capability-agent.js';
+export { AgentTool } from './agent/agent-tool.js';
+export type { AgentToolConfig } from './agent/agent-tool.js';
 export type {
   AgentOption, MemoryCapable, RAGCapable, HookCapable, TraceCapable,
   CostCapable, CheckpointCapable, HITLCapable, ContextWindowCapable,
@@ -52,6 +63,14 @@ export { OllamaProvider } from './llm/ollama.js';
 // ===== Phase 2: Additional LLM Providers =====
 export { DeepSeekProvider, QwenProvider, GLMProvider, MistralProvider, CohereProvider, AzureOpenAIProvider, OpenAICompatibleProvider } from './llm/providers.js';
 export type { AzureConfig } from './llm/providers.js';
+
+// ===== Phase 26: LLM Batch + Structured Output + Config =====
+export { BatchRequestProcessor, defaultBatchConfig } from './llm/batch.js';
+export type { BatchConfig } from './llm/batch.js';
+export { StructuredOutputExtractor } from './llm/structured-output.js';
+export type { StructuredOutputConfig } from './llm/structured-output.js';
+export { validateConfig, validateConfigOrThrow, configFromEnv, configFromEnvValidated, LLMConfigWatcher } from './llm/config.js';
+export type { ConfigChangeCallback, LLMConfigWatcherOptions } from './llm/config.js';
 export {
   MultimodalAdapter, OpenAIMultimodalProvider,
   textContent, imageUrlContent, imageB64Content, audioContent, videoContent,
@@ -91,6 +110,27 @@ export { SqliteStore } from './memory/sqlite-store.js';
 export { RAGStore, RAGPipeline, RAGReranker, Summarizer, MemoryCompressor } from './memory/rag.js';
 export type { RAGDocument, RAGStoreConfig, RAGPipelineConfig, RerankOptions, SummarizerConfig } from './memory/rag.js';
 
+// ===== Phase 25: Memory Advanced Features =====
+
+// Summarizer (Go-aligned)
+export { LLMSummarizer, SimpleSummarizer } from './memory/summarizer.js';
+export type { SummaryResult, SummaryExtractor, SummarizerConfig as LLMSummarizerConfig } from './memory/summarizer.js';
+
+// Chat Memory (Go-aligned ConversationalMemory)
+export { ChatMemory, DefaultCompressor } from './memory/conversational-memory.js';
+export type { ChatMessage, SummaryCompressor, ChatMemoryConfig } from './memory/conversational-memory.js';
+
+// Memory Compressor (Go-aligned)
+export { Compressor, LLMCompressSummarizer } from './memory/compressor.js';
+export type { CompressorConfig, CompressorSummary, CompressSummarizer } from './memory/compressor.js';
+
+// Agent Shared Store (Go-aligned)
+export { AgentSharedStore } from './memory/shared-store.js';
+
+// RAG Pipeline (Go-aligned)
+export { EnhancedRAGPipeline, SimpleTextLoader, registerSplitter, createSplitter, availableStrategies } from './memory/rag-pipeline.js';
+export type { EnhancedRAGPipelineConfig, IngestResult, DocumentLoader, SplitterStrategy, SplitterConfig, RAGTextSplitter } from './memory/rag-pipeline.js';
+
 export { AgentPool } from './pool/agent-pool.js';
 export type { PoolTask, PoolResult } from './pool/agent-pool.js';
 
@@ -101,8 +141,8 @@ export { ACL, Sandbox } from './security/sandbox.js';
 export type { AccessLevel } from './security/sandbox.js';
 
 // ===== Phase 6: Guardrails =====
-export { PIIDetector, InjectionDetector, TopicFilter, OutputGuardrail, GuardrailEngine } from './security/guardrails.js';
-export type { PIIPattern, PIIDetectorConfig, PIIDetectionResult, InjectionDetectionResult, TopicFilterConfig, OutputRule, GuardrailConfig, GuardrailResult } from './security/guardrails.js';
+export { PIIDetector, InjectionDetector, TopicFilter, OutputGuardrail, GuardrailEngine, Trie, Sanitizer, GuardrailHook } from './security/guardrails.js';
+export type { PIIPattern, PIIDetectorConfig, PIIDetectionResult, InjectionDetectionResult, TopicFilterConfig, OutputRule, GuardrailConfig, GuardrailResult, SanitizeStrategy, SanitizerConfig, Position, GuardrailHookConfig, GuardrailHookContext } from './security/guardrails.js';
 export { containsShellMetacharacter, validatePathTraversal, resolvePathSafe, InputSanitizer, CommandGuard } from './security/extended.js';
 
 export { MetricsCollector } from './metrics/collector.js';
@@ -251,3 +291,9 @@ export type { AgentState } from './persist/sqlite-checkpoint.js';
 // Health HTTP Handler
 export { HealthServer } from './health/http.js';
 export type { HealthCheck, HealthServerConfig } from './health/http.js';
+
+// ===== JSON Util =====
+export {
+  ObjectPool, Marshal, Unmarshal, DecodeString, DecodeBuffer, MarshalBody,
+  getRecord, putRecord, getArray, putArray, recordPoolSize, arrayPoolSize,
+} from './jsonutil/pool.js';

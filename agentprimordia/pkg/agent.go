@@ -36,6 +36,7 @@ package ap
 
 import (
 	"agentprimordia/internal/agent"
+	"agentprimordia/internal/health"
 	"agentprimordia/internal/memory"
 )
 
@@ -45,11 +46,9 @@ type Agent = agent.Agent
 // ReActAgent 是基于 ReAct（推理+行动）循环的 Agent 实现
 type ReActAgent = agent.ReActAgent
 
-// ReActConfig 是 ReActAgent 的配置结构，包含模型、工具、记忆、钩子等全部依赖
+// ReActConfig 是 ReActAgent 的配置结构，包含模型、系统提示词、温度等核心参数
 //
-// Stability: Stable — 但 14 个能力字段已标记 Deprecated，将在 v2.0.0 移除。
-// 推荐使用 NewReActAgent(...).WithXxx() 链式 API 替代直接字段赋值。
-// 迁移指南: ecosystem/docs/migration/v0-deprecations.md
+// Stability: Stable
 type ReActConfig = agent.ReActConfig
 
 // PromptTemplate 支持 {{.Variable}} 格式的系统提示词模板，可自动注入 Agent 名称、权限规则等变量
@@ -204,13 +203,6 @@ const (
 )
 
 var (
-	// NewReActAgent 创建基于 ReAct 循环的 Agent 实例
-	//
-	// Deprecated: 使用 NewAgent 代替。NewReActAgent 暴露了 14 个已废弃的 ReActConfig 字段，
-	// 容易导致误用。NewAgent 通过 Functional Options 注入能力，构造后不可变。
-	// 将在 v1.0.0 中移除。
-	// 迁移指南: ecosystem/docs/migration/v0-deprecations.md
-	NewReActAgent = agent.NewReActAgent
 	// NewPromptTemplate 创建支持变量注入的提示词模板
 	NewPromptTemplate = agent.NewPromptTemplate
 	// DefaultSystemPrompt 返回默认系统提示词模板，包含 Agent 名称和权限规则占位符
@@ -334,9 +326,8 @@ type HITLConfig = agent.HITLConfig
 //
 // 使用方式：
 //
-//	agent := ap.NewReActAgent(ap.ReActConfig{
-//	    Name: "my-agent", Model: provider, MaxTurns: 10,
-//	}).WithMemory(mem).WithRAG(ap.RAGConfig{...}).WithHooks(hooks)
+//	agent, _ := ap.NewAgent("my-agent", "you are helpful", provider,
+//	    ap.WithMemory(mem), ap.WithRAG(ap.RAGConfig{...}), ap.WithHooks(hooks))
 type CapabilityAgent = agent.CapabilityAgent
 
 // Session 维护多轮对话上下文，自动追加历史到记忆。
@@ -550,3 +541,41 @@ var (
 	// NewWindowSummaryStrategy creates a window-based summary strategy
 	NewWindowSummaryStrategy = memory.NewWindowSummaryStrategy
 )
+
+// ===== 生命周期与上下文窗口策略 =====
+
+// Lifecycle 管理 Agent 的生命周期状态转换（idle / running / paused / stopped / completed / failed / cancelled）
+type Lifecycle = agent.Lifecycle
+
+// ContextWindowStrategy 是上下文窗口裁剪策略接口，定义如何裁剪过长的历史消息
+type ContextWindowStrategy = agent.ContextWindowStrategy
+
+// DefaultStrategy 是默认的上下文窗口裁剪策略，保留系统消息和最近的对话历史
+type DefaultStrategy = agent.DefaultStrategy
+
+var (
+	// NewLifecycle 创建 Agent 生命周期管理器实例
+	NewLifecycle = agent.NewLifecycle
+	// NewDefaultStrategy 创建默认上下文窗口裁剪策略
+	NewDefaultStrategy = agent.NewDefaultStrategy
+)
+
+// ===== 健康检查 =====
+
+// HealthChecker 聚合健康检查器，处理 /healthz 和 /readyz 请求
+type HealthChecker = health.HealthChecker
+
+// HealthCheckable 健康检查接口，各组件实现此接口以注册到聚合检查器
+type HealthCheckable = health.Checker
+
+// NewHealthChecker 创建健康检查器
+var NewHealthChecker = health.NewChecker
+
+// ===== 版本与通用类型 =====
+
+// Version 是 AgentPrimordia 框架的当前版本号
+// 与 README.md 和 Release Notes 保持一致（v0.8.0）
+const Version = "0.8.0"
+
+// Metadata 是消息的元数据，包含时间戳、跟踪 ID 和扩展键值对
+type Metadata = agent.Metadata

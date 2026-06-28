@@ -2,9 +2,11 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
 const defaultSearchLimit = 10
@@ -487,8 +489,28 @@ func (s *InMemoryStore) GetMemoryTimeline(ctx context.Context, days int) ([]*Mem
 }
 
 func (s *InMemoryStore) CleanupExpired(ctx context.Context, maxAgeDays int) (int64, error) {
-	// 简化版实现，不处理时间过期
-	return 0, nil
+	if maxAgeDays <= 0 {
+		return 0, nil
+	}
+	cutoff := time.Now().UTC().AddDate(0, 0, -maxAgeDays)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var deleted int64
+	for id, ep := range s.episodes {
+		if ep.CreatedAt == "" {
+			continue
+		}
+		createdAt, err := time.Parse(time.RFC3339, ep.CreatedAt)
+		if err != nil {
+			continue
+		}
+		if createdAt.Before(cutoff) {
+			s.removeFromIndex(ep)
+			delete(s.episodes, id)
+			deleted++
+		}
+	}
+	return deleted, nil
 }
 
 func (s *InMemoryStore) Stats(ctx context.Context) (*MemoryStats, error) {
@@ -523,11 +545,36 @@ func (s *InMemoryStore) ClearAll(ctx context.Context, sessionID string) error {
 }
 
 func (s *InMemoryStore) ExportMemories(ctx context.Context, sessionID, format string) ([]byte, error) {
-	return nil, fmt.Errorf("export not implemented for memory backend")
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	episodes := make([]*Episode, 0, len(s.episodes))
+	for _, ep := range s.episodes {
+		if sessionID != "" && ep.SessionID != sessionID {
+			continue
+		}
+		episodes = append(episodes, ep)
+	}
+	switch format {
+	case "markdown", "md":
+		return exportMarkdown(episodes)
+	default:
+		return json.Marshal(episodes)
+	}
 }
 
 func (s *InMemoryStore) ImportMemories(ctx context.Context, data []byte, format string) (int, error) {
-	return 0, fmt.Errorf("import not implemented for memory backend")
+	var episodes []*Episode
+	if err := json.Unmarshal(data, &episodes); err != nil {
+		return 0, fmt.Errorf("import: unmarshal json: %w", err)
+	}
+	if len(episodes) == 0 {
+		return 0, nil
+	}
+	// 使用 AddBatch 保证单次锁写入
+	if err := s.AddBatch(ctx, episodes); err != nil {
+		return 0, err
+	}
+	return len(episodes), nil
 }
 
 func (s *InMemoryStore) Close() error {

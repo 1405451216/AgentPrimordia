@@ -30,6 +30,66 @@ var (
 	ErrTaskNotFound = errors.New("task not found")
 )
 
+// TaskError 单个任务错误信息
+type TaskError struct {
+	TaskID string
+	Error  error
+}
+
+// AggregatedError 聚合多个任务的错误信息
+// 支持 errors.Is/errors.As 解包，errors.Join 风格的语义
+type AggregatedError struct {
+	TaskErrors []TaskError
+}
+
+// Error 返回聚合的错误信息
+func (e *AggregatedError) Error() string {
+	if len(e.TaskErrors) == 0 {
+		return "no errors"
+	}
+	if len(e.TaskErrors) == 1 {
+		return fmt.Sprintf("task %s failed: %v", e.TaskErrors[0].TaskID, e.TaskErrors[0].Error)
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "%d tasks failed: ", len(e.TaskErrors))
+	for i, te := range e.TaskErrors {
+		if i > 0 {
+			b.WriteString("; ")
+		}
+		fmt.Fprintf(&b, "%s: %v", te.TaskID, te.Error)
+	}
+	return b.String()
+}
+
+// Unwrap 返回所有子错误，支持 errors.Is/errors.As 遍历
+func (e *AggregatedError) Unwrap() []error {
+	errs := make([]error, len(e.TaskErrors))
+	for i, te := range e.TaskErrors {
+		errs[i] = te.Error
+	}
+	return errs
+}
+
+// Is 检查 AggregatedError 中是否包含目标错误
+func (e *AggregatedError) Is(target error) bool {
+	for _, te := range e.TaskErrors {
+		if errors.Is(te.Error, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// As 尝试将 AggregatedError 中的任意错误转换为目标类型
+func (e *AggregatedError) As(target interface{}) bool {
+	for _, te := range e.TaskErrors {
+		if errors.As(te.Error, target) {
+			return true
+		}
+	}
+	return false
+}
+
 type Pool struct {
 	mu           sync.RWMutex
 	config       PoolConfig
@@ -228,14 +288,21 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 	p.wg.Wait()
 	close(errCh)
 
-	var firstErr error
-	for err := range errCh {
-		if err != nil && firstErr == nil {
-			firstErr = err
+	// 收集所有错误，构建聚合错误信息
+	var taskErrors []TaskError
+	for _, r := range results {
+		if r != nil && r.Error != nil {
+			taskErrors = append(taskErrors, TaskError{TaskID: r.TaskID, Error: r.Error})
 		}
 	}
 
-	return results, firstErr
+	if len(taskErrors) == 0 {
+		return results, nil
+	}
+	if len(taskErrors) == 1 {
+		return results, taskErrors[0].Error
+	}
+	return results, &AggregatedError{TaskErrors: taskErrors}
 }
 
 func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, error) {

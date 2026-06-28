@@ -8,6 +8,15 @@ import type {
   ProviderConfig,
 } from '../types.js';
 
+/** LLM Provider 接口，与 Go 端 llm.Provider 对齐。
+ *
+ * 核心方法：
+ * - complete: 非流式补全
+ * - stream: 流式补全（可选）
+ * - callTools: 工具调用（Function Calling）
+ * - embeddings: 文本向量化（可选）
+ * - info: 返回模型信息
+ */
 export interface Provider {
   complete(req: CompletionRequest): Promise<CompletionResponse>;
   stream?(req: CompletionRequest): AsyncIterable<Chunk>;
@@ -16,6 +25,14 @@ export interface Provider {
   info(): ModelInfo;
 }
 
+/** Mock Provider，用于测试和开发。
+ *
+ * 支持配置：
+ * - response: 模拟返回内容
+ * - toolCalls: 模拟工具调用
+ * - error: 是否模拟错误
+ * - delay: 模拟延迟（毫秒）
+ */
 export class MockProvider implements Provider {
   private response: string;
   private toolCalls: import('../types.js').ToolCall[];

@@ -118,8 +118,8 @@ func TestNewAgent_EquivalentToNewReActAgent(t *testing.T) {
 		t.Fatalf("NewAgent error: %v", err)
 	}
 
-	// 方式 2：NewReActAgent（旧方式，仅用于测试等价性）
-	reactAgent := NewReActAgent(ReActConfig{
+	// 方式 2：内部 newReActAgent（仅用于测试等价性）
+	reactAgent := newReActAgent(ReActConfig{
 		Name:         "equivalent",
 		SystemPrompt: "prompt",
 		Model:        mock2,

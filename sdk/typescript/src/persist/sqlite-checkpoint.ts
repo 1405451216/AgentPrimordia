@@ -7,6 +7,20 @@ import type { Message, AgentMetrics } from '../types.js';
 
 const require = createRequire(import.meta.url);
 
+/** better-sqlite3 Database 最小类型接口，避免 any 类型 */
+interface SqliteStatement {
+  run(...params: unknown[]): { changes: number };
+  get(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
+}
+
+interface SqliteDatabase {
+  exec(sql: string): void;
+  pragma(pragma: string): void;
+  prepare(sql: string): SqliteStatement;
+  close(): void;
+}
+
 // ===== Agent State (matches Go AgentState) =====
 
 export interface AgentState {
@@ -36,14 +50,14 @@ interface CheckpointRow {
 }
 
 export class SQLiteCheckpointStore implements CheckpointStore {
-  private db: any = null;
+  private db: SqliteDatabase | null = null;
 
   constructor(dbPath: string) {
     try {
       const Database = require('better-sqlite3');
       this.db = new Database(dbPath);
-      this.db.pragma('journal_mode = WAL');
-      this.db.exec(`
+      this.db!.pragma('journal_mode = WAL');
+      this.db!.exec(`
         CREATE TABLE IF NOT EXISTS checkpoints (
           agent_id TEXT PRIMARY KEY,
           session_id TEXT NOT NULL,
@@ -62,6 +76,12 @@ export class SQLiteCheckpointStore implements CheckpointStore {
     }
   }
 
+  /** 获取数据库实例（确保非 null） */
+  private getDb(): SqliteDatabase {
+    if (!this.getDb()) throw new Error('database is closed');
+    return this.getDb();
+  }
+
   /** Create an in-memory checkpoint store (for testing). */
   static inMemory(): SQLiteCheckpointStore {
     return new SQLiteCheckpointStore(':memory:');
@@ -72,7 +92,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
   async save(checkpoint: Checkpoint): Promise<void> {
     const messages = JSON.stringify(checkpoint.messages);
     const metrics = JSON.stringify(checkpoint.metrics);
-    this.db.prepare(
+    this.getDb().prepare(
       `INSERT OR REPLACE INTO checkpoints (agent_id, session_id, status, messages, turn_count, metrics, saved_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
@@ -87,7 +107,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
   }
 
   async load(id: string): Promise<Checkpoint | null> {
-    const row = this.db.prepare(
+    const row = this.getDb().prepare(
       'SELECT * FROM checkpoints WHERE agent_id = ?'
     ).get(id) as CheckpointRow | undefined;
 
@@ -104,7 +124,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
   }
 
   async list(sessionID: string): Promise<Checkpoint[]> {
-    const rows = this.db.prepare(
+    const rows = this.getDb().prepare(
       'SELECT * FROM checkpoints WHERE session_id = ? ORDER BY saved_at DESC'
     ).all(sessionID) as CheckpointRow[];
 
@@ -119,7 +139,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
   }
 
   async delete(id: string): Promise<void> {
-    const result = this.db.prepare(
+    const result = this.getDb().prepare(
       'DELETE FROM checkpoints WHERE agent_id = ?'
     ).run(id);
     if (result.changes === 0) {
@@ -133,7 +153,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
   async saveState(state: AgentState): Promise<void> {
     const messages = JSON.stringify(state.messages);
     const metrics = JSON.stringify(state.metrics);
-    this.db.prepare(
+    this.getDb().prepare(
       `INSERT OR REPLACE INTO checkpoints (agent_id, session_id, status, messages, turn_count, metrics, saved_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
@@ -149,7 +169,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
 
   /** Load an AgentState by agent ID. */
   async loadState(agentID: string): Promise<AgentState | null> {
-    const row = this.db.prepare(
+    const row = this.getDb().prepare(
       'SELECT * FROM checkpoints WHERE agent_id = ?'
     ).get(agentID) as CheckpointRow | undefined;
 
@@ -168,7 +188,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
 
   /** List all checkpoints for a session (AgentState format). */
   async listStates(sessionID: string): Promise<AgentState[]> {
-    const rows = this.db.prepare(
+    const rows = this.getDb().prepare(
       'SELECT * FROM checkpoints WHERE session_id = ? ORDER BY saved_at DESC'
     ).all(sessionID) as CheckpointRow[];
 
@@ -185,7 +205,7 @@ export class SQLiteCheckpointStore implements CheckpointStore {
 
   /** Delete a checkpoint by agent ID. */
   async deleteState(agentID: string): Promise<void> {
-    const result = this.db.prepare(
+    const result = this.getDb().prepare(
       'DELETE FROM checkpoints WHERE agent_id = ?'
     ).run(agentID);
     if (result.changes === 0) {

@@ -21,6 +21,12 @@ type CodeError struct {
 	Message string
 }
 
+// AggregatedError 聚合多个任务的错误信息，支持 errors.Is/errors.As 解包
+type AggregatedError = pool.AggregatedError
+
+// TaskError 单个任务的错误信息
+type TaskError = pool.TaskError
+
 // Error 返回 CodeError 的消息内容
 func (e *CodeError) Error() string {
 	return e.Message

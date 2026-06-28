@@ -147,3 +147,127 @@ func TestSandbox_ValidatePath_CleanPath(t *testing.T) {
 		t.Errorf("path with ./ should be cleaned and pass: %v", err)
 	}
 }
+
+// ===== 命令参数安全检查 =====
+
+func TestSandbox_CanExecute_ArgPathTraversal(t *testing.T) {
+	sb := NewSandbox(nil)
+	sb.AllowCommand("cat")
+
+	// 参数中包含路径遍历应被拒绝
+	err := sb.CanExecute("agent-1", "cat ../../../etc/passwd")
+	if err == nil {
+		t.Error("cat with path traversal arg should be rejected")
+	}
+}
+
+func TestSandbox_CanExecute_ArgShellMetacharacter(t *testing.T) {
+	sb := NewSandbox(nil)
+	sb.AllowCommand("echo")
+
+	// 参数中包含 shell 元字符应被拒绝
+	err := sb.CanExecute("agent-1", "echo hello; rm -rf /")
+	if err == nil {
+		t.Error("echo with shell metacharacter in arg should be rejected")
+	}
+}
+
+func TestSandbox_CanExecute_FlagArgsAllowed(t *testing.T) {
+	sb := NewSandbox(nil)
+	sb.AllowCommand("ls")
+
+	// 选项标志（如 -l, -la, --all）应被允许
+	if err := sb.CanExecute("agent-1", "ls -la"); err != nil {
+		t.Errorf("ls -la should be allowed: %v", err)
+	}
+}
+
+func TestSandbox_AllowCommandWithArgs_Basic(t *testing.T) {
+	sb := NewSandbox(nil)
+	// 允许 cat 命令，但参数必须匹配 *.txt 模式
+	sb.AllowCommandWithArgs("cat", NewArgPattern(`\.txt$`, "only .txt files allowed"))
+
+	// 合法的 .txt 参数
+	if err := sb.CanExecute("agent-1", "cat file.txt"); err != nil {
+		t.Errorf("cat file.txt should be allowed: %v", err)
+	}
+
+	// 不合法的 .log 参数
+	if err := sb.CanExecute("agent-1", "cat file.log"); err == nil {
+		t.Error("cat file.log should be rejected by arg pattern")
+	}
+}
+
+func TestSandbox_AllowCommandWithArgs_MultiplePatterns(t *testing.T) {
+	sb := NewSandbox(nil)
+	// 允许 cat 命令，参数匹配 .txt 或 .md
+	sb.AllowCommandWithArgs("cat",
+		NewArgPattern(`\.txt$`, "only .txt files"),
+		NewArgPattern(`\.md$`, "only .md files"),
+	)
+
+	if err := sb.CanExecute("agent-1", "cat readme.md"); err != nil {
+		t.Errorf("cat readme.md should be allowed: %v", err)
+	}
+	if err := sb.CanExecute("agent-1", "cat data.txt"); err != nil {
+		t.Errorf("cat data.txt should be allowed: %v", err)
+	}
+	if err := sb.CanExecute("agent-1", "cat binary.exe"); err == nil {
+		t.Error("cat binary.exe should be rejected by arg pattern")
+	}
+}
+
+func TestSandbox_SetArgPatterns(t *testing.T) {
+	sb := NewSandbox(nil)
+	sb.AllowCommand("cat")
+
+	// 未设置模式时任何参数都可接受
+	if err := sb.CanExecute("agent-1", "cat anything.xyz"); err != nil {
+		t.Errorf("cat anything.xyz should be allowed without patterns: %v", err)
+	}
+
+	// 设置模式后仅匹配的通过
+	sb.SetArgPatterns("cat", NewArgPattern(`\.txt$`, "only .txt"))
+	if err := sb.CanExecute("agent-1", "cat file.txt"); err != nil {
+		t.Errorf("cat file.txt should be allowed: %v", err)
+	}
+	if err := sb.CanExecute("agent-1", "cat file.log"); err == nil {
+		t.Error("cat file.log should be rejected after setting pattern")
+	}
+
+	// 清除模式后恢复
+	sb.SetArgPatterns("cat")
+	if err := sb.CanExecute("agent-1", "cat file.log"); err != nil {
+		t.Errorf("cat file.log should be allowed after clearing patterns: %v", err)
+	}
+}
+
+func TestSandbox_CanExecute_SafeArg(t *testing.T) {
+	sb := NewSandbox(nil)
+	sb.AllowCommand("cat")
+
+	// 安全参数应通过
+	if err := sb.CanExecute("agent-1", "cat /workspace/file.txt"); err != nil {
+		t.Errorf("cat with safe arg should be allowed: %v", err)
+	}
+}
+
+func TestNewArgPatternSafe_InvalidRegex(t *testing.T) {
+	_, err := NewArgPatternSafe("[invalid", "bad pattern")
+	if err == nil {
+		t.Error("invalid regex should return error")
+	}
+}
+
+func TestNewArgPatternSafe_ValidRegex(t *testing.T) {
+	p, err := NewArgPatternSafe(`\.txt$`, "only .txt files")
+	if err != nil {
+		t.Fatalf("valid regex should not error: %v", err)
+	}
+	if p.Regex == nil {
+		t.Error("regex should not be nil")
+	}
+	if p.Message != "only .txt files" {
+		t.Errorf("message mismatch: got %q", p.Message)
+	}
+}

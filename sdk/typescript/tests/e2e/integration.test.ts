@@ -67,7 +67,7 @@ afterAll(() => {
 describe('Integration: OpenAI Provider with Mock HTTP Server', () => {
   it('completes a request against mock server', async () => {
     const provider = new OpenAIProvider({
-      apiKey: 'test-key',
+      apiKey: 'test-key-12345',
       baseURL: `http://localhost:${MOCK_PORT}/v1`,
       model: 'gpt-4o',
     });
@@ -83,7 +83,7 @@ describe('Integration: OpenAI Provider with Mock HTTP Server', () => {
 
   it('handles tool calls against mock server', async () => {
     const provider = new OpenAIProvider({
-      apiKey: 'test-key',
+      apiKey: 'test-key-12345',
       baseURL: `http://localhost:${MOCK_PORT}/v1`,
       model: 'gpt-4o',
     });

@@ -3,11 +3,22 @@ package pool
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"agentprimordia/internal/llm"
 )
+
+// testCodeError 用于测试 errors.As 的自定义错误类型
+type testCodeError struct {
+	code    string
+	message string
+}
+
+func (e *testCodeError) Error() string { return e.code + ": " + e.message }
+func (e *testCodeError) Code() string  { return e.code }
 
 func TestPool_DispatchSingleTask(t *testing.T) {
 	t.Parallel()
@@ -438,5 +449,142 @@ func TestEventCollector_CollectUntilCondition(t *testing.T) {
 	events := collector.Events()
 	if len(events) < 3 {
 		t.Errorf("expected at least 3 collected events, got %d", len(events))
+	}
+}
+
+// ===== AggregatedError 错误聚合测试 =====
+
+func TestAggregatedError_Error(t *testing.T) {
+	t.Parallel()
+
+	// 单个错误
+	ae := &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: errors.New("something went wrong")},
+		},
+	}
+	expected := "task task-1 failed: something went wrong"
+	if ae.Error() != expected {
+		t.Errorf("expected %q, got %q", expected, ae.Error())
+	}
+
+	// 多个错误
+	ae = &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: errors.New("err1")},
+			{TaskID: "task-2", Error: errors.New("err2")},
+		},
+	}
+	errStr := ae.Error()
+	if !strings.Contains(errStr, "2 tasks failed") {
+		t.Errorf("expected '2 tasks failed', got %q", errStr)
+	}
+	if !strings.Contains(errStr, "task-1: err1") {
+		t.Errorf("expected task-1 detail, got %q", errStr)
+	}
+	if !strings.Contains(errStr, "task-2: err2") {
+		t.Errorf("expected task-2 detail, got %q", errStr)
+	}
+}
+
+func TestAggregatedError_Is(t *testing.T) {
+	t.Parallel()
+
+	baseErr := errors.New("base error")
+	ae := &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: baseErr},
+			{TaskID: "task-2", Error: errors.New("other error")},
+		},
+	}
+
+	if !errors.Is(ae, baseErr) {
+		t.Error("AggregatedError.Is should find baseErr")
+	}
+	if errors.Is(ae, errors.New("nonexistent")) {
+		t.Error("AggregatedError.Is should not find nonexistent error")
+	}
+}
+
+func TestAggregatedError_Unwrap(t *testing.T) {
+	t.Parallel()
+
+	e1 := errors.New("error1")
+	e2 := errors.New("error2")
+	ae := &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: e1},
+			{TaskID: "task-2", Error: e2},
+		},
+	}
+
+	errs := ae.Unwrap()
+	if len(errs) != 2 {
+		t.Fatalf("expected 2 unwrapped errors, got %d", len(errs))
+	}
+	if errs[0] != e1 || errs[1] != e2 {
+		t.Error("Unwrap returned wrong errors")
+	}
+}
+
+func TestAggregatedError_Empty(t *testing.T) {
+	t.Parallel()
+
+	ae := &AggregatedError{}
+	if ae.Error() != "no errors" {
+		t.Errorf("expected 'no errors', got %q", ae.Error())
+	}
+}
+
+func TestAggregatedError_As(t *testing.T) {
+	t.Parallel()
+
+	ce := &testCodeError{code: "ERR_001", message: "custom error"}
+	ae := &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: errors.New("plain")},
+			{TaskID: "task-2", Error: ce},
+		},
+	}
+
+	var target *testCodeError
+	if !errors.As(ae, &target) {
+		t.Error("AggregatedError.As should find testCodeError")
+	}
+	if target.code != "ERR_001" {
+		t.Errorf("expected code ERR_001, got %q", target.code)
+	}
+}
+
+func TestAggregatedError_WrappedIs(t *testing.T) {
+	t.Parallel()
+
+	baseErr := errors.New("base")
+	wrapped := fmt.Errorf("wrapped: %w", baseErr)
+	ae := &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: wrapped},
+		},
+	}
+
+	if !errors.Is(ae, baseErr) {
+		t.Error("AggregatedError.Is should find wrapped baseErr")
+	}
+}
+
+func TestAggregatedError_AllSameError(t *testing.T) {
+	t.Parallel()
+
+	timeoutErr := errors.New("timeout")
+	ae := &AggregatedError{
+		TaskErrors: []TaskError{
+			{TaskID: "task-1", Error: timeoutErr},
+			{TaskID: "task-2", Error: timeoutErr},
+			{TaskID: "task-3", Error: timeoutErr},
+		},
+	}
+
+	if !errors.Is(ae, timeoutErr) {
+		t.Error("AggregatedError.Is should find timeoutErr when all tasks have same error")
 	}
 }

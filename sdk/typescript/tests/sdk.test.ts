@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ReActAgent, MockProvider, ToolRegistry, HookManager, Lifecycle, InMemoryStore, VectorStore, Bus, ACL, Sandbox, MetricsCollector } from '../src/index.js';
-import type { Tool } from '../src/index.js';
+import type { Tool, Event } from '../src/index.js';
 
 class EchoTool implements Tool {
   name = 'echo';
@@ -240,7 +240,7 @@ describe('VectorStore', () => {
 describe('EventBus', () => {
   it('should publish and receive events', () => {
     const bus = new Bus();
-    const received: any[] = [];
+    const received: Event[] = [];
     bus.subscribe('agent.start', (e) => received.push(e));
     bus.publish({ id: '1', type: 'agent.start', source: 'test', timestamp: new Date() });
     expect(received).toHaveLength(1);
@@ -248,7 +248,7 @@ describe('EventBus', () => {
 
   it('should support wildcard subscription', () => {
     const bus = new Bus();
-    const received: any[] = [];
+    const received: Event[] = [];
     bus.subscribeAll((e) => received.push(e));
     bus.publish({ id: '1', type: 'agent.start', source: 'test', timestamp: new Date() });
     bus.publish({ id: '2', type: 'tool.call', source: 'test', timestamp: new Date() });

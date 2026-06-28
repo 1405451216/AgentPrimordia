@@ -93,16 +93,16 @@ export class ResilientProvider implements Provider {
       }
       try {
         return await fn();
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!isRetryable(err)) throw err;
-        lastErr = err;
+        lastErr = err instanceof Error ? err : new Error(String(err));
       }
     }
     for (const fallback of this.fallbacks) {
       try {
         return await fallbackFn(fallback);
-      } catch (err: any) {
-        lastErr = err;
+      } catch (err: unknown) {
+        lastErr = err instanceof Error ? err : new Error(String(err));
       }
     }
     throw lastErr ?? new Error('all providers failed');

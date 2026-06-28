@@ -1,5 +1,21 @@
 import type { MemoryEpisode, MemoryStats, SearchOptions, ListOptions } from '../types.js';
 
+/** 记忆存储接口，与 Go 端 Memory 接口对齐。
+ *
+ * 核心操作：
+ * - add: 添加记忆片段
+ * - search: 全文搜索（InMemoryStore 走倒排索引，SqliteStore 走 FTS5）
+ * - get/delete: 按 ID 获取/删除
+ * - list: 按会话/时间分页列表
+ * - updateSummary: 更新摘要和标签
+ * - setImportance: 设置重要性（0-1）
+ * - searchByTag: 按标签搜索
+ * - getImportant: 获取高重要性记忆
+ * - getTimeline: 按时间线获取记忆
+ * - cleanupExpired: 清理过期记忆
+ * - stats: 获取统计信息
+ * - close: 关闭存储
+ */
 export interface Memory {
   add(episode: MemoryEpisode): Promise<void>;
   search(query: string, opts?: SearchOptions): Promise<MemoryEpisode[]>;
@@ -17,22 +33,105 @@ export interface Memory {
   close(): void;
 }
 
+// 分词正则：按非字母数字字符分割，与 Go 端 tokenizeRe 行为一致
+const TOKENIZE_RE = /[^\p{L}\p{N}]+/u;
+
+/**
+ * 将文本分词为小写 token 集合。
+ * 对 content、summary、topics 全部字段进行分词，与 Go 端 indexTokens 行为一致。
+ */
+function tokenize(...fields: string[]): string[] {
+  const combined = fields.join(' ');
+  if (!combined.trim()) return [];
+  return combined.toLowerCase().split(TOKENIZE_RE).filter((t) => t !== '');
+}
+
+/**
+ * InMemoryStore 内存版记忆存储。
+ *
+ * 优化（perf-v2）：新增倒排索引 ftsIndex（token → episode ID 集合），
+ * search 走索引而非全表扫描，与 Go 端 InMemoryStore 行为对齐。
+ * - 添加/删除/更新时自动维护索引
+ * - 单 token 查询走索引，多 token 查询取交集
+ */
 export class InMemoryStore implements Memory {
   private episodes: Map<string, MemoryEpisode> = new Map();
+  /** 倒排索引：小写 token → episode ID 集合 */
+  private ftsIndex: Map<string, Set<string>> = new Map();
+
+  // ===== 索引维护 =====
+
+  /** 将 episode 的 content + summary + topics 的所有 token 加入倒排索引 */
+  private addToIndex(ep: MemoryEpisode): void {
+    for (const tok of tokenize(ep.content, ep.summary ?? '', ep.topics ?? '')) {
+      let postings = this.ftsIndex.get(tok);
+      if (!postings) {
+        postings = new Set();
+        this.ftsIndex.set(tok, postings);
+      }
+      postings.add(ep.id);
+    }
+  }
+
+  /** 从倒排索引移除 episode 的所有 token */
+  private removeFromIndex(ep: MemoryEpisode): void {
+    for (const tok of tokenize(ep.content, ep.summary ?? '', ep.topics ?? '')) {
+      const postings = this.ftsIndex.get(tok);
+      if (!postings) continue;
+      postings.delete(ep.id);
+      if (postings.size === 0) {
+        this.ftsIndex.delete(tok);
+      }
+    }
+  }
+
+  // ===== 公共 API =====
 
   async add(episode: MemoryEpisode): Promise<void> {
     if (!episode.id?.trim()) throw new Error('Episode ID is required');
     if (!episode.content?.trim()) throw new Error('Episode content is required');
-    this.episodes.set(episode.id, episode);
+    // 如果已存在，先移除旧索引（使用存储的旧值）
+    const existing = this.episodes.get(episode.id);
+    if (existing) this.removeFromIndex(existing);
+    // 存储快照副本，避免调用方修改已有对象引用导致索引不一致
+    const snapshot: MemoryEpisode = { ...episode };
+    this.episodes.set(episode.id, snapshot);
+    this.addToIndex(snapshot);
   }
 
   async search(query: string, opts?: SearchOptions): Promise<MemoryEpisode[]> {
-    let results = Array.from(this.episodes.values());
+    if (!query.trim()) return [];
+    const tokens = tokenize(query);
+    if (tokens.length === 0) return [];
+
+    // 对每个 token 查找倒排索引，取交集
+    let candidateIds: Set<string> | null = null;
+    for (const tok of tokens) {
+      const postings = this.ftsIndex.get(tok);
+      if (!postings || postings.size === 0) {
+        return []; // 任一 token 无匹配，整体无结果
+      }
+      if (candidateIds === null) {
+        candidateIds = new Set(postings);
+      } else {
+        // 取交集
+        for (const id of candidateIds) {
+          if (!postings.has(id)) candidateIds.delete(id);
+        }
+      }
+      if (candidateIds.size === 0) return [];
+    }
+
+    let results: MemoryEpisode[] = [];
+    for (const id of candidateIds!) {
+      const ep = this.episodes.get(id);
+      if (ep) results.push(ep);
+    }
+
+    // 应用过滤器
     if (opts?.sessionId) results = results.filter((e) => e.sessionId === opts.sessionId);
     if (opts?.roleFilter) results = results.filter((e) => e.role === opts.roleFilter);
-    results = results.filter(
-      (e) => e.content.includes(query) || (e.summary ?? '').includes(query) || (e.topics ?? '').includes(query)
-    );
+
     results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return results.slice(opts?.offset ?? 0, (opts?.offset ?? 0) + (opts?.limit ?? 10));
   }
@@ -42,11 +141,17 @@ export class InMemoryStore implements Memory {
   }
 
   async delete(id: string): Promise<void> {
+    const ep = this.episodes.get(id);
+    if (ep) this.removeFromIndex(ep);
     this.episodes.delete(id);
   }
 
   async count(sessionId: string): Promise<number> {
-    return Array.from(this.episodes.values()).filter((e) => e.sessionId === sessionId).length;
+    let count = 0;
+    for (const ep of this.episodes.values()) {
+      if (ep.sessionId === sessionId) count++;
+    }
+    return count;
   }
 
   async list(opts?: ListOptions): Promise<MemoryEpisode[]> {
@@ -60,8 +165,12 @@ export class InMemoryStore implements Memory {
   async updateSummary(id: string, summary: string, topics: string): Promise<void> {
     const ep = this.episodes.get(id);
     if (!ep) throw new Error(`Episode ${id} not found`);
+    // 移除旧索引
+    this.removeFromIndex(ep);
     ep.summary = summary;
     ep.topics = topics;
+    // 重新索引
+    this.addToIndex(ep);
   }
 
   async setImportance(id: string, importance: number): Promise<void> {
@@ -103,6 +212,7 @@ export class InMemoryStore implements Memory {
     let deleted = 0;
     for (const [id, ep] of this.episodes) {
       if (ep.createdAt < cutoff) {
+        this.removeFromIndex(ep);
         this.episodes.delete(id);
         deleted++;
       }
@@ -113,16 +223,27 @@ export class InMemoryStore implements Memory {
   async stats(): Promise<MemoryStats> {
     const episodes = Array.from(this.episodes.values());
     const sessions = new Set(episodes.map((e) => e.sessionId));
+    let oldest: string | undefined;
+    let newest: string | undefined;
+    if (episodes.length > 0) {
+      oldest = episodes[0].createdAt;
+      newest = episodes[0].createdAt;
+      for (let i = 1; i < episodes.length; i++) {
+        if (episodes[i].createdAt < oldest) oldest = episodes[i].createdAt;
+        if (episodes[i].createdAt > newest) newest = episodes[i].createdAt;
+      }
+    }
     return {
       totalEpisodes: episodes.length,
       totalSessions: sessions.size,
-      oldestEpisode: episodes.length > 0 ? episodes.reduce((a, b) => (a.createdAt < b.createdAt ? a : b)).createdAt : undefined,
-      newestEpisode: episodes.length > 0 ? episodes.reduce((a, b) => (a.createdAt > b.createdAt ? a : b)).createdAt : undefined,
+      oldestEpisode: oldest,
+      newestEpisode: newest,
       avgEpisodesPerSession: sessions.size > 0 ? episodes.length / sessions.size : 0,
     };
   }
 
   close(): void {
     this.episodes.clear();
+    this.ftsIndex.clear();
   }
 }

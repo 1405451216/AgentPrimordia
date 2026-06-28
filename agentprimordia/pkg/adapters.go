@@ -24,7 +24,7 @@ type eventBusAdapter struct {
 	bus *events.Bus
 }
 
-// NewEventBusAdapter 将 events.Bus 适配为 agent.EventPublisher，用于注入到 ReActConfig.EventPublisher
+// NewEventBusAdapter 将 events.Bus 适配为 agent.EventPublisher，用于注入到 Agent 的事件发布器
 func NewEventBusAdapter(bus *events.Bus) agent.EventPublisher {
 	return &eventBusAdapter{bus: bus}
 }
@@ -81,7 +81,7 @@ type ragProviderAdapter struct {
 	store *memory.RAGStore
 }
 
-// NewRAGProviderAdapter 将 memory.RAGStore 适配为 agent.RAGProvider，用于注入到 ReActConfig.RAG.Provider
+// NewRAGProviderAdapter 将 memory.RAGStore 适配为 agent.RAGProvider，用于注入到 Agent 的 RAG 配置
 func NewRAGProviderAdapter(store *memory.RAGStore) agent.RAGProvider {
 	return &ragProviderAdapter{store: store}
 }

@@ -65,7 +65,7 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 		Lifecycle:      cfg.Lifecycle,
 		Logger:         cfg.Logger,
 	}
-	a := NewReActAgent(reactCfg)
+	a := newReActAgent(reactCfg)
 
 	// 包装为 CapabilityAgent 以暴露链式 API
 	cap := a.AsCapability()

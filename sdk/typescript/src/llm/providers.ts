@@ -2,9 +2,12 @@ import type { ProviderConfig, CompletionRequest, CompletionResponse, ToolCallReq
 import type { Provider } from './provider.js';
 import { APIError, OpenAIProvider } from './openai.js';
 
+// ===== OpenAI 兼容 Provider 抽象基类 =====
+
 /**
- * Base class for OpenAI-compatible providers.
- * Most providers (DeepSeek, Qwen, GLM, etc.) use OpenAI-compatible API format.
+ * OpenAI 兼容 Provider 抽象基类。
+ * 大多数国内厂商（DeepSeek、Qwen、GLM 等）使用 OpenAI 兼容 API 格式，
+ * 继承此类只需提供 defaultBaseURL、providerName 和 getMaxContext()。
  */
 export abstract class OpenAICompatibleProvider implements Provider {
   protected config: Required<ProviderConfig>;
@@ -183,6 +186,9 @@ export abstract class OpenAICompatibleProvider implements Provider {
 
 // ===== DeepSeek Provider =====
 
+/** DeepSeek Provider，使用 OpenAI 兼容 API 格式。
+ * 默认模型：deepseek-chat，最大上下文：64K。
+ */
 export class DeepSeekProvider extends OpenAICompatibleProvider {
   protected readonly defaultBaseURL = 'https://api.deepseek.com/v1';
   protected readonly providerName = 'deepseek';
@@ -196,6 +202,9 @@ export class DeepSeekProvider extends OpenAICompatibleProvider {
 
 // ===== Qwen (通义千问 / DashScope) Provider =====
 
+/** 通义千问 Provider（阿里云 DashScope），使用 OpenAI 兼容 API 格式。
+ * 默认模型：qwen-plus，最大上下文：128K。
+ */
 export class QwenProvider extends OpenAICompatibleProvider {
   protected readonly defaultBaseURL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
   protected readonly providerName = 'qwen';
@@ -209,6 +218,10 @@ export class QwenProvider extends OpenAICompatibleProvider {
 
 // ===== GLM (智谱) Provider =====
 
+/** 智谱 GLM Provider，使用 OpenAI 兼容 API 格式。
+ * 默认模型：glm-4-flash，最大上下文：128K。
+ * 注意：GLM 的 OpenAI 兼容层对工具调用支持有限，建议使用 OpenAI/Anthropic/Gemini/Qwen。
+ */
 export class GLMProvider extends OpenAICompatibleProvider {
   protected readonly defaultBaseURL = 'https://open.bigmodel.cn/api/paas/v4';
   protected readonly providerName = 'glm';
@@ -228,6 +241,9 @@ export class GLMProvider extends OpenAICompatibleProvider {
 
 // ===== Mistral Provider =====
 
+/** Mistral AI Provider，使用 OpenAI 兼容 API 格式。
+ * 默认模型：mistral-large-latest，最大上下文：32K。
+ */
 export class MistralProvider extends OpenAICompatibleProvider {
   protected readonly defaultBaseURL = 'https://api.mistral.ai/v1';
   protected readonly providerName = 'mistral';
@@ -241,6 +257,9 @@ export class MistralProvider extends OpenAICompatibleProvider {
 
 // ===== Cohere Provider =====
 
+/** Cohere Provider，使用 Cohere 原生 API 格式（非 OpenAI 兼容）。
+ * 默认模型：command-r-plus，最大上下文：128K。
+ */
 export class CohereProvider implements Provider {
   private config: Required<ProviderConfig>;
 
@@ -369,15 +388,22 @@ export class CohereProvider implements Provider {
 
 // ===== Azure OpenAI Provider =====
 
+/** Azure OpenAI 配置，与 Go 端 AzureConfig 对齐 */
 export interface AzureConfig {
   apiKey: string;
-  resourceName: string;   // Azure resource name
-  deploymentName: string;  // Deployment name
-  apiVersion?: string;     // Default: 2024-02-15-preview
+  /** Azure 资源名称 */
+  resourceName: string;
+  /** 部署名称 */
+  deploymentName: string;
+  /** API 版本，默认 2024-02-15-preview */
+  apiVersion?: string;
   temperature?: number;
   maxTokens?: number;
 }
 
+/** Azure OpenAI Provider，通过 Azure 网关访问 OpenAI 模型。
+ * 需要 Azure 资源名称和部署名称（而非模型名称）。
+ */
 export class AzureOpenAIProvider implements Provider {
   private config: AzureConfig;
   private apiVersion: string;

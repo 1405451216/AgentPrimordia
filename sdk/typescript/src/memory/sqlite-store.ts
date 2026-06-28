@@ -4,6 +4,20 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 
+/** better-sqlite3 Database 最小类型接口，避免 any 类型 */
+interface SqliteStatement {
+  run(...params: unknown[]): { changes: number };
+  get(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
+}
+
+interface SqliteDatabase {
+  exec(sql: string): void;
+  pragma(pragma: string): void;
+  prepare(sql: string): SqliteStatement;
+  close(): void;
+}
+
 interface CheckpointRow {
   id: string;
   session_id: string;
@@ -17,14 +31,14 @@ interface CheckpointRow {
 }
 
 export class SqliteStore implements Memory {
-  private db: any = null;
+  private db: SqliteDatabase | null = null;
 
   constructor(dbPath: string) {
     try {
       const Database = require('better-sqlite3');
       this.db = new Database(dbPath);
-      this.db.pragma('journal_mode = WAL');
-      this.db.exec(`
+      this.db!.pragma('journal_mode = WAL');
+      this.db!.exec(`
         CREATE TABLE IF NOT EXISTS episodes (
           id TEXT PRIMARY KEY,
           session_id TEXT NOT NULL,
@@ -44,10 +58,16 @@ export class SqliteStore implements Memory {
     }
   }
 
+  /** 获取数据库实例（确保非 null） */
+  private getDb(): SqliteDatabase {
+    if (!this.db) throw new Error('database is closed');
+    return this.db;
+  }
+
   async add(episode: MemoryEpisode): Promise<void> {
     if (!episode.id?.trim()) throw new Error('Episode ID is required');
     if (!episode.content?.trim()) throw new Error('Episode content is required');
-    this.db.prepare(
+    this.getDb().prepare(
       'INSERT OR REPLACE INTO episodes (id, session_id, role, content, summary, topics, importance, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(
       episode.id,
@@ -75,20 +95,20 @@ export class SqliteStore implements Memory {
     }
     sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(opts?.limit ?? 10, opts?.offset ?? 0);
-    return this.db.prepare(sql).all(...params).map(rowToEpisode);
+    return (this.getDb().prepare(sql).all(...params) as CheckpointRow[]).map(rowToEpisode);
   }
 
   async get(id: string): Promise<MemoryEpisode | null> {
-    const row = this.db.prepare('SELECT * FROM episodes WHERE id = ?').get(id);
+    const row = this.getDb().prepare('SELECT * FROM episodes WHERE id = ?').get(id) as CheckpointRow | undefined;
     return row ? rowToEpisode(row) : null;
   }
 
   async delete(id: string): Promise<void> {
-    this.db.prepare('DELETE FROM episodes WHERE id = ?').run(id);
+    this.getDb().prepare('DELETE FROM episodes WHERE id = ?').run(id);
   }
 
   async count(sessionId: string): Promise<number> {
-    const row = this.db.prepare('SELECT COUNT(*) as cnt FROM episodes WHERE session_id = ?').get(sessionId);
+    const row = this.getDb().prepare('SELECT COUNT(*) as cnt FROM episodes WHERE session_id = ?').get(sessionId) as { cnt: number } | undefined;
     return row?.cnt ?? 0;
   }
 
@@ -102,17 +122,17 @@ export class SqliteStore implements Memory {
     const order = opts?.ascending ? 'ASC' : 'DESC';
     sql += ` ORDER BY created_at ${order} LIMIT ? OFFSET ?`;
     params.push(opts?.limit ?? 10, opts?.offset ?? 0);
-    return this.db.prepare(sql).all(...params).map(rowToEpisode);
+    return (this.getDb().prepare(sql).all(...params) as CheckpointRow[]).map(rowToEpisode);
   }
 
   async updateSummary(id: string, summary: string, topics: string): Promise<void> {
-    const result = this.db.prepare('UPDATE episodes SET summary = ?, topics = ? WHERE id = ?').run(summary, topics, id);
+    const result = this.getDb().prepare('UPDATE episodes SET summary = ?, topics = ? WHERE id = ?').run(summary, topics, id);
     if (result.changes === 0) throw new Error(`Episode ${id} not found`);
   }
 
   async setImportance(id: string, importance: number): Promise<void> {
     if (importance < 0 || importance > 1) throw new Error('Importance must be between 0 and 1');
-    const result = this.db.prepare('UPDATE episodes SET importance = ? WHERE id = ?').run(importance, id);
+    const result = this.getDb().prepare('UPDATE episodes SET importance = ? WHERE id = ?').run(importance, id);
     if (result.changes === 0) throw new Error(`Episode ${id} not found`);
   }
 
@@ -125,19 +145,19 @@ export class SqliteStore implements Memory {
     }
     sql += ' LIMIT ?';
     params.push(opts?.limit ?? 10);
-    return this.db.prepare(sql).all(...params).map(rowToEpisode);
+    return (this.getDb().prepare(sql).all(...params) as CheckpointRow[]).map(rowToEpisode);
   }
 
   async getImportant(threshold: number, limit: number): Promise<MemoryEpisode[]> {
-    return this.db.prepare('SELECT * FROM episodes WHERE importance >= ? ORDER BY importance DESC LIMIT ?').all(threshold, limit).map(rowToEpisode);
+    return (this.getDb().prepare('SELECT * FROM episodes WHERE importance >= ? ORDER BY importance DESC LIMIT ?').all(threshold, limit) as CheckpointRow[]).map(rowToEpisode);
   }
 
   async getTimeline(days: number): Promise<Record<string, MemoryEpisode[]>> {
     const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-    const rows = this.db.prepare('SELECT * FROM episodes WHERE created_at >= ? ORDER BY created_at DESC').all(cutoff);
+    const rows = this.getDb().prepare('SELECT * FROM episodes WHERE created_at >= ? ORDER BY created_at DESC').all(cutoff) as CheckpointRow[];
     const timeline: Record<string, MemoryEpisode[]> = {};
     for (const row of rows) {
-      const date = (row as CheckpointRow).created_at.slice(0, 10);
+      const date = row.created_at.slice(0, 10);
       if (!timeline[date]) timeline[date] = [];
       timeline[date].push(rowToEpisode(row));
     }
@@ -146,15 +166,15 @@ export class SqliteStore implements Memory {
 
   async cleanupExpired(maxAgeDays: number): Promise<number> {
     const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
-    const result = this.db.prepare('DELETE FROM episodes WHERE created_at < ?').run(cutoff);
+    const result = this.getDb().prepare('DELETE FROM episodes WHERE created_at < ?').run(cutoff);
     return result.changes;
   }
 
   async stats(): Promise<MemoryStats> {
-    const total = this.db.prepare('SELECT COUNT(*) as cnt FROM episodes').get()?.cnt ?? 0;
-    const sessions = this.db.prepare('SELECT COUNT(DISTINCT session_id) as cnt FROM episodes').get()?.cnt ?? 0;
-    const oldest = this.db.prepare('SELECT MIN(created_at) as val FROM episodes').get()?.val;
-    const newest = this.db.prepare('SELECT MAX(created_at) as val FROM episodes').get()?.val;
+    const total = (this.getDb().prepare('SELECT COUNT(*) as cnt FROM episodes').get() as { cnt: number } | undefined)?.cnt ?? 0;
+    const sessions = (this.getDb().prepare('SELECT COUNT(DISTINCT session_id) as cnt FROM episodes').get() as { cnt: number } | undefined)?.cnt ?? 0;
+    const oldest = (this.getDb().prepare('SELECT MIN(created_at) as val FROM episodes').get() as { val: string } | undefined)?.val;
+    const newest = (this.getDb().prepare('SELECT MAX(created_at) as val FROM episodes').get() as { val: string } | undefined)?.val;
     return {
       totalEpisodes: total,
       totalSessions: sessions,

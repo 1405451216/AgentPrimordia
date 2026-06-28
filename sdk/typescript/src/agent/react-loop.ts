@@ -3,8 +3,18 @@ import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import { validateAgentInput, requirePositiveInt, requireNonEmpty } from '../validate.js';
 
-// ===== Stream Event Types =====
+// ===== 流式事件类型 =====
 
+/** 流式事件联合类型，表示 Agent 运行过程中产生的各类事件。
+ *
+ * 事件类型：
+ * - token: LLM 输出的文本片段（流式 token）
+ * - tool_call: LLM 请求调用工具
+ * - tool_result: 工具执行完成
+ * - turn_end: 一个 ReAct 循环轮次结束
+ * - done: Agent 运行完成，包含最终响应
+ * - error: 运行过程中发生错误
+ */
 export type StreamEvent =
   | { type: 'token'; content: string }
   | { type: 'tool_call'; toolCall: ToolCall; turn: number }
@@ -13,6 +23,22 @@ export type StreamEvent =
   | { type: 'done'; response: Response }
   | { type: 'error'; error: Error };
 
+/** 钩子触发点类型，覆盖 Agent 生命周期的关键节点。
+ *
+ * 与 Go 端 HookPoint 对齐，支持以下阶段：
+ * - 运行阶段：before_run / after_run / on_complete / on_error
+ * - 轮次阶段：before_turn / after_turn
+ * - LLM 阶段：before_llm / after_llm
+ * - 工具阶段：before_tool / after_tool / before_tool_parse / after_tool_parse
+ * - 编排阶段：before_pipeline_step / after_pipeline_step / before_handoff / after_handoff
+ * - 并行阶段：before_parallel_agent / after_parallel_agent / before_dag_node / after_dag_node
+ * - 流式阶段：on_stream / on_stream_start / on_stream_end
+ * - 记忆阶段：before_memory_read / after_memory_read / before_memory_write / after_memory_write
+ * - 上下文窗口：context_window_update / context_window_full
+ * - 指标阶段：on_metrics_collect
+ * - 生命周期：before_shutdown / after_shutdown / on_state_change
+ * - RAG 阶段：before_rag / after_rag
+ */
 export type HookPoint =
   | 'before_run'
   | 'after_run'
@@ -51,6 +77,30 @@ export type HookPoint =
   | 'after_shutdown'
   | 'on_state_change';
 
+/** 钩子上下文，包含 Agent 当前运行状态快照，传递给各钩子函数。
+ *
+ * 与 Go 端 HookContext 对齐，字段含义：
+ * - agentID: Agent 标识
+ * - sessionID: 会话标识
+ * - point: 触发钩子的事件点
+ * - turn: 当前轮次编号
+ * - message: 当前消息（可选）
+ * - response: 当前响应（可选）
+ * - toolCall: 当前工具调用（可选）
+ * - toolResult: 工具执行结果（可选）
+ * - error: 错误信息（可选）
+ * - metadata: 附加元数据（可选）
+ * - requestID: 请求 ID，用于可观测性关联
+ * - streamChunk: 流式数据块
+ * - duration: 当前阶段耗时（毫秒）
+ * - oldState: 状态变更前状态
+ * - newState: 状态变更后状态
+ * - reason: 变更原因
+ * - memoryQuery: 记忆查询语句
+ * - memoryResult: 记忆查询结果
+ * - contextWindowUsage: 当前上下文窗口使用量
+ * - contextWindowLimit: 上下文窗口上限
+ */
 export interface HookContext {
   agentID: string;
   sessionID: string;
@@ -75,11 +125,20 @@ export interface HookContext {
   contextWindowLimit?: number;
 }
 
+/** 钩子函数类型，接收 HookContext 并返回 void 或 Promise<void> */
 export type HookFunc = (ctx: HookContext) => Promise<void> | void;
 
+/** 钩子管理器，负责注册、触发和移除钩子函数。
+ *
+ * 使用方式：
+ *   const hooks = new HookManager();
+ *   hooks.register('before_run', (ctx) => { console.log(ctx.turn); });
+ *   await hooks.fire({ agentID, sessionID, point: 'before_run', turn: 0 });
+ */
 export class HookManager {
   private hooks: Map<HookPoint, HookFunc[]> = new Map();
 
+  /** 注册钩子函数到指定触发点 */
   register(point: HookPoint, fn: HookFunc): void {
     if (!this.hooks.has(point)) {
       this.hooks.set(point, []);
@@ -87,6 +146,7 @@ export class HookManager {
     this.hooks.get(point)!.push(fn);
   }
 
+  /** 触发指定钩子点的所有注册函数 */
   async fire(ctx: HookContext): Promise<void> {
     const fns = this.hooks.get(ctx.point) ?? [];
     for (const fn of fns) {
@@ -94,19 +154,29 @@ export class HookManager {
     }
   }
 
+  /** 移除指定钩子点的所有注册函数 */
   remove(point: HookPoint): void {
     this.hooks.delete(point);
   }
 
+  /** 清空所有钩子注册 */
   clear(): void {
     this.hooks.clear();
   }
 
+  /** 查询指定钩子点的注册函数数量 */
   count(point: HookPoint): number {
     return this.hooks.get(point)?.length ?? 0;
   }
 }
 
+/** 生命周期管理器，控制 Agent 的启动、停止、暂停和恢复。
+ *
+ * 与 Go 端 Lifecycle 对齐，提供：
+ * - 状态管理（idle / running / paused / completed / error）
+ * - 停止信号（stop / isStopped / onStop）
+ * - 暂停/恢复（pause / resume / waitPause / waitResume）
+ */
 export class Lifecycle {
   private _status: AgentStatus = 'idle';
   private stopped = false;
@@ -115,29 +185,35 @@ export class Lifecycle {
   private resumeResolvers: (() => void)[] = [];
   private paused = false;
 
+  /** 获取当前状态 */
   get status(): AgentStatus {
     return this._status;
   }
 
+  /** 设置状态 */
   setStatus(s: AgentStatus): void {
     this._status = s;
   }
 
+  /** 发送停止信号，唤醒所有等待停止的 Promise */
   stop(): void {
     this.stopped = true;
     for (const r of this.stopResolvers) r();
     this.stopResolvers = [];
   }
 
+  /** 检查是否已收到停止信号 */
   isStopped(): boolean {
     return this.stopped;
   }
 
+  /** 等待停止信号，返回 Promise 在 stop() 调用时 resolve */
   onStop(): Promise<void> {
     if (this.stopped) return Promise.resolve();
     return new Promise((r) => this.stopResolvers.push(r));
   }
 
+  /** 暂停 Agent，状态从 running 变为 paused */
   pause(): void {
     if (this._status !== 'running') return;
     this._status = 'paused';
@@ -146,6 +222,7 @@ export class Lifecycle {
     this.pauseResolvers = [];
   }
 
+  /** 恢复 Agent，状态从 paused 变为 running */
   resume(): void {
     if (this._status !== 'paused') return;
     this._status = 'running';
@@ -154,17 +231,33 @@ export class Lifecycle {
     this.resumeResolvers = [];
   }
 
+  /** 等待暂停完成，返回 Promise 在 pause() 调用时 resolve */
   waitPause(): Promise<void> {
     if (this.paused) return Promise.resolve();
     return new Promise((r) => this.pauseResolvers.push(r));
   }
 
+  /** 等待恢复完成，返回 Promise 在 resume() 调用时 resolve */
   waitResume(): Promise<void> {
     if (!this.paused) return Promise.resolve();
     return new Promise((r) => this.resumeResolvers.push(r));
   }
 }
 
+/** ReActAgent 配置，与 Go 端 ReActConfig 对齐。
+ *
+ * 字段说明：
+ * - name: Agent 名称（必填）
+ * - model: LLM Provider（必填）
+ * - toolkit: 工具注册表（必填）
+ * - maxTurns: 最大轮次，默认 10
+ * - maxConsecutiveFailures: 连续工具失败上限，默认 3
+ * - systemPrompt: 系统提示词
+ * - hooks: 钩子管理器
+ * - lifecycle: 生命周期管理器
+ * - sessionId: 会话标识
+ * - maxMessages: 最大消息缓存数，默认 80
+ */
 export interface ReActConfig {
   name: string;
   model: Provider;
@@ -178,6 +271,24 @@ export interface ReActConfig {
   maxMessages?: number;
 }
 
+/** ReActAgent 是基于 ReAct（推理+行动）循环的 Agent 实现。
+ *
+ * 与 Go 端 ReActAgent 对齐，核心流程：
+ * 1. 接收用户输入
+ * 2. 调用 LLM 获取推理结果（可能包含工具调用）
+ * 3. 执行工具调用，将结果反馈给 LLM
+ * 4. 重复直到 LLM 返回最终答案或达到最大轮次
+ *
+ * 使用方式：
+ *   const agent = new ReActAgent({
+ *     name: 'my-agent',
+ *     model: provider,
+ *     toolkit: registry,
+ *     maxTurns: 10,
+ *   });
+ *   const response = await agent.run('你好');
+ *   // 或流式：for await (const event of agent.streamEvents('你好')) { ... }
+ */
 export class ReActAgent {
   readonly name: string;
   private model: Provider;
@@ -211,6 +322,13 @@ export class ReActAgent {
     this.lifecycle = config.lifecycle ?? new Lifecycle();
   }
 
+  /** 执行 ReAct 循环，返回最终响应。
+ *
+ * 参数：
+ * - input: 用户输入文本
+ *
+ * 返回：包含最终内容和指标的 Response 对象
+ */
   async run(input: string): Promise<Response> {
     validateAgentInput(input);
     this.lifecycle.setStatus('running');

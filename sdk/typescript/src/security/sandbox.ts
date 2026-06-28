@@ -1,3 +1,5 @@
+import { containsShellMetacharacter, validatePathTraversal } from './extended.js';
+
 export type AccessLevel = 'none' | 'read' | 'write' | 'execute' | 'all';
 
 const ACCESS_LEVELS: Record<AccessLevel, number> = {
@@ -7,6 +9,19 @@ const ACCESS_LEVELS: Record<AccessLevel, number> = {
   execute: 4,
   all: 7,
 };
+
+/** 命令参数白名单模式 */
+export interface ArgPattern {
+  /** 编译后的正则表达式 */
+  regex: RegExp;
+  /** 不匹配时的提示信息 */
+  message: string;
+}
+
+/** 创建一个参数模式 */
+export function newArgPattern(regex: string, message: string): ArgPattern {
+  return { regex: new RegExp(regex), message };
+}
 
 export class ACL {
   private rules: { agentID: string; resource: string; level: number }[] = [];
@@ -50,6 +65,8 @@ export class Sandbox {
   private acl: ACL;
   private allowedCmds: Set<string> = new Set();
   private blockedCmds: Set<string> = new Set();
+  /** 命令参数白名单模式：命令名 → 参数模式列表 */
+  private argPatterns: Map<string, ArgPattern[]> = new Map();
 
   constructor(acl: ACL) {
     this.acl = acl;
@@ -65,10 +82,83 @@ export class Sandbox {
     this.allowedCmds.delete(cmd);
   }
 
+  /** 允许命令并指定参数白名单模式 */
+  allowCommandWithArgs(cmd: string, ...patterns: ArgPattern[]): void {
+    this.allowedCmds.add(cmd);
+    this.blockedCmds.delete(cmd);
+    if (patterns.length > 0) {
+      this.argPatterns.set(cmd, patterns);
+    }
+  }
+
+  /** 为已允许的命令设置参数白名单模式 */
+  setArgPatterns(cmd: string, ...patterns: ArgPattern[]): void {
+    if (patterns.length > 0) {
+      this.argPatterns.set(cmd, patterns);
+    } else {
+      this.argPatterns.delete(cmd);
+    }
+  }
+
+  /**
+   * 验证命令参数：
+   * 1. 检查参数中是否包含路径遍历
+   * 2. 检查参数中是否包含 shell 元字符
+   * 3. 检查参数是否匹配白名单模式（若配置了）
+   */
+  private validateArgs(cmdName: string, args: string[]): Error | null {
+    for (const arg of args) {
+      // 跳过选项标志（如 -l, --verbose）
+      if (arg.startsWith('-')) continue;
+
+      // 检查路径遍历
+      const traversal = validatePathTraversal(arg);
+      if (!traversal.safe) {
+        return new Error(`path traversal in argument "${arg}": ${traversal.reason}`);
+      }
+
+      // 检查 shell 元字符
+      const meta = containsShellMetacharacter(arg);
+      if (meta.found) {
+        return new Error(`argument "${arg}" contains shell metacharacter '${meta.char}'`);
+      }
+    }
+
+    // 检查参数白名单模式
+    const patterns = this.argPatterns.get(cmdName);
+    if (!patterns || patterns.length === 0) return null;
+
+    // 将参数拼接为空格分隔的字符串进行模式匹配
+    const argStr = args.join(' ');
+    for (const p of patterns) {
+      if (p.regex.test(argStr)) return null;
+    }
+
+    return new Error(`arguments "${argStr}" do not match allowed patterns for command "${cmdName}"`);
+  }
+
   canExecute(agentID: string, cmd: string): Error | null {
-    if (this.blockedCmds.has(cmd)) return new Error(`command "${cmd}" is blocked`);
-    if (this.allowedCmds.size > 0 && !this.allowedCmds.has(cmd)) return new Error(`command "${cmd}" is not in allowed list`);
-    return null;
+    // 检查 shell 元字符，防止命令注入绕过
+    const meta = containsShellMetacharacter(cmd);
+    if (meta.found) {
+      return new Error(`command contains shell metacharacter '${meta.char}'`);
+    }
+
+    // 提取命令名和参数
+    const fields = cmd.trim().split(/\s+/);
+    const cmdName = fields[0];
+    if (!cmdName) return new Error('empty command');
+
+    if (this.blockedCmds.has(cmdName)) {
+      return new Error(`command "${cmdName}" is blocked`);
+    }
+    if (this.allowedCmds.size > 0 && !this.allowedCmds.has(cmdName)) {
+      return new Error(`command "${cmdName}" is not in allowed list`);
+    }
+
+    // 验证命令参数
+    const args = fields.slice(1);
+    return this.validateArgs(cmdName, args);
   }
 
   canAccess(agentID: string, resource: string, level: AccessLevel): Error | null {

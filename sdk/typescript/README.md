@@ -129,6 +129,17 @@ console.log(response.content);
 
 ### Prompt Engineering
 - `PromptEngine` / `FewShotPrompt` / `PromptParser` / `PromptRegistry` — Prompt management
+- `TemplateRegistry` / `FewShotTemplate` / `KeywordSelector` — Template registry and few-shot learning
+- `JSONParser` / `MarkdownParser` / `RegexParser` — LLM output parsers
+
+### Document Loaders
+- `TextLoader` / `MDLoader` / `JSONDocLoader` / `CodeLoader` — File format loaders
+- `DirectoryLoader` — Recursive directory walker with extension filter
+
+### LLM Batch, Structured Output & Config
+- `BatchRequestProcessor` / `defaultBatchConfig` — Aggregate concurrent LLM requests into batches
+- `StructuredOutputExtractor` — JSON Schema-constrained extraction with retry
+- `validateConfig` / `configFromEnv` / `LLMConfigWatcher` — LLM config validation and hot reload
 
 ### K8s Operator
 - `basicAgentDeployment` / `multiAgentDeployment` / `withAutoscaling` — CRD generators
@@ -171,6 +182,94 @@ class WeatherTool implements Tool {
 
 const registry = new ToolRegistry();
 registry.register(new WeatherTool());
+```
+
+## LLM Batch Processing
+
+`BatchRequestProcessor` collects concurrent LLM requests and flushes them when the
+batch is full or the timer fires:
+
+```typescript
+import { OpenAIProvider, BatchRequestProcessor } from '@agentprimordia/sdk';
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
+const batch = new BatchRequestProcessor(provider, {
+  maxBatchSize: 8,
+  flushTimeout: 50,
+});
+
+const [a, b, c] = await Promise.all([
+  batch.complete({ messages: [{ role: 'user', content: 'one' }] }),
+  batch.complete({ messages: [{ role: 'user', content: 'two' }] }),
+  batch.complete({ messages: [{ role: 'user', content: 'three' }] }),
+]);
+
+batch.close();
+```
+
+## Structured Output Extraction
+
+`StructuredOutputExtractor` forces the LLM to emit JSON that matches a schema,
+with automatic retry on parse failure:
+
+```typescript
+import { OpenAIProvider, StructuredOutputExtractor } from '@agentprimordia/sdk';
+
+const provider = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
+const extractor = new StructuredOutputExtractor(provider, 'gpt-4o', {
+  maxRetries: 2,
+});
+
+const person = await extractor.extract<{ name: string; age: number }>(
+  'Alice is 30 years old.',
+  {
+    name: 'person',
+    description: 'A person record',
+    schema: {
+      type: 'object',
+      properties: { name: { type: 'string' }, age: { type: 'integer' } },
+      required: ['name', 'age'],
+    },
+    strict: true,
+  }
+);
+```
+
+## Prompt Registry & Few-Shot
+
+```typescript
+import { PromptTemplate, TemplateRegistry, FewShotTemplate, KeywordSelector } from '@agentprimordia/sdk';
+
+const tpl = new PromptTemplate('You are {{.Role}}. Answer: {{.Question}}');
+const reg = new TemplateRegistry();
+reg.register('qa', tpl);
+
+const rendered = reg.render('qa', { Role: 'a helpful assistant', Question: 'What is X?' });
+
+// Few-shot
+const few = new FewShotTemplate({
+  baseTemplate: tpl,
+  maxExamples: 3,
+  selector: new KeywordSelector(),
+});
+few.addExamples([
+  { input: 'hello', output: 'hi there' },
+  { input: 'goodbye', output: 'see you' },
+]);
+const out = few.render('hello there', { Role: 'bot', Question: '' });
+```
+
+## Document Loaders
+
+```typescript
+import { TextLoader, MDLoader, CodeLoader, DirectoryLoader } from '@agentprimordia/sdk';
+
+const txt = await new TextLoader().load('./README.md');
+const md  = await new MDLoader().load('./CHANGELOG.md');
+const go  = await new CodeLoader().load('./main.go');
+console.log(go[0].metadata.language); // 'go'
+
+const all = await new DirectoryLoader(new TextLoader(), ['.md', '.ts']).load('./docs');
 ```
 
 ## Using Hooks
