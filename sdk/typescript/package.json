@@ -1,6 +1,6 @@
 {
   "name": "@agentprimordia/sdk",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "description": "AgentPrimordia - Universal AI Agent Development Framework for TypeScript",
   "type": "module",
   "main": "dist/index.js",
@@ -8,7 +8,9 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "files": [

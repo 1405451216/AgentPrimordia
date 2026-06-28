@@ -23,7 +23,33 @@ export type HookPoint =
   | 'before_tool'
   | 'after_tool'
   | 'on_error'
-  | 'on_complete';
+  | 'on_complete'
+  // Extended hook points (matching Go framework)
+  | 'before_rag'
+  | 'after_rag'
+  | 'before_pipeline_step'
+  | 'after_pipeline_step'
+  | 'before_handoff'
+  | 'after_handoff'
+  | 'before_parallel_agent'
+  | 'after_parallel_agent'
+  | 'before_dag_node'
+  | 'after_dag_node'
+  | 'on_stream'
+  | 'on_stream_start'
+  | 'on_stream_end'
+  | 'before_memory_read'
+  | 'after_memory_read'
+  | 'before_memory_write'
+  | 'after_memory_write'
+  | 'context_window_update'
+  | 'context_window_full'
+  | 'before_tool_parse'
+  | 'after_tool_parse'
+  | 'on_metrics_collect'
+  | 'before_shutdown'
+  | 'after_shutdown'
+  | 'on_state_change';
 
 export interface HookContext {
   agentID: string;
@@ -36,6 +62,17 @@ export interface HookContext {
   toolResult?: ToolResult;
   error?: Error;
   metadata?: Record<string, unknown>;
+  // Extended fields (matching Go framework)
+  requestID?: string;
+  streamChunk?: StreamEvent;
+  duration?: number;
+  oldState?: string;
+  newState?: string;
+  reason?: string;
+  memoryQuery?: string;
+  memoryResult?: unknown;
+  contextWindowUsage?: number;
+  contextWindowLimit?: number;
 }
 
 export type HookFunc = (ctx: HookContext) => Promise<void> | void;

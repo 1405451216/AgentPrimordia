@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+### Added (TypeScript SDK — 100% Go Parity)
+
+- **TypeScript SDK 基础设施补全 (Phase 24)**: 5 个模块实现 Go `internal/` 全覆盖
+  - `audit/logger.ts` — 审计日志（`AuditLogger`, `InMemoryAuditOutput`, 合规报告生成）
+  - `admin/handler.ts` — Bearer Token 认证管理 HTTP API + Web UI Dashboard
+  - `debugger/server.ts` — Inspector（span/session trace）+ DebugServer（事件/快照）双 HTTP 服务
+  - `persist/sqlite-checkpoint.ts` — SQLite 检查点存储（双接口：`CheckpointStore` + Go 兼容 `AgentState`）
+  - `health/http.ts` — `/healthz`、`/readyz`、`/livez` Kubernetes 风格健康端点
+- **TypeScript SDK Bug 修复 (Phase 11-23)**:
+  - `ConcurrencyPool.release()` 竞态条件：改为直接交接模式，避免超额进入
+  - `WorkerPool.drain()` 泄漏：增加 `running` 状态检查，drain 后停止派发
+  - `StepExecutor` 耗时统计错误：修正 start/end 时间戳
+  - `extractPattern` 非字符串崩溃：增加 `String()` 强制转换
+  - `ZeroCopyPool` 不安全类型断言：移除 `as` 绕过 `readonly`，实现安全复用
+- **TypeScript SDK 文档更新**:
+  - `README.md` — 完整 24 Phase 模块清单 + Go 对等表 + 基础设施使用示例
+  - `docs/api/index.md` — 全量 API 参考文档（含 Phase 24 基础设施端点）
+  - `docs/index.md` — VitePress 首页更新为 9 大特性卡片
+
 ### Changed (Breaking)
 
 - **`audit.NewLogger` 签名变更**: `func NewLogger(cfg LoggerConfig) *Logger` → `func NewLogger(cfg LoggerConfig) (*Logger, error)`

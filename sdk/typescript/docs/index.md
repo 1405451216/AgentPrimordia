@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "@agentprimordia/sdk"
   text: TypeScript SDK
-  tagline: Build cross-platform AI Agent applications
+  tagline: 100% Go parity — Build cross-platform AI Agent applications
   actions:
     - theme: brand
       text: Get Started
@@ -15,11 +15,21 @@ hero:
 
 features:
   - title: ReAct Agent
-    details: Built-in ReAct loop with hook system for extensible agent behavior
+    details: ReAct loop with hooks, lifecycle, HITL, cost tracking, and reflection
   - title: Multi-Provider LLM
-    details: OpenAI, Mock, and Resilient providers with fallback and circuit breaker
+    details: OpenAI, Anthropic, Gemini, Ollama, DeepSeek, Qwen, GLM, Mistral, Cohere, Azure + resilient wrapper
   - title: Episodic Memory
-    details: In-memory store and vector search for conversation history
+    details: In-memory, SQLite FTS5, HNSW vector, Milvus/Qdrant, RAG pipeline, conversational memory
   - title: Tool System
-    details: Registry-based tool management with JSON schema definitions
+    details: Registry, 7 built-in tools, 6 document loaders, plugin loader, scoped permissions
+  - title: Multi-Agent Orchestration
+    details: Pipeline, DAG, GroupChat, Debate, Supervisor, DynamicOrchestrator, WorkerPool
+  - title: A2A + MCP
+    details: Agent-to-agent bus, HTTP/TCP transport, discovery, MCP registry/adapter/bridge
+  - title: Observability
+    details: Metrics, Prometheus export, OpenTelemetry tracing, Debugger, Inspector Web UI
+  - title: Security & Guardrails
+    details: ACL, Sandbox, PII detection, injection defense, topic filter, input sanitizer
+  - title: Infrastructure
+    details: Audit logger, Admin API, Inspector, SQLite checkpoints, /healthz /readyz endpoints
 ---
