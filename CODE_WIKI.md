@@ -1,8 +1,8 @@
 # AgentPrimordia Code Wiki
 
-> 万物之源,智能之始 — 生产级 Go AI Agent 开发框架
+> 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v0.8.0 | **语言**: Go 1.26+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
+**版本**: v0.8.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
 
 ---
 
@@ -72,7 +72,7 @@
 | **可观测性** | Prometheus Metrics / OpenTelemetry / Grafana Dashboard |
 | **K8s Operator** | AgentDeployment CRD 声明式部署 |
 | **CLI 工具** | `ap init / run / debug / test / mcp / plugin` |
-| **TypeScript SDK** | 镜像 Go 核心能力的 TS SDK |
+| **TypeScript SDK** | 100% Go 功能对等，24 模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure） |
 
 ### 数据流
 
@@ -1610,51 +1610,143 @@ func (p *MyProvider) Info() ModelInfo {
 
 **位置：** `sdk/typescript/`
 
-镜像 Go 框架核心能力的 TypeScript SDK：
+**100% Go 功能对等** — 24 个模块覆盖 Go `internal/` 全部能力：
 
 ```
 sdk/typescript/src/
-├── agent/
-│   └── react-loop.ts       # ReAct 循环
-├── events/
-│   └── bus.ts              # 事件总线
-├── llm/
-│   ├── provider.ts         # Provider 接口
-│   ├── openai.ts           # OpenAI Provider
-│   └── resilient.ts        # Resilient Provider
-├── memory/
-│   ├── memory.ts           # 记忆存储
-│   └── vector.ts           # 向量存储
-├── metrics/
-│   └── collector.ts        # 指标收集
-├── pool/
-│   └── agent-pool.ts       # Agent Pool
-├── security/
-│   └── sandbox.ts          # 安全沙箱
-└── tools/
-    ├── registry.ts         # 工具注册
-    └── scope.ts            # 作用域
+├── agent/                    # ReAct 循环 + 微内核 + 反思 + 规划 + 评估 + 可视化
+│   ├── react-loop.ts         # ReAct 循环（对应 Go react_loop.go）
+│   ├── capability-agent.ts   # 协议式微内核（对应 Go capability_agent.go）
+│   ├── request-id.ts         # 请求ID + 上下文窗口 + 检查点 + HITL + CostTracker
+│   ├── session.ts            # 会话管理
+│   ├── prompt-template.ts    # 提示词模板
+│   ├── reflection.ts         # 自反思
+│   ├── planning.ts           # 任务规划
+│   ├── tool-learning.ts      # 工具学习
+│   ├── eval.ts               # Agent 评估
+│   ├── visualize.ts          # 工作流可视化
+│   ├── stream-extended.ts    # SSE 流式 + 中间件
+│   └── lifecycle-extended.ts # 生命周期状态机
+├── llm/                      # LLM 抽象层（12+ Provider）
+│   ├── openai.ts             # OpenAI
+│   ├── anthropic.ts          # Anthropic Claude
+│   ├── gemini.ts             # Google Gemini
+│   ├── ollama.ts             # Ollama 本地
+│   ├── providers.ts          # DeepSeek / Qwen / GLM / Mistral / Cohere / Azure
+│   ├── resilient.ts          # 弹性 Provider（重试 + 熔断 + 降级）
+│   ├── multimodal.ts         # 多模态适配器
+│   └── cache-structured.ts   # LLM 缓存 + 结构化提取
+├── tools/                    # 工具系统
+│   ├── registry.ts           # 工具注册中心
+│   ├── scope.ts              # 文件作用域
+│   ├── scope-extended.ts     # 权限控制
+│   ├── document-loaders.ts   # PDF/DOCX/JSON/CSV/HTML/MD 加载器
+│   └── builtin/              # 7 个内置工具 + 插件加载器
+├── memory/                   # 记忆存储
+│   ├── store.ts              # 内存存储
+│   ├── sqlite-store.ts       # SQLite FTS5 持久化
+│   ├── vector.ts             # 向量存储
+│   ├── vector-extended.ts    # HNSW / Milvus / Qdrant / 共享存储
+│   └── rag.ts                # RAG 管道
+├── orchestration/            # 编排引擎
+│   ├── pipeline.ts           # Pipeline / ParallelRun / Handoff
+│   ├── advanced.ts           # DAG / GroupChat / Debate / Supervisor
+│   └── extended.ts           # 动态编排 / 调度器 / WorkerPool
+├── pool/                     # 并发调度
+│   ├── agent-pool.ts         # Agent Pool
+│   └── dispatcher-autoscaler.ts  # AutoScaler / Dispatcher / ConcurrencyPool / FileLock
+├── a2a/                      # A2A 通信
+│   ├── bus.ts                # Agent-to-Agent 消息总线
+│   └── transport.ts          # HTTP/TCP 传输 + 发现协议 + 认证
+├── mcp/                      # MCP 协议
+│   ├── types.ts              # MCP 客户端
+│   └── registry-adapter.ts   # MCP 注册 + JSON-RPC + A2A 桥接
+├── security/                 # 安全防护
+│   ├── sandbox.ts            # ACL + Sandbox
+│   ├── guardrails.ts         # PII / 注入 / 话题过滤
+│   └── extended.ts           # 输入净化 + 命令防护
+├── metrics/                  # 可观测性
+│   ├── collector.ts          # 指标收集
+│   ├── otel-prometheus.ts    # OTel + Prometheus + Debugger
+│   └── otel-extended.ts      # Baggage + OTLP 导出
+├── resilience/               # 弹性容错
+│   └── circuit-retry.ts      # 熔断器 + 重试 + 包装器
+├── prompt/                   # 提示词引擎
+│   └── engine.ts             # PromptEngine / FewShot / Parser / Registry
+├── operator/                 # K8s Operator CRD
+│   └── crd.ts                # AgentDeployment YAML 生成
+├── audit/                    # 审计日志
+│   └── logger.ts             # AuditLogger + 合规报告
+├── admin/                    # 管理 HTTP API
+│   └── handler.ts            # Bearer Token 认证 + Web UI Dashboard
+├── debugger/                 # 调试器
+│   └── server.ts             # Inspector + DebugServer HTTP 服务
+├── persist/                  # 状态持久化
+│   └── sqlite-checkpoint.ts  # SQLite 检查点存储
+├── health/                   # 健康检查
+│   └── http.ts               # /healthz /readyz /livez 端点
+├── events/                   # 事件总线
+│   └── bus.ts                # Pub/sub 事件总线
+└── utils/                    # 高级工具
+    ├── advanced.ts           # ConfigWatcher / StructuredLogger / EventBus
+    └── zerocopy-pricing.ts   # ZeroCopyPool / StringBuilder / PricingCalculator
 ```
+
+### Go 对等表
+
+| Go (`internal/`) | TS (`src/`) | 对等状态 |
+|-------------------|-------------|----------|
+| `agent/` | `agent/` | ✅ 完整 |
+| `llm/` | `llm/` | ✅ 完整 (12+ Provider) |
+| `tools/` | `tools/` | ✅ 完整 (7 内置 + 6 加载器 + 插件) |
+| `memory/` | `memory/` | ✅ 完整 (SQLite/HNSW/Milvus/Qdrant/RAG) |
+| `orchestration/` | `orchestration/` | ✅ 完整 (DAG/GroupChat/Debate/Supervisor) |
+| `pool/` | `pool/` | ✅ 完整 |
+| `agent/a2a/` | `a2a/` | ✅ 完整 (HTTP/TCP/Discovery) |
+| `tools/` (MCP) | `mcp/` | ✅ 完整 (Registry/Adapter/Bridge) |
+| `security/` `guardrail/` | `security/` | ✅ 完整 |
+| `metrics/` `otel/` | `metrics/` | ✅ 完整 |
+| `resilience/` | `resilience/` | ✅ 完整 |
+| `prompt/` | `prompt/` | ✅ 完整 |
+| `operator/` | `operator/` | ✅ 完整 (CRD YAML) |
+| `audit/` | `audit/` | ✅ 完整 |
+| `admin/` | `admin/` | ✅ 完整 (Bearer Token + Web UI) |
+| `debugger/` | `debugger/` | ✅ 完整 (Inspector + DebugServer) |
+| `persist/` | `persist/` | ✅ 完整 (SQLite Checkpoint) |
+| `health/` | `health/` | ✅ 完整 (/healthz /readyz /livez) |
+| `concurrency/` | `pool/` | ✅ 完整 (FileLock + ConcurrencyPool) |
+| `config/` | `utils/` | ✅ 完整 (ConfigWatcher) |
+| `logger/` | `utils/` | ✅ 完整 (StructuredLogger) |
+| `jsonutil/` | `utils/` | ✅ 完整 |
+| `events/` | `events/` | ✅ 完整 |
 
 ### 使用示例
 
 ```typescript
-import { ReActLoop, OpenAIProvider } from 'agentprimordia';
+import { ReActAgent, OpenAIProvider, ToolRegistry, AuditLogger, HealthServer } from '@agentprimordia/sdk';
 
 const provider = new OpenAIProvider({
-  apiKey: 'your-api-key',
-  model: 'gpt-4o-mini',
+  apiKey: process.env.OPENAI_API_KEY!,
+  model: 'gpt-4o',
 });
 
-const agent = new ReActLoop({
+const agent = new ReActAgent({
   name: 'my-agent',
-  systemPrompt: '你是一个助手',
-  provider,
+  model: provider,
+  toolkit: new ToolRegistry(),
   maxTurns: 10,
 });
 
 const response = await agent.run('你好！');
 console.log(response.content);
+
+// 基础设施端点（与 Go 框架对等）
+const health = new HealthServer();
+health.setReady(true);
+// GET /healthz → 200, /readyz → 200, /livez → 200
+
+const audit = new AuditLogger({ output: new InMemoryAuditOutput() });
+await audit.log({ actor: 'user-1', action: 'agent.run', resource: 'my-agent' });
 ```
 
 ---
@@ -1824,5 +1916,5 @@ agent := ap.NewReActAgent(config).
 
 ---
 
-*文档更新时间：2026-06-19*
-*版本：v0.8.0*
+*文档更新时间：2026-06-28*
+*版本：v0.8.0 (Go + TypeScript 100% Parity)*

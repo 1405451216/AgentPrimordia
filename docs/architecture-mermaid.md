@@ -256,6 +256,161 @@ graph LR
 
 ---
 
+## 7. TypeScript SDK — Go Parity Architecture
+
+```mermaid
+graph TB
+    subgraph TSApp["TypeScript Application"]
+        TSI["import { ReActAgent, ... } from '@agentprimordia/sdk'"]
+    end
+
+    subgraph TSSDK["sdk/typescript/src/ — 24 Modules (100% Go Parity)"]
+        subgraph TSAgent["agent/ — 12 files"]
+            TSRA["ReActAgent"]
+            TSCA["CapabilityAgent"]
+            TSSE["Session"]
+            TSHITL["HITLManager"]
+            TSCOST["CostTracker"]
+        end
+
+        subgraph TSLLM["llm/ — 9 files"]
+            TSOAI["OpenAIProvider"]
+            TSANT["AnthropicProvider"]
+            TSGEM["GeminiProvider"]
+            TSOLL["OllamaProvider"]
+            TSDS["DeepSeek / Qwen / GLM / Mistral / Cohere / Azure"]
+            TSRES["ResilientProvider"]
+            TSMM["MultimodalAdapter"]
+            TSCACHE["InMemoryCache / CachedProvider"]
+        end
+
+        subgraph TSTools["tools/ — 7 files"]
+            TSREG["ToolRegistry"]
+            TSFS["FileSystemTool"]
+            TSSH["ShellTool"]
+            TSPLUGIN["PluginLoader"]
+            TSDOC["PDF / DOCX / JSON / CSV Loaders"]
+        end
+
+        subgraph TSMem["memory/ — 5 files"]
+            TSIN["InMemoryStore"]
+            TSSQL["SqliteStore (FTS5)"]
+            TSVEC["VectorStore / HNSW"]
+            TSRAG["RAGStore / RAGPipeline"]
+            TSMIL["MilvusProvider / QdrantProvider"]
+        end
+
+        subgraph TSInfra["Infrastructure — Phase 24"]
+            TSAUDIT["AuditLogger"]
+            TSADMIN["AdminHandler (Bearer Token + Web UI)"]
+            TSDBG["Inspector / DebugServer"]
+            TSPERSIST["SQLiteCheckpointStore"]
+            TSHEALTH["HealthServer (/healthz /readyz /livez)"]
+        end
+
+        subgraph TSComm["Communication"]
+            TSA2A["A2ABus / HTTPTransport / TCPTransport"]
+            TSMCP["MCPClient / MCPRegistry / MCPAdapter"]
+        end
+
+        subgraph TSSec["Security"]
+            TSACL["ACL / Sandbox"]
+            TSGUARD["PIIDetector / InjectionDetector / GuardrailEngine"]
+        end
+
+        subgraph TSObs["Observability"]
+            TSMET["MetricsCollector / PrometheusExporter"]
+            TSOTEL["OTelTracer / OTLPExporter"]
+        end
+    end
+
+    subgraph GoFW["Go Framework — agentprimordia/internal/"]
+        GOAGENT["agent/"]
+        GOLLM["llm/"]
+        GOTOOLS["tools/"]
+        GOMEM["memory/"]
+        GOINFRA["audit/ admin/ debugger/ persist/ health/"]
+        GONOTE["✅ Every Go module has a 1:1 TypeScript counterpart"]
+    end
+
+    TSI --> TSAgent
+    TSAgent --> TSLLM
+    TSAgent --> TSTools
+    TSAgent --> TSMem
+    TSAgent --> TSComm
+    TSSec -.-> TSAgent
+    TSObs -.-> TSAgent
+    TSInfra -.-> TSAgent
+
+    TSAgent -.->|"1:1 parity"| GOAGENT
+    TSLLM -.->|"1:1 parity"| GOLLM
+    TSTools -.->|"1:1 parity"| GOTOOLS
+    TSMem -.->|"1:1 parity"| GOMEM
+    TSInfra -.->|"1:1 parity"| GOINFRA
+```
+
+### Go ↔ TypeScript Module Mapping
+
+```mermaid
+graph LR
+    subgraph GoModules["Go internal/"]
+        G1["agent/"]
+        G2["llm/"]
+        G3["tools/"]
+        G4["memory/"]
+        G5["orchestration/"]
+        G6["pool/"]
+        G7["agent/a2a/"]
+        G8["security/ + guardrail/"]
+        G9["metrics/ + otel/"]
+        G10["resilience/"]
+        G11["prompt/"]
+        G12["audit/"]
+        G13["admin/"]
+        G14["debugger/"]
+        G15["persist/"]
+        G16["health/"]
+    end
+
+    subgraph TSModules["TS src/"]
+        T1["agent/"]
+        T2["llm/"]
+        T3["tools/"]
+        T4["memory/"]
+        T5["orchestration/"]
+        T6["pool/"]
+        T7["a2a/"]
+        T8["security/"]
+        T9["metrics/"]
+        T10["resilience/"]
+        T11["prompt/"]
+        T12["audit/"]
+        T13["admin/"]
+        T14["debugger/"]
+        T15["persist/"]
+        T16["health/"]
+    end
+
+    G1 -.->|"✅"| T1
+    G2 -.->|"✅"| T2
+    G3 -.->|"✅"| T3
+    G4 -.->|"✅"| T4
+    G5 -.->|"✅"| T5
+    G6 -.->|"✅"| T6
+    G7 -.->|"✅"| T7
+    G8 -.->|"✅"| T8
+    G9 -.->|"✅"| T9
+    G10 -.->|"✅"| T10
+    G11 -.->|"✅"| T11
+    G12 -.->|"✅"| T12
+    G13 -.->|"✅"| T13
+    G14 -.->|"✅"| T14
+    G15 -.->|"✅"| T15
+    G16 -.->|"✅"| T16
+```
+
+---
+
 ## Usage Instructions
 
 ### Preview in Markdown

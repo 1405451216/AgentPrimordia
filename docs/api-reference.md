@@ -2,7 +2,10 @@
 
 > 包路径：`agentprimordia/pkg` → 导入别名 `ap`
 >
-> 版本：`ap.Version` = `"0.7.0"`
+> 版本：`ap.Version` = `"0.7.0"` (Go) / `@agentprimordia/sdk` `1.0.0` (TypeScript)
+>
+> **TypeScript SDK 与 Go 框架 100% 功能对等**，下方 API 参考 covers Go 公共 API。
+> TypeScript SDK 完整 API 参考见 [sdk/typescript/docs/api/index.md](../sdk/typescript/docs/api/index.md)。
 
 ## 核心类型
 
@@ -793,3 +796,50 @@ Agent 的持久化状态，包含消息历史、轮次和状态信息。
 | `PST_001` | `ErrCheckpointNotFound` | 检查点未找到 |
 | `CON_001` | `ErrGlobalWriteConflict` | 全局写冲突 |
 | `CON_002` | `ErrScopeOverlap` | 作用域重叠 |
+
+---
+
+## TypeScript SDK API
+
+> **100% Go 功能对等** — 完整 API 参考见 [sdk/typescript/docs/api/index.md](../sdk/typescript/docs/api/index.md)
+
+### 安装
+
+```bash
+npm install @agentprimordia/sdk
+npm install better-sqlite3  # 可选：SQLite 持久化
+```
+
+### 核心 API 对照表
+
+| Go (`ap.`) | TypeScript (`@agentprimordia/sdk`) | 说明 |
+|---|---|---|
+| `NewAgent()` | `new ReActAgent()` / `newAgent()` | 创建 Agent |
+| `NewReActAgent()` | `new ReActAgent()` | 旧入口（仍可用） |
+| `NewOpenAIProvider()` | `new OpenAIProvider()` | OpenAI |
+| `NewAnthropicProvider()` | `new AnthropicProvider()` | Anthropic Claude |
+| `NewGeminiProvider()` | `new GeminiProvider()` | Google Gemini |
+| `NewOllamaProvider()` | `new OllamaProvider()` | Ollama 本地 |
+| `NewResilientProvider()` | `new ResilientProvider()` | 弹性 Provider |
+| `NewPool()` | `new AgentPool()` | Agent 并发池 |
+| `NewDAGBuilder()` | `new DAGBuilder()` | DAG 工作流 |
+| `NewMCPClient()` | `new MCPClient()` | MCP 客户端 |
+| `NewMCPRegistry()` | `new MCPRegistry()` | MCP 注册中心 |
+| `DefaultToolkit()` | `defaultToolkit` | 默认工具集 |
+| `NewAuditLogger()` | `new AuditLogger()` | 审计日志 |
+| `NewAdminHandler()` | `new AdminHandler()` | 管理 HTTP API |
+| `NewHealthServer()` | `new HealthServer()` | 健康检查端点 |
+
+### TypeScript 基础设施 API（Phase 24）
+
+```typescript
+import {
+  AuditLogger, InMemoryAuditOutput,     // 审计日志
+  AdminHandler,                          // 管理 HTTP API + Web UI
+  Inspector, InspectorServer, DebugServer, // 调试器 HTTP 服务
+  SQLiteCheckpointStore,                 // SQLite 检查点持久化
+  HealthServer,                          // /healthz /readyz /livez
+} from '@agentprimordia/sdk';
+```
+
+详见 [TypeScript SDK API 参考](../sdk/typescript/docs/api/index.md)。

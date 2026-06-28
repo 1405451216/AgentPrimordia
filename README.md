@@ -1,9 +1,11 @@
 # AgentPrimordia
 
-> 通用 Go Agent 开发框架 — 轻量、并发原生、生产验证
+> 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证
+> **Go + TypeScript 双语言 SDK，100% 功能对等**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-100%25%20Go%20Parity-3178C6.svg)](sdk/typescript/)
 
 ![Architecture](agentprimordia/docs/ap-architecture.png)
 
@@ -19,6 +21,7 @@
 - **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
 - **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard
 - **K8s Operator** — AgentDeployment CRD 声明式部署
+- **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure）
 - **CLI 工具** — `ap init / run / debug / test / mcp / plugin`
 - **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
 
@@ -28,6 +31,54 @@
 - **`WithRAGMemory()` 一步 RAG** — 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
 - **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
 - **向后兼容** — 旧 `ap.NewReActAgent()` API 仍然可用
+
+## TypeScript SDK — 100% Go Parity
+
+`sdk/typescript/` 提供与 Go 框架完全对等的 TypeScript SDK，覆盖全部 24 个功能模块：
+
+| 模块 | Go (`internal/`) | TS (`src/`) | 状态 |
+|------|------------------|------------|------|
+| ReAct Agent | `agent/` | `agent/` | ✅ |
+| LLM Providers (12+) | `llm/` | `llm/` | ✅ |
+| Tools + MCP + Plugins | `tools/` | `tools/` | ✅ |
+| Memory (SQLite/Vector/RAG) | `memory/` | `memory/` | ✅ |
+| Orchestration (DAG/GroupChat/...) | `orchestration/` | `orchestration/` | ✅ |
+| Pool / Concurrency | `pool/` | `pool/` | ✅ |
+| A2A Communication | `agent/a2a/` | `a2a/` | ✅ |
+| Security / Guardrails | `security/` `guardrail/` | `security/` | ✅ |
+| Observability (OTel/Prometheus) | `metrics/` `otel/` | `metrics/` | ✅ |
+| Resilience (CircuitBreaker/Retry) | `resilience/` | `resilience/` | ✅ |
+| Prompt Engine | `prompt/` | `prompt/` | ✅ |
+| K8s Operator CRD | `operator/` | `operator/` | ✅ |
+| Audit Logger | `audit/` | `audit/` | ✅ |
+| Admin HTTP API | `admin/` | `admin/` | ✅ |
+| Inspector / Debugger | `debugger/` | `debugger/` | ✅ |
+| SQLite Checkpoint | `persist/` | `persist/` | ✅ |
+| Health Endpoints | `health/` | `health/` | ✅ |
+
+```bash
+npm install @agentprimordia/sdk
+# 可选：SQLite 持久化
+npm install better-sqlite3
+```
+
+```typescript
+import { ReActAgent, OpenAIProvider, ToolRegistry, AuditLogger, HealthServer } from '@agentprimordia/sdk';
+
+const agent = new ReActAgent({
+  name: 'my-agent',
+  model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+  toolkit: new ToolRegistry(),
+  maxTurns: 10,
+});
+
+// 基础设施端点
+const health = new HealthServer();
+health.setReady(true);
+// GET /healthz → 200, /readyz → 200, /livez → 200
+```
+
+详见 [TypeScript SDK 文档](sdk/typescript/README.md)。
 
 ## v0.7.0 Highlights
 
@@ -364,7 +415,7 @@ agentprimordia/
 ├── deploy/grafana/            # Grafana Dashboard 模板
 ├── bench/                     # 性能基准测试套件
 ├── docs/                      # 文档 + Cookbook
-├── sdk/typescript/            # TypeScript SDK
+├── sdk/typescript/            # TypeScript SDK (100% Go Parity, 24 模块)
 └── pkg/                       # 公共 API (类型别名 + re-export)
 ```
 
@@ -480,6 +531,8 @@ golangci-lint run
 - [v0.7.0 发布说明](RELEASE-NOTES-v0.7.0.md)
 - [架构图](architecture-mermaid.md)
 - [API 完整参考](api-reference.md)
+- [TypeScript SDK 文档](sdk/typescript/README.md)
+- [TypeScript API 参考](sdk/typescript/docs/api/index.md)
 - [开发文档](agentprimordia/DEVELOPMENT.md)
 - [入门指南](agentprimordia/ecosystem/docs/getting-started.md)
 - [CLI 开发手册](agentprimordia/ecosystem/docs/ap-guide.md)
