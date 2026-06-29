@@ -17,6 +17,7 @@ Commands:
   init         create a new agent project
   run          build and run the current project
   debug        start debug server
+  loop         ReAct loop engineering (trace/inspect/resume)
   test         run eval test suite
   config       manage configuration
   mcp          manage MCP servers
@@ -46,6 +47,8 @@ func main() {
 		err = runRun(args)
 	case "debug":
 		err = runDebug(args)
+	case "loop":
+		err = runLoop(args)
 	case "test":
 		err = runTest(args)
 	case "config":

@@ -78,8 +78,8 @@ export class SQLiteCheckpointStore implements CheckpointStore {
 
   /** 获取数据库实例（确保非 null） */
   private getDb(): SqliteDatabase {
-    if (!this.getDb()) throw new Error('database is closed');
-    return this.getDb();
+    if (!this.db) throw new Error('database is closed');
+    return this.db;
   }
 
   /** Create an in-memory checkpoint store (for testing). */

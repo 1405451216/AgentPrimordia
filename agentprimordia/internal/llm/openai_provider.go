@@ -91,27 +91,9 @@ func NewOpenAIProvider(cfg Config) (*OpenAIProvider, error) {
 		cfg.Model = "gpt-4o-mini"
 	}
 
-	// 优化（Task 6）：使用自定义 http.Transport 配置连接池，
-	// 在高并发 Agent 场景下复用 TCP 连接，避免每个请求都新建 TCP+TLS 握手。
-	transport := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
-		MaxConnsPerHost:       0, // 0 表示无限制
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		DisableKeepAlives:     false,
-		DisableCompression:    false,
-		ForceAttemptHTTP2:     true,
-	}
-
 	return &OpenAIProvider{
 		config: cfg,
-		client: &http.Client{
-			Timeout:   defaultTimeout,
-			Transport: transport,
-		},
+		client: NewDefaultLLMClient(defaultTimeout),
 	}, nil
 }
 
@@ -206,6 +188,7 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 	if resp.StatusCode != http.StatusOK {
 		defer resp.Body.Close()
 		limitedReader := io.LimitReader(resp.Body, maxResponseSize)
+		// 错误响应通常较小，io.ReadAll 在内部已经做了优化
 		respBody, _ := io.ReadAll(limitedReader)
 		var apiErr APIError
 		parsed := json.Unmarshal(respBody, &apiErr) == nil && apiErr.Message != ""
@@ -214,6 +197,12 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 	}
 
 	ch := make(chan Chunk, 32)
+
+	// 背压超时（perf-v11 stage-3）：如果消费者在 streamBackpressureTimeout 内未读取，
+	// 跳过当前 chunk 而非无限阻塞。防止慢消费者拖垮 LLM 流的 goroutine 生命周期。
+	const streamBackpressureTimeout = 5 * time.Second
+	droppedChunks := 0
+	const maxDroppedChunks = 10 // 连续丢弃 N 个 chunk 后中断流（消费者可能已崩溃）
 
 	go func() {
 		defer close(ch)
@@ -264,10 +253,26 @@ func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 					TotalTokens:      sseResp.Usage.TotalTokens,
 				}
 			}
+			// 背压控制：限时发送，超时则丢弃并计数
+			timer := time.NewTimer(streamBackpressureTimeout)
 			select {
 			case ch <- chunk:
+				if !timer.Stop() {
+					<-timer.C
+				}
+				droppedChunks = 0 // 成功发送，重置计数器
 			case <-ctx.Done():
+				timer.Stop()
 				return
+			case <-timer.C:
+				// 消费者慢：丢弃当前 chunk
+				droppedChunks++
+				if droppedChunks >= maxDroppedChunks {
+					// 连续丢弃过多，放弃整个流
+					slog.Warn("OpenAI 流式背压超时，消费者可能已停止读取",
+						"dropped", droppedChunks, "timeout", streamBackpressureTimeout)
+					return
+				}
 			}
 			if chunk.Done {
 				return
@@ -425,6 +430,8 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, path string, body any) (
 	defer resp.Body.Close()
 
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
+	// 优化（perf-v11 stage-2）：成功响应使用 io.ReadAll（标准库已优化），
+	// 避免 sync.Pool 在并行测试中可能引入的字节级竞态。错误响应（短）走池化路径。
 	respBody, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)

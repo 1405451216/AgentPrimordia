@@ -5,6 +5,10 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    benchmark: {
+      include: ['tests/bench/**/*.bench.ts'],
+      reporter: 'default',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

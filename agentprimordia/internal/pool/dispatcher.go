@@ -93,7 +93,6 @@ func (e *AggregatedError) As(target interface{}) bool {
 type Pool struct {
 	mu           sync.RWMutex
 	config       PoolConfig
-	semaphore    chan struct{}
 	tasks        map[string]*poolTask
 	eventCh      chan PoolEvent
 	agents       map[string]agent.Agent
@@ -107,6 +106,12 @@ type Pool struct {
 	agentFactory AgentFactory
 	closeOnce    sync.Once
 	shutdown     atomic.Bool // 优雅关闭标志，置位后拒绝新任务
+
+	// 动态并发度信号量（替代固定容量的 channel）
+	// 使用 sync.Cond 实现可动态调整上限的计数信号量
+	semaMu    sync.Mutex
+	semaCond  *sync.Cond
+	semaCount int64 // 当前已获取令牌的 goroutine 数
 
 	// 优化（perf-v2）：会话索引，将 GetTasksBySession/CancelBySession 从 O(n) 优化为 O(k)
 	sessionIndex map[string]map[string]struct{} // sessionID -> set of taskIDs
@@ -163,7 +168,6 @@ func NewPool(cfg PoolConfig) *Pool {
 
 	p := &Pool{
 		config:       cfg,
-		semaphore:    make(chan struct{}, cfg.MaxConcurrency),
 		tasks:        make(map[string]*poolTask),
 		agents:       make(map[string]agent.Agent),
 		eventCh:      make(chan PoolEvent, poolEventBufferSize),
@@ -174,6 +178,7 @@ func NewPool(cfg PoolConfig) *Pool {
 		ctx:    ctx,
 		cancel: cancel,
 	}
+	p.semaCond = sync.NewCond(&p.semaMu)
 
 	// Task 9：初始化 AutoScaler 和动态并发度
 	p.dynamicConcurrency.Store(int64(cfg.MaxConcurrency))
@@ -318,24 +323,24 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		}, fmt.Errorf("%w: %s", ErrTaskNotFound, task.ID)
 	}
 
-	// 获取 semaphore（仅获取一次，重试期间持有不释放）
-	select {
-	case p.semaphore <- struct{}{}:
-		defer func() { <-p.semaphore }()
-	case <-ctx.Done():
-		p.mu.Lock()
-		pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
-		p.mu.Unlock()
-		// 优化（Task 8）：原子计数 - queued 转 cancelled
-		p.queuedCount.Add(-1)
-		p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
-		return &TaskResult{
-			TaskID: task.ID,
-			Task:   task,
-			Error:  ctx.Err(),
-			Status: PoolTaskCancelled,
-		}, ctx.Err()
-	case <-time.After(p.config.Timeout):
+	// 获取动态信号量（仅获取一次，重试期间持有不释放）
+	// 使用 sync.Cond 实现可动态调整上限的计数信号量
+	if err := p.acquireSlot(ctx); err != nil {
+		if err == ctx.Err() {
+			p.mu.Lock()
+			pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
+			p.mu.Unlock()
+			// 优化（Task 8）：原子计数 - queued 转 cancelled
+			p.queuedCount.Add(-1)
+			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
+			return &TaskResult{
+				TaskID: task.ID,
+				Task:   task,
+				Error:  ctx.Err(),
+				Status: PoolTaskCancelled,
+			}, ctx.Err()
+		}
+		// 超时（acquireSlot 内部已经处理了超时）
 		p.mu.Lock()
 		pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
 		p.mu.Unlock()
@@ -350,6 +355,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			Status: PoolTaskFailed,
 		}, ErrTimeout
 	}
+	defer p.releaseSlot()
 
 	// 重试循环（semaphore 已持有，不再重复获取）
 	// 优化（Task 8）：从 queued 转为 running（仅在首次进入循环时）
@@ -803,10 +809,68 @@ func (p *Pool) GracefulShutdown(ctx context.Context) error {
 
 func (p *Pool) Close() {
 	p.closeOnce.Do(func() {
+		// 广播唤醒所有等待信号量的 goroutine
+		p.semaCond.Broadcast()
 		p.cancel()
 		p.wg.Wait()
 		close(p.eventCh)
 	})
+}
+
+// acquireSlot 获取动态并发度信号量令牌。
+// 使用短间隔轮询检查令牌可用性，支持 ctx 取消和超时。
+// 返回 error 仅在 ctx 被取消或超时时非 nil。
+//
+// 设计说明：相比 sync.Cond + goroutine 方案，轮询方式更简洁，
+// 避免了每个阻塞调用者创建额外 goroutine（~2KB 栈）。
+// 在 dispatcher 场景下并发等待数通常较小，10ms 轮询开销可忽略。
+func (p *Pool) acquireSlot(ctx context.Context) error {
+	// 快速路径：检查是否可以立即获取
+	p.semaMu.Lock()
+	if p.semaCount < p.dynamicConcurrency.Load() {
+		p.semaCount++
+		p.semaMu.Unlock()
+		return nil
+	}
+	p.semaMu.Unlock()
+
+	// 慢路径：轮询检查令牌可用性
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	var timerC <-chan time.Time
+	if p.config.Timeout > 0 {
+		timer := time.NewTimer(p.config.Timeout)
+		defer timer.Stop()
+		timerC = timer.C
+	}
+
+	for {
+		p.semaMu.Lock()
+		if p.semaCount < p.dynamicConcurrency.Load() {
+			p.semaCount++
+			p.semaMu.Unlock()
+			return nil
+		}
+		p.semaMu.Unlock()
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timerC:
+			return ErrTimeout
+		case <-ticker.C:
+			// 继续轮询
+		}
+	}
+}
+
+// releaseSlot 释放动态并发度信号量令牌，并唤醒一个等待者。
+func (p *Pool) releaseSlot() {
+	p.semaMu.Lock()
+	p.semaCount--
+	p.semaCond.Signal()
+	p.semaMu.Unlock()
 }
 
 // generateTaskID 生成唯一任务 ID。优化（Task 8）：使用 strconv 避免 fmt.Sprintf 的反射分配。

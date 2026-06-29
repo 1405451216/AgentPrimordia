@@ -195,6 +195,41 @@ func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	return nil
 }
 
+// fireHookWithPool 是 fireHook 的 sync.Pool 优化版本。
+// 仅使用 Turn 字段时优先使用此方法，可避免每次 fireHook 都分配一个 HookContext。
+// 内部从 hookContextPool 获取、设置必要字段、用完后归还。
+func (a *ReActAgent) fireHookWithPool(point HookPoint, turn int) error {
+	if a.hooks == nil {
+		return nil
+	}
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Turn = turn
+	return a.fireHook(point, hctx)
+}
+
+// fireHookWithPoolResp 是 fireHook 的 sync.Pool 优化版本，用于传递 Response 字段。
+func (a *ReActAgent) fireHookWithPoolResp(point HookPoint, resp *Response) error {
+	if a.hooks == nil {
+		return nil
+	}
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Response = resp
+	return a.fireHook(point, hctx)
+}
+
+// fireHookWithPoolErr 是 fireHook 的 sync.Pool 优化版本，用于传递 Error 字段。
+func (a *ReActAgent) fireHookWithPoolErr(point HookPoint, err error) error {
+	if a.hooks == nil {
+		return nil
+	}
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Error = err
+	return a.fireHook(point, hctx)
+}
+
 // hasEventSubscriber 快速检查是否有事件订阅者，用于避免在热点路径上构造 payload map。
 // 优化（Task 3）：通过 capCache 直接检查，避免接口断言和 map 分配。
 func (a *ReActAgent) hasEventSubscriber() bool {

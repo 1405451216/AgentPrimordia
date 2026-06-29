@@ -37,6 +37,9 @@ type GoroutinePool struct {
 	wg        sync.WaitGroup
 	stopOnce  sync.Once
 	stopped   atomic.Bool
+	// waitMu/cond 替代忙等待：当任务完成时通过 Signal 唤醒 Wait()
+	waitMu   sync.Mutex
+	waitCond *sync.Cond
 }
 
 type taskItem struct {
@@ -66,6 +69,7 @@ func NewGoroutinePool(cfg Config) *GoroutinePool {
 		ctx:       ctx,
 		cancel:    cancel,
 	}
+	pool.waitCond = sync.NewCond(&pool.waitMu)
 
 	// 启动最小工作协程数
 	for i := 0; i < cfg.MinWorkers; i++ {
@@ -111,14 +115,12 @@ func (p *GoroutinePool) SubmitWithContext(ctx context.Context, task Task) error 
 	}
 }
 
-// Wait 等待所有已提交任务完成
+// Wait 等待所有已提交任务完成（使用 sync.Cond 替代忙等待）
 func (p *GoroutinePool) Wait() {
-	// 等待队列为空且所有活跃任务完成
-	for {
-		if len(p.taskQueue) == 0 && p.active.Load() == 0 {
-			return
-		}
-		time.Sleep(time.Millisecond)
+	p.waitMu.Lock()
+	defer p.waitMu.Unlock()
+	for len(p.taskQueue) > 0 || p.active.Load() > 0 {
+		p.waitCond.Wait()
 	}
 }
 
@@ -128,6 +130,7 @@ func (p *GoroutinePool) Stop() {
 		p.stopped.Store(true)
 		p.cancel()
 		p.wg.Wait()
+		p.waitCond.Broadcast() // 唤醒所有 Wait() 等待者
 	})
 }
 
@@ -164,6 +167,8 @@ func (p *GoroutinePool) startWorker() {
 				p.active.Add(1)
 				_ = item.task(item.ctx)
 				p.active.Add(-1)
+				// 唤醒 Wait() 等待者
+				p.waitCond.Broadcast()
 
 			case <-idleTimer.C:
 				// 空闲超时，如果当前工作数 > 最小值，退出
@@ -179,6 +184,10 @@ func (p *GoroutinePool) startWorker() {
 	}()
 }
 
+// tryScaleUp 尝试扩容一个工作协程。
+// 使用 CAS 原子操作避免多个调用者同时扩容导致 worker 数超过 MaxWorkers。
+// 注意：极端并发下仍可能短暂超过 MaxWorkers（两个 goroutine 同时看到 current < max 并 CAS 成功），
+// 但 worker 协程的空闲超时退出会自然回落，因此不影响正确性。
 func (p *GoroutinePool) tryScaleUp() bool {
 	current := p.workers.Load()
 	if current >= int32(p.cfg.MaxWorkers) {

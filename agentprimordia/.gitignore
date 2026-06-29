@@ -28,6 +28,7 @@ cover2
 cover_metrics
 cover_tools
 coverage_tools
+coverage_collab*
 *.cover.out
 
 # IDE

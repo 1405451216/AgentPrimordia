@@ -17,6 +17,17 @@ var (
 	ErrInvalidArg        = errors.New("invalid command argument")
 )
 
+// dangerousChars 包含常见的 shell 元字符，用于检测命令注入攻击。
+// 这些字符在 shell 中具有特殊语义，可用于拼接额外命令或控制流：
+//
+//	;  : 命令分隔符 (cmd1; cmd2)
+//	|  : 管道 (cmd1 | cmd2)
+//	&  : 后台执行 / 命令链接 (cmd1 & cmd2)
+//	$  : 变量展开 / 命令替换 ($(cmd))
+//	`  : 命令替换 (`cmd`)
+//	> < : 重定向
+//	\n\r: 换行符（可注入第二行命令）
+//	() : 子 shell / 命令分组
 var dangerousChars = []string{";", "|", "&", "$", "`", ">", "<", "\n", "\r", "(", ")"}
 
 // ContainsShellMetacharacter 检查命令字符串是否包含 shell 元字符。

@@ -1,6 +1,6 @@
 # 中优先级优化实施计划（3-6 个月）
 
-> **状态：进行中** 🔄
+> **状态：已完成** ✅（所有 Task 9-14 已实现并通过测试，2026-06-29 验证）
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -21,7 +21,7 @@
 - Create: `internal/memory/hnsw_test.go`
 - Modify: `pkg/memory.go`（导出新类型）
 
-- [ ] **Step 1: 编写 HNSW 索引测试**
+- [x] **Step 1: 编写 HNSW 索引测试**
 
 ```go
 // internal/memory/hnsw_test.go
@@ -170,12 +170,12 @@ func bruteForceSearch(vectors [][]float32, query []float32, k int) []string {
 }
 ```
 
-- [ ] **Step 2: 运行测试验证失败**
+- [x] **Step 2: 运行测试验证失败**
 
 Run: `go test ./internal/memory/ -run TestHNSW -v`
 Expected: FAIL — `NewHNSWIndex` 未定义
 
-- [ ] **Step 3: 实现 HNSW 索引**
+- [x] **Step 3: 实现 HNSW 索引**
 
 ```go
 // internal/memory/hnsw.go
@@ -575,12 +575,12 @@ func max(a, b int) int {
 }
 ```
 
-- [ ] **Step 4: 运行测试验证通过**
+- [x] **Step 4: 运行测试验证通过**
 
 Run: `go test ./internal/memory/ -run TestHNSW -v`
 Expected: PASS
 
-- [ ] **Step 5: 集成到 VectorStore**
+- [x] **Step 5: 集成到 VectorStore**
 
 修改 `internal/memory/vector.go`，让 `VectorStore` 可选使用 HNSW 索引：
 
@@ -600,7 +600,7 @@ func NewVectorStoreWithHNSW(dimensions int, cfg HNSWConfig) *VectorStore {
 }
 ```
 
-- [ ] **Step 6: 在 pkg/ 中导出并提交**
+- [x] **Step 6: 在 pkg/ 中导出并提交**
 
 ```go
 // pkg/memory.go 中添加
@@ -624,7 +624,7 @@ git commit -m "feat: add HNSW vector index for fast approximate nearest neighbor
 - Create: `internal/memory/compressor.go`
 - Create: `internal/memory/compressor_test.go`
 
-- [ ] **Step 1: 编写压缩测试**
+- [x] **Step 1: 编写压缩测试**
 
 ```go
 // internal/memory/compressor_test.go
@@ -719,7 +719,7 @@ func (m *mockSummarizer) Summarize(ctx context.Context, episodes []*Episode) (*S
 }
 ```
 
-- [ ] **Step 2: 实现记忆压缩器**
+- [x] **Step 2: 实现记忆压缩器**
 
 ```go
 // internal/memory/compressor.go
@@ -810,7 +810,7 @@ func (c *Compressor) Compress(ctx context.Context, store MemoryStore) error {
 }
 ```
 
-- [ ] **Step 3: 运行测试并提交**
+- [x] **Step 3: 运行测试并提交**
 
 Run: `go test ./internal/memory/ -run TestCompressor -v`
 
@@ -827,7 +827,7 @@ git commit -m "feat: add automatic memory compression with summarization"
 - Create: `internal/memory/shared_store.go`
 - Create: `internal/memory/shared_store_test.go`
 
-- [ ] **Step 1: 编写共享记忆测试**
+- [x] **Step 1: 编写共享记忆测试**
 
 ```go
 // internal/memory/shared_store_test.go
@@ -901,7 +901,7 @@ func TestSharedStore_ScopeIsolation(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: 实现共享记忆存储**
+- [x] **Step 2: 实现共享记忆存储**
 
 ```go
 // internal/memory/shared_store.go
@@ -967,7 +967,7 @@ func (s *SharedStore) Close() error {
 }
 ```
 
-- [ ] **Step 3: 运行测试并提交**
+- [x] **Step 3: 运行测试并提交**
 
 Run: `go test ./internal/memory/ -run TestSharedStore -v`
 
@@ -987,7 +987,7 @@ git commit -m "feat: add cross-agent shared memory store"
 - Create: `internal/orchestration/visualizer_test.go`
 - Create: `internal/orchestration/static/editor.html`（embed）
 
-- [ ] **Step 1: 编写可视化测试**
+- [x] **Step 1: 编写可视化测试**
 
 ```go
 // internal/orchestration/visualizer_test.go
@@ -1052,7 +1052,7 @@ func TestVisualizer_EditorEndpoint(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: 实现可视化器**
+- [x] **Step 2: 实现可视化器**
 
 ```go
 // internal/orchestration/visualizer.go
@@ -1149,7 +1149,7 @@ func (v *Visualizer) EditorHandler() http.Handler {
 }
 ```
 
-- [ ] **Step 3: 创建编辑器 HTML**
+- [x] **Step 3: 创建编辑器 HTML**
 
 ```html
 <!-- internal/orchestration/static/editor.html -->
@@ -1242,7 +1242,7 @@ loadDAG();
 </html>
 ```
 
-- [ ] **Step 4: 运行测试并提交**
+- [x] **Step 4: 运行测试并提交**
 
 Run: `go test ./internal/orchestration/ -run TestVisualizer -v`
 
@@ -1259,7 +1259,7 @@ git commit -m "feat: add DAG visual editor with drag-and-drop HTML UI"
 - Create: `internal/orchestration/dynamic.go`
 - Create: `internal/orchestration/dynamic_test.go`
 
-- [ ] **Step 1: 编写动态编排测试**
+- [x] **Step 1: 编写动态编排测试**
 
 ```go
 // internal/orchestration/dynamic_test.go
@@ -1340,7 +1340,7 @@ func noopHandler(ctx context.Context, input any) (any, error) {
 }
 ```
 
-- [ ] **Step 2: 实现动态 DAG**
+- [x] **Step 2: 实现动态 DAG**
 
 ```go
 // internal/orchestration/dynamic.go
@@ -1507,7 +1507,7 @@ func (d *DynamicDAG) findStartNodes() []string {
 }
 ```
 
-- [ ] **Step 3: 运行测试并提交**
+- [x] **Step 3: 运行测试并提交**
 
 Run: `go test ./internal/orchestration/ -run TestDynamicDAG -v`
 
@@ -1527,7 +1527,7 @@ git commit -m "feat: add dynamic DAG with runtime topology modification"
 - Create: `cmd/ap/interactive.go`
 - Create: `cmd/ap/interactive_test.go`
 
-- [ ] **Step 1: 编写交互式向导测试**
+- [x] **Step 1: 编写交互式向导测试**
 
 ```go
 // cmd/ap/interactive_test.go
@@ -1574,7 +1574,7 @@ func TestInteractiveWizard_ShowTemplates(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: 实现交互式向导**
+- [x] **Step 2: 实现交互式向导**
 
 ```go
 // cmd/ap/interactive.go
@@ -1656,7 +1656,7 @@ func (w *Wizard) Run() (*GenerateOptions, error) {
 }
 ```
 
-- [ ] **Step 3: 运行测试并提交**
+- [x] **Step 3: 运行测试并提交**
 
 Run: `go test ./cmd/ap/ -run TestInteractiveWizard -v`
 

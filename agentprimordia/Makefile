@@ -1,12 +1,19 @@
 .PHONY: build test test-race test-short test-integration lint lint-all lint-go lint-ts cover cover-html cover-check \
         deprecation-check benchmark api-diff cover-trend clean run-hello run-multi run-production \
-        docker-build docker-run docker-clean
+        docker-build docker-run docker-clean \
+        pgo-profile pgo-build pgo-clean test-ts
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS = -ldflags="-X main.Version=$(VERSION)"
 
 # 项目强制无 CGO（modernc.org/sqlite 为纯 Go 驱动），所有目标默认继承此设置。
 export CGO_ENABLED=0
+
+# PGO（Profile-Guided Optimization）配置
+# Go 1.21+ 支持 PGO，可通过代表性工作负载 profile 指导编译器优化（通常 2-7% 提速）
+# 详见 docs/advanced/pgo.md
+PGO_PROFILE ?= default.pgo
+PGO_DIR ?= .pgo
 
 build:
 	go build $(LDFLAGS) -o ap ./cmd/ap/
@@ -80,6 +87,41 @@ benchmark:
 	go test -bench=. -benchmem -benchtime=5x -count=3 ./bench/suite/... > bench-output.txt
 	@echo "Benchmark results: bench-output.txt"
 
+# ===== PGO（Profile-Guided Optimization）=====
+# Go 1.21+ 的 PGO 流程：
+# 1. go test -cpuprofile 生成 CPU profile（代表性工作负载）
+# 2. 将 profile 重命名为 default.pgo 放入主包目录
+# 3. go build -pgo=auto 自动使用该 profile 指导编译
+# 预期收益：2-7% 性能提升（取决于工作负载特征）
+# 详见 https://go.dev/doc/pgo
+
+# pgo-profile: 运行代表性 benchmark 生成 CPU profile
+pgo-profile:
+	@echo "=== 生成 PGO Profile ==="
+	@mkdir -p $(PGO_DIR)
+	go test -run=^$$ -bench=. -benchmem -benchtime=10x -cpuprofile=$(PGO_DIR)/cpu.prof ./bench/suite/...
+	@echo "Profile 已生成: $(PGO_DIR)/cpu.prof"
+	@echo "运行 'make pgo-build' 使用此 profile 构建优化二进制"
+
+# pgo-build: 使用 PGO profile 构建优化的二进制文件
+pgo-build:
+	@echo "=== PGO 构建 ==="
+	@if [ ! -f "$(PGO_DIR)/cpu.prof" ]; then \
+		echo "错误: 未找到 PGO profile ($(PGO_DIR)/cpu.prof)"; \
+		echo "请先运行 'make pgo-profile'"; \
+		exit 1; \
+	fi
+	cp $(PGO_DIR)/cpu.prof $(PGO_PROFILE)
+	go build $(LDFLAGS) -pgo=$(PGO_PROFILE) -o ap ./cmd/ap/
+	@echo "PGO 优化二进制已构建: ap"
+	@echo "清理: make pgo-clean"
+
+# pgo-clean: 清理 PGO 临时文件
+pgo-clean:
+	rm -f $(PGO_PROFILE)
+	rm -rf $(PGO_DIR)
+	@echo "PGO 临时文件已清理"
+
 # Phase 12.5: 统一 lint 入口
 lint-all: lint-go lint-ts
 	@echo "All lint checks passed"
@@ -88,7 +130,13 @@ lint-go:
 	golangci-lint run ./...
 
 lint-ts:
-	cd sdk/typescript && npm run lint
+	cd ../sdk/typescript && npm run lint
+
+# 统一 TS SDK 测试入口
+# sdk/typescript 使用 vitest（直接测试 TS 源码）
+test-ts:
+	@echo "=== TS SDK 测试 ==="
+	cd ../sdk/typescript && npx vitest run --coverage
 
 lint:
 	golangci-lint run ./...

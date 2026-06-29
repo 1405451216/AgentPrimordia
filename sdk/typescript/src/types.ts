@@ -77,7 +77,7 @@ export interface SchemaDef {
 export interface CompletionResponse {
   id: string;
   content: string;
-  role: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
   usage: Usage;
   toolCalls?: ToolCall[];
 }
@@ -153,7 +153,7 @@ export interface Tool {
 export interface MemoryEpisode {
   id: string;
   sessionId: string;
-  role: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   summary?: string;
   topics?: string;

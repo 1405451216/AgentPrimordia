@@ -192,6 +192,38 @@ if err != nil {
 
 ---
 
+## 🆕 v0.10.0 亮点 (2026-06)
+
+### 代码审查与质量
+
+- 🔍 **全量代码审查**: 覆盖 Go 47 包 + TypeScript 6 文件，发现并修复 24 个问题（3 高 / 8 中 / 13 低优先级）
+
+### 阶段一：并发调度优化
+
+- ⚡ **动态信号量**: Pool 调度器从固定容量 channel 升级为 `sync.Cond` 动态信号量，AutoScaler 实时生效
+- 🧵 **协程池优化**: `GoroutinePool.Wait()` 从忙等待改为 `sync.Cond` 通知机制，消除 CPU 空转
+- 🔗 **连接池复用**: LLM Provider 统一通过 `NewDefaultLLMClient` 共享 HTTP 连接池
+- ⏱️ **超时防护**: 上下文压缩 LLM 调用添加 30s 超时，防止无限阻塞
+
+### 阶段二：内存优化
+
+- 🔄 **HookContext Pool**: ReAct 循环热点路径引入 `sync.Pool` 复用 HookContext，减少 GC 压力
+- 📦 **bytes.Buffer Pool**: 通用 buffer 池化工具，benchmark 显示 2.2x 加速、0 allocs/op
+- 🧪 **Token 缓存评估**: 实测 `len(text)/4` (0.4ns) 比 sync.Map 缓存 (55ns) 快 100+ 倍，决策不启用缓存
+
+### 阶段三：LLM 层优化
+
+- 🌊 **SSE 流式背压**: OpenAI Provider 添加 timer-based 背压控制（5s 超时 + 10 连续丢弃后中断），防止慢消费者阻塞流
+- 📊 **Token 缓存基础设施**: FNV-1a 哈希 + sync.Map 缓存，为未来大规模场景预留
+
+### 阶段四：向量搜索升级
+
+- 🔀 **RRF 融合算法**: 引入 Reciprocal Rank Fusion (Cormack et al., 2009)，解决 Linear 加权量纲不可比问题
+- ⚙️ **可配置融合策略**: `RAGFusionConfig` 支持 Linear/RRF 模式切换、权重调优、over-fetch 召回
+- 🏷️ **双命中加成**: RRF 模式下同时命中 FTS + Vector 的结果获得 2x 分数加成
+- 🛡️ **类型安全**: TypeScript SDK `role` 字段从 `string` 强化为联合类型
+- ✅ **测试覆盖**: Go 47 包 2900+ 用例 + TS 6 文件 154 用例，全部 PASS
+
 ## 🆕 v0.8.0 亮点
 
 - 🚀 **开发者体验重构**: `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
@@ -467,27 +499,124 @@ console.log(`SDK v${VERSION}: ${response.content}`);
 
 ```
 agentprimordia/
-├── cmd/example/
-│   ├── hello-agent/     # 30 秒入门
-│   ├── multi-agent/     # 多 Agent 并发
-│   └── production/      # 生产级示例（RAG + 多模型 + 可观测性）
+├── cmd/
+│   ├── ap/              # CLI 工具 (loop / run / pool / console)
+│   └── example/
+│       ├── hello-agent/     # 30 秒入门
+│       ├── multi-agent/     # 多 Agent 并发
+│       └── production/      # 生产级示例（RAG + 多模型 + 可观测性）
 ├── internal/
+│   ├── admin/           # Admin HTTP API (调试/管理接口)
 │   ├── agent/           # ReAct Loop 引擎 + Hook + 生命周期
-│   ├── llm/             # Provider 接口 + 5 个内置实现 + 熔断器
-│   ├── operator/        # Kubernetes Operator (Service 暴露 + HPA 自动扩缩)
-│   │   └── api/v1/      # CRD 定义 (AgentPrimordia / AgentPrimordiaList)
+│   │   ├── a2a/         # Agent2Agent 协议 (JSON-RPC / SSE / 任务管理)
+│   │   ├── planning/    # 任务规划器
+│   │   ├── reflection/  # Agent 自反思
+│   │   └── tool_learning/ # 工具学习/自动发现
+│   ├── concurrency/     # 文件锁 + 动态协程池 (sync.Cond 信号通知)
+│   ├── config/          # 配置热加载
+│   ├── debugger/        # 调试器 / Inspector
+│   ├── events/          # 内部事件总线
+│   ├── guardrail/       # 输入/输出护栏 (注入检测 / PII / 主题过滤)
+│   ├── llm/             # Provider 接口 + 10+ 内置实现 + 弹性层
 │   ├── memory/          # SQLite + FTS5 + VectorStore + RAG
-│   ├── tools/           # 工具注册 + 执行 + 作用域策略
-│   │   └── builtin/     # FileSystem / Shell / Web / Knowledge
-│   ├── pool/            # 多 Agent 并发调度器
-│   ├── security/        # ACL + Sandbox
-│   ├── events/          # 发布/订阅事件总线
 │   ├── metrics/         # Prometheus 指标采集
-│   ├── persist/         # 检查点持久化
-│   └── concurrency/     # 文件锁 + 作用域验证
+│   ├── orchestration/   # 编排模式 (Pipeline / Handoff / DAG / GroupChat)
+│   ├── otel/            # OpenTelemetry 桥接与导出
+│   ├── persist/         # 状态持久化与 Checkpoint
+│   ├── pool/            # 多 Agent 并发调度器 + AutoScaler 动态扩缩
+│   ├── prompt/          # 提示词模板与少样本管理
+│   ├── security/        # ACL + Sandbox + 路径校验
+│   └── tools/           # 工具注册 + 执行 + MCP + 内置工具
+│       ├── builtin/     # FileSystem / Shell / Web / API / DB / Code
+│       └── mcp/         # MCP 协议适配器
 ├── pkg/                 # 公共 API 重导出
+├── ecosystem/           # 插件生态 / 示例 / 模板
+├── operator/            # Kubernetes Operator (CRD + HPA)
+├── pgvector/            # pgvector 向量存储扩展
+├── bench/               # 性能基准测试套件
 └── sdk/typescript/      # TypeScript SDK
 ```
+
+---
+
+## 📊 质量与性能指标
+
+### 测试覆盖
+
+| 指标 | Go | TypeScript | 合计 |
+|------|-----|-----------|------|
+| 测试包数 | 47 | 6 | 53 |
+| 测试用例 | 2,900+ | 154 | 3,054+ |
+| 通过率 | 100% | 100% | 100% |
+| 总耗时 | ~125s | 0.6s | ~126s |
+
+### 并发与内存性能
+
+| 组件 | 机制 | 优化效果 |
+|------|------|----------|
+| Pool 调度器 | `sync.Cond` 动态信号量 | AutoScaler 实时生效，无忙等待 |
+| GoroutinePool | `sync.Cond` 通知 | Wait() CPU 占用从 ~100% → ~0% |
+| LLM Provider | 共享 HTTP 连接池 | 减少 TCP 连接数，复用 Keep-Alive |
+| 上下文压缩 | 30s 超时控制 | 防止 LLM 调用无限阻塞 |
+| HookContext | `sync.Pool` 复用 | ReAct 热点路径减少 GC 压力 |
+| bytes.Buffer | `sync.Pool` 池化 | 2.2x 加速，0 allocs/op |
+| SSE 流式 | Timer-based 背压 | 5s 超时 + 10 丢弃中断，防止流阻塞 |
+| Token 估算 | `len(text)/4` 直接计算 | 0.4ns/op，比 sync.Map 缓存快 100+ 倍 |
+
+### 向量搜索性能
+
+| 融合模式 | 算法 | 适用场景 |
+|----------|------|----------|
+| Linear | 加权融合 (FTS×0.4 + Vec×0.6) | 快速原型、小规模数据 |
+| RRF | Reciprocal Rank Fusion (k=60) | 生产环境、大规模数据 |
+
+- **Over-fetch 召回**: 预取 `topK + OverFetchSize` 候选，提升融合质量
+- **双命中加成**: RRF 模式下 FTS + Vector 同时命中的结果获得 2x 分数加成
+- **可配置策略**: 运行时动态切换融合模式，无需重启
+
+### 架构合规
+
+| 检查项 | 状态 |
+|--------|------|
+| 接口驱动设计 | 通过 |
+| 依赖方向规则 | 通过 |
+| 零 CGO 依赖 | 通过 |
+| 第三方依赖白名单 | 通过 |
+| 并发安全 (mutex/atomic/pool) | 通过 |
+| 错误处理规范 | 通过 |
+| 结构化错误码 | 35 个可用 |
+
+---
+
+## 🗺️ 优化路线图
+
+### ✅ 已完成 (v0.10)
+
+- [x] **代码审查**: 全量审查 Go 47 包 + TypeScript 6 文件，修复 24 个问题
+- [x] **并发调度优化**: `sync.Cond` 动态信号量 + 协程池通知机制
+- [x] **内存优化**: HookContext/Buffer `sync.Pool` 池化，benchmark 2.2x 加速
+- [x] **LLM 层优化**: SSE 流式背压控制 + Token 缓存评估
+- [x] **向量搜索升级**: RRF 融合算法 + `RAGFusionConfig` 可配置化
+
+### 近期 (v0.11)
+
+- [ ] **高并发压测**: 编写 `bench/` 套件，覆盖 Pool 1000+ 并发任务、GoroutinePool 10K goroutine 场景
+- [ ] **LLM 请求批量合并**: 实现 Request Batching 减少 API 调用次数
+- [ ] **RRF 生产调优**: 基于真实负载调整 RRF k 值与 over-fetch 比例
+
+### 中期 (v0.12)
+
+- [ ] **向量搜索扩展**: 大规模数据场景迁移到 pgvector 或 Milvus 后端
+- [ ] **TypeScript SDK 性能**: 添加 Node.js 性能基准测试
+- [ ] **分布式追踪**: 完善 OpenTelemetry Span 链路
+- [ ] **eBPF 可观测性**: 内核级 Agent 行为监控
+
+### 长期 (v1.0)
+
+- [ ] **WASM 沙箱**: 基于 WasmEdge 的代码执行隔离
+- [ ] **多租户隔离**: 命名空间级别的资源隔离
+- [ ] **Agent 市场**: 可插拔 Agent 模板生态
+- [ ] **生产就绪**: SLA 保障、混沌工程验证
 
 ---
 

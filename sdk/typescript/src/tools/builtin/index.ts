@@ -4,6 +4,7 @@ import { FileSystemTool, type FileSystemConfig } from './filesystem.js';
 import { ShellTool, type ShellConfig } from './shell.js';
 import { WebTool, APITool, type WebConfig } from './web-api.js';
 import { DatabaseTool, CodeExecutionTool, KnowledgeTool } from './database-code-knowledge.js';
+import { ToolRegistry } from '../registry.js';
 
 export { FileSystemTool, ShellTool, WebTool, APITool, DatabaseTool, CodeExecutionTool, KnowledgeTool };
 export type { FileSystemConfig, ShellConfig, WebConfig };
@@ -243,8 +244,7 @@ export interface ToolkitConfig {
 }
 
 /** Create a toolkit with selected built-in tools. */
-export function defaultToolkit(config: ToolkitConfig): import('../registry.js').ToolRegistry {
-  const { ToolRegistry } = require('../registry.js');
+export function defaultToolkit(config: ToolkitConfig): ToolRegistry {
   const registry = new ToolRegistry();
 
   if (config.enableFS) {

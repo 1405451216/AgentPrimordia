@@ -220,3 +220,256 @@ func TestMarshal_Concurrent(t *testing.T) {
 		<-done
 	}
 }
+
+// ===== DecodeString 测试 =====
+
+func TestDecodeString_RoundTrip(t *testing.T) {
+	p := makePayload()
+	data, _ := json.Marshal(p)
+	str := string(data)
+
+	var got benchPayload
+	if err := DecodeString(str, &got); err != nil {
+		t.Fatalf("DecodeString failed: %v", err)
+	}
+	if got.Model != p.Model {
+		t.Errorf("DecodeString mismatch: got model=%q want %q", got.Model, p.Model)
+	}
+	if got.Stream != p.Stream {
+		t.Errorf("DecodeString mismatch: got stream=%v want %v", got.Stream, p.Stream)
+	}
+}
+
+func TestDecodeString_InvalidJSON(t *testing.T) {
+	var got map[string]any
+	err := DecodeString("not json", &got)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestDecodeString_EmptyString(t *testing.T) {
+	var got map[string]any
+	err := DecodeString("", &got)
+	if err == nil {
+		t.Fatal("expected error for empty string")
+	}
+}
+
+func TestDecodeString_Concurrent(t *testing.T) {
+	p := makePayload()
+	data, _ := json.Marshal(p)
+	str := string(data)
+
+	const n = 100
+	done := make(chan struct{}, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			var got benchPayload
+			if err := DecodeString(str, &got); err != nil {
+				t.Errorf("concurrent DecodeString failed: %v", err)
+			}
+			done <- struct{}{}
+		}()
+	}
+	for i := 0; i < n; i++ {
+		<-done
+	}
+}
+
+// ===== MarshalBody 测试 =====
+
+func TestMarshalBody_RoundTrip(t *testing.T) {
+	p := makePayload()
+	data, err := MarshalBody(p)
+	if err != nil {
+		t.Fatalf("MarshalBody failed: %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatal("MarshalBody returned empty data")
+	}
+
+	// MarshalBody should produce same output as Marshal
+	marshalData, _ := Marshal(p)
+	if string(data) != string(marshalData) {
+		t.Errorf("MarshalBody output differs from Marshal")
+	}
+}
+
+func TestMarshalBody_Error(t *testing.T) {
+	// Channel cannot be marshaled to JSON
+	_, err := MarshalBody(make(chan int))
+	if err == nil {
+		t.Fatal("expected error for unmarshalable type")
+	}
+}
+
+// ===== Marshal error path =====
+
+func TestMarshal_Error(t *testing.T) {
+	// Channel cannot be marshaled to JSON
+	_, err := Marshal(make(chan int))
+	if err == nil {
+		t.Fatal("expected error for unmarshalable type")
+	}
+}
+
+// ===== Unmarshal error path =====
+
+func TestUnmarshal_InvalidJSON(t *testing.T) {
+	var got map[string]any
+	err := Unmarshal([]byte("not json at all"), &got)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestDecodeReader_InvalidJSON(t *testing.T) {
+	var got map[string]any
+	err := DecodeReader([]byte("invalid"), &got)
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+// ===== PutReader nil safety =====
+
+func TestPutReader_Nil(t *testing.T) {
+	// Should not panic
+	PutReader(nil)
+}
+
+// ===== ReadAllPooled tests =====
+
+func TestReadAllPooled_Normal(t *testing.T) {
+	data := []byte(`{"key":"value","num":42}`)
+	reader := strings.NewReader(string(data))
+
+	result, err := ReadAllPooled(reader)
+	if err != nil {
+		t.Fatalf("ReadAllPooled failed: %v", err)
+	}
+	if string(result) != string(data) {
+		t.Errorf("ReadAllPooled result = %q, want %q", result, data)
+	}
+}
+
+func TestReadAllPooled_NilReader(t *testing.T) {
+	result, err := ReadAllPooled(nil)
+	if err == nil {
+		t.Fatal("expected error for nil reader")
+	}
+	if result != nil {
+		t.Errorf("result should be nil for nil reader, got %v", result)
+	}
+}
+
+func TestReadAllPooled_EmptyReader(t *testing.T) {
+	reader := strings.NewReader("")
+
+	result, err := ReadAllPooled(reader)
+	if err != nil {
+		t.Fatalf("ReadAllPooled failed: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("result length = %d, want 0", len(result))
+	}
+}
+
+func TestReadAllPooled_LargeData(t *testing.T) {
+	// Data larger than initial buffer capacity (1024)
+	large := strings.Repeat("x", 4096)
+	reader := strings.NewReader(large)
+
+	result, err := ReadAllPooled(reader)
+	if err != nil {
+		t.Fatalf("ReadAllPooled failed: %v", err)
+	}
+	if len(result) != 4096 {
+		t.Errorf("result length = %d, want 4096", len(result))
+	}
+}
+
+func TestReadAllPooled_ReadError(t *testing.T) {
+	reader := &errorReader{}
+	_, err := ReadAllPooled(reader)
+	if err == nil {
+		t.Fatal("expected error from errorReader")
+	}
+}
+
+// errorReader is a reader that always returns an error
+type errorReader struct{}
+
+func (r *errorReader) Read(p []byte) (int, error) {
+	return 0, errReadError
+}
+
+var errReadError = &readError{}
+
+type readError struct{}
+
+func (e *readError) Error() string { return "simulated read error" }
+
+// ===== stringReader direct tests =====
+
+func TestStringReader_Read(t *testing.T) {
+	r := &stringReader{s: "hello", i: 0}
+	buf := make([]byte, 3)
+	n, err := r.Read(buf)
+	if n != 3 || err != nil {
+		t.Fatalf("Read: n=%d, err=%v", n, err)
+	}
+	if string(buf) != "hel" {
+		t.Errorf("buf = %q, want 'hel'", buf)
+	}
+
+	n, err = r.Read(buf)
+	if n != 2 || err != nil {
+		t.Fatalf("Read: n=%d, err=%v", n, err)
+	}
+	if string(buf[:n]) != "lo" {
+		t.Errorf("buf = %q, want 'lo'", buf[:n])
+	}
+
+	n, err = r.Read(buf)
+	if n != 0 || err.Error() != "EOF" {
+		t.Fatalf("Read at end: n=%d, err=%v", n, err)
+	}
+}
+
+func TestStringReader_ReadByte(t *testing.T) {
+	r := &stringReader{s: "ab", i: 0}
+
+	b, err := r.ReadByte()
+	if err != nil || b != 'a' {
+		t.Errorf("ReadByte: b=%c, err=%v", b, err)
+	}
+
+	b, err = r.ReadByte()
+	if err != nil || b != 'b' {
+		t.Errorf("ReadByte: b=%c, err=%v", b, err)
+	}
+
+	_, err = r.ReadByte()
+	if err == nil {
+		t.Fatal("expected EOF error")
+	}
+}
+
+func TestStringReader_ReadEmpty(t *testing.T) {
+	r := &stringReader{s: "", i: 0}
+	buf := make([]byte, 10)
+	n, err := r.Read(buf)
+	if n != 0 || err.Error() != "EOF" {
+		t.Fatalf("Read empty: n=%d, err=%v", n, err)
+	}
+}
+
+func TestStringReader_ReadByteEmpty(t *testing.T) {
+	r := &stringReader{s: "", i: 0}
+	_, err := r.ReadByte()
+	if err == nil {
+		t.Fatal("expected EOF error")
+	}
+}

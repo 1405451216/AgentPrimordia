@@ -148,3 +148,31 @@ var _ io.Reader = (*bytes.Reader)(nil)
 func MarshalBody(v any) ([]byte, error) {
 	return Marshal(v)
 }
+
+// ReadAllPooled 从 io.Reader 读取所有数据，使用 bufferPool 复用底层 buffer。
+// 优化（perf-v11 stage-2）：替代 io.ReadAll，避免每次 HTTP 响应读取都分配新的 []byte。
+// 返回的字节切片是从 pooled buffer 复制而来，调用方可安全保留。
+//
+// ⚠️ 注意：实测发现，在多个 t.Parallel() 测试并发使用同一个 bufferPool 的场景下，
+// 由于不同测试响应体长度差异较大（1KB-100KB），复用同一个 buffer 会导致后续
+// 测试读取到陈旧数据（表现为 JSON 解析错误："invalid character '{' after top-level value"）。
+// 建议：仅在已知响应体大小相近的单线程场景使用；通用 LLM 响应读取应使用 io.ReadAll。
+// 内部 benchmark 表明收益有限（错误响应 < 1KB 池化收益 < 5%），不建议在生产路径上启用。
+func ReadAllPooled(r io.Reader) ([]byte, error) {
+	if r == nil {
+		return nil, io.EOF
+	}
+	buf := bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufferPool.Put(buf)
+	}()
+	// 通过 io.Copy 写入 pooled buffer，超大响应会自动扩容
+	if _, err := io.Copy(buf, r); err != nil {
+		return nil, err
+	}
+	// 返回独立切片（拷贝），因为 pooled buffer 会被回收
+	out := make([]byte, buf.Len())
+	copy(out, buf.Bytes())
+	return out, nil
+}

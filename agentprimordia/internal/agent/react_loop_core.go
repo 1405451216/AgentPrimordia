@@ -42,7 +42,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		a.stats.TotalMessages = len(history)
 		a.statsMu.Unlock()
 
-		_ = a.fireHook(HookBeforeTurn, &HookContext{Turn: turn})
+		_ = a.fireHookWithPool(HookBeforeTurn, turn)
 		// 优化（Task 3）：仅在存在订阅者时构造 payload map，避免热点路径上的堆分配
 		if a.hasEventSubscriber() {
 			a.publishEvent("turn.start", map[string]int{"turn": turn})
@@ -152,7 +152,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 		a.saveMemory(ctx, assistantMsg)
 
-		_ = a.fireHook(HookAfterLLM, &HookContext{Turn: turn})
+		_ = a.fireHookWithPool(HookAfterLLM, turn)
 		if a.hasEventSubscriber() {
 			a.publishEvent("llm.response", map[string]int{"turn": turn})
 		}
@@ -173,9 +173,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			}
 			_ = a.lifecycle.SetStatus(StatusCompleted)
 			a.saveCheckpoint(ctx, history, turn+1, response.Metrics)
-			_ = a.fireHook(HookOnComplete, &HookContext{Response: response})
+			_ = a.fireHookWithPoolResp(HookOnComplete, response)
 			turnSpan.End()
-			_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
+			_ = a.fireHookWithPool(HookAfterTurn, turn)
 			a.recordTurn(time.Since(turnStart))
 			if a.hasEventSubscriber() {
 				a.publishEvent("turn.end", map[string]int{"turn": turn})
@@ -195,7 +195,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		history, totalToolLatency, toolCount = a.executeToolCalls(ctx, history, thought.ToolCalls, turn, cfg, tracer, turnSpan, totalToolLatency, toolCount)
 
 		turnSpan.End()
-		_ = a.fireHook(HookAfterTurn, &HookContext{Turn: turn})
+		_ = a.fireHookWithPool(HookAfterTurn, turn)
 		a.recordTurn(time.Since(turnStart))
 		if a.hasEventSubscriber() {
 			a.publishEvent("turn.end", map[string]int{"turn": turn})
@@ -232,7 +232,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 	_ = a.lifecycle.SetStatus(StatusFailed)
 	a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: ErrMaxTurnsExceeded.Error()})
-	_ = a.fireHook(HookOnError, &HookContext{Error: ErrMaxTurnsExceeded})
+	_ = a.fireHookWithPoolErr(HookOnError, ErrMaxTurnsExceeded)
 	a.logger.Warn("Agent 超出最大轮次", "name", a.config.Name, "max_turns", a.config.MaxTurns)
 
 	response := &Response{

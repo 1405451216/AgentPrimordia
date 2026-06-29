@@ -26,12 +26,14 @@ jobs:
             goarch: arm64
           - goos: windows
             goarch: amd64
+          - goos: windows
+            goarch: arm64
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Build binary
         env:
@@ -39,11 +41,12 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
+          VERSION=${GITHUB_REF_NAME#v}
           BINARY=ap-${{ matrix.goos }}-${{ matrix.goarch }}
           if [ "${{ matrix.goos }}" = "windows" ]; then
             BINARY=${BINARY}.exe
           fi
-          go build -ldflags="-s -w" -o ${BINARY} ./cmd/ap/
+          go build -ldflags="-s -w -X main.Version=${VERSION}" -o ${BINARY} ./cmd/ap/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -59,7 +62,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Generate Go SBOM with syft
         uses: anchore/sbom-action@v0
@@ -72,10 +75,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: sdk/typescript/package-lock.json
+          cache-dependency-path: ../sdk/typescript/package-lock.json
 
       - name: Generate Node SBOM with syft
-        working-directory: sdk/typescript
+        working-directory: ../sdk/typescript
         run: |
           npm ci
         # syft will scan the directory for both Go and Node dependencies
@@ -193,13 +196,13 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install and build
-        working-directory: sdk/typescript
+        working-directory: ../sdk/typescript
         run: |
           npm ci
           npm run build
 
       - name: Publish
-        working-directory: sdk/typescript
+        working-directory: ../sdk/typescript
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

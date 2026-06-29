@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 )
 
 // CompressConfig 压缩配置
@@ -94,7 +95,10 @@ func (s *CompressStrategy) Trim(messages []Message, maxMessages int) []Message {
 	var summary string
 	if s.config.SummaryModel != nil {
 		var err error
-		summary, err = s.compressOldMessages(context.Background(), oldMsgs)
+		// 使用带超时的 context 防止 LLM 调用无限阻塞
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		summary, err = s.compressOldMessages(ctx, oldMsgs)
 		if err != nil {
 			s.logger.Warn("摘要压缩失败，降级为简单截断", "error", err)
 			summary = s.fallbackSummary(oldMsgs)
@@ -155,6 +159,9 @@ func (s *CompressStrategy) fallbackSummary(old []Message) string {
 }
 
 // estimateTokens 估算消息的 Token 数（简单启发式：1 Token ≈ 4 字符）
+// 注意：未使用缓存。理由：len() 调用本身仅需 ~0.4ns，比 sync.Map 查找（~55ns）
+// 快 100+ 倍。仅在文本极长（>10KB）且重复出现时缓存才有收益，当前热点调用
+// 频率不足以抵消缓存开销。预留 estimateTokensCached 函数供未来调用方按需启用。
 func estimateTokens(messages []Message) int {
 	total := 0
 	for _, m := range messages {

@@ -1,6 +1,7 @@
 import type { Chunk, Message } from '../types.js';
 
 // ===== SSE Writer =====
+// 依赖 Web Streams API 的 WritableStreamDefaultWriter（Node.js 18+ / Bun / Deno 内置支持）
 
 export type SSEEventType = 'token' | 'tool_call' | 'tool_result' | 'error' | 'done' | 'thought';
 

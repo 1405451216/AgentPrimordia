@@ -61,6 +61,7 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	}
 
 	// :memory: 数据库使用 cache=shared 允许多连接并发读
+	// 连接数限制为 2 以控制 :memory: 数据库的并发线程数
 	// 文件数据库使用 WAL 模式允许多连接并发吞吐
 	if isInMemory {
 		db.SetMaxOpenConns(2)

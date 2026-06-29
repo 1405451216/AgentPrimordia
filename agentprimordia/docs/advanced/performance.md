@@ -247,16 +247,27 @@ var (
 
 ### pprof 性能分析
 
-```go
-import _ "net/http/pprof"
+项目内置 pprof 端点注册（`internal/health/pprof.go`），推荐使用：
 
-// 启动 pprof
-go func() {
-    http.ListenAndServe(":6060", nil)
-}()
+```go
+mux := http.NewServeMux()
+// 注册健康检查和业务路由
+hc := ap.NewHealthChecker()
+mux.Handle("/healthz", hc)
+
+// 注册 pprof 端点（所有标准 profile 类型）
+ap.RegisterPProf(mux)
+
+// 生产环境仅监听 localhost，避免暴露进程内部信息
+go http.ListenAndServe("127.0.0.1:6060", mux)
 ```
 
 访问 `http://localhost:6060/debug/pprof/` 查看性能数据。
+
+也可使用独立 Handler：
+```go
+go http.ListenAndServe("127.0.0.1:6060", ap.PProfHandler())
+```
 
 ### 内存分析
 
@@ -279,6 +290,122 @@ go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
 (pprof) top 10
 (pprof) web
 ```
+
+## Go 运行时调优（GC）
+
+Go 的并发标记-清除垃圾回收器可通过环境变量调优。在生产环境中，
+合理的 GC 配置可显著降低内存使用和延迟尾延迟。
+
+### GOGC：控制 GC 触发频率
+
+`GOGC` 控制堆增长率触发阈值（默认 100，表示堆翻倍时触发 GC）：
+
+| GOGC | 效果 | 适用场景 |
+|------|------|--------|
+| 50 | 更频繁 GC，内存占用低，CPU 开销高 | 内存受限环境 |
+| 100 | 默认值，平衡内存与 CPU | 通用场景 |
+| 200 | 更少 GC，内存占用高，CPU 开销低 | 延迟敏感、内存充裕 |
+| off | 禁用 GC（不推荐生产使用） | 短命批处理任务 |
+
+```bash
+# 降低内存占用（更频繁 GC）
+GOGC=50 ./ap
+
+# 降低 CPU 开销（更少 GC）
+GOGC=200 ./ap
+```
+
+### GOMEMLIMIT：设置软内存上限
+
+> Go 1.19+ 引入。与 `GOGC` 互补，设置 Go 运行时的软内存上限。
+
+`GOMEMLIMIT` 是软限制——运行时会尽量在不超过此值的情况下运行 GC，
+但在内存压力下可能超过（不像 cgroup 的硬限制会 OOM Kill）。
+
+```bash
+# 限制堆内存为 2 GiB
+GOMEMLIMIT=2GiB ./ap
+
+# 与 GOGC 配合使用
+GOMEMLIMIT=4GiB GOGC=200 ./ap
+```
+
+### 容器环境推荐配置
+
+在 Docker / Kubernetes 中部署时，建议根据容器内存限制设置 `GOMEMLIMIT`：
+
+```yaml
+# docker-compose.yml
+services:
+  ap:
+    environment:
+      - GOMEMLIMIT=1500MiB  # 容器限制 2GiB 的 75%
+      - GOGC=100              # 默认值
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+```
+
+```yaml
+# Kubernetes Deployment
+spec:
+  containers:
+  - name: ap
+    env:
+    - name: GOMEMLIMIT
+      value: "1500MiB"
+    resources:
+      limits:
+        memory: "2Gi"
+```
+
+> **经验法则**：`GOMEMLIMIT` 设为容器内存限制的 75-80%，预留空间给
+> 非 Go 堆内存（goroutine 栈、CGO、mmap 等）。
+
+### runtime.SetMemoryLimit（代码内设置）
+
+也可在代码中通过 `debug.SetMemoryLimit` 设置：
+
+```go
+import "runtime/debug"
+
+func init() {
+    // 设置 2 GiB 软内存上限
+    debug.SetMemoryLimit(2 * 1024 * 1024 * 1024)
+    // 等价于 GOMEMLIMIT=2GiB
+}
+```
+
+### GC 调优验证
+
+通过 pprof 的 heap 端点验证 GC 效果：
+
+```bash
+# 查看堆分配
+go tool pprof http://localhost:6060/debug/pprof/heap
+
+# 查看 GC 统计
+curl http://localhost:6060/debug/pprof/heap?gc=1 | go tool pprof -text
+```
+
+使用 `GODEBUG=gctrace=1` 观察 GC 日志：
+
+```bash
+# 打印每次 GC 的时间、暂停时间和堆大小
+GODEBUG=gctrace=1 ./ap 2>gc.log
+```
+
+输出示例：
+```
+gc 1 @0.045s 1%: 0.013+0.36+0.022 ms clock, 0.10+0.17/0.30/0.65+0.18 ms cpu, 4->4->2 MB, 5 MB goal, 0 MB stacks, 0 MB globals, 8 P
+gc 2 @0.082s 1%: 0.004+0.27+0.016 ms clock, ...
+```
+
+关键字段：
+- `4->4->2 MB`：GC 前堆大小 -> GC 后存活堆大小 -> 当前堆大小
+- `5 MB goal`：下次 GC 触发的堆目标（受 GOGC 控制）
+- `8 P`：逻辑处理器数量（GOMAXPROCS）
 
 ## 基准测试
 
@@ -323,6 +450,9 @@ benchstat old.txt new.txt
 - [ ] 配置连接池
 - [ ] 设置合理的缓存大小
 - [ ] 配置 ResilientProvider
+- [ ] 设置 GOMEMLIMIT（容器内存限制的 75-80%）
+- [ ] 评估 GOGC 调整（延迟敏感场景考虑 GOGC=200）
+- [ ] 注册 pprof 端点（仅 localhost）
 
 ### 运行时
 

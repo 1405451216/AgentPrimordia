@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 )
 
 const (
@@ -15,7 +16,51 @@ const (
 	hybridNewWeight      float32 = 0.6
 	ragContextHeader             = "=== 相关记忆 ===\n"
 	ragContextFooter             = "=== 记忆结束 ===\n"
+	// RRF k 常数（perf-v11 stage-4）：Reciprocal Rank Fusion 算法的平滑参数
+	// 经验值 60 来自原始 RRF 论文（Cormack et al., 2009），平衡高低排名结果的权重
+	rrfK = 60
 )
+
+// HybridFusionMode 混合检索融合模式（perf-v11 stage-4）
+// 不同业务场景下，最优融合策略不同：
+//   - Linear: 原始线性加权，简单但易受量纲影响
+//   - RRF: Reciprocal Rank Fusion，基于排名而非分数，鲁棒性更强
+type HybridFusionMode int
+
+const (
+	// FusionLinear 线性加权融合（向后兼容默认）
+	FusionLinear HybridFusionMode = iota
+	// FusionRRF Reciprocal Rank Fusion（推荐用于生产）
+	FusionRRF
+)
+
+// RAGFusionConfig RAG 检索融合配置（perf-v11 stage-4：支持运行时调参）
+// 注意：避免与 rag_generator.go 中的 RAGConfig 同名，特意加上 Fusion 后缀。
+// 字段可通过 NewRAGStoreWithFusionConfig 或 RAGStore.SetFusionConfig 调整。
+type RAGFusionConfig struct {
+	// FusionMode 融合模式（Linear / RRF）
+	FusionMode HybridFusionMode
+	// FTSWeight FTS 通道权重（仅 Linear 模式生效）
+	FTSWeight float32
+	// VectorWeight 向量通道权重（仅 Linear 模式生效）
+	VectorWeight float32
+	// RRFK RRF 平滑常数（仅 RRF 模式生效，默认 60）
+	RRFK int
+	// OverFetchSize 单通道预取数量，用于增加融合召回率
+	// 最终 topK = min(topK + OverFetchSize, 2*topK)
+	OverFetchSize int
+}
+
+// DefaultRAGFusionConfig 返回默认融合配置
+func DefaultRAGFusionConfig() RAGFusionConfig {
+	return RAGFusionConfig{
+		FusionMode:    FusionLinear,
+		FTSWeight:     hybridExistingWeight, // 0.4
+		VectorWeight:  hybridNewWeight,      // 0.6
+		RRFK:          rrfK,
+		OverFetchSize: 5,
+	}
+}
 
 // EmbeddingProvider 是向量化接口，由 LLM Provider 实现
 type EmbeddingProvider interface {
@@ -29,10 +74,17 @@ type RAGStore struct {
 	vectors  *VectorStore
 	embedder EmbeddingProvider
 	logger   *slog.Logger
+	config   RAGFusionConfig // perf-v11 stage-4：支持运行时调整融合策略
+	configMu sync.Mutex      // 保护 config 并发读写
 }
 
 // NewRAGStore 创建 RAG 存储实例
 func NewRAGStore(memory Memory, embedder EmbeddingProvider) *RAGStore {
+	return NewRAGStoreWithFusionConfig(memory, embedder, DefaultRAGFusionConfig())
+}
+
+// NewRAGStoreWithFusionConfig 创建带自定义配置的 RAG 存储实例（perf-v11 stage-4）
+func NewRAGStoreWithFusionConfig(memory Memory, embedder EmbeddingProvider, cfg RAGFusionConfig) *RAGStore {
 	dim := defaultVectorDim
 	if embedder != nil {
 		dim = embedder.Dimensions()
@@ -42,7 +94,24 @@ func NewRAGStore(memory Memory, embedder EmbeddingProvider) *RAGStore {
 		vectors:  NewVectorStore(dim),
 		embedder: embedder,
 		logger:   slog.Default(),
+		config:   cfg,
 	}
+}
+
+// SetFusionConfig 动态调整 RAG 检索配置（perf-v11 stage-4）
+// 线程安全：通过 RAGStore.configMu 互斥锁保护
+// 典型用法：根据 A/B 测试结果调整融合权重，或在 QPS 下降时切换到 RRF 模式
+func (r *RAGStore) SetFusionConfig(cfg RAGFusionConfig) {
+	r.configMu.Lock()
+	defer r.configMu.Unlock()
+	r.config = cfg
+}
+
+// GetFusionConfig 获取当前 RAG 检索配置
+func (r *RAGStore) GetFusionConfig() RAGFusionConfig {
+	r.configMu.Lock()
+	defer r.configMu.Unlock()
+	return r.config
 }
 
 // Add 添加 Episode 到 Memory，并同时生成向量索引
@@ -124,19 +193,36 @@ func (r *RAGStore) Query(ctx context.Context, query string, topK int) ([]*RAGRes
 }
 
 // HybridSearch 混合检索：结合 FTS 全文搜索和向量相似度搜索
+// 融合策略由 RAGStore.config.FusionMode 决定（perf-v11 stage-4）：
+//   - FusionLinear: 线性加权融合（向后兼容）
+//   - FusionRRF: Reciprocal Rank Fusion（推荐用于生产）
 func (r *RAGStore) HybridSearch(ctx context.Context, query string, topK int) ([]*RAGResult, error) {
+	cfg := r.GetFusionConfig()
+	// 预取更多候选以提升融合召回率（over-fetch 然后重排）
+	fetchK := topK + cfg.OverFetchSize
+	if fetchK > 2*topK {
+		fetchK = 2 * topK
+	}
+
 	// 1. FTS 全文搜索
-	ftsResults, err := r.memory.Search(ctx, query, &SearchOptions{Limit: topK})
+	ftsResults, err := r.memory.Search(ctx, query, &SearchOptions{Limit: fetchK})
 	if err != nil {
 		ftsResults = []*Episode{} // FTS 失败不影响向量搜索
 	}
 
-	// 构建结果 map 用于去重
+	if cfg.FusionMode == FusionRRF {
+		return r.hybridSearchRRF(ctx, query, ftsResults, topK, cfg)
+	}
+	return r.hybridSearchLinear(ctx, query, ftsResults, topK, cfg)
+}
+
+// hybridSearchLinear 线性加权融合（perf-v11 stage-4：原 HybridSearch 逻辑）
+// FTS 通道和向量通道分别计算分数，按权重相加。
+// 缺点：受量纲影响，FTS 分数范围 [-1, 0] 与向量余弦相似度 [0, 1] 不可比。
+func (r *RAGStore) hybridSearchLinear(ctx context.Context, query string, ftsResults []*Episode, topK int, cfg RAGFusionConfig) ([]*RAGResult, error) {
 	resultMap := make(map[string]*RAGResult)
 
 	for i, ep := range ftsResults {
-		// Use decreasing score based on rank position for FTS results
-		// FTS results are already ordered by relevance from SQLite FTS5 rank
 		ftsScore := ftsBaseWeight * (1.0 - float32(i)*ftsDecayFactor)
 		if ftsScore < ftsMinScore {
 			ftsScore = ftsMinScore
@@ -148,17 +234,20 @@ func (r *RAGStore) HybridSearch(ctx context.Context, query string, topK int) ([]
 		}
 	}
 
-	// 2. 向量相似度搜索（如果 embedder 可用）
 	if r.embedder != nil {
-		vecResults, err := r.Query(ctx, query, topK)
+		fetchK := topK + cfg.OverFetchSize
+		if fetchK > 2*topK {
+			fetchK = 2 * topK
+		}
+		vecResults, err := r.Query(ctx, query, fetchK)
 		if err == nil {
 			for _, vr := range vecResults {
 				if existing, ok := resultMap[vr.Episode.ID]; ok {
-					// 同时被 FTS 和向量命中的结果，加权融合
-					existing.Score = existing.Score*hybridExistingWeight + vr.Score*hybridNewWeight
+					// 加权融合
+					existing.Score = existing.Score*cfg.FTSWeight + vr.Score*cfg.VectorWeight
 					existing.Sources = append(existing.Sources, "vector")
 				} else {
-					vr.Score = vr.Score * hybridNewWeight
+					vr.Score = vr.Score * cfg.VectorWeight
 					vr.Sources = []string{"vector"}
 					resultMap[vr.Episode.ID] = vr
 				}
@@ -166,19 +255,102 @@ func (r *RAGStore) HybridSearch(ctx context.Context, query string, topK int) ([]
 		}
 	}
 
-	// 转为切片并排序
 	results := make([]*RAGResult, 0, len(resultMap))
-	for _, r := range resultMap {
-		results = append(results, r)
+	for _, v := range resultMap {
+		results = append(results, v)
 	}
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].Score > results[j].Score
 	})
-
-	if topK < len(results) {
+	if len(results) > topK {
 		results = results[:topK]
 	}
+	return results, nil
+}
 
+// hybridSearchRRF Reciprocal Rank Fusion 融合算法（perf-v11 stage-4）
+// 公式：RRF_score(d) = Σ 1 / (k + rank_i(d))
+// 其中 rank_i(d) 是文档 d 在第 i 个通道中的排名（1-based），k 为平滑常数（默认 60）
+// 优势：基于排名而非分数，不受通道量纲影响，对长尾 query 鲁棒性更强。
+// 论文：Cormack, G. V., Clarke, C. L., & Buettcher, S. (2009).
+// "Reciprocal rank fusion outperforms condorcet and individual rank learning methods."
+func (r *RAGStore) hybridSearchRRF(ctx context.Context, query string, ftsResults []*Episode, topK int, cfg RAGFusionConfig) ([]*RAGResult, error) {
+	k := float32(cfg.RRFK)
+	if k <= 0 {
+		k = float32(rrfK) // fallback 默认
+	}
+
+	// 记录每个文档在各通道的排名（1-based），用于独立累加 RRF 分数
+	ftsRanks := make(map[string]int) // FTS 通道排名
+	vecRanks := make(map[string]int) // 向量通道排名
+	episodes := make(map[string]*Episode)
+	sources := make(map[string][]string)
+
+	// FTS 通道排名
+	for i, ep := range ftsResults {
+		rank := i + 1
+		if existing, ok := ftsRanks[ep.ID]; !ok || rank < existing {
+			ftsRanks[ep.ID] = rank
+		}
+		episodes[ep.ID] = ep
+		sources[ep.ID] = append(sources[ep.ID], "fts")
+	}
+
+	// 向量通道排名
+	if r.embedder != nil {
+		fetchK := topK + cfg.OverFetchSize
+		if fetchK > 2*topK {
+			fetchK = 2 * topK
+		}
+		vecResults, err := r.Query(ctx, query, fetchK)
+		if err == nil {
+			for i, vr := range vecResults {
+				rank := i + 1
+				if existing, ok := vecRanks[vr.Episode.ID]; !ok || rank < existing {
+					vecRanks[vr.Episode.ID] = rank
+				}
+				if _, ok := episodes[vr.Episode.ID]; !ok {
+					episodes[vr.Episode.ID] = vr.Episode
+				}
+				// 去重 sources
+				hasVec := false
+				for _, s := range sources[vr.Episode.ID] {
+					if s == "vector" {
+						hasVec = true
+						break
+					}
+				}
+				if !hasVec {
+					sources[vr.Episode.ID] = append(sources[vr.Episode.ID], "vector")
+				}
+			}
+		}
+	}
+
+	// 计算 RRF 分数并构造结果
+	// 公式：RRF_score(d) = Σ 1 / (k + rank_i(d))，对每个命中通道独立累加
+	results := make([]*RAGResult, 0, len(episodes))
+	for id, ep := range episodes {
+		rrfScore := float32(0)
+		if rank, ok := ftsRanks[id]; ok {
+			rrfScore += 1.0 / (k + float32(rank))
+		}
+		if rank, ok := vecRanks[id]; ok {
+			rrfScore += 1.0 / (k + float32(rank))
+		}
+		results = append(results, &RAGResult{
+			Episode: ep,
+			Score:   rrfScore,
+			Sources: sources[id],
+		})
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Score > results[j].Score
+	})
+	if len(results) > topK {
+		results = results[:topK]
+	}
 	return results, nil
 }
 

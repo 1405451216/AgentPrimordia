@@ -230,6 +230,32 @@ export type { VisualizeConfig, VizNode, VizTransition, VizWorkflow, EditorAction
 export { SSEWriter, createSSEResponse, StreamPipeline, filterEmpty, bufferMiddleware, rateLimitMiddleware, transformMiddleware, logMiddleware, StreamCollector, CompressStrategy } from './agent/stream-extended.js';
 export type { SSEEventType, SSEEvent, SSEResponseOptions, StreamHandler, StreamMiddleware, CollectedResult, CompressConfig } from './agent/stream-extended.js';
 
+// ===== Phase 14b: Context Window & Token Estimation =====
+export { ContextWindow, estimateTokens, estimateTokenCount } from './agent/context-compress.js';
+export type { ContextWindowConfig } from './agent/context-compress.js';
+
+// ===== Phase 14c: Message Convert Utilities =====
+export {
+  toOpenAIMessages, toOpenAIToolDefinitions, fromOpenAIToolCalls, toOpenAIToolCalls,
+  fromOpenAIMessage, fromOpenAIMessages, buildMultimodalContent as buildMultimodalContentFromParts,
+  extractTextContent, hasMultimodal, summarizeHistory,
+} from './agent/react-convert.js';
+export type { OpenAIMessage, OpenAIContentItem, OpenAIToolCall, OpenAIToolDefinition, ContentPart, ExtendedMessage } from './agent/react-convert.js';
+
+// ===== Phase 14d: Reasoning Engine =====
+export { ReasoningEngine, singleRoundReasoning, singleRoundReasoningStream } from './agent/react-reasoning.js';
+export type { Thought, StreamEvent as ReasoningStreamEvent, StreamEventType, ReasoningConfig } from './agent/react-reasoning.js';
+
+// ===== Phase 14e: Distributed Agent Execution =====
+export {
+  LocalDiscovery, HTTPDiscoveryClient, TokenAuthenticator, AuthenticatedDiscovery,
+  DistributedHTTPTransport, DistributedAgent,
+} from './agent/distributed.js';
+export type {
+  AgentInfo, AgentIdentity, Discovery, Transport, BusMessage, BusMessageType,
+  DistributedConfig,
+} from './agent/distributed.js';
+
 // ===== Phase 15: AutoScaler, Dispatcher, FileLock, ConcurrencyPool =====
 export { AutoScaler, Dispatcher, FileLock, ConcurrencyPool } from './pool/dispatcher-autoscaler.js';
 export type { AutoScalerConfig, DispatchTask, DispatcherConfig, ConcurrencyPool as ConcurrencyPoolType } from './pool/dispatcher-autoscaler.js';

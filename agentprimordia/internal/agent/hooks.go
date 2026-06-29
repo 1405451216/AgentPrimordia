@@ -9,6 +9,68 @@ import (
 	"time"
 )
 
+// hookContextPool 复用 HookContext 实例。
+// ReAct 循环每轮多次 fireHook，每次都 &HookContext{...} 产生新的逃逸对象。
+// 通过 sync.Pool 复用底层结构，可显著降低高并发场景下的分配压力。
+// 注意：Metadata map 仍按需分配，结构体本身可被安全复用（Reset 时清空）。
+var hookContextPool = sync.Pool{
+	New: func() any {
+		return &HookContext{}
+	},
+}
+
+// AcquireHookContext 从池中获取一个已重置的 HookContext。
+// 调用方负责在使用完毕后调用 ReleaseHookContext 归还。
+func AcquireHookContext() *HookContext {
+	hctx := hookContextPool.Get().(*HookContext)
+	hctx.Reset()
+	return hctx
+}
+
+// ReleaseHookContext 归还 HookContext 到池中。
+// 归还前会重置所有字段（包括内部指针），避免内存泄漏。
+// 仅当 hctx 非 nil 时归还。
+func ReleaseHookContext(hctx *HookContext) {
+	if hctx == nil {
+		return
+	}
+	// 显式清空引用，断开与外部对象的强引用，避免池中对象持有已释放对象。
+	hctx.Reset()
+	hookContextPool.Put(hctx)
+}
+
+// Reset 清空 HookContext 的所有字段。
+// 注意：map 字段保留底层 bucket 复用，仅 delete 所有键。
+func (h *HookContext) Reset() {
+	if h == nil {
+		return
+	}
+	h.AgentID = ""
+	h.RequestID = ""
+	h.SessionID = ""
+	h.Point = ""
+	h.Turn = 0
+	h.Message = nil
+	h.Response = nil
+	h.ToolCall = nil
+	h.ToolResult = nil
+	h.Error = nil
+	if h.Metadata != nil {
+		for k := range h.Metadata {
+			delete(h.Metadata, k)
+		}
+	}
+	h.StreamChunk = nil
+	h.Duration = 0
+	h.OldState = ""
+	h.NewState = ""
+	h.Reason = ""
+	h.MemoryQuery = ""
+	h.MemoryResult = nil
+	h.ContextWindowUsage = 0
+	h.ContextWindowLimit = 0
+}
+
 type HookPoint string
 
 const (

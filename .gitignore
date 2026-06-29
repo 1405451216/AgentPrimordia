@@ -108,8 +108,17 @@ cover2
 cover_metrics
 cover_tools
 coverage_tools
+coverage_collab*
 coverage
+
+# ---------- Diff Temp ----------
+diff_*.txt
+coverage-output.txt
 
 # ---------- Wiki / Generated ----------
 agent_bench.txt
 count_lines.ps1
+
+# ---------- PGO ----------
+.pgo/
+default.pgo

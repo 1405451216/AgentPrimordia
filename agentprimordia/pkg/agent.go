@@ -571,6 +571,21 @@ type HealthCheckable = health.Checker
 // NewHealthChecker 创建健康检查器
 var NewHealthChecker = health.NewChecker
 
+// RegisterPProf 将 pprof 性能分析端点注册到给定的 http.ServeMux。
+// 注册 /debug/pprof/ 下的所有标准 profile 路由（CPU、heap、goroutine 等）。
+// 生产环境应仅监听 localhost 或通过鉴权保护。
+//
+// 使用示例：
+//
+//	mux := http.NewServeMux()
+//	ap.RegisterPProf(mux)
+//	go http.ListenAndServe("localhost:6060", mux)
+var RegisterPProf = health.RegisterPProf
+
+// PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。
+// 适用于仅需暴露 profiling 而无需自定义路由的场景。
+var PProfHandler = health.PProfHandler
+
 // ===== 版本与通用类型 =====
 
 // Version 是 AgentPrimordia 框架的当前版本号

@@ -180,8 +180,9 @@ func (p *Pool) autoScale() {
 	if newConcurrency != currentConcurrency {
 		p.mu.Lock()
 		p.config.MaxConcurrency = newConcurrency
-		// 更新动态并发度限制（不替换 semaphore，避免令牌错乱）
+		// 更新动态并发度限制，并广播唤醒等待信号量的 goroutine
 		p.dynamicConcurrency.Store(int64(newConcurrency))
+		p.semaCond.Broadcast() // 唤醒所有等待 acquireSlot 的 goroutine
 		// 更新统计信息（在锁内写入，避免数据竞争）
 		p.stats.MaxConcurrency = newConcurrency
 		p.mu.Unlock()

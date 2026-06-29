@@ -83,6 +83,8 @@ export class SqliteStore implements Memory {
   }
 
   async search(query: string, opts?: SearchOptions): Promise<MemoryEpisode[]> {
+    // 使用 LIKE 模糊搜索，当前实现为全表扫描。
+    // TODO: 对于大容量记忆库，建议迁移到 FTS（全文搜索）或向量搜索以提升性能。
     let sql = 'SELECT * FROM episodes WHERE (content LIKE ? OR summary LIKE ? OR topics LIKE ?)';
     const params: unknown[] = [`%${query}%`, `%${query}%`, `%${query}%`];
     if (opts?.sessionId) {
@@ -196,7 +198,7 @@ function rowToEpisode(row: CheckpointRow): MemoryEpisode {
   return {
     id: row.id,
     sessionId: row.session_id,
-    role: row.role,
+    role: row.role as 'system' | 'user' | 'assistant' | 'tool',
     content: row.content,
     summary: row.summary ?? undefined,
     topics: row.topics ?? undefined,
