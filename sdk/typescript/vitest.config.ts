@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'better-sqlite3': fileURLToPath(new URL('./tests/mocks/better-sqlite3.js', import.meta.url)),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
@@ -13,11 +19,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.ts'],
+      exclude: ['src/persist/sqlite-checkpoint.ts'],
       thresholds: {
-        lines: 60,
-        functions: 60,
-        branches: 50,
-        statements: 60,
+        lines: 75,
+        functions: 70,
+        branches: 70,
+        statements: 75,
       },
     },
   },

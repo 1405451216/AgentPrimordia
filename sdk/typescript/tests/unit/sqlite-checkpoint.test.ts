@@ -1,10 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'node:module';
+
+// Check if better-sqlite3 is available (peer dependency)
+const require = createRequire(import.meta.url);
+let sqliteAvailable = false;
+try {
+  require('better-sqlite3');
+  sqliteAvailable = true;
+} catch {
+  // better-sqlite3 not installed — skip tests
+}
+
 import { SQLiteCheckpointStore } from '../../src/persist/sqlite-checkpoint.js';
 
 // ===== SQLiteCheckpointStore tests =====
-// Uses the stub better-sqlite3 module in node_modules/better-sqlite3/
+// Requires better-sqlite3 peer dependency to be installed
 
-describe('SQLiteCheckpointStore', () => {
+const describeOrSkip = sqliteAvailable ? describe : describe.skip;
+
+describeOrSkip('SQLiteCheckpointStore', () => {
   let store: SQLiteCheckpointStore;
 
   beforeEach(() => {
@@ -12,7 +26,7 @@ describe('SQLiteCheckpointStore', () => {
   });
 
   afterEach(() => {
-    store.close();
+    if (store) store.close();
   });
 
   it('should create in-memory store', () => {

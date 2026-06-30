@@ -77,7 +77,7 @@ ${content}
 第一行：摘要
 第二行：topics: 标签1,标签2,标签3`;
 
-    let lastError: Error | null = null;
+    let _lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
@@ -93,7 +93,7 @@ ${content}
 
         return this.parseResponse(response.content);
       } catch (err: unknown) {
-        lastError = err instanceof Error ? err : new Error(String(err));
+        _lastError = err instanceof Error ? err : new Error(String(err));
         if (attempt < this.maxRetries) {
           // 等待后重试
           await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));

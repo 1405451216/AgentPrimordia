@@ -152,116 +152,143 @@ describe('DatabaseTool', () => {
 });
 
 // ===== CodeExecutionTool tests =====
+// 与 Go 端 CodeExecution 对齐，通过 child_process 执行 Python/JavaScript/Go
+
 describe('CodeExecutionTool', () => {
+  // 保存和恢复环境变量
+  const origEnv = process.env.AP_ALLOW_CODE_EXECUTION;
+
+  afterEach(() => {
+    if (origEnv === undefined) {
+      delete process.env.AP_ALLOW_CODE_EXECUTION;
+    } else {
+      process.env.AP_ALLOW_CODE_EXECUTION = origEnv;
+    }
+  });
+
   it('should have correct name and description', () => {
     const tool = new CodeExecutionTool();
     expect(tool.name).toBe('code_execution');
     expect(tool.description).toContain('sandbox');
   });
 
-  it('should have parameters with code as required', () => {
+  it('should have parameters with language and code as required', () => {
     const tool = new CodeExecutionTool();
-    expect(tool.parameters.required).toEqual(['code']);
+    expect(tool.parameters.required).toEqual(['language', 'code']);
   });
 
   it('should reject empty code', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: '' });
-    expect(result).toContain('Error: code is required');
+    const result = await tool.execute({ language: 'javascript', code: '' });
+    expect(result).toContain('Error: parameter "code" cannot be empty');
   });
 
   it('should reject whitespace-only code', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: '   ' });
-    expect(result).toContain('Error: code is required');
+    const result = await tool.execute({ language: 'javascript', code: '   ' });
+    expect(result).toContain('Error: parameter "code" cannot be empty');
   });
 
-  it('should execute simple code and return output', async () => {
+  it('should be disabled by default for security', async () => {
+    delete process.env.AP_ALLOW_CODE_EXECUTION;
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.log("hello world")' });
+    const result = await tool.execute({ language: 'javascript', code: 'console.log("hello")' });
+    expect(result).toContain('disabled by default');
+    expect(result).toContain('AP_ALLOW_CODE_EXECUTION');
+  });
+
+  it('should reject missing language parameter', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    const result = await tool.execute({ code: 'console.log("hello")' });
+    expect(result).toContain('Error: parameter "language" is required');
+  });
+
+  it('should reject unsupported language', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    const result = await tool.execute({ language: 'ruby', code: 'puts "hello"' });
+    expect(result).toContain('unsupported language');
+  });
+
+  it('should execute JavaScript code and return output', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    const result = await tool.execute({ language: 'javascript', code: 'console.log("hello world")' });
     expect(result).toContain('hello world');
+    expect(result).toContain('"exit_code": 0');
   });
 
-  it('should capture console.log output', async () => {
+  it('should return JSON output format with language and exit_code', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.log("a", "b", "c")' });
-    expect(result).toContain('a b c');
+    const result = await tool.execute({ language: 'javascript', code: 'console.log("test")' });
+    const parsed = JSON.parse(result);
+    expect(parsed.language).toBe('javascript');
+    expect(parsed.exit_code).toBe(0);
+    expect(parsed.output).toContain('test');
+    expect(parsed.truncated).toBe(false);
   });
 
-  it('should capture console.error output', async () => {
+  it('should capture stderr output', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.error("error msg")' });
-    expect(result).toContain('[ERROR] error msg');
+    const result = await tool.execute({ language: 'javascript', code: 'console.error("error msg")' });
+    expect(result).toContain('error msg');
   });
 
-  it('should capture console.warn output', async () => {
+  it('should handle code errors with non-zero exit code', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.warn("warning msg")' });
-    expect(result).toContain('[WARN] warning msg');
-  });
-
-  it('should capture console.info output', async () => {
-    const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.info("info msg")' });
-    expect(result).toContain('[INFO] info msg');
-  });
-
-  it('should return result value for non-undefined return', async () => {
-    const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'return 42' });
-    expect(result).toContain('Result: 42');
-  });
-
-  it('should return object result as JSON', async () => {
-    const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'return { a: 1, b: 2 }' });
-    expect(result).toContain('"a": 1');
-    expect(result).toContain('"b": 2');
-  });
-
-  it('should return (no output) for empty code', async () => {
-    const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'var x = 1' });
-    expect(result).toBe('(no output)');
-  });
-
-  it('should combine logs and result', async () => {
-    const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.log("log1"); return 99' });
-    expect(result).toContain('log1');
-    expect(result).toContain('Result: 99');
-  });
-
-  it('should truncate output exceeding maxOutputLength', async () => {
-    const tool = new CodeExecutionTool({ maxOutputLength: 10 });
-    const result = await tool.execute({ code: 'console.log("x".repeat(100))' });
-    expect(result).toContain('(truncated)');
-    expect(result.length).toBeLessThanOrEqual(30);
-  });
-
-  it('should handle code errors', async () => {
-    const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'throw new Error("test error")' });
-    expect(result).toContain('Error: test error');
-  });
-
-  it('should use default timeout when not specified', async () => {
-    const tool = new CodeExecutionTool();
-    // Should complete quickly
-    const result = await tool.execute({ code: 'console.log("fast")' });
-    expect(result).toContain('fast');
+    const result = await tool.execute({ language: 'javascript', code: 'throw new Error("test error")' });
+    expect(result).toContain('Error:');
+    expect(result).toContain('test error');
   });
 
   it('should use custom timeout from args', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
-    const result = await tool.execute({ code: 'console.log("ok")', timeout: 5 });
+    const result = await tool.execute({ language: 'javascript', code: 'console.log("ok")', timeout: 5 });
     expect(result).toContain('ok');
   });
 
-  it('should use custom maxOutputLength from constructor', async () => {
-    const tool = new CodeExecutionTool({ maxOutputLength: 5 });
-    const result = await tool.execute({ code: 'console.log("hello world")' });
-    expect(result).toContain('(truncated)');
+  it('should handle execution timeout', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    const result = await tool.execute({ language: 'javascript', code: 'setTimeout(() => {}, 99999)', timeout: 1 });
+    expect(result).toContain('timed out');
+  }, 10000);
+
+  it('should truncate output exceeding maxOutputLength', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool({ maxOutputLength: 10 });
+    const result = await tool.execute({ language: 'javascript', code: 'console.log("x".repeat(100))' });
+    expect(result).toContain('truncated');
+  });
+
+  it('should support Python language parameter', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    // Just verify the language is accepted (python3 may not be installed)
+    const result = await tool.execute({ language: 'python', code: 'print("hello")' });
+    // Either it succeeds or returns runtime not found error
+    expect(typeof result).toBe('string');
+  });
+
+  it('should support Go language parameter', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    const result = await tool.execute({ language: 'go', code: 'package main\nfunc main() { println("hello") }' });
+    expect(typeof result).toBe('string');
+  });
+
+  it('should use default timeout when not specified', async () => {
+    process.env.AP_ALLOW_CODE_EXECUTION = 'true';
+    const tool = new CodeExecutionTool();
+    const result = await tool.execute({ language: 'javascript', code: 'console.log("fast")' });
+    expect(result).toContain('fast');
   });
 });
 

@@ -1,5 +1,4 @@
 import type { ReActAgent } from '../agent/react-loop.js';
-import type { Response } from '../types.js';
 
 // ===== DAG Workflow =====
 
@@ -91,7 +90,7 @@ export class DAGWorkflow {
     }
 
     // Find entry nodes (no incoming edges)
-    const entryNodes = order.filter((id) => !this.edges.some((e) => e.to === id));
+    const _entryNodes = order.filter((id) => !this.edges.some((e) => e.to === id));
 
     // Execute nodes
     let currentInput = input;

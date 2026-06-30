@@ -1,17 +1,15 @@
-import { ReActAgent, HookManager, Lifecycle } from './react-loop.js';
-import type { ReActConfig } from './react-loop.js';
+import { ReActAgent, Lifecycle } from './react-loop.js';
+import type { HookManager, StreamEvent } from './react-loop.js';
 import type { Provider } from '../llm/provider.js';
 import { ToolRegistry } from '../tools/registry.js';
 import type { Memory } from '../memory/store.js';
-import type { Message, Response } from '../types.js';
-import { PromptTemplate } from './prompt-template.js';
+import type { Response } from '../types.js';
+import type { PromptTemplate } from './prompt-template.js';
 import {
   type CheckpointStore,
   type ContextWindowStrategy,
   type HITLManager,
   type CostTracker,
-  InMemoryCheckpointStore,
-  KeepLastNStrategy,
 } from './request-id.js';
 import { Session } from './session.js';
 
@@ -203,20 +201,14 @@ export class CapabilityAgent {
       hooks: this._hooks,
       lifecycle: this._lifecycle,
       maxMessages: this._maxMessages,
+      costTracker: this._costTracker,
+      checkpointStore: this._checkpointStore ?? undefined,
     });
   }
 
   // ===== Run =====
 
   async run(input: string): Promise<Response> {
-    // Check cost budget
-    if (this._costTracker?.checkBudget()) {
-      return {
-        content: 'Agent stopped: cost budget exceeded',
-        metrics: { totalTurns: 0, totalTools: 0, duration: 0, llmLatency: 0, toolLatency: 0 },
-      };
-    }
-
     // Inject RAG context if configured
     let fullInput = input;
     if (this._rag && this._rag.mode !== 'on_demand') {
@@ -246,7 +238,7 @@ export class CapabilityAgent {
     yield* this.agent.stream(input);
   }
 
-  async *streamEvents(input: string): AsyncIterable<import('./react-loop.js').StreamEvent> {
+  async *streamEvents(input: string): AsyncIterable<StreamEvent> {
     yield* this.agent.streamEvents(input);
   }
 

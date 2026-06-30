@@ -1,4 +1,5 @@
 import type { Chunk, Message } from '../types.js';
+import type { Provider } from '../llm/provider.js';
 
 // ===== SSE Writer =====
 // 依赖 Web Streams API 的 WritableStreamDefaultWriter（Node.js 18+ / Bun / Deno 内置支持）
@@ -17,16 +18,39 @@ export class SSEWriter {
   private encoder: TextEncoder;
   private eventID = 0;
   private retryMs = 0;
+  /** 背压控制：已入队但未写入的 chunk 数 */
+  private queueDepth = 0;
+  /** 最大队列深度，超过则丢弃（防止慢消费者阻塞 Agent） */
+  private maxQueueDepth: number;
+  /** 写入超时（毫秒），超时后丢弃当前 chunk */
+  private writeTimeoutMs: number;
+  /** 已丢弃的 chunk 计数 */
+  private droppedChunks = 0;
 
-  constructor(writer: { write: (chunk: string) => void } | WritableStreamDefaultWriter<Uint8Array>) {
+  constructor(
+    writer: { write: (chunk: string) => void } | WritableStreamDefaultWriter<Uint8Array>,
+    opts?: { maxQueueDepth?: number; writeTimeoutMs?: number },
+  ) {
     this.writer = writer;
     this.encoder = new TextEncoder();
+    this.maxQueueDepth = opts?.maxQueueDepth ?? 1000;
+    this.writeTimeoutMs = opts?.writeTimeoutMs ?? 5000;
   }
 
   setRetry(ms: number): void { this.retryMs = ms; }
   setEventID(id: number): void { this.eventID = id; }
 
+  /** 获取已丢弃的 chunk 数（用于监控） */
+  getDroppedCount(): number { return this.droppedChunks; }
+
   async writeEvent(event: SSEEvent): Promise<void> {
+    // 背压检查：队列深度超过上限时丢弃 chunk
+    if (this.queueDepth >= this.maxQueueDepth) {
+      this.droppedChunks++;
+      return;
+    }
+
+    this.queueDepth++;
     const lines: string[] = [];
 
     if (event.type) lines.push(`event: ${event.type}`);
@@ -45,10 +69,27 @@ export class SSEWriter {
 
     const output = lines.join('\n') + '\n';
 
+    try {
+      // 使用超时机制防止慢消费者阻塞（与 Go 端 SSE 5s 超时对齐）
+      await this.writeWithTimeout(output);
+    } catch {
+      // 写入失败或超时，丢弃此 chunk
+      this.droppedChunks++;
+    } finally {
+      this.queueDepth--;
+    }
+  }
+
+  /** 带超时的写入，防止下游慢消费者阻塞上游生产者 */
+  private async writeWithTimeout(output: string): Promise<void> {
     if ('write' in this.writer && typeof this.writer.write === 'function') {
-      // Check if it's a WritableStreamDefaultWriter (writes Uint8Array)
       if (this.writer instanceof WritableStreamDefaultWriter) {
-        await this.writer.write(this.encoder.encode(output));
+        // WritableStreamDefaultWriter — 使用 Promise.race 实现超时
+        const writePromise = this.writer.write(this.encoder.encode(output));
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('SSE write timeout')), this.writeTimeoutMs),
+        );
+        await Promise.race([writePromise, timeoutPromise]);
       } else {
         (this.writer as { write: (chunk: string) => void }).write(output);
       }
@@ -238,30 +279,52 @@ export class StreamCollector {
   }
 
   async *merge(streams: AsyncIterable<Chunk>[]): AsyncIterable<Chunk> {
-    // Interleave chunks from multiple streams
+    // Interleave chunks from multiple streams using a shared queue + notifier
     const queues: Chunk[][] = streams.map(() => []);
     const done = new Array(streams.length).fill(false);
+    const notifier = { resolve: null as null | (() => void) };
+
+    const notify = () => {
+      if (notifier.resolve) {
+        const fn = notifier.resolve;
+        notifier.resolve = null;
+        fn();
+      }
+    };
+
+    const waitForData = () => new Promise<void>((resolve) => { notifier.resolve = resolve; });
 
     // Start consuming all streams
     const consumers = streams.map(async (stream, i) => {
       try {
         for await (const chunk of stream) {
           queues[i].push(chunk);
+          notify();
         }
       } finally {
         done[i] = true;
+        notify();
       }
     });
 
-    // Yield from queues round-robin
-    while (!done.every(Boolean) || queues.some(q => q.length > 0)) {
+    // Yield from queues round-robin, using notifier instead of setTimeout polling
+    let allDone = false;
+    while (!allDone) {
       for (let i = 0; i < queues.length; i++) {
         const chunk = queues[i].shift();
         if (chunk) yield chunk;
       }
-      // Small delay to avoid busy loop
-      if (queues.every(q => q.length === 0) && !done.every(Boolean)) {
-        await new Promise(r => setTimeout(r, 10));
+      allDone = done.every(Boolean);
+      if (!allDone && queues.every(q => q.length === 0)) {
+        // 等待新数据到达，避免 busy-wait
+        await waitForData();
+      }
+    }
+
+    // Drain any remaining chunks
+    for (let i = 0; i < queues.length; i++) {
+      while (queues[i].length > 0) {
+        yield queues[i].shift()!;
       }
     }
 
@@ -273,10 +336,12 @@ export class StreamCollector {
 
 export interface CompressConfig {
   maxTokens: number;
-  summaryModel?: import('../llm/provider.js').Provider;
+  summaryModel?: Provider;
   keepSystemMessages: boolean;
   keepRecentN: number;
   compressRatio: number;
+  /** LLM 压缩超时（毫秒），超时后降级为简单截断，防止 Agent 无限阻塞（默认 30s） */
+  compressTimeoutMs?: number;
 }
 
 export class CompressStrategy {
@@ -289,6 +354,7 @@ export class CompressStrategy {
       keepSystemMessages: config.keepSystemMessages ?? true,
       keepRecentN: config.keepRecentN ?? 2,
       compressRatio: config.compressRatio ?? 0.3,
+      compressTimeoutMs: config.compressTimeoutMs,
     };
   }
 
@@ -344,19 +410,31 @@ export class CompressStrategy {
 
     const conversation = oldMsgs.map(m => `${m.role}: ${m.content}`).join('\n');
 
-    const resp = await this.config.summaryModel.complete({
-      messages: [
-        { role: 'system', content: 'Summarize the following conversation in a concise form, preserving key information.' },
-        { role: 'user', content: conversation },
-      ],
-      temperature: 0,
-    });
+    // 超时保护：LLM 调用超时后降级为简单截断，防止 Agent 无限阻塞
+    const timeoutMs = this.config.compressTimeoutMs ?? 30_000;
+    try {
+      const resp = await Promise.race([
+        this.config.summaryModel.complete({
+          messages: [
+            { role: 'system', content: 'Summarize the following conversation in a concise form, preserving key information.' },
+            { role: 'user', content: conversation },
+          ],
+          temperature: 0,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('LLM compress timeout')), timeoutMs),
+        ),
+      ]);
 
-    const summary: Message = {
-      role: 'system',
-      content: `[Conversation summary]\n${resp.content}`,
-    };
+      const summary: Message = {
+        role: 'system',
+        content: `[Conversation summary]\n${resp.content}`,
+      };
 
-    return [...systemMsgs, summary, ...recentMsgs];
+      return [...systemMsgs, summary, ...recentMsgs];
+    } catch {
+      // LLM 压缩失败或超时，降级为简单截断
+      return this.trim(messages, 0);
+    }
   }
 }

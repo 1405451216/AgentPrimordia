@@ -1,5 +1,5 @@
 import type { Provider } from './provider.js';
-import type { CompletionRequest, CompletionResponse, ToolCallRequest, ToolCallResponse, Chunk, ModelInfo } from '../types.js';
+import type { CompletionRequest, CompletionResponse, ToolCallRequest, ToolCallResponse, Chunk, ModelInfo, Message } from '../types.js';
 
 // ===== LLM Cache =====
 
@@ -25,7 +25,11 @@ export interface LLMCache {
   invalidate(pattern?: string): void;
 }
 
-// ===== In-Memory Cache (exact match) =====
+// ===== In-Memory Cache (LRU eviction, O(1) get/put) =====
+// P4-A4: 升级为真正的 LRU 缓存，利用 Map 的插入顺序特性实现 O(1) 淘汰。
+// 与 Go 端 fingerprintCache (container/list + map) 对齐。
+// get() 时删除并重新插入，将条目移到最新位置；
+// set() 超容量时删除最旧条目（Map 迭代器的第一个元素）。
 
 export class InMemoryCache implements LLMCache {
   private store: Map<string, CacheEntry> = new Map();
@@ -39,14 +43,23 @@ export class InMemoryCache implements LLMCache {
 
   async get(key: string): Promise<CacheEntry | null> {
     const entry = this.store.get(key);
-    if (entry) { this.hits++; return entry; }
+    if (entry) {
+      // P4-A4: LRU — 删除并重新插入，将条目移到最新位置
+      this.store.delete(key);
+      this.store.set(key, entry);
+      this.hits++;
+      return entry;
+    }
     this.misses++;
     return null;
   }
 
   async set(key: string, entry: CacheEntry): Promise<void> {
-    if (this.store.size >= this.maxSize) {
-      // Evict oldest entry
+    // 如果 key 已存在，先删除（更新位置）
+    if (this.store.has(key)) {
+      this.store.delete(key);
+    } else if (this.store.size >= this.maxSize) {
+      // P4-A4: LRU 淘汰 — 删除最旧条目（Map 迭代器的第一个元素）
       const oldest = this.store.keys().next().value;
       if (oldest) this.store.delete(oldest);
     }
@@ -87,7 +100,7 @@ export class FingerprintCache implements LLMCache {
     this.inner = new InMemoryCache(maxSize);
   }
 
-  static fingerprint(messages: import('../types.js').Message[], model?: string): string {
+  static fingerprint(messages: Message[], model?: string): string {
     const parts = messages.map((m) => `${m.role}:${m.content}`).join('|');
     return `${model ?? ''}::${parts}`;
   }
@@ -353,7 +366,7 @@ export class RateLimiter {
 
 export interface BatchRequest {
   id: string;
-  messages: import('../types.js').Message[];
+  messages: Message[];
   model?: string;
 }
 

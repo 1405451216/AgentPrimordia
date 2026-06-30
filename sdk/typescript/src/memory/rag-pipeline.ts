@@ -4,7 +4,7 @@
  * 流程: 文档加载 → 策略切分 → 可选语义优化 → 向量化 → 存储
  */
 
-import { RAGStore } from './rag.js';
+import type { RAGStore } from './rag.js';
 import type { RAGDocument } from './rag.js';
 
 // ===== 切分策略 =====

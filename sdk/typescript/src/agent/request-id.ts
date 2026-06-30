@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { Message, AgentMetrics } from '../types.js';
 
 // ===== Request ID Propagation =====
 
@@ -29,14 +30,14 @@ export function getRequestID(): string {
 
 export interface ContextWindowStrategy {
   /** Trim messages to fit within a token budget. */
-  trim(messages: import('../types.js').Message[], maxTokens: number): import('../types.js').Message[];
+  trim(messages: Message[], maxTokens: number): Message[];
 }
 
 /** Keep last N messages strategy. */
 export class KeepLastNStrategy implements ContextWindowStrategy {
   constructor(private n: number = 20) {}
 
-  trim(messages: import('../types.js').Message[], _maxTokens: number): import('../types.js').Message[] {
+  trim(messages: Message[], _maxTokens: number): Message[] {
     if (messages.length <= this.n) return messages;
     const system = messages.filter((m) => m.role === 'system');
     const rest = messages.filter((m) => m.role !== 'system');
@@ -49,7 +50,7 @@ export class KeepLastNStrategy implements ContextWindowStrategy {
 export class TokenBudgetStrategy implements ContextWindowStrategy {
   constructor(private charsPerToken: number = 4) {}
 
-  trim(messages: import('../types.js').Message[], maxTokens: number): import('../types.js').Message[] {
+  trim(messages: Message[], maxTokens: number): Message[] {
     const maxChars = maxTokens * this.charsPerToken;
     const system = messages.filter((m) => m.role === 'system');
     const rest = messages.filter((m) => m.role !== 'system');
@@ -61,7 +62,7 @@ export class TokenBudgetStrategy implements ContextWindowStrategy {
     if (budget <= 0) return system;
 
     // Keep as many recent messages as fit
-    const kept: import('../types.js').Message[] = [];
+    const kept: Message[] = [];
     let used = 0;
     for (let i = rest.length - 1; i >= 0; i--) {
       const msgChars = rest[i].content.length;
@@ -79,8 +80,8 @@ export interface Checkpoint {
   id: string;
   sessionID: string;
   turn: number;
-  messages: import('../types.js').Message[];
-  metrics: import('../types.js').AgentMetrics;
+  messages: Message[];
+  metrics: AgentMetrics;
   createdAt: string;
 }
 

@@ -108,3 +108,95 @@ export class ResilientProvider implements Provider {
     throw lastErr ?? new Error('all providers failed');
   }
 }
+
+// ===== P4-A3: RateLimitedProvider — 令牌桶限流 Provider 包装器 =====
+// 与 Go 端 RateLimitedProvider 对齐，使用令牌桶算法平滑 LLM API 调用速率。
+// 防止突发流量触发 429 Too Many Requests，适用于多 Agent 共享 API 配额场景。
+//
+// 使用方式：
+//   const provider = new RateLimitedProvider(openaiProvider, { maxRPM: 60, burst: 10 });
+//   const agent = new ReActAgent({ model: provider, ... });
+
+export interface RateLimitConfig {
+  /** 每分钟最大请求数（RPM），默认 60 */
+  maxRPM?: number;
+  /** 突发容量（允许短时间内超出 RPM 的最大请求数），默认为 maxRPM */
+  burst?: number;
+  /** 最大等待时间（毫秒），超时则抛错，默认 30000 */
+  maxWaitMs?: number;
+}
+
+export class RateLimitedProvider implements Provider {
+  private inner: Provider;
+  private tokens: number;
+  private maxTokens: number;
+  private refillRate: number; // tokens per millisecond
+  private lastRefill: number;
+  private maxWaitMs: number;
+
+  constructor(inner: Provider, config?: RateLimitConfig) {
+    this.inner = inner;
+    const rpm = config?.maxRPM ?? 60;
+    this.maxTokens = config?.burst ?? rpm;
+    this.tokens = this.maxTokens;
+    this.refillRate = rpm / 60000; // tokens per millisecond
+    this.lastRefill = Date.now();
+    this.maxWaitMs = config?.maxWaitMs ?? 30000;
+  }
+
+  async complete(req: CompletionRequest): Promise<CompletionResponse> {
+    await this.acquire();
+    return this.inner.complete(req);
+  }
+
+  async callTools(req: ToolCallRequest): Promise<ToolCallResponse> {
+    await this.acquire();
+    return this.inner.callTools(req);
+  }
+
+  async *stream(req: CompletionRequest): AsyncIterable<Chunk> {
+    await this.acquire();
+    if (this.inner.stream) {
+      yield* this.inner.stream(req);
+    } else {
+      const resp = await this.inner.complete(req);
+      yield { content: resp.content, done: true, usage: resp.usage };
+    }
+  }
+
+  info(): ModelInfo {
+    return this.inner.info();
+  }
+
+  /** 获取当前可用令牌数 */
+  availableTokens(): number {
+    this.refill();
+    return Math.floor(this.tokens);
+  }
+
+  private async acquire(): Promise<void> {
+    const waitStart = Date.now();
+    while (true) {
+      this.refill();
+      if (this.tokens >= 1) {
+        this.tokens -= 1;
+        return;
+      }
+      // 计算等待时间
+      const needed = 1 - this.tokens;
+      const waitMs = Math.ceil(needed / this.refillRate);
+      if (Date.now() - waitStart + waitMs > this.maxWaitMs) {
+        throw new Error(`Rate limit exceeded: would need to wait more than ${this.maxWaitMs}ms`);
+      }
+      await new Promise((r) => setTimeout(r, Math.min(waitMs, 100)));
+    }
+  }
+
+  private refill(): void {
+    const now = Date.now();
+    const elapsed = now - this.lastRefill;
+    this.tokens = Math.min(this.maxTokens, this.tokens + elapsed * this.refillRate);
+    this.lastRefill = now;
+  }
+}
+

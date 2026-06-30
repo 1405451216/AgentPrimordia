@@ -5,7 +5,7 @@ import type {
   ToolCallResponse,
   Chunk,
   ModelInfo,
-  ProviderConfig,
+  ToolCall,
 } from '../types.js';
 
 /** LLM Provider 接口，与 Go 端 llm.Provider 对齐。
@@ -35,18 +35,18 @@ export interface Provider {
  */
 export class MockProvider implements Provider {
   private response: string;
-  private toolCalls: import('../types.js').ToolCall[];
+  private toolCalls: ToolCall[];
   private shouldError: boolean;
   private delay: number;
 
-  constructor(opts?: { response?: string; toolCalls?: import('../types.js').ToolCall[]; error?: boolean; delay?: number }) {
+  constructor(opts?: { response?: string; toolCalls?: ToolCall[]; error?: boolean; delay?: number }) {
     this.response = opts?.response ?? 'mock response';
     this.toolCalls = opts?.toolCalls ?? [];
     this.shouldError = opts?.error ?? false;
     this.delay = opts?.delay ?? 0;
   }
 
-  async complete(req: CompletionRequest): Promise<CompletionResponse> {
+  async complete(_req: CompletionRequest): Promise<CompletionResponse> {
     if (this.delay > 0) {
       await new Promise((r) => setTimeout(r, this.delay));
     }
@@ -61,7 +61,7 @@ export class MockProvider implements Provider {
     };
   }
 
-  async *stream(req: CompletionRequest): AsyncIterable<Chunk> {
+  async *stream(_req: CompletionRequest): AsyncIterable<Chunk> {
     if (this.shouldError) {
       throw new Error('mock error');
     }
@@ -71,7 +71,7 @@ export class MockProvider implements Provider {
     }
   }
 
-  async callTools(req: ToolCallRequest): Promise<ToolCallResponse> {
+  async callTools(_req: ToolCallRequest): Promise<ToolCallResponse> {
     if (this.shouldError) {
       throw new Error('mock error');
     }

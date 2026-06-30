@@ -258,6 +258,10 @@ jobs:
         working-directory: ../sdk/typescript
         run: npx tsc --noEmit
 
+      - name: Lint (ESLint)
+        working-directory: ../sdk/typescript
+        run: npm run lint
+
       - name: Build
         working-directory: ../sdk/typescript
         run: npm run build

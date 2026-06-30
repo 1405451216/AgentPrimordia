@@ -1,7 +1,5 @@
 import * as fs from 'node:fs';
-import * as path from 'node:path';
-import type { Provider } from '../llm/provider.js';
-import { RateLimiter, BatchProcessor } from '../llm/cache-structured.js';
+import type { RateLimiter, BatchProcessor } from '../llm/cache-structured.js';
 import type { BatchRequest, BatchResult } from '../llm/cache-structured.js';
 
 // ===== Config Hot Reload =====
@@ -73,7 +71,7 @@ export class ConfigWatcher {
 
       try {
         const newConfig = JSON.parse(content);
-        const oldConfig = this.currentConfig;
+        const _oldConfig = this.currentConfig;
         this.currentConfig = newConfig;
 
         if (this.onUpdate) {

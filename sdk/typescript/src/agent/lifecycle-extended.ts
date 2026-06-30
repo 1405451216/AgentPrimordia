@@ -1,5 +1,3 @@
-import type { ReActAgent } from './react-loop.js';
-import type { Response } from '../types.js';
 
 // ===== Graceful Shutdown =====
 

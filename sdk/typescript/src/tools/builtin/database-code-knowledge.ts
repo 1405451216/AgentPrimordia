@@ -1,3 +1,7 @@
+import * as os from 'node:os';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import { execFile } from 'node:child_process';
 import type { Tool } from '../../types.js';
 
 /**
@@ -63,72 +67,178 @@ export class DatabaseTool implements Tool {
   }
 }
 
+// ===== P3-3: Code Execution Tool（与 Go 端 code_execution.go 对齐） =====
+
+const CODE_EXEC_DEFAULT_TIMEOUT = 10; // seconds
+const CODE_EXEC_MAX_OUTPUT_SIZE = 10 * 1024; // 10KB
+
+/** 根据语言返回运行时命令和临时文件扩展名（与 Go 端 runtimeCommand 对齐） */
+function runtimeCommand(language: string): { cmd: string; ext: string } {
+  switch (language) {
+    case 'python':
+      return { cmd: process.platform === 'win32' ? 'python' : 'python3', ext: '.py' };
+    case 'javascript':
+      return { cmd: 'node', ext: '.js' };
+    case 'go':
+      return { cmd: 'go', ext: '.go' };
+    default:
+      return { cmd: '', ext: '' };
+  }
+}
+
+/** 返回语言的显示名称 */
+function languageDisplayName(lang: string): string {
+  switch (lang) {
+    case 'python': return 'Python';
+    case 'javascript': return 'Node.js';
+    case 'go': return 'Go';
+    default: return lang;
+  }
+}
+
+/** 构建代码执行的环境变量（隔离，与 Go 端 buildCodeExecEnv 对齐） */
+function buildCodeExecEnv(language: string): Record<string, string> {
+  const env: Record<string, string> = { PATH: process.env.PATH ?? '' };
+  for (const name of ['HOME', 'TEMP', 'TMP', 'USERPROFILE']) {
+    const v = process.env[name];
+    if (v) env[name] = v;
+  }
+  // Go 运行时额外需要 GOPATH/GOROOT/GOCACHE 等
+  if (language === 'go') {
+    for (const name of ['GOPATH', 'GOROOT', 'GOCACHE', 'GOMODCACHE', 'LOCALAPPDATA', 'APPDATA', 'SYSTEMROOT', 'USERPROFILE']) {
+      const v = process.env[name];
+      if (v) env[name] = v;
+    }
+  }
+  return env;
+}
+
 /**
  * Code execution tool — run code in a sandboxed environment.
- * Uses Node.js child_process with restrictions.
+ *
+ * 与 Go 端 CodeExecution 对齐，支持 Python、JavaScript、Go 三种语言。
+ * 通过 child_process 执行，具有超时控制、输出截断、环境变量隔离。
+ *
+ * 安全警告：此工具 NOT a sandbox，代码直接在主机上运行。
+ * 仅在可信环境中启用（设置 AP_ALLOW_CODE_EXECUTION=true）。
  */
 export class CodeExecutionTool implements Tool {
   name = 'code_execution';
-  description = 'Execute JavaScript/TypeScript code in a sandboxed environment';
+  description = 'Execute code with timeout and output limits. Supports Python, JavaScript, and Go. ' +
+    'WARNING: This is NOT a security sandbox. Code runs directly on the host. ' +
+    'Enable only in trusted environments by setting AP_ALLOW_CODE_EXECUTION=true.';
   parameters = {
     type: 'object',
     properties: {
-      language: { type: 'string', enum: ['javascript', 'typescript'], description: 'Programming language' },
-      code: { type: 'string', description: 'Code to execute' },
+      language: { type: 'string', enum: ['python', 'javascript', 'go'], description: 'Programming language: python, javascript, or go' },
+      code: { type: 'string', description: 'Source code to execute' },
       timeout: { type: 'number', description: 'Execution timeout in seconds (default: 10)' },
     },
-    required: ['code'],
+    required: ['language', 'code'],
   };
 
-  private timeoutMs: number;
-  private maxOutputLength: number;
+  private defaultTimeout: number;
+  private maxOutputSize: number;
 
-  constructor(opts?: { timeoutMs?: number; maxOutputLength?: number }) {
-    this.timeoutMs = opts?.timeoutMs ?? 10_000;
-    this.maxOutputLength = opts?.maxOutputLength ?? 10_000;
+  constructor(opts?: { timeoutMs?: number; maxOutputLength?: number; defaultTimeoutSec?: number }) {
+    this.defaultTimeout = opts?.defaultTimeoutSec ?? CODE_EXEC_DEFAULT_TIMEOUT;
+    this.maxOutputSize = opts?.maxOutputLength ?? CODE_EXEC_MAX_OUTPUT_SIZE;
   }
 
   async execute(args: Record<string, unknown>): Promise<string> {
+    // 安全门控
+    if (process.env.AP_ALLOW_CODE_EXECUTION !== 'true') {
+      return 'code_execution is disabled by default for security reasons. ' +
+        'It is NOT a sandbox and runs arbitrary code on the host. ' +
+        'Set AP_ALLOW_CODE_EXECUTION=true to enable it only in trusted environments.';
+    }
+
+    const language = (args.language as string)?.toLowerCase().trim();
+    if (!language) return 'Error: parameter "language" is required';
+
     const code = args.code as string;
-    if (!code?.trim()) return 'Error: code is required';
+    if (!code?.trim()) return 'Error: parameter "code" cannot be empty';
 
-    const language = (args.language as string) ?? 'javascript';
-    const timeout = ((args.timeout as number) ?? 10) * 1000;
+    const timeoutSec = (args.timeout as number) ?? this.defaultTimeout;
 
-    // For safety, we use a restricted eval approach
-    // In production, this should use a proper sandbox (vm2, isolated-vm, etc.)
+    // 确定运行时命令和文件扩展名
+    const { cmd: cmdName, ext } = runtimeCommand(language);
+    if (!cmdName) {
+      return `Error: unsupported language: ${language} (supported: python, javascript, go)`;
+    }
+
+    // 创建临时文件
+    const tmpDir = os.tmpdir();
+    const tmpFile = path.join(tmpDir, `code_exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`);
+
     try {
-      // Capture console output
-      const logs: string[] = [];
-      const mockConsole = {
-        log: (...args: unknown[]) => logs.push(args.map(String).join(' ')),
-        error: (...args: unknown[]) => logs.push('[ERROR] ' + args.map(String).join(' ')),
-        warn: (...args: unknown[]) => logs.push('[WARN] ' + args.map(String).join(' ')),
-        info: (...args: unknown[]) => logs.push('[INFO] ' + args.map(String).join(' ')),
+      fs.writeFileSync(tmpFile, code, 'utf-8');
+
+      // 构建执行命令参数
+      const cmdArgs = language === 'go' ? ['run', tmpFile] : [tmpFile];
+
+      // 执行
+      const result = await new Promise<{ stdout: string; exitCode: number; timedOut: boolean }>((resolve) => {
+        const proc = execFile(cmdName, cmdArgs, {
+          env: buildCodeExecEnv(language),
+          cwd: os.tmpdir(),
+          timeout: timeoutSec * 1000,
+          maxBuffer: this.maxOutputSize * 2,
+        }, (err, stdout, stderr) => {
+          const output = stdout + (stderr ? '\n' + stderr : '');
+          if (err) {
+            const exitCode = (err as NodeJS.ErrnoException).code ?? 1;
+            // Node.js execFile timeout: err.killed=true, err.signal='SIGTERM'
+            const execErr = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
+            const timedOut = execErr.killed === true && execErr.signal === 'SIGTERM';
+            resolve({ stdout: output, exitCode: typeof exitCode === 'number' ? exitCode : 1, timedOut });
+          } else {
+            resolve({ stdout: output, exitCode: 0, timedOut: false });
+          }
+        });
+        // Handle timeout kill
+        proc.on('error', () => {
+          resolve({ stdout: `runtime '${cmdName}' not found. Please install ${languageDisplayName(language)} and ensure it is in your PATH.`, exitCode: 1, timedOut: false });
+        });
+      });
+
+      // 超时处理
+      if (result.timedOut) {
+        const outputStr = result.stdout || '(no output before timeout)';
+        return JSON.stringify({
+          language,
+          exit_code: result.exitCode,
+          output: `execution timed out after ${timeoutSec} seconds\n${outputStr}`,
+          truncated: false,
+        }, null, 2);
+      }
+
+      // 输出截断
+      let outputStr = result.stdout;
+      let truncated = false;
+      if (this.maxOutputSize > 0 && outputStr.length > this.maxOutputSize) {
+        outputStr = outputStr.slice(0, this.maxOutputSize) + '\n... [output truncated, exceeded 10KB limit]';
+        truncated = true;
+      }
+
+      const resultObj = {
+        language,
+        exit_code: result.exitCode,
+        output: outputStr,
+        truncated,
       };
 
-      // Create a function with restricted scope
-      const fn = new Function('console', `"use strict";\n${code}`);
-      const result = await Promise.race([
-        Promise.resolve(fn(mockConsole)),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Execution timeout')), Math.min(timeout, this.timeoutMs))
-        ),
-      ]);
+      const resultJSON = JSON.stringify(resultObj, null, 2);
 
-      let output = logs.join('\n');
-      if (result !== undefined) {
-        output += (output ? '\n' : '') + `Result: ${typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)}`;
+      if (result.exitCode !== 0) {
+        return `Error: ${resultJSON}`;
       }
-      if (!output) output = '(no output)';
-
-      if (output.length > this.maxOutputLength) {
-        output = output.slice(0, this.maxOutputLength) + '\n... (truncated)';
-      }
-
-      return output;
+      return resultJSON;
     } catch (err) {
       return `Error: ${(err as Error).message}`;
+    } finally {
+      // 清理临时文件
+      try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
     }
   }
 }

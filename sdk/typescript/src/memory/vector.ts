@@ -17,7 +17,7 @@ interface HNSWNode {
 const DEFAULT_M = 16; // max connections per node per layer (except layer 0 which is 2*M)
 const DEFAULT_EF_CONSTRUCTION = 200; // search width during construction
 const DEFAULT_EF_SEARCH = 50; // search width during query
-const ML = 1 / Math.log(2); // level generation factor
+const _ML = 1 / Math.log(2); // level generation factor
 const BRUTE_FORCE_THRESHOLD = 100; // below this size, brute-force is faster
 
 export class VectorStore {
@@ -243,7 +243,7 @@ export class VectorStore {
     }
   }
 
-  private greedySearchLayer(query: number[], entryPoint: number, layer: number, ef: number): number {
+  private greedySearchLayer(query: number[], entryPoint: number, layer: number, _ef: number): number {
     let current = entryPoint;
     let currentDist = cosineSimilarity(query, this.nodes[current].vector);
     let improved = true;

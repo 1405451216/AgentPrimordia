@@ -323,7 +323,7 @@ export class StepExecutor {
           }
           break;
 
-        case 'parallel':
+        case 'parallel': {
           // Execute parallel steps concurrently
           const parallelResults = await Promise.all(
             (step.config.parallelSteps ?? []).map(async stepId => {
@@ -335,6 +335,7 @@ export class StepExecutor {
           );
           output = parallelResults.join('\n');
           break;
+        }
 
         case 'sequential':
           output = input;

@@ -63,7 +63,7 @@ export class ReasoningEngine {
     messages: Message[],
     toolDefs: ToolDefinition[],
   ): Promise<Thought> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
 
     if (toolDefs.length > 0) {
       // 有工具定义时，先尝试工具调用
@@ -106,7 +106,7 @@ export class ReasoningEngine {
     messages: Message[],
     toolDefs: ToolDefinition[],
   ): Promise<Thought> {
-    const startTime = Date.now();
+    const _startTime = Date.now();
 
     if (!this.config.provider.stream) {
       // 不支持流式，回退到同步推理

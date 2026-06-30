@@ -3,7 +3,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { ToolRegistry } from '../tools/registry.js';
-import type { AgentPool, PoolTask, PoolResult } from '../pool/agent-pool.js';
+import type { AgentPool } from '../pool/agent-pool.js';
 
 // ===== Admin Handler Config =====
 

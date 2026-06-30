@@ -34,6 +34,13 @@ export interface MCPServerInfo {
   version: string;
 }
 
+// P3-3: Prompt 定义（与 Go 端 PromptDefinition 对齐）
+export interface MCPPromptDefinition {
+  name: string;
+  description?: string;
+  arguments?: Array<{ name: string; description?: string; required?: boolean }>;
+}
+
 export interface MCPResource {
   uri: string;
   name: string;
@@ -389,6 +396,47 @@ export class MCPClient {
     return this.tools;
   }
 
+  // P3-3: Prompt 支持（与 Go 端 ListPrompts/GetPrompt 对齐）
+
+  private prompts: MCPPromptDefinition[] = [];
+
+  /** List available prompts from the server */
+  async listPrompts(): Promise<MCPPromptDefinition[]> {
+    const resp = await this.sendRequest('prompts/list', null, this.config.timeout ?? DEFAULT_TIMEOUT);
+    if (resp.error) {
+      throw new Error(`MCP prompts/list failed: ${resp.error.message}`);
+    }
+    const result = resp.result as { prompts?: MCPPromptDefinition[] } | undefined;
+    this.prompts = result?.prompts ?? [];
+    return this.prompts;
+  }
+
+  /** Get a specific prompt by name with optional arguments */
+  async getPrompt(name: string, args?: Record<string, string>): Promise<string> {
+    const resp = await this.sendRequest('prompts/get', { name, arguments: args ?? {} }, this.config.timeout ?? DEFAULT_TIMEOUT);
+    if (resp.error) {
+      throw new Error(`MCP prompts/get failed: ${resp.error.message}`);
+    }
+    const result = resp.result as { messages?: Array<{ content?: { text?: string } }> } | undefined;
+    // 返回第一条消息的文本内容
+    return result?.messages?.[0]?.content?.text ?? '';
+  }
+
+  /** Get the list of discovered prompts */
+  listDiscoveredPrompts(): MCPPromptDefinition[] {
+    return this.prompts;
+  }
+
+  // P3-3: Ping 心跳检测（与 Go 端 Ping 对齐）
+
+  /** Send a ping to the server to check if it's alive */
+  async ping(): Promise<void> {
+    const resp = await this.sendRequest('ping', null, this.config.timeout ?? DEFAULT_TIMEOUT);
+    if (resp.error) {
+      throw new Error(`MCP ping failed: ${resp.error.message}`);
+    }
+  }
+
   /** Get server info */
   getServerInfo(): MCPServerInfo | null {
     return this.serverInfo;
@@ -432,6 +480,7 @@ export class MCPClient {
     if (!this.connected || !this.transport) {
       this.tools = [];
       this.resources = [];
+      this.prompts = [];
       this.connected = false;
       return;
     }
@@ -447,6 +496,7 @@ export class MCPClient {
     this.transport = null;
     this.tools = [];
     this.resources = [];
+    this.prompts = [];
     this.serverInfo = null;
     this.connected = false;
   }

@@ -120,8 +120,12 @@ export class InjectionDetector {
   detect(text: string): InjectionDetectionResult {
     const found: { type: string; severity: 'low' | 'medium' | 'high'; description: string }[] = [];
 
+    // P3-2: 对文本进行 leet-speak 归一化，检测变形攻击（与 Go 端 normalizeForCheck 对齐）
+    const normalized = normalizeForCheck(text);
+
     for (const pattern of [...this.patterns, ...this.customPatterns]) {
-      if (pattern.regex.test(text)) {
+      // 同时检查原始文本和归一化后的文本
+      if (pattern.regex.test(text) || pattern.regex.test(normalized)) {
         found.push({
           type: pattern.type,
           severity: pattern.severity,
@@ -427,6 +431,406 @@ export class Trie {
       }
     }
     return c;
+  }
+}
+
+// ===== P3-2: Go-style 统一规则引擎（与 Go 端 engine.go + rule 对齐） =====
+
+/** 检查点类型，与 Go 端 CheckPoint 对齐 */
+export type CheckPoint = 'input' | 'output';
+
+/** 规则动作，与 Go 端 Action 对齐 */
+export type GuardrailAction = 'pass' | 'reject' | 'sanitize' | 'flag';
+
+/** 严重级别，与 Go 端 Severity 对齐 */
+export type GuardrailSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+/** 规则检查结果，与 Go 端 Result 对齐 */
+export interface GuardrailRuleResult {
+  ruleName: string;
+  action: GuardrailAction;
+  severity: GuardrailSeverity;
+  message: string;
+  sanitized?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/** 检查报告，与 Go 端 Report 对齐 */
+export interface GuardrailReport {
+  passed: boolean;
+  results: GuardrailRuleResult[];
+  action: GuardrailAction;
+}
+
+/** 规则接口，与 Go 端 Rule 接口对齐 */
+export interface GuardrailRule {
+  name(): string;
+  check(input: string, point: CheckPoint): GuardrailRuleResult;
+}
+
+// ===== Leet-speak 归一化（与 Go 端 normalizeForCheck 对齐） =====
+
+/** 对输入进行归一化处理，检测变形攻击。
+ *
+ * 将 leet-speak 替换回原始字符：
+ * - 0 → o, 1 → i, 3 → e, 5 → s, 7 → t, @ → a
+ */
+export function normalizeForCheck(s: string): string {
+  let result = s.toLowerCase();
+  const replacements: Array<[string, string]> = [
+    ['0', 'o'], ['1', 'i'], ['3', 'e'], ['5', 's'], ['7', 't'], ['@', 'a'],
+  ];
+  for (const [from, to] of replacements) {
+    result = result.replaceAll(from, to);
+  }
+  return result;
+}
+
+// ===== PromptInjectionRule（与 Go 端 injection_rule.go 对齐） =====
+
+export interface PromptInjectionRuleConfig {
+  action?: GuardrailAction;
+  severity?: GuardrailSeverity;
+}
+
+/** Prompt 注入检测规则，与 Go 端 PromptInjectionRule 对齐。
+ *
+ * 检测常见的 Prompt 注入攻击模式，包括：
+ * - 忽略/遗忘之前指令
+ * - 角色劫持（"you are now a..."）
+ * - 伪装系统角色
+ * - 特殊 token 注入（<|im_start|>, [INST]）
+ * - 越狱/DAN 模式
+ * - Leet-speak 变形检测
+ */
+export class PromptInjectionRule implements GuardrailRule {
+  private action: GuardrailAction;
+  private severity: GuardrailSeverity;
+  private patterns: RegExp[];
+  private keywords: string[];
+
+  constructor(config?: PromptInjectionRuleConfig) {
+    this.action = config?.action ?? 'reject';
+    this.severity = config?.severity ?? 'high';
+    this.patterns = [
+      /ignore\s+(previous|above|all)\s+instructions/i,
+      /forget\s+(everything|all|previous)/i,
+      /you\s+are\s+now\s+a/i,
+      /pretend\s+(you\s+are|to\s+be)/i,
+      /disregard\s+(all|any|previous|the)\s+(rules|instructions|guidelines)/i,
+      /system\s*:\s*/i,
+      /<\|im_start\|>/i,
+      /\[INST\]/i,
+      /jailbreak/i,
+      /DAN\s+mode/i,
+    ];
+    this.keywords = [
+      'system prompt',
+      '忽略之前的指令',
+      '忽略以上指令',
+      '忽略所有指令',
+      '越狱',
+      '解锁模式',
+    ];
+  }
+
+  name(): string { return 'prompt_injection'; }
+
+  check(input: string, _point: CheckPoint): GuardrailRuleResult {
+    const lower = input.toLowerCase();
+    const normalized = normalizeForCheck(input);
+    const detected: string[] = [];
+
+    for (const p of this.patterns) {
+      p.lastIndex = 0;
+      if (p.test(normalized)) {
+        detected.push(p.source);
+      }
+    }
+
+    for (const kw of this.keywords) {
+      const kwLower = kw.toLowerCase();
+      if (lower.includes(kwLower) || normalized.includes(kwLower)) {
+        detected.push(kw);
+      }
+    }
+
+    if (detected.length === 0) {
+      return { ruleName: this.name(), action: 'pass', severity: this.severity, message: '' };
+    }
+
+    return {
+      ruleName: this.name(),
+      action: this.action,
+      severity: this.severity,
+      message: 'potential prompt injection detected',
+      metadata: { matches: detected },
+    };
+  }
+}
+
+// ===== OutputSafetyRule（与 Go 端 output_rule.go 对齐） =====
+
+export interface OutputSafetyRuleConfig {
+  action?: GuardrailAction;
+  severity?: GuardrailSeverity;
+  detectCodeExecution?: boolean;
+  detectURLs?: boolean;
+  detectFilePaths?: boolean;
+  customPatterns?: string[];
+}
+
+/** 输出安全检查规则，与 Go 端 OutputSafetyRule 对齐。
+ *
+ * 检查 LLM 输出中是否包含不安全内容：
+ * - 危险代码执行（rm -rf, format, curl|sh, exec(), eval()）
+ * - URL 泄露
+ * - 文件路径泄露
+ * - 自定义正则模式
+ */
+export class OutputSafetyRule implements GuardrailRule {
+  private action: GuardrailAction;
+  private severity: GuardrailSeverity;
+  private patterns: RegExp[];
+
+  constructor(config?: OutputSafetyRuleConfig) {
+    this.action = config?.action ?? 'reject';
+    this.severity = config?.severity ?? 'high';
+    this.patterns = [];
+
+    if (config?.detectCodeExecution ?? true) {
+      this.patterns.push(
+        /rm\s+-rf\s+\//i,
+        /del\s+\/[sS]\s+\/[qQ]/i,
+        /format\s+[A-Za-z]:/i,
+        /curl\s+.*\|\s*sh/i,
+        /wget\s+.*\|\s*bash/i,
+        /exec\s*\(/i,
+        /eval\s*\(/i,
+        /subprocess\.(call|run|Popen)/i,
+      );
+    }
+
+    if (config?.detectURLs) {
+      this.patterns.push(/https?:\/\/[^\s<>"]+/g);
+    }
+
+    if (config?.detectFilePaths) {
+      this.patterns.push(
+        /(?:\/etc\/|\/var\/|\/usr\/local\/)[^\s<>"]+/g,
+        /[A-Za-z]:\\(?:Users|Windows|Program Files)[\\/][^\s<>"]+/g,
+      );
+    }
+
+    for (const p of config?.customPatterns ?? []) {
+      try {
+        this.patterns.push(new RegExp(p, 'i'));
+      } catch {
+        // Skip invalid patterns
+      }
+    }
+  }
+
+  name(): string { return 'output_safety'; }
+
+  check(output: string, point: CheckPoint): GuardrailRuleResult {
+    if (point !== 'output') {
+      return { ruleName: this.name(), action: 'pass', severity: this.severity, message: '' };
+    }
+
+    const findings: string[] = [];
+    for (const p of this.patterns) {
+      p.lastIndex = 0;
+      const matches = output.match(p);
+      if (matches) {
+        findings.push(...matches);
+      }
+    }
+
+    if (findings.length === 0) {
+      return { ruleName: this.name(), action: 'pass', severity: this.severity, message: '' };
+    }
+
+    return {
+      ruleName: this.name(),
+      action: this.action,
+      severity: this.severity,
+      message: `unsafe output detected: ${findings.length} pattern(s) matched`,
+      metadata: { findings },
+    };
+  }
+}
+
+// ===== TopicConstraintRule（与 Go 端 topic_rule.go 对齐） =====
+
+export type TopicMode = 'allowlist' | 'denylist';
+
+export interface TopicConstraintRuleConfig {
+  action?: GuardrailAction;
+  severity?: GuardrailSeverity;
+  mode: TopicMode;
+  topics: string[];
+}
+
+/** 话题约束规则，与 Go 端 TopicConstraintRule 对齐。
+ *
+ * 限制对话在允许的话题范围内：
+ * - allowlist 模式：仅允许指定话题（空列表拒绝所有输入）
+ * - denylist 模式：拒绝指定话题
+ */
+export class TopicConstraintRule implements GuardrailRule {
+  private action: GuardrailAction;
+  private severity: GuardrailSeverity;
+  private allowed: string[];
+  private denied: string[];
+  private mode: TopicMode;
+
+  constructor(config: TopicConstraintRuleConfig) {
+    this.action = config.action ?? 'reject';
+    this.severity = config.severity ?? 'medium';
+    this.mode = config.mode;
+    if (config.mode === 'allowlist') {
+      this.allowed = config.topics;
+      this.denied = [];
+    } else {
+      this.allowed = [];
+      this.denied = config.topics;
+    }
+  }
+
+  name(): string { return 'topic_constraint'; }
+
+  check(input: string, _point: CheckPoint): GuardrailRuleResult {
+    const lower = input.toLowerCase();
+
+    if (this.mode === 'denylist') {
+      for (const topic of this.denied) {
+        if (lower.includes(topic.toLowerCase())) {
+          return {
+            ruleName: this.name(),
+            action: this.action,
+            severity: this.severity,
+            message: `topic "${topic}" is not allowed`,
+            metadata: { topic, mode: 'denylist' },
+          };
+        }
+      }
+    } else {
+      // allowlist mode
+      if (this.allowed.length === 0) {
+        return {
+          ruleName: this.name(),
+          action: this.action,
+          severity: this.severity,
+          message: 'no topics are allowed (empty allowlist)',
+          metadata: { mode: 'allowlist' },
+        };
+      }
+      const matchesAllowed = this.allowed.some((topic) =>
+        lower.includes(topic.toLowerCase()),
+      );
+      if (!matchesAllowed) {
+        return {
+          ruleName: this.name(),
+          action: this.action,
+          severity: this.severity,
+          message: 'topic not in allowed list',
+          metadata: { mode: 'allowlist', allowed: this.allowed },
+        };
+      }
+    }
+
+    return { ruleName: this.name(), action: 'pass', severity: this.severity, message: '' };
+  }
+}
+
+// ===== RuleEngine（与 Go 端 Engine 对齐） =====
+
+/** Go-style 规则引擎，与 Go 端 Engine 对齐。
+ *
+ * 支持动态注册规则、统一检查入口（输入/输出）、
+ * 自动处理 reject/sanitize/flag 动作。
+ *
+ * 使用方式：
+ *   const engine = new RuleEngine();
+ *   engine.addRule(new PromptInjectionRule());
+ *   engine.addRule(new OutputSafetyRule());
+ *   const report = engine.checkInput('user input');
+ */
+export class RuleEngine {
+  private rules: GuardrailRule[] = [];
+  private rulesSnapshot: GuardrailRule[] = [];
+
+  addRule(rule: GuardrailRule): void {
+    this.rules.push(rule);
+    this.refreshSnapshot();
+  }
+
+  removeRule(name: string): boolean {
+    const idx = this.rules.findIndex((r) => r.name() === name);
+    if (idx >= 0) {
+      this.rules.splice(idx, 1);
+      this.refreshSnapshot();
+      return true;
+    }
+    return false;
+  }
+
+  /** 获取规则名称列表 */
+  ruleNames(): string[] {
+    return this.rulesSnapshot.map((r) => r.name());
+  }
+
+  /** 获取规则数量 */
+  ruleCount(): number {
+    return this.rulesSnapshot.length;
+  }
+
+  /** 统一检查入口 */
+  check(input: string, point: CheckPoint): GuardrailReport {
+    const report: GuardrailReport = { passed: true, results: [], action: 'pass' };
+
+    if (this.rulesSnapshot.length === 0) {
+      return report;
+    }
+
+    let currentInput = input;
+    for (const rule of this.rulesSnapshot) {
+      const result = rule.check(currentInput, point);
+      report.results.push(result);
+
+      if (result.action === 'reject') {
+        report.passed = false;
+        report.action = 'reject';
+        return report;
+      }
+
+      if (result.action === 'sanitize' && result.sanitized !== undefined) {
+        report.passed = false;
+        report.action = 'sanitize';
+        currentInput = result.sanitized;
+      }
+
+      if (result.action === 'flag' && report.action === 'pass') {
+        report.action = 'flag';
+      }
+    }
+
+    return report;
+  }
+
+  /** 输入检查 */
+  checkInput(input: string): GuardrailReport {
+    return this.check(input, 'input');
+  }
+
+  /** 输出检查 */
+  checkOutput(output: string): GuardrailReport {
+    return this.check(output, 'output');
+  }
+
+  private refreshSnapshot(): void {
+    this.rulesSnapshot = [...this.rules];
   }
 }
 

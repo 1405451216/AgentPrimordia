@@ -1,5 +1,4 @@
 import { VectorStore } from './vector.js';
-import type { Memory } from './store.js';
 import type { MemoryEpisode } from '../types.js';
 import type { Provider } from '../llm/provider.js';
 import { TextSplitter } from '../tools/builtin/index.js';
@@ -13,6 +12,48 @@ export interface RAGDocument {
   embedding?: number[];
   score?: number;
   source?: string;
+  /** 检索来源列表（"fts" 和/或 "vector"），与 Go 端 RAGResult.Sources 对齐 */
+  sources?: string[];
+}
+
+// ===== 融合模式（与 Go 端 HybridFusionMode 对齐）=====
+
+/** 混合检索融合模式
+ * - linear: 线性加权融合（向后兼容默认）
+ * - rrf: Reciprocal Rank Fusion，基于排名而非分数，鲁棒性更强
+ */
+export type FusionMode = 'linear' | 'rrf';
+
+/** RAG 检索融合配置（与 Go 端 RAGFusionConfig 对齐）
+ *
+ * 字段可通过构造函数或 setFusionConfig 调整。
+ */
+export interface RAGFusionConfig {
+  /** 融合模式 */
+  fusionMode?: FusionMode;
+  /** FTS 通道权重（仅 linear 模式生效，默认 0.4） */
+  ftsWeight?: number;
+  /** 向量通道权重（仅 linear 模式生效，默认 0.6） */
+  vectorWeight?: number;
+  /** RRF 平滑常数（仅 rrf 模式生效，默认 60）
+   * 经验值来自原始 RRF 论文（Cormack et al., 2009）
+   */
+  rrfK?: number;
+  /** 单通道预取数量，用于增加融合召回率（默认 5）
+   * 最终 fetchK = min(topK + overFetchSize, 2 * topK)
+   */
+  overFetchSize?: number;
+}
+
+/** 默认融合配置 */
+export function defaultFusionConfig(): Required<RAGFusionConfig> {
+  return {
+    fusionMode: 'linear',
+    ftsWeight: 0.4,
+    vectorWeight: 0.6,
+    rrfK: 60,
+    overFetchSize: 5,
+  };
 }
 
 // ===== RAG Store — Hybrid Search (FTS + Vector) =====
@@ -24,29 +65,63 @@ export interface RAGStoreConfig {
   minScore?: number;     // default: 0.3
   chunkSize?: number;    // default: 1000
   chunkOverlap?: number; // default: 200
+  /** 融合配置（与 Go 端 RAGFusionConfig 对齐） */
+  fusion?: RAGFusionConfig;
 }
 
 export class RAGStore {
   private documents: Map<string, RAGDocument> = new Map();
   private vectorStore: VectorStore;
   private ftsIndex: Map<string, Set<string>> = new Map(); // word -> doc IDs
+  /** 预计算的文档 TF 缓存：docId -> word -> count，避免每次搜索重新 tokenize */
+  private docTFCache: Map<string, Map<string, number>> = new Map();
   private config: Required<RAGStoreConfig>;
+  private fusionConfig: Required<RAGFusionConfig>;
   private splitter: TextSplitter;
 
   constructor(vectorDimensions: number = 384, config?: RAGStoreConfig) {
     this.vectorStore = new VectorStore(vectorDimensions);
+    const defaults = defaultFusionConfig();
+    this.fusionConfig = {
+      fusionMode: config?.fusion?.fusionMode ?? defaults.fusionMode,
+      ftsWeight: config?.fusion?.ftsWeight ?? config?.ftsWeight ?? defaults.ftsWeight,
+      vectorWeight: config?.fusion?.vectorWeight ?? config?.vectorWeight ?? defaults.vectorWeight,
+      rrfK: config?.fusion?.rrfK ?? defaults.rrfK,
+      overFetchSize: config?.fusion?.overFetchSize ?? defaults.overFetchSize,
+    };
     this.config = {
-      ftsWeight: config?.ftsWeight ?? 0.4,
-      vectorWeight: config?.vectorWeight ?? 0.6,
+      ftsWeight: this.fusionConfig.ftsWeight,
+      vectorWeight: this.fusionConfig.vectorWeight,
       topK: config?.topK ?? 5,
       minScore: config?.minScore ?? 0.3,
       chunkSize: config?.chunkSize ?? 1000,
       chunkOverlap: config?.chunkOverlap ?? 200,
+      fusion: this.fusionConfig,
     };
     this.splitter = new TextSplitter({
       chunkSize: this.config.chunkSize,
       chunkOverlap: this.config.chunkOverlap,
     });
+  }
+
+  /** 动态调整 RAG 检索融合配置（与 Go 端 SetFusionConfig 对齐）
+   *
+   * 典型用法：根据 A/B 测试结果调整融合权重，或在 QPS 下降时切换到 RRF 模式
+   */
+  setFusionConfig(cfg: RAGFusionConfig): void {
+    const defaults = defaultFusionConfig();
+    this.fusionConfig = {
+      fusionMode: cfg.fusionMode ?? defaults.fusionMode,
+      ftsWeight: cfg.ftsWeight ?? defaults.ftsWeight,
+      vectorWeight: cfg.vectorWeight ?? defaults.vectorWeight,
+      rrfK: cfg.rrfK ?? defaults.rrfK,
+      overFetchSize: cfg.overFetchSize ?? defaults.overFetchSize,
+    };
+  }
+
+  /** 获取当前融合配置 */
+  getFusionConfig(): Required<RAGFusionConfig> {
+    return { ...this.fusionConfig };
   }
 
   /** Add a document to the RAG store (with optional embedding). */
@@ -83,23 +158,51 @@ export class RAGStore {
     }
   }
 
-  /** Hybrid search: combine FTS and vector search results. */
+  /** 计算预取数量（over-fetch 以提升融合召回率） */
+  private computeFetchK(topK: number): number {
+    const fetchK = topK + this.fusionConfig.overFetchSize;
+    return Math.min(fetchK, 2 * topK);
+  }
+
+  /** Hybrid search: combine FTS and vector search results.
+   *
+   * 融合策略由 fusionConfig.fusionMode 决定（与 Go 端对齐）：
+   * - linear: 线性加权融合（向后兼容）
+   * - rrf: Reciprocal Rank Fusion（推荐用于生产）
+   */
   async hybridSearch(query: string, topK?: number, queryEmbedding?: number[]): Promise<RAGDocument[]> {
     const k = topK ?? this.config.topK;
+    const fetchK = this.computeFetchK(k);
 
-    // FTS search
-    const ftsResults = this.ftsSearch(query, k * 2);
+    // FTS search (over-fetch)
+    const ftsResults = this.ftsSearch(query, fetchK);
+
+    if (this.fusionConfig.fusionMode === 'rrf') {
+      return this.hybridSearchRRF(query, ftsResults, k, queryEmbedding);
+    }
+    return this.hybridSearchLinear(ftsResults, k, queryEmbedding);
+  }
+
+  /** 线性加权融合（与 Go 端 hybridSearchLinear 对齐）
+   * FTS 通道和向量通道分别计算分数，按权重相加。
+   */
+  private hybridSearchLinear(
+    ftsResults: { id: string; score: number }[],
+    topK: number,
+    queryEmbedding?: number[],
+  ): RAGDocument[] {
+    const fetchK = this.computeFetchK(topK);
     const ftsMap = new Map<string, number>();
     for (const { id, score } of ftsResults) {
-      ftsMap.set(id, score * this.config.ftsWeight);
+      ftsMap.set(id, score * this.fusionConfig.ftsWeight);
     }
 
     // Vector search (if embedding available)
     const vectorMap = new Map<string, number>();
     if (queryEmbedding) {
-      const vecResults = this.vectorStore.search(queryEmbedding, k * 2);
+      const vecResults = this.vectorStore.search(queryEmbedding, fetchK);
       for (const { id, score } of vecResults) {
-        vectorMap.set(id, score * this.config.vectorWeight);
+        vectorMap.set(id, score * this.fusionConfig.vectorWeight);
       }
     }
 
@@ -115,17 +218,103 @@ export class RAGStore {
       if (totalScore >= this.config.minScore) {
         const doc = this.documents.get(id);
         if (doc) {
-          merged.push({ ...doc, score: totalScore });
+          const sources: string[] = [];
+          if (ftsMap.has(id)) sources.push('fts');
+          if (vectorMap.has(id)) sources.push('vector');
+          merged.push({ ...doc, score: totalScore, sources });
         }
       }
     }
 
     // Sort by score descending
     merged.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    return merged.slice(0, k);
+    return merged.slice(0, topK);
   }
 
-  /** FTS-only search (keyword matching with TF-IDF-like scoring). */
+  /** Reciprocal Rank Fusion 融合算法（与 Go 端 hybridSearchRRF 对齐）
+   *
+   * 公式：RRF_score(d) = Σ 1 / (k + rank_i(d))
+   * 其中 rank_i(d) 是文档 d 在第 i 个通道中的排名（1-based），k 为平滑常数（默认 60）
+   *
+   * 优势：基于排名而非分数，不受通道量纲影响，对长尾 query 鲁棒性更强。
+   * 论文：Cormack, G. V., Clarke, C. L., & Buettcher, S. (2009).
+   * "Reciprocal rank fusion outperforms condorcet and individual rank learning methods."
+   */
+  private hybridSearchRRF(
+    query: string,
+    ftsResults: { id: string; score: number }[],
+    topK: number,
+    queryEmbedding?: number[],
+  ): RAGDocument[] {
+    const k = this.fusionConfig.rrfK > 0 ? this.fusionConfig.rrfK : 60;
+    const fetchK = this.computeFetchK(topK);
+
+    // 记录每个文档在各通道的排名（1-based），用于独立累加 RRF 分数
+    const ftsRanks = new Map<string, number>();
+    const vecRanks = new Map<string, number>();
+    const episodes = new Map<string, RAGDocument>();
+    const sourcesMap = new Map<string, string[]>();
+
+    // FTS 通道排名
+    for (let i = 0; i < ftsResults.length; i++) {
+      const id = ftsResults[i]!.id;
+      const rank = i + 1;
+      if (!ftsRanks.has(id) || rank < ftsRanks.get(id)!) {
+        ftsRanks.set(id, rank);
+      }
+      const doc = this.documents.get(id);
+      if (doc) {
+        episodes.set(id, doc);
+        const sources = sourcesMap.get(id) ?? [];
+        if (!sources.includes('fts')) sources.push('fts');
+        sourcesMap.set(id, sources);
+      }
+    }
+
+    // 向量通道排名
+    if (queryEmbedding) {
+      const vecResults = this.vectorStore.search(queryEmbedding, fetchK);
+      for (let i = 0; i < vecResults.length; i++) {
+        const id = vecResults[i]!.id;
+        const rank = i + 1;
+        if (!vecRanks.has(id) || rank < vecRanks.get(id)!) {
+          vecRanks.set(id, rank);
+        }
+        if (!episodes.has(id)) {
+          const doc = this.documents.get(id);
+          if (doc) episodes.set(id, doc);
+        }
+        const sources = sourcesMap.get(id) ?? [];
+        if (!sources.includes('vector')) sources.push('vector');
+        sourcesMap.set(id, sources);
+      }
+    }
+
+    // 计算 RRF 分数并构造结果
+    // 公式：RRF_score(d) = Σ 1 / (k + rank_i(d))，对每个命中通道独立累加
+    const results: RAGDocument[] = [];
+    for (const [id, doc] of episodes) {
+      let rrfScore = 0;
+      const ftsRank = ftsRanks.get(id);
+      if (ftsRank !== undefined) {
+        rrfScore += 1.0 / (k + ftsRank);
+      }
+      const vecRank = vecRanks.get(id);
+      if (vecRank !== undefined) {
+        rrfScore += 1.0 / (k + vecRank);
+      }
+      results.push({ ...doc, score: rrfScore, sources: sourcesMap.get(id) ?? [] });
+    }
+
+    // Sort by score descending
+    results.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    return results.slice(0, topK);
+  }
+
+  /** FTS-only search (keyword matching with TF-IDF-like scoring).
+   *
+   * 使用预计算的 docTFCache 避免 O(N×M) 重复 tokenize，性能提升显著。
+   */
   private ftsSearch(query: string, topK: number): { id: string; score: number }[] {
     const queryWords = this.tokenize(query);
     if (queryWords.length === 0) return [];
@@ -141,12 +330,11 @@ export class RAGStore {
       const idf = Math.log((totalDocs + 1) / (docIds.size + 1)) + 1;
 
       for (const docId of docIds) {
-        const doc = this.documents.get(docId);
-        if (!doc) continue;
+        // 使用预计算的 TF 缓存，避免每次搜索重新 tokenize
+        const tfMap = this.docTFCache.get(docId);
+        if (!tfMap) continue;
 
-        // TF scoring (term frequency in document)
-        const docWords = this.tokenize(doc.content);
-        const tf = docWords.filter((w) => w === word).length / docWords.length;
+        const tf = (tfMap.get(word) ?? 0) / (tfMap.get('__total__') ?? 1);
 
         const currentScore = scores.get(docId) ?? 0;
         scores.set(docId, currentScore + tf * idf);
@@ -163,12 +351,22 @@ export class RAGStore {
 
   private indexFTS(docId: string, content: string): void {
     const words = this.tokenize(content);
+    const tfMap = new Map<string, number>();
+    let total = 0;
+
     for (const word of words) {
+      // 更新 FTS 倒排索引
       if (!this.ftsIndex.has(word)) {
         this.ftsIndex.set(word, new Set());
       }
       this.ftsIndex.get(word)!.add(docId);
+
+      // 预计算 TF（词频统计）
+      tfMap.set(word, (tfMap.get(word) ?? 0) + 1);
+      total++;
     }
+    tfMap.set('__total__', total);
+    this.docTFCache.set(docId, tfMap);
   }
 
   private tokenize(text: string): string[] {
@@ -194,10 +392,14 @@ export class RAGStore {
     const doc = this.documents.get(id);
     if (!doc) return false;
 
-    // Remove from FTS index
-    const words = this.tokenize(doc.content);
-    for (const word of words) {
-      this.ftsIndex.get(word)?.delete(id);
+    // Remove from FTS index and TF cache
+    const tfMap = this.docTFCache.get(id);
+    if (tfMap) {
+      for (const word of tfMap.keys()) {
+        if (word === '__total__') continue;
+        this.ftsIndex.get(word)?.delete(id);
+      }
+      this.docTFCache.delete(id);
     }
 
     // Remove from vector store
@@ -212,6 +414,7 @@ export class RAGStore {
   clear(): void {
     this.documents.clear();
     this.ftsIndex.clear();
+    this.docTFCache.clear();
     this.vectorStore = new VectorStore(this.vectorStore.dimensions());
   }
 
@@ -368,6 +571,142 @@ export class RAGReranker {
   }
 }
 
+// ===== P4-B1: MMR (Maximal Marginal Relevance) Reranker =====
+// 与 Go 端 MMRReranker 对齐。
+// 在相关性和多样性之间取得平衡：选择与查询相关但与已选结果不太相似的结果。
+// 适用于需要避免重复内容的 RAG 场景。
+//
+// 使用方式：
+//   const reranker = new MMRReranker({ lambda: 0.7 });
+//   const reranked = await reranker.rerank(query, docs, { topK: 5 });
+
+export interface MMRConfig {
+  /** 相关性权重 [0, 1]，越高越偏向相关性；默认 0.7 */
+  lambda?: number;
+}
+
+export interface MMRRerankOptions {
+  /** 返回的最大文档数 */
+  topK?: number;
+  /** 是否去重，默认 true */
+  deduplicate?: boolean;
+}
+
+export class MMRReranker {
+  private lambda: number;
+
+  constructor(config?: MMRConfig) {
+    const lambda = config?.lambda ?? 0.7;
+    // Clamp to [0, 1]
+    this.lambda = Math.max(0, Math.min(1, lambda));
+  }
+
+  /** 返回重排序器名称 */
+  get name(): string {
+    return 'mmr';
+  }
+
+  /** 执行 MMR 重排序 */
+  async rerank(
+    query: string,
+    docs: RAGDocument[],
+    opts?: MMRRerankOptions,
+  ): Promise<RAGDocument[]> {
+    const topK = opts?.topK ?? docs.length;
+    const deduplicate = opts?.deduplicate ?? true;
+
+    if (docs.length <= 1) return docs.slice(0, topK);
+
+    // 去重
+    let candidates = docs;
+    if (deduplicate) {
+      const seen = new Set<string>();
+      candidates = docs.filter((d) => {
+        const key = d.content.slice(0, 100);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    if (candidates.length <= 1) return candidates.slice(0, topK);
+
+    // 计算查询与文档的相关性分数
+    const queryWords = new Set(query.toLowerCase().split(/\s+/).filter((w) => w.length > 1));
+    const relevanceScores = candidates.map((doc) => {
+      const docWords = doc.content.toLowerCase().split(/\s+/);
+      const overlap = docWords.filter((w) => queryWords.has(w)).length;
+      const overlapScore = overlap / Math.max(queryWords.size, 1);
+      // 结合原有分数（如向量相似度分数）
+      return (doc.score ?? 0) * 0.5 + overlapScore * 0.5;
+    });
+
+    // MMR 选择过程
+    const selected: number[] = [];
+    const remaining = Array.from({ length: candidates.length }, (_, i) => i);
+
+    // 第一个选择相关性最高的
+    let bestIdx = 0;
+    let bestScore = -Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const idx = remaining[i];
+      if (relevanceScores[idx] > bestScore) {
+        bestScore = relevanceScores[idx];
+        bestIdx = i;
+      }
+    }
+    selected.push(remaining[bestIdx]);
+    remaining.splice(bestIdx, 1);
+
+    // 逐步选择：最大化 lambda * relevance - (1-lambda) * max_similarity
+    while (selected.length < topK && remaining.length > 0) {
+      let bestMMRIdx = 0;
+      let bestMMRScore = -Infinity;
+
+      for (let i = 0; i < remaining.length; i++) {
+        const idx = remaining[i];
+        // 计算与已选文档的最大相似度
+        let maxSim = 0;
+        for (const selIdx of selected) {
+          const sim = jaccardSimilarity(
+            candidates[idx].content,
+            candidates[selIdx].content,
+          );
+          if (sim > maxSim) maxSim = sim;
+        }
+        // MMR 分数 = lambda * relevance - (1-lambda) * max_similarity
+        const mmrScore = this.lambda * relevanceScores[idx] - (1 - this.lambda) * maxSim;
+        if (mmrScore > bestMMRScore) {
+          bestMMRScore = mmrScore;
+          bestMMRIdx = i;
+        }
+      }
+
+      selected.push(remaining[bestMMRIdx]);
+      remaining.splice(bestMMRIdx, 1);
+    }
+
+    return selected.map((idx) => ({
+      ...candidates[idx],
+      score: relevanceScores[idx],
+    }));
+  }
+}
+
+/** Jaccard 相似度：交集大小 / 并集大小 */
+function jaccardSimilarity(a: string, b: string): number {
+  const setA = new Set(a.toLowerCase().split(/\s+/).filter((w) => w.length > 1));
+  const setB = new Set(b.toLowerCase().split(/\s+/).filter((w) => w.length > 1));
+  if (setA.size === 0 && setB.size === 0) return 1;
+  let intersection = 0;
+  for (const w of setA) {
+    if (setB.has(w)) intersection++;
+  }
+  const union = setA.size + setB.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
+
 // ===== Auto Summarizer =====
 
 export interface SummarizerConfig {
@@ -410,7 +749,7 @@ export class Summarizer {
           topics: parsed.topics ?? [],
         };
       }
-    } catch {}
+    } catch { /* JSON parse failed, fall through to raw response */ }
 
     return { summary: resp.content, topics: [] };
   }

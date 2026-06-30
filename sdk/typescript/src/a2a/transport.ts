@@ -1,7 +1,6 @@
 import * as http from 'node:http';
 import * as net from 'node:net';
 import type { ReActAgent } from '../agent/react-loop.js';
-import type { Response } from '../types.js';
 
 // ===== A2A Message Types =====
 
@@ -355,9 +354,10 @@ export class A2AAuth {
         return { Authorization: `Bearer ${this.config.token}` };
       case 'api_key':
         return { 'X-API-Key': this.config.apiKey ?? '' };
-      case 'basic':
+      case 'basic': {
         const cred = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
         return { Authorization: `Basic ${cred}` };
+      }
       default:
         return {};
     }
@@ -370,9 +370,10 @@ export class A2AAuth {
         return headers.authorization === `Bearer ${this.config.token}`;
       case 'api_key':
         return headers['x-api-key'] === this.config.apiKey;
-      case 'basic':
+      case 'basic': {
         const cred = Buffer.from(`${this.config.username}:${this.config.password}`).toString('base64');
         return headers.authorization === `Basic ${cred}`;
+      }
       default:
         return true;
     }

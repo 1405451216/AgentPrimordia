@@ -7,7 +7,7 @@
  */
 
 export { ReActAgent, HookManager, Lifecycle } from './agent/react-loop.js';
-export type { ReActConfig, HookPoint, HookContext, HookFunc, StreamEvent } from './agent/react-loop.js';
+export type { ReActConfig, HookPoint, HookContext, HookFunc, StreamEvent, RunOptions } from './agent/react-loop.js';
 
 // ===== Phase 1: Engine Enhancements =====
 export { Session } from './agent/session.js';
@@ -55,7 +55,8 @@ export type {
 export { MockProvider } from './llm/provider.js';
 export type { Provider } from './llm/provider.js';
 export { OpenAIProvider, APIError } from './llm/openai.js';
-export { ResilientProvider } from './llm/resilient.js';
+export { ResilientProvider, RateLimitedProvider } from './llm/resilient.js';
+export type { RateLimitConfig } from './llm/resilient.js';
 export { AnthropicProvider } from './llm/anthropic.js';
 export { GeminiProvider } from './llm/gemini.js';
 export { OllamaProvider } from './llm/ollama.js';
@@ -107,8 +108,8 @@ export { VectorStore } from './memory/vector.js';
 export { SqliteStore } from './memory/sqlite-store.js';
 
 // ===== Phase 4: RAG System =====
-export { RAGStore, RAGPipeline, RAGReranker, Summarizer, MemoryCompressor } from './memory/rag.js';
-export type { RAGDocument, RAGStoreConfig, RAGPipelineConfig, RerankOptions, SummarizerConfig } from './memory/rag.js';
+export { RAGStore, RAGPipeline, RAGReranker, Summarizer, MemoryCompressor, defaultFusionConfig, MMRReranker } from './memory/rag.js';
+export type { RAGDocument, RAGStoreConfig, RAGPipelineConfig, RerankOptions, SummarizerConfig, FusionMode, RAGFusionConfig, MMRConfig, MMRRerankOptions } from './memory/rag.js';
 
 // ===== Phase 25: Memory Advanced Features =====
 
@@ -137,12 +138,12 @@ export type { PoolTask, PoolResult } from './pool/agent-pool.js';
 export { Bus } from './events/bus.js';
 export type { EventType, Event } from './events/bus.js';
 
-export { ACL, Sandbox } from './security/sandbox.js';
-export type { AccessLevel } from './security/sandbox.js';
+export { ACL, Sandbox, CommandSandbox, CodeSandbox, CodeSecurityChecker, newArgPattern } from './security/sandbox.js';
+export type { AccessLevel, SandboxConfig, SandboxResult, ArgPattern } from './security/sandbox.js';
 
 // ===== Phase 6: Guardrails =====
-export { PIIDetector, InjectionDetector, TopicFilter, OutputGuardrail, GuardrailEngine, Trie, Sanitizer, GuardrailHook } from './security/guardrails.js';
-export type { PIIPattern, PIIDetectorConfig, PIIDetectionResult, InjectionDetectionResult, TopicFilterConfig, OutputRule, GuardrailConfig, GuardrailResult, SanitizeStrategy, SanitizerConfig, Position, GuardrailHookConfig, GuardrailHookContext } from './security/guardrails.js';
+export { PIIDetector, InjectionDetector, TopicFilter, OutputGuardrail, GuardrailEngine, Trie, Sanitizer, GuardrailHook, PromptInjectionRule, OutputSafetyRule, TopicConstraintRule, RuleEngine, normalizeForCheck } from './security/guardrails.js';
+export type { PIIPattern, PIIDetectorConfig, PIIDetectionResult, InjectionDetectionResult, TopicFilterConfig, OutputRule, GuardrailConfig, GuardrailResult, SanitizeStrategy, SanitizerConfig, Position, GuardrailHookConfig, GuardrailHookContext, CheckPoint, GuardrailAction, GuardrailSeverity, GuardrailRuleResult, GuardrailReport, GuardrailRule, PromptInjectionRuleConfig, OutputSafetyRuleConfig, TopicMode, TopicConstraintRuleConfig } from './security/guardrails.js';
 export { containsShellMetacharacter, validatePathTraversal, resolvePathSafe, InputSanitizer, CommandGuard } from './security/extended.js';
 
 export { MetricsCollector } from './metrics/collector.js';
@@ -206,7 +207,7 @@ export { HTTPTransport, TCPTransport, AgentDiscovery, A2AAuth, A2AAgentServer, A
 export type { A2AMessage, A2AAgentInfo, A2ATransport, HTTPTransportConfig, TCPTransportConfig, DiscoveryConfig, AuthConfig, A2AServerConfig } from './a2a/transport.js';
 
 export { MCPClient } from './mcp/types.js';
-export type { MCPServerConfig, MCPToolDefinition, MCPToolCall, MCPToolResult, MCPListToolsResponse, MCPServerInfo, MCPResource, MCPContentBlock } from './mcp/types.js';
+export type { MCPServerConfig, MCPToolDefinition, MCPToolCall, MCPToolResult, MCPListToolsResponse, MCPServerInfo, MCPResource, MCPContentBlock, MCPPromptDefinition } from './mcp/types.js';
 
 // ===== Phase 11: MCP Registry & Adapter =====
 export { MCPRegistry, MCPAdapter, JSONRPCHandler, A2ATaskManager, A2ABridge, A2ASSETransport } from './mcp/registry-adapter.js';
@@ -323,3 +324,72 @@ export {
   ObjectPool, Marshal, Unmarshal, DecodeString, DecodeBuffer, MarshalBody,
   getRecord, putRecord, getArray, putArray, recordPoolSize, arrayPoolSize,
 } from './jsonutil/pool.js';
+
+// ===== Phase 2: P1 差异化能力 =====
+
+// Edge Runtime 适配
+export { detectRuntime, getWebSocketConstructor, createTimer, supports, resetRuntimeCache } from './edge/runtime.js';
+export type { RuntimeInfo, RuntimeName } from './edge/runtime.js';
+
+// WebSocket 双向流传输
+export { WebSocketTransport, WebSocketA2AServer } from './a2a/websocket-transport.js';
+export type { WebSocketTransportConfig, WSMessageHandler, WSConnectionHandler, WSErrorHandler } from './a2a/websocket-transport.js';
+
+// 类型安全 Builder DSL
+export { createAgent, createBasicAgent, createAgentWithMemory, createAgentWithBudget } from './agent/builder.js';
+
+// Worker Threads 真并行
+export { ComputeWorkerPool, isWorkerThreadsAvailable } from './agent/worker-pool.js';
+export type { WorkerPoolConfig as ComputeWorkerPoolConfig, WorkerTask as ComputeWorkerTask, WorkerResult as ComputeWorkerResult } from './agent/worker-pool.js';
+
+// 动态插件热加载
+export { AgentPluginLoader, definePlugin } from './tools/plugin-loader.js';
+export type { AgentPlugin, PluginManifest, PluginLoaderConfig, PluginAPI } from './tools/plugin-loader.js';
+
+// ===== Phase 4: 性能优化与进化成长 =====
+
+// Agent 自省与自我调优（TS 独有）
+export { AgentSelfTuner } from './agent/self-tuning.js';
+export type { RunMetrics, TuningSuggestion, IntrospectionStats } from './agent/self-tuning.js';
+
+// ===== Phase 5: 高级进化能力 =====
+
+// 投机执行（TS 独有）
+export { SpeculativeExecutor, ToolResultPredictor } from './agent/speculative-exec.js';
+export type { SpeculativeExecConfig, SpeculativeResult, SpeculationStats } from './agent/speculative-exec.js';
+
+// Prompt A/B 测试
+export { PromptABTest, KeywordEvaluator, CompletenessEvaluator, PromptLLMEvaluator } from './agent/prompt-ab-test.js';
+export type { PromptVariant, ExperimentResult, ABTestResult, PromptEvaluator as ABTestPromptEvaluator, ABTestConfig } from './agent/prompt-ab-test.js';
+
+// Tool Learning 闭环增强
+export { EnhancedToolLearner } from './agent/tool-learning.js';
+export type { FewShotExample as ToolFewShotExample, ToolUsagePattern, EnhancedToolLearningConfig } from './agent/tool-learning.js';
+
+// Edge-Native 冷启动优化
+export { ColdStartOptimizer, LazyLoader, ConnectionPrewarmer, initEdgeRuntime, lazyLoad } from './edge/cold-start.js';
+export type { ColdStartReport, ColdStartSuggestion, ModuleLoadRecord } from './edge/cold-start.js';
+
+// 分布式 Agent 编排（WebSocket 传输层）
+export { DistributedOrchestrator } from './agent/distributed-orchestration.js';
+export type { AgentNode, DistributedTask, DistributedTaskResult, MapReduceResult, DistributedOrchestrationConfig } from './agent/distributed-orchestration.js';
+
+// Phase 6: 智能模型路由
+export { ModelRouter, ComplexityEvaluator, estimateTokens as estimateTokensForRouting } from './llm/model-router.js';
+export type { ModelRouteConfig, RouteDecision, RouteStrategy } from './llm/model-router.js';
+
+// Phase 6: 流式编排管道
+export { StreamingPipeline } from './orchestration/streaming-pipeline.js';
+export type { StreamingPipelineStep, StreamingPipelineEvent } from './orchestration/streaming-pipeline.js';
+
+// Phase 6: 长期记忆持久化
+export { LongTermMemory, HashEmbedding } from './memory/long-term.js';
+export type { LongTermMemoryConfig, HybridSearchResult } from './memory/long-term.js';
+
+// Phase 6: 可视化监控面板
+export { AgentMonitor, DashboardServer } from './agent/dashboard.js';
+export type { AgentState as DashboardAgentState, TokenUsage, ToolCallStat, RunRecord, DashboardSnapshot } from './agent/dashboard.js';
+
+// Phase 6: 多模态深度融合
+export { MultimodalFusion, createMultimodalAgent } from './llm/multimodal-fusion.js';
+export type { MultimodalInput, ModalityResult, FusionResult, MultimodalFusionConfig } from './llm/multimodal-fusion.js';

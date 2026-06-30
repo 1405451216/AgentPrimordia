@@ -1,6 +1,6 @@
 import type { ProviderConfig, CompletionRequest, CompletionResponse, ToolCallRequest, ToolCallResponse, Chunk, ModelInfo } from '../types.js';
 import type { Provider } from './provider.js';
-import { APIError, OpenAIProvider } from './openai.js';
+import { APIError } from './openai.js';
 
 // ===== OpenAI 兼容 Provider 抽象基类 =====
 

@@ -1,4 +1,4 @@
-import type { CostTracker, CostRecord } from '../agent/request-id.js';
+import type { Server } from 'node:http';
 
 // ===== Metrics Types =====
 
@@ -78,7 +78,7 @@ export class MetricsRegistry {
         case 'gauge':
           lines.push(`${name}${labelStr} ${this.gauges.get(name) ?? 0}`);
           break;
-        case 'histogram':
+        case 'histogram': {
           const values = this.histograms.get(name) ?? [];
           if (values.length > 0) {
             const sum = values.reduce((a, b) => a + b, 0);
@@ -95,6 +95,7 @@ export class MetricsRegistry {
             lines.push(`${name}_bucket{le="+Inf"} ${count}`);
           }
           break;
+        }
       }
       lines.push('');
     }
@@ -117,7 +118,7 @@ export class MetricsRegistry {
         case 'gauge':
           samples.push({ name, value: this.gauges.get(name) ?? 0, labels, timestamp });
           break;
-        case 'histogram':
+        case 'histogram': {
           const values = this.histograms.get(name) ?? [];
           if (values.length > 0) {
             const avg = values.reduce((a, b) => a + b, 0) / values.length;
@@ -125,6 +126,7 @@ export class MetricsRegistry {
             samples.push({ name: `${name}_count`, value: values.length, labels, timestamp });
           }
           break;
+        }
       }
     }
 
@@ -201,7 +203,7 @@ export class AgentMetrics {
 export class PrometheusExporter {
   private metrics: AgentMetrics;
   private port: number;
-  private server?: import('node:http').Server;
+  private server?: Server;
 
   constructor(metrics: AgentMetrics, port: number = 9090) {
     this.metrics = metrics;
@@ -417,8 +419,6 @@ export class HealthChecker {
 
   async check(): Promise<HealthStatus> {
     const results: { name: string; status: 'pass' | 'fail'; message?: string; latency?: number }[] = [];
-    let allHealthy = true;
-    let anyFail = false;
 
     for (const [name, check] of this.checks) {
       const start = Date.now();
@@ -432,7 +432,7 @@ export class HealthChecker {
           latency,
         });
         if (!result.healthy) {
-          anyFail = true;
+          // mark as failed in results below
         }
       } catch (err) {
         results.push({
@@ -441,7 +441,6 @@ export class HealthChecker {
           message: (err as Error).message,
           latency: Date.now() - start,
         });
-        anyFail = true;
       }
     }
 

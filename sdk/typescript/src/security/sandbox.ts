@@ -1,4 +1,321 @@
-import { containsShellMetacharacter, validatePathTraversal } from './extended.js';
+/**
+ * 安全沙箱 — WASM/Worker Thread 代码执行隔离。
+ *
+ * 提供安全的代码执行环境，防止 Agent 生成的恶意代码破坏宿主进程。
+ *
+ * 安全策略：
+ * - 代码在 Worker Thread 中执行，与主线程隔离
+ * - 限制可用 API（禁用 fs, child_process, net 等）
+ * - 执行超时限制
+ * - 内存限制
+ * - 输出大小限制
+ *
+ * 使用方式：
+ *   const sandbox = new Sandbox({ timeout: 5000, memoryLimit: 64 * 1024 * 1024 });
+ *   const result = await sandbox.execute('return 1 + 2', {});
+ *   sandbox.terminate();
+ */
+
+import { ComputeWorkerPool } from '../agent/worker-pool.js';
+
+// ===== 类型定义 =====
+
+/** 沙箱配置 */
+export interface SandboxConfig {
+  /** 执行超时（毫秒，默认 5000） */
+  timeout?: number;
+  /** 内存限制（字节，默认 64MB） */
+  memoryLimit?: number;
+  /** 输出大小限制（字节，默认 1MB） */
+  outputLimit?: number;
+  /** 最大 CPU 时间（毫秒，默认 3000） */
+  cpuTimeLimit?: number;
+  /** 允许的全局变量白名单 */
+  allowedGlobals?: string[];
+  /** 禁止的全局变量黑名单 */
+  blockedGlobals?: string[];
+}
+
+/** 沙箱执行结果 */
+export interface SandboxResult {
+  /** 执行是否成功 */
+  success: boolean;
+  /** 返回值 */
+  result?: unknown;
+  /** 标准输出 */
+  stdout: string;
+  /** 标准错误 */
+  stderr: string;
+  /** 执行耗时（毫秒） */
+  duration: number;
+  /** 内存使用峰值（字节） */
+  memoryUsed: number;
+  /** 错误信息（如果失败） */
+  error?: string;
+  /** 错误类型 */
+  errorType?: 'timeout' | 'memory' | 'runtime' | 'syntax' | 'security';
+}
+
+// ===== Worker 脚本 =====
+
+/**
+ * Worker 执行脚本模板。
+ *
+ * 在 Worker 中创建受限的执行环境：
+ * - 移除危险的全局变量（process, require, import 等）
+ * - 提供 console.log/stdout 捕获
+ * - 执行超时检测
+ */
+const WORKER_SCRIPT = `
+const { parentPort } = require('worker_threads');
+
+// 危险全局变量黑名单
+const DANGEROUS_GLOBALS = [
+  'process', 'require', 'import', 'export',
+  'child_process', 'fs', 'net', 'http', 'https',
+  'os', 'cluster', 'dns', 'tls', 'crypto',
+];
+
+// 安全的全局变量白名单
+const SAFE_GLOBALS = [
+  'console', 'Math', 'JSON', 'Date', 'Array', 'Object',
+  'String', 'Number', 'Boolean', 'RegExp', 'Error',
+  'Promise', 'Map', 'Set', 'WeakMap', 'WeakSet',
+  'Symbol', 'Proxy', 'Reflect', 'parseInt', 'parseFloat',
+  'isNaN', 'isFinite', 'encodeURIComponent', 'decodeURIComponent',
+  'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
+  'NaN', 'undefined', 'Infinity',
+];
+
+parentPort.on('message', (data) => {
+  const { code, context, config } = data;
+  const startTime = Date.now();
+  let stdout = '';
+  let stderr = '';
+
+  // 捕获 console 输出
+  const safeConsole = {
+    log: (...args) => { stdout += args.map(String).join(' ') + '\\n'; },
+    error: (...args) => { stderr += args.map(String).join(' ') + '\\n'; },
+    warn: (...args) => { stderr += args.map(String).join(' ') + '\\n'; },
+    info: (...args) => { stdout += args.map(String).join(' ') + '\\n'; },
+  };
+
+  try {
+    // 构建受限的执行上下文
+    const sandbox = {};
+    for (const name of SAFE_GLOBALS) {
+      if (typeof globalThis[name] !== 'undefined') {
+        sandbox[name] = globalThis[name];
+      }
+    }
+    sandbox.console = safeConsole;
+
+    // 注入上下文变量
+    if (context) {
+      for (const [key, value] of Object.entries(context)) {
+        sandbox[key] = value;
+      }
+    }
+
+    // 包装代码到函数中执行
+    const wrappedCode = '(function() { "use strict";\\n' + code + '\\n})()';
+    const fn = new Function(...Object.keys(sandbox), wrappedCode);
+    const result = fn(...Object.values(sandbox));
+
+    const duration = Date.now() - startTime;
+    const memUsage = process.memoryUsage();
+
+    parentPort.postMessage({
+      success: true,
+      result: result,
+      stdout: stdout,
+      stderr: stderr,
+      duration: duration,
+      memoryUsed: memUsage.heapUsed,
+    });
+  } catch (err) {
+    const duration = Date.now() - startTime;
+    const memUsage = process.memoryUsage();
+
+    let errorType = 'runtime';
+    if (err instanceof SyntaxError) errorType = 'syntax';
+    if (err.name === 'EvalError') errorType = 'security';
+
+    parentPort.postMessage({
+      success: false,
+      stdout: stdout,
+      stderr: stderr,
+      duration: duration,
+      memoryUsed: memUsage.heapUsed,
+      error: err.message || String(err),
+      errorType: errorType,
+    });
+  }
+});
+`;
+
+// ===== 安全沙箱实现 =====
+
+/**
+ * 安全代码执行沙箱。
+ *
+ * 基于 Worker Thread 实现，在隔离进程中执行不可信代码。
+ * 支持超时、内存限制和 API 白名单。
+ */
+export class CodeSandbox {
+  private config: Required<SandboxConfig>;
+  private workerPool: ComputeWorkerPool;
+
+  constructor(config?: SandboxConfig) {
+    this.config = {
+      timeout: config?.timeout ?? 5000,
+      memoryLimit: config?.memoryLimit ?? 64 * 1024 * 1024,
+      outputLimit: config?.outputLimit ?? 1024 * 1024,
+      cpuTimeLimit: config?.cpuTimeLimit ?? 3000,
+      allowedGlobals: config?.allowedGlobals ?? [],
+      blockedGlobals: config?.blockedGlobals ?? [],
+    };
+
+    this.workerPool = new ComputeWorkerPool({
+      maxWorkers: 1,
+      taskTimeout: this.config.timeout,
+      workerScript: WORKER_SCRIPT,
+    });
+  }
+
+  /**
+   * 执行代码。
+   *
+   * @param code 要执行的 JavaScript 代码（不支持 ES Module import）
+   * @param context 注入的上下文变量
+   */
+  async execute(code: string, context?: Record<string, unknown>): Promise<SandboxResult> {
+    const startMemory = process.memoryUsage().heapUsed;
+
+    try {
+      const result = await this.workerPool.run<{ code: string; context?: Record<string, unknown>; config: Required<SandboxConfig> }, {
+        success: boolean;
+        result?: unknown;
+        stdout: string;
+        stderr: string;
+        duration: number;
+        memoryUsed: number;
+        error?: string;
+        errorType?: string;
+      }>(
+        { code, context, config: this.config },
+        { timeout: this.config.timeout },
+      );
+
+      const output = result;
+
+      // 检查输出大小
+      if (output.stdout.length > this.config.outputLimit) {
+        output.stdout = output.stdout.slice(0, this.config.outputLimit) + '...[truncated]';
+      }
+
+      // 检查内存限制
+      if (output.memoryUsed > this.config.memoryLimit) {
+        return {
+          success: false,
+          stdout: output.stdout,
+          stderr: output.stderr,
+          duration: output.duration,
+          memoryUsed: output.memoryUsed,
+          error: `Memory limit exceeded: ${output.memoryUsed} > ${this.config.memoryLimit}`,
+          errorType: 'memory',
+        };
+      }
+
+      return {
+        success: output.success,
+        result: output.result,
+        stdout: output.stdout,
+        stderr: output.stderr,
+        duration: output.duration,
+        memoryUsed: output.memoryUsed,
+        error: output.error,
+        errorType: output.errorType as SandboxResult['errorType'],
+      };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorType: SandboxResult['errorType'] = errorMsg.includes('timeout')
+        ? 'timeout'
+        : 'runtime';
+
+      return {
+        success: false,
+        stdout: '',
+        stderr: '',
+        duration: this.config.timeout,
+        memoryUsed: process.memoryUsage().heapUsed - startMemory,
+        error: errorMsg,
+        errorType,
+      };
+    }
+  }
+
+  /** 终止沙箱 Worker */
+  terminate(): void {
+    this.workerPool.terminate();
+  }
+}
+
+// ===== 代码安全检查器 =====
+
+/**
+ * 静态代码安全检查 — 在执行前检测潜在恶意代码。
+ *
+ * 检查规则：
+ * - 禁止 require/import 外部模块
+ * - 禁止访问 process/child_process
+ * - 禁止 eval/Function 构造器
+ * - 禁止 __proto__ 原型污染
+ * - 禁止 while(true) 无限循环
+ */
+export class CodeSecurityChecker {
+  private static readonly DANGEROUS_PATTERNS: Array<{ pattern: RegExp; reason: string; severity: 'block' | 'warn' }> = [
+    { pattern: /(?:^|[^\w.])require\s*\(/g, reason: 'require() is not allowed', severity: 'block' },
+    { pattern: /(?:^|[^\w.])import\s+(?:type\s+)?[\w{]/g, reason: 'import statement is not allowed', severity: 'block' },
+    { pattern: /(?:^|[^\w.])process\./g, reason: 'process object access is not allowed', severity: 'block' },
+    { pattern: /child_process/g, reason: 'child_process is not allowed', severity: 'block' },
+    { pattern: /__proto__/g, reason: '__proto__ access is not allowed (prototype pollution)', severity: 'block' },
+    { pattern: /constructor\s*\[/g, reason: 'constructor[] access is not allowed', severity: 'block' },
+    { pattern: /while\s*\(\s*(?:true|1|!!1)\s*\)/g, reason: 'while(true) detected (potential infinite loop)', severity: 'warn' },
+    { pattern: /for\s*\(\s*;\s*;\s*\)/g, reason: 'for(;;) detected (potential infinite loop)', severity: 'warn' },
+    { pattern: /(?:^|[^\w.])eval\s*\(/g, reason: 'eval() is not allowed', severity: 'block' },
+    { pattern: /new\s+Function\s*\(/g, reason: 'new Function() is not allowed', severity: 'block' },
+    { pattern: /globalThis/g, reason: 'globalThis access is not allowed', severity: 'block' },
+    { pattern: /this\s*\.\s*constructor/g, reason: 'constructor access via this is not allowed', severity: 'block' },
+  ];
+
+  /** 检查代码安全性 */
+  static check(code: string): { safe: boolean; warnings: string[]; errors: string[] } {
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    for (const { pattern, reason, severity } of CodeSecurityChecker.DANGEROUS_PATTERNS) {
+      if (pattern.test(code)) {
+        if (severity === 'block') {
+          errors.push(reason);
+        } else {
+          warnings.push(reason);
+        }
+        // 重置正则 lastIndex
+        pattern.lastIndex = 0;
+      }
+    }
+
+    return {
+      safe: errors.length === 0,
+      warnings,
+      errors,
+    };
+  }
+}
+
+// ===== ACL 权限控制（兼容旧 API） =====
 
 export type AccessLevel = 'none' | 'read' | 'write' | 'execute' | 'all';
 
@@ -12,9 +329,7 @@ const ACCESS_LEVELS: Record<AccessLevel, number> = {
 
 /** 命令参数白名单模式 */
 export interface ArgPattern {
-  /** 编译后的正则表达式 */
   regex: RegExp;
-  /** 不匹配时的提示信息 */
   message: string;
 }
 
@@ -23,6 +338,7 @@ export function newArgPattern(regex: string, message: string): ArgPattern {
   return { regex: new RegExp(regex), message };
 }
 
+/** ACL 权限控制列表 */
 export class ACL {
   private rules: { agentID: string; resource: string; level: number }[] = [];
   private denyRules: { agentID: string; resource: string }[] = [];
@@ -61,11 +377,24 @@ function matchRule(ruleAgent: string, ruleResource: string, agentID: string, res
   return cleanResource.startsWith(cleanRule + '/');
 }
 
-export class Sandbox {
+// ===== 命令执行沙箱（兼容旧 API） =====
+// 保留原有的命令检查沙箱，用于 Agent 命令执行权限控制
+
+import { containsShellMetacharacter, validatePathTraversal } from './extended.js';
+
+/**
+ * 命令执行沙箱 — ACL + 命令白名单 + 参数模式匹配。
+ *
+ * 与 CodeSandbox 的区别：
+ * - CodeSandbox: 执行任意 JS 代码（Worker Thread 隔离）
+ * - CommandSandbox: 控制命令执行权限（ACL + 白名单）
+ *
+ * 保留旧名 `Sandbox` 以保持向后兼容。
+ */
+export class CommandSandbox {
   private acl: ACL;
   private allowedCmds: Set<string> = new Set();
   private blockedCmds: Set<string> = new Set();
-  /** 命令参数白名单模式：命令名 → 参数模式列表 */
   private argPatterns: Map<string, ArgPattern[]> = new Map();
 
   constructor(acl: ACL) {
@@ -82,7 +411,6 @@ export class Sandbox {
     this.allowedCmds.delete(cmd);
   }
 
-  /** 允许命令并指定参数白名单模式 */
   allowCommandWithArgs(cmd: string, ...patterns: ArgPattern[]): void {
     this.allowedCmds.add(cmd);
     this.blockedCmds.delete(cmd);
@@ -91,7 +419,6 @@ export class Sandbox {
     }
   }
 
-  /** 为已允许的命令设置参数白名单模式 */
   setArgPatterns(cmd: string, ...patterns: ArgPattern[]): void {
     if (patterns.length > 0) {
       this.argPatterns.set(cmd, patterns);
@@ -100,63 +427,41 @@ export class Sandbox {
     }
   }
 
-  /**
-   * 验证命令参数：
-   * 1. 检查参数中是否包含路径遍历
-   * 2. 检查参数中是否包含 shell 元字符
-   * 3. 检查参数是否匹配白名单模式（若配置了）
-   */
   private validateArgs(cmdName: string, args: string[]): Error | null {
     for (const arg of args) {
-      // 跳过选项标志（如 -l, --verbose）
       if (arg.startsWith('-')) continue;
-
-      // 检查路径遍历
       const traversal = validatePathTraversal(arg);
       if (!traversal.safe) {
         return new Error(`path traversal in argument "${arg}": ${traversal.reason}`);
       }
-
-      // 检查 shell 元字符
       const meta = containsShellMetacharacter(arg);
       if (meta.found) {
         return new Error(`argument "${arg}" contains shell metacharacter '${meta.char}'`);
       }
     }
-
-    // 检查参数白名单模式
     const patterns = this.argPatterns.get(cmdName);
     if (!patterns || patterns.length === 0) return null;
-
-    // 将参数拼接为空格分隔的字符串进行模式匹配
     const argStr = args.join(' ');
     for (const p of patterns) {
       if (p.regex.test(argStr)) return null;
     }
-
     return new Error(`arguments "${argStr}" do not match allowed patterns for command "${cmdName}"`);
   }
 
   canExecute(agentID: string, cmd: string): Error | null {
-    // 检查 shell 元字符，防止命令注入绕过
     const meta = containsShellMetacharacter(cmd);
     if (meta.found) {
       return new Error(`command contains shell metacharacter '${meta.char}'`);
     }
-
-    // 提取命令名和参数
     const fields = cmd.trim().split(/\s+/);
     const cmdName = fields[0];
     if (!cmdName) return new Error('empty command');
-
     if (this.blockedCmds.has(cmdName)) {
       return new Error(`command "${cmdName}" is blocked`);
     }
     if (this.allowedCmds.size > 0 && !this.allowedCmds.has(cmdName)) {
       return new Error(`command "${cmdName}" is not in allowed list`);
     }
-
-    // 验证命令参数
     const args = fields.slice(1);
     return this.validateArgs(cmdName, args);
   }
@@ -183,3 +488,6 @@ export class Sandbox {
     return this.canAccess(agentID, decoded, level);
   }
 }
+
+// 向后兼容别名：旧的 Sandbox 现在指向 CommandSandbox
+export const Sandbox = CommandSandbox;

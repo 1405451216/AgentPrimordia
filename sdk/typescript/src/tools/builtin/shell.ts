@@ -1,4 +1,4 @@
-import { exec, execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
 import * as path from 'node:path';
 import type { Tool } from '../../types.js';
 

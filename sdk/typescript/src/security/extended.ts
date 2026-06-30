@@ -1,5 +1,8 @@
 // ===== Extended Security: Shell Metacharacter Detection, Symlink Protection =====
 
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+
 const DANGEROUS_CHARS = [';', '|', '&', '$', '`', '>', '<', '\n', '\r', '(', ')'];
 
 /** Check if a command string contains shell metacharacters. */
@@ -35,9 +38,6 @@ export function validatePathTraversal(path: string): { safe: boolean; reason?: s
 
 /** Resolve a path and check it stays within the allowed root. */
 export function resolvePathSafe(rootDir: string, filePath: string): { safe: boolean; resolved?: string; reason?: string } {
-  const path = require('node:path');
-  const fs = require('node:fs');
-
   const root = path.resolve(rootDir);
   const resolved = path.resolve(root, filePath);
 
@@ -70,7 +70,7 @@ export function resolvePathSafe(rootDir: string, filePath: string): { safe: bool
         // Path doesn't exist yet, that's OK
       }
     }
-  } catch (err) {
+  } catch {
     // If we can't check symlinks, be cautious but don't block
   }
 
