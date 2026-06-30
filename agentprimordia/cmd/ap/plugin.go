@@ -125,7 +125,7 @@ func pluginCreate(args []string) error {
 
 go 1.23
 
-require agentprimordia v0.0.0
+require agentprimordia v1.0.0
 `, name)
 	if err := os.WriteFile(filepath.Join(name, "go.mod"), []byte(goMod), 0o644); err != nil {
 		return fmt.Errorf("write go.mod failed: %w", err)

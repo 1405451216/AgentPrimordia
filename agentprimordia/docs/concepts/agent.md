@@ -8,90 +8,203 @@ AgentPrimordia 的核心是 **协议式微内核架构**，通过 14 个 Capable
 
 Agent 通过类型断言发现能力，而非配置文件：
 
-```go
-// 检查 Agent 是否支持记忆
-if memCapable, ok := agent.(agent.MemoryCapable); ok {
-    memory := memCapable.GetMemory()
-    memory.Store(ctx, "key", "value")
-}
-```
+=== "Go"
+
+    ```go
+    import ap "agentprimordia/pkg"
+
+    // 创建 Agent 时通过 Functional Options 注入能力
+    agent := ap.NewAgent("my-agent", "你是助手", provider,
+        ap.WithMaxTurns(10),
+    )
+
+    // 链式 API 按需注入工具、记忆、RAG 等能力
+    agent.WithToolkit(toolkit).
+        WithMemory(memory).
+        WithRAG(ragProvider)
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { ReActAgent, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';
+
+    // 创建 Agent 时通过配置注入能力
+    const agent = new ReActAgent({
+      name: 'my-agent',
+      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+      systemPrompt: '你是助手',
+    });
+    ```
 
 ### 2. 接口组合
 
-Agent 通过实现不同接口组合获得不同能力：
+Agent 通过实现不同 `*Capable` 接口组合获得不同能力：
 
-```go
-type Agent interface {
-    // 基础能力
-    Run(ctx context.Context, input string) (string, error)
-    Close() error
-    
-    // 可选能力（通过接口组合）
-    MemoryCapable
-    ToolCapable
-    ContextCapable
-    // ... 14 个 Capable 接口
-}
-```
+=== "Go"
+
+    所有能力通过 `WithXxx()` Option 注入：
+
+    ```go
+    agent := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithMaxTurns(10),
+        ap.WithMemory(memory),       // MemoryCapable
+        ap.WithToolkit(toolkit),     // ToolCapable
+        ap.WithRAG(ragConfig),       // RAGCapable
+        ap.WithHooks(hooks),         // LifecycleCapable
+        ap.WithMetrics(recorder),    // MetricsCapable
+        ap.WithTracer(tracer),       // TraceCapable
+        ap.WithCostTracker(tracker), // CostCapable
+    )
+    ```
+
+=== "TypeScript"
+
+    所有能力通过构造配置注入：
+
+    ```typescript
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: provider,
+      toolkit: registry,       // ToolCapable
+      maxTurns: 10,
+      systemPrompt: '你是助手',
+      hooks: hookManager,      // LifecycleCapable
+      // memory、RAG 等通过链式 API 或配置注入
+    });
+    ```
 
 ### 3. 生命周期钩子
 
 ReAct 循环的每个阶段都可以注入自定义逻辑：
 
 ```go
-agent := NewAgent(llm, tools).
-    WithBeforeThink(func(ctx context.Context, input string) error {
-        fmt.Println("即将开始推理...")
-        return nil
-    }).
-    WithAfterAct(func(ctx context.Context, action string, result string) error {
-        fmt.Printf("执行动作: %s, 结果: %s\n", action, result)
-        return nil
+agent := ap.NewAgent("assistant", "你是助手", provider,
+    ap.WithMaxTurns(10),
+    ap.WithHooks(ap.LifecycleHooks{
+        BeforeThink: func(ctx context.Context, msgs []ap.Message) error {
+            fmt.Println("即将开始推理...")
+            return nil
+        },
+        AfterAct: func(ctx context.Context, call ap.ToolCall, result ap.ToolResult) error {
+            fmt.Printf("工具 %s 执行完成\n", call.Name)
+            return nil
+        },
+    }),
+)
+```
+
+## Agent 创建方式
+
+=== "Go"
+
+    **推荐方式：`ap.NewAgent()` （v0.7.0+）**
+
+    ```go
+    agent := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithMaxTurns(10),
+        ap.WithToolkit(toolkit),
+        ap.WithMemory(memory),
+    )
+
+    resp, err := agent.Run(ctx, ap.UserMessage("你好"))
+    ```
+
+    **链式 API：**
+
+    ```go
+    agent := ap.NewAgent("assistant", "你是助手", provider, ap.WithMaxTurns(10)).
+        WithToolkit(toolkit).
+        WithMemory(memory).
+        WithRAG(ragProvider)
+    ```
+
+    **传统方式：`ap.NewReActAgent()` （向后兼容）**
+
+    ```go
+    agent := ap.NewReActAgent(ap.ReActConfig{
+        Name:         "assistant",
+        SystemPrompt: "你是助手",
+        Model:        provider,
+        MaxTurns:     10,
     })
-```
+    ```
 
-## Agent 类型
+=== "TypeScript"
 
-### 基础 Agent
+    **`ReActAgent` 构造器：**
 
-最简单的 Agent 实现，包含 ReAct 循环和工具调用：
+    ```typescript
+    import { ReActAgent, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';
 
-```go
-agent := NewAgent(llm, tools)
-result, err := agent.Run(ctx, "你好，世界")
-```
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+      systemPrompt: '你是助手',
+    });
 
-### CapabilityAgent
+    const resp = await agent.run('你好');
+    console.log(resp.content);
+    ```
 
-包装任意 Agent，提供链式 API 访问所有能力：
+    **使用 MockProvider（无需 API Key）：**
 
-```go
-capAgent := NewCapabilityAgent(baseAgent).
-    WithMemory(memory).
-    WithTools(tools).
-    WithContextManager(ctxMgr)
+    ```typescript
+    import { ReActAgent, MockProvider, ToolRegistry } from '@agentprimordia/sdk';
 
-// 链式调用
-capAgent.GetMemory().Store(ctx, "user:1", "Alice")
-capAgent.GetTools().Register(myTool)
-```
+    const agent = new ReActAgent({
+      name: 'test-agent',
+      model: new MockProvider({ response: 'Hello!' }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 5,
+    });
+    ```
 
 ### 编排 Agent
 
-支持多 Agent 协作的高级 Agent：
+支持多 Agent 协作的高级编排模式：
 
-```go
-// 顺序编排
-orch := NewSequentialOrchestrator([]Agent{agent1, agent2, agent3})
-result := orch.Run(ctx, "任务")
+=== "Go"
 
-// DAG 编排
-dag := NewDAGOrchestrator()
-dag.AddNode("analyze", analyzeAgent)
-dag.AddNode("process", processAgent)
-dag.AddEdge("analyze", "process")
-result := dag.Run(ctx, "复杂任务")
-```
+    ```go
+    // DAG 编排
+    dag, _ := ap.NewDAGBuilder("data-analysis").
+        Node("analyze", func(ctx context.Context, input string) (string, error) {
+            return analyzeAgent.Run(ctx, ap.UserMessage(input))
+        }).
+        Node("report", func(ctx context.Context, input string) (string, error) {
+            return reportAgent.Run(ctx, ap.UserMessage(input))
+        }).
+        Edge("analyze", "report").
+        Build()
+
+    result, _ := dag.Run(ctx, "分析销售数据")
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { DAGBuilder } from '@agentprimordia/sdk';
+
+    // DAG 编排
+    const dag = new DAGBuilder('data-analysis')
+      .node('analyze', async (input: string) => {
+        const resp = await analyzeAgent.run(input);
+        return resp.content;
+      })
+      .node('report', async (input: string) => {
+        const resp = await reportAgent.run(input);
+        return resp.content;
+      })
+      .edge('analyze', 'report')
+      .build();
+
+    const result = await dag.run('分析销售数据');
+    ```
 
 ## 14 个 Capable 接口
 

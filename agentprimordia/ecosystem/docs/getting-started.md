@@ -4,7 +4,7 @@
 
 ## 前置要求
 
-- **Go 1.22+**（推荐 Go 1.24+）
+- **Go 1.26+**
 - **Git**（用于克隆项目）
 - 可选：**API Key**（OpenAI / Gemini / 通义千问）
 
@@ -26,7 +26,7 @@ go build ./...
 在你的 `go.mod` 中添加：
 
 ```
-require agentprimordia v0.8.0
+require agentprimordia v1.0.0
 ```
 
 ## 第一个 Agent（无需 API Key）
@@ -52,10 +52,13 @@ func main() {
     )
 
     // 创建 ReAct Agent（推荐入口：ap.NewAgent）
-    simpleAgent := ap.NewAgent("SimpleBot", "你是一个友好的AI助手",
+    simpleAgent, err := ap.NewAgent("SimpleBot", "你是一个友好的AI助手",
         mockLLM,
         ap.WithMaxTurns(3),
     )
+    if err != nil {
+        log.Fatalf("创建 Agent 失败: %v", err)
+    }
 
     // 运行 Agent
     resp, err := simpleAgent.Run(context.Background(), ap.UserMessage("你好"))

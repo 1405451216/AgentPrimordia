@@ -4,8 +4,21 @@
 
 ## 前置要求
 
-- Go 1.26 或更高版本
-- Git（可选，用于克隆示例）
+=== "Go"
+
+    - Go 1.26 或更高版本
+    - Git（可选，用于克隆示例）
+
+=== "TypeScript"
+
+    - Node.js 18+ 或 Bun
+    - npm / pnpm / yarn
+
+    ```bash
+    npm install @agentprimordia/sdk
+    # 可选：SQLite 持久化
+    npm install better-sqlite3
+    ```
 
 ## 步骤 1：安装 CLI 工具
 
@@ -58,13 +71,44 @@ set OPENAI_API_KEY=your-api-key-here
 
 ## 步骤 4：运行 Agent
 
-```bash
-# 使用 CLI 运行
-ap run
+=== "Go"
 
-# 或直接运行 Go 代码
-go run main.go
-```
+    ```bash
+    # 使用 CLI 运行
+    ap run
+
+    # 或直接运行 Go 代码
+    go run main.go
+    ```
+
+=== "TypeScript"
+
+    ```bash
+    # 安装 SDK
+    npm install @agentprimordia/sdk
+
+    # 运行
+    npx tsx index.ts
+    ```
+
+    ```typescript
+    // index.ts
+    import { ReActAgent, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';
+
+    const agent = new ReActAgent({
+      name: 'my-first-agent',
+      model: new OpenAIProvider({
+        apiKey: process.env.OPENAI_API_KEY!,
+        model: 'gpt-4o-mini',
+      }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+      systemPrompt: '你是一个友好的助手',
+    });
+
+    const resp = await agent.run('你好，请介绍一下自己');
+    console.log(resp.content);
+    ```
 
 你应该看到类似输出：
 

@@ -2,7 +2,7 @@
 
 > 包路径：`agentprimordia/pkg` → 导入别名 `ap`
 >
-> 版本：`ap.Version` = `"0.7.0"` (Go) / `@agentprimordia/sdk` `1.0.0` (TypeScript)
+> 版本：`ap.Version` = `"1.0.0"` (Go) / `@agentprimordia/sdk` `1.0.0` (TypeScript)
 >
 > **TypeScript SDK 与 Go 框架 100% 功能对等**，下方 API 参考 covers Go 公共 API。
 > TypeScript SDK 完整 API 参考见 [sdk/typescript/docs/api/index.md](../sdk/typescript/docs/api/index.md)。
@@ -28,20 +28,24 @@ type Agent interface {
 `ReActAgent` 是基于 ReAct（推理+行动）循环的 Agent 实现，是框架的核心引擎。
 
 ```go
-// 推荐入口：ap.NewAgent（不暴露废弃字段）
-agent := ap.NewAgent("my-agent", "你是一个助手", provider,
+// 推荐入口：ap.NewAgent（v0.7.0 起，不暴露废弃字段）
+agent, err := ap.NewAgent("my-agent", "你是一个助手", provider,
     ap.WithMaxTurns(50),
-).WithToolkit(registry)
+    ap.WithToolkit(registry),
+)
+if err != nil {
+    log.Fatal(err)
+}
 
-// 旧入口（仍可用，但有 14 个 Deprecated 字段视野污染）
-// agent := ap.NewReActAgent(ap.ReActConfig{...})
+// 传统入口（仍可用）
+// agent := ap.NewReActAgent(ap.ReActConfig{...}).WithToolkit(registry)
 
 resp, err := agent.Run(ctx, ap.UserMessage("你好"))
 ```
 
 ### ReActConfig
 
-`ReActConfig` 是 ReActAgent 的配置结构，包含模型、工具、记忆、钩子等全部依赖。
+`ReActConfig` 是 ReActAgent 的核心配置结构（仅标量字段）。工具、记忆、RAG 等能力通过链式 API `WithToolkit()` / `WithMemory()` / `WithRAG()` 注入，不再通过 Config 字段配置。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -49,20 +53,13 @@ resp, err := agent.Run(ctx, ap.UserMessage("你好"))
 | `SystemPrompt` | `string` | 系统提示词 |
 | `PromptTemplate` | `*PromptTemplate` | 提示词模板（优先于 SystemPrompt） |
 | `Model` | `llm.Provider` | LLM 提供者 |
-| `Toolkit` | `*tools.Registry` | 工具注册中心 |
-| `Memory` | `MemoryStore` | 记忆存储 |
-| `EventPublisher` | `EventPublisher` | 事件发布器 |
-| `Metrics` | `MetricsRecorder` | 指标记录器 |
-| `ContextWindow` | `ContextWindowStrategy` | 上下文窗口裁剪策略 |
-| `CheckpointStore` | `CheckpointStore` | 状态持久化存储 |
-| `SessionID` | `string` | 会话标识 |
-| `RAG` | `*RAGConfig` | RAG 知识库检索配置 |
 | `MaxTurns` | `int` | 最大推理轮次（默认 50） |
 | `Temperature` | `float64` | LLM 温度参数 |
-| `Hooks` | `Hooks` | 钩子管理器 |
-| `Lifecycle` | `*Lifecycle` | 生命周期管理器 |
-| `Logger` | `*slog.Logger` | 结构化日志 |
-| `Summarizer` | `SummaryExtractor` | 记忆摘要生成器 |
+| `SessionID` | `string` | 会话标识 |
+| `Lifecycle` | `*Lifecycle` | 生命周期管理器（默认自动创建） |
+| `Logger` | `*slog.Logger` | 结构化日志（默认 `slog.Default()`） |
+
+> **注意：** v0.7.0 前 ReActConfig 包含 Toolkit / Memory / Hooks / RAG 等 14 个字段，已废弃。使用 `NewAgent()` + Functional Options 或链式 API 替代。
 
 ### Message / Role / ToolCall / Thought / Response
 
@@ -242,6 +239,49 @@ for _, r := range result.Results {
 }
 ```
 
+### DAG / DAGBuilder / DAGWorkflow
+
+有向无环图工作流引擎，支持条件边、并行节点、重试和错误处理。
+
+```go
+dag, err := ap.NewDAGBuilder("data-analysis").
+    Node("collect", collectAgent).
+    Node("analyze", analyzeAgent).
+    Node("report", reportAgent).
+    Edge("collect", "analyze").
+    Edge("analyze", "report").
+    Build()
+
+result, err := dag.Run(ctx, "分析销售数据")
+```
+
+| 方法 | 说明 |
+|------|------|
+| `Node(id, agent)` | 添加节点 |
+| `Edge(from, to)` | 添加边 |
+| `EdgeIf(from, to, condition)` | 条件边 |
+| `Build()` | 构建工作流 |
+| `MustBuild()` | 构建工作流（panic on error） |
+
+### GroupChat / Debate / Supervisor
+
+多 Agent 协作模式：
+
+| 模式 | 说明 |
+|------|------|
+| `GroupChat` | 多 Agent 轮流发言，支持多种发言选择器（轮询 / 投票 / LLM 路由） |
+| `Debate` | 对抗式辩论，多 Agent 从不同角度辩论后由裁判总结 |
+| `Supervisor` | 主管模式，一个 Supervisor Agent 负责分配任务给 Worker Agent |
+
+```go
+chat := ap.NewGroupChat(ap.GroupChatConfig{
+    Agents:    []ap.Agent{agent1, agent2, agent3},
+    MaxRounds: 10,
+    Selector:  ap.NewRoundRobinSelector(),
+})
+result, err := chat.Run(ctx, "讨论 Go 1.26 的新特性")
+```
+
 ---
 
 ## RAG 知识库
@@ -378,12 +418,28 @@ embedder := ap.NewEmbeddingAdapter(llmProvider, 1536)
 
 ### RAGStore
 
-封装 Memory + VectorStore + EmbeddingProvider，提供混合 RAG 检索能力（FTS5 + 向量）。
+封装 Memory + VectorStore + EmbeddingProvider，提供混合 RAG 检索能力（FTS5 + 向量），支持 RRF 融合。
 
 ```go
 ragStore := ap.NewRAGStore(store, embedder)
 results, err := ragStore.HybridSearch(ctx, "查询内容", 5)
+
+// v1.0.0: RRF 融合模式（运行时切换）
+ragStore = ap.NewRAGStoreWithFusionConfig(store, embedder, ap.LinearFusion)
+ragStore.SetFusionConfig(ap.RAGFusionConfig{
+    Mode: ap.RFFFusion,  // Reciprocal Rank Fusion
+    RRFK: 60,
+    TopK: 10,
+})
 ```
+
+融合模式：
+| 模式 | 说明 |
+|------|------|
+| `LinearFusion` | 基于原始分数加权融合（默认） |
+| `RFFFusion` | 基于排名融合，对量纲差异鲁棒 |
+
+检索流程：`查询 → Embedding → Vector Search → FTS Search → RRF 融合 → Rerank → TopK → 上下文注入`
 
 ### Episode / SearchOptions / ListOptions / MemoryStats / CleanupConfig
 
@@ -431,8 +487,12 @@ type Provider interface {
     Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error)
     Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error)
     CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error)
-    Embeddings(ctx context.Context, texts []string) ([][]float32, error)
     Info() ModelInfo
+}
+
+// Embedder 嵌入接口（可选实现，调用方通过类型断言检查）
+type Embedder interface {
+    Embeddings(ctx context.Context, texts []string) ([][]float32, error)
 }
 ```
 
@@ -445,9 +505,13 @@ type Provider interface {
 | `GeminiProvider` | `NewGeminiProvider(cfg)` | Google Gemini 系列 |
 | `OllamaProvider` | `NewOllamaProvider(cfg)` | 本地 Ollama |
 | `AzureOpenAIProvider` | `NewAzureOpenAIProvider(cfg)` | Azure OpenAI |
+| `QwenProvider` | `NewQwenProvider(cfg)` | 通义千问（DashScope 兼容） |
+| `GLMProvider` | `NewGLMProvider(cfg)` | 智谱 GLM |
 | `CohereProvider` | `NewCohereProvider(cfg)` | Cohere v2 API |
 | `MistralProvider` | `NewMistralProvider(cfg)` | Mistral AI |
 | `ResilientProvider` | `NewResilientProvider(primary, cfg)` | 弹性提供者（重试+熔断+降级） |
+
+> **DeepSeek** 使用 `NewOpenAIProvider` 并设置 `BaseURL` 即可（OpenAI 兼容模式）。
 
 ### Config
 
@@ -534,13 +598,11 @@ results, err := pool.Dispatch(ctx, []ap.TaskConfig{
 
 ```go
 pool.SetAgentFactory(func(cfg ap.AgentFactoryConfig) ap.Agent {
-    return ap.NewReActAgent(ap.ReActConfig{
-        Name:         cfg.Name,
-        SystemPrompt: cfg.SystemPrompt,
-        MaxTurns:     cfg.MaxTurns,
-        Model:        provider,
-        Memory:       memAdapter,
-    })
+    agent, _ := ap.NewAgent(cfg.Name, cfg.SystemPrompt, provider,
+        ap.WithMaxTurns(cfg.MaxTurns),
+        ap.WithMemory(memAdapter),
+    )
+    return agent
 })
 ```
 
@@ -618,19 +680,18 @@ store, _ := ap.NewSQLiteStore("./data/memory.db")
 embedder := ap.NewEmbeddingAdapter(llmProvider, 1536)
 ragStore := ap.NewRAGStore(store, embedder)
 
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:    "full-agent",
-    Model:   llmProvider,
-    Toolkit: registry,
-    Memory:  ap.NewMemoryAdapter(store),
-    RAG: &ap.RAGConfig{
+agent, err := ap.NewAgent("full-agent", "你是一个助手", llmProvider,
+    ap.WithMaxTurns(50),
+    ap.WithToolkit(registry),
+    ap.WithMemory(ap.NewMemoryAdapter(store)),
+    ap.WithRAG(ap.RAGConfig{
         Provider: ap.NewRAGProviderAdapter(ragStore),
         Mode:     ap.RAGModeAuto,
         TopK:     5,
-    },
-    EventPublisher: ap.NewEventBusAdapter(ap.NewBus()),
-    Metrics:        ap.NewMetricsAdapter(ap.NewMetrics()),
-})
+    }),
+    ap.WithEvents(ap.NewEventBusAdapter(ap.NewBus())),
+    ap.WithMetrics(ap.NewMetricsAdapter(ap.NewMetrics())),
+)
 ```
 
 ---

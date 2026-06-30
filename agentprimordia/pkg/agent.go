@@ -589,8 +589,8 @@ var PProfHandler = health.PProfHandler
 // ===== 版本与通用类型 =====
 
 // Version 是 AgentPrimordia 框架的当前版本号
-// 与 README.md 和 Release Notes 保持一致（v0.8.0）
-const Version = "0.8.0"
+// 与 README.md 和 Release Notes 保持一致（v1.0.0）
+const Version = "1.0.0"
 
 // Metadata 是消息的元数据，包含时间戳、跟踪 ID 和扩展键值对
 type Metadata = agent.Metadata

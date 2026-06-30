@@ -29,7 +29,7 @@ assignees: ''
 ## 环境信息
 
 - **Go 版本**: [例如 1.22.0]
-- **AgentPrimordia 版本**: [例如 v0.7.0]
+- **AgentPrimordia 版本**: [例如 v1.0.0]
 - **操作系统**: [例如 Windows 11, macOS 14, Ubuntu 22.04]
 - **LLM 提供者**: [例如 OpenAI, Anthropic, Ollama]
 

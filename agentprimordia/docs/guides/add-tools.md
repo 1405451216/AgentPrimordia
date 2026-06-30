@@ -4,325 +4,285 @@
 
 ## 内置工具
 
-### HTTP 工具
+### 使用 DefaultToolkit
 
-发送 HTTP 请求：
+=== "Go"
 
-```go
-import "agentprimordia.dev/agentprimordia/plugins/http"
+    ```go
+    // 一次创建包含 FS + Shell + Web 的默认工具包
+    toolkit, _ := ap.DefaultToolkit(ap.ToolkitConfig{
+        RootDir:     ".",
+        EnableFS:    true,
+        EnableShell: true,
+        EnableWeb:   true,
+    })
 
-httpTool := http.NewTool()
-toolMgr.Register(httpTool)
-```
+    agent := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithToolkit(toolkit),
+    )
+    ```
 
-LLM 调用示例：
+=== "TypeScript"
+
+    ```typescript
+    import { ToolRegistry, FileSystemTool, ShellTool, WebTool } from '@agentprimordia/sdk';
+
+    const registry = new ToolRegistry();
+    registry.register(new FileSystemTool({ rootDir: '.' }));
+    registry.register(new ShellTool({ allowedCommands: ['ls', 'cat', 'echo'] }));
+    registry.register(new WebTool());
+
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: provider,
+      toolkit: registry,
+      maxTurns: 10,
+    });
+    ```
+
+### 文件系统工具
+
+=== "Go"
+
+    ```go
+    fs := ap.NewFileSystem(".")
+    registry := ap.NewToolRegistry()
+    registry.Register(fs)
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { FileSystemTool } from '@agentprimordia/sdk';
+
+    const fs = new FileSystemTool({ rootDir: '.' });
+    const registry = new ToolRegistry();
+    registry.register(fs);
+    ```
+
+LLM 调用工具时的参数示例：
 ```json
 {
-    "tool": "http_request",
+    "tool": "read_file",
     "params": {
-        "url": "https://api.example.com/data",
-        "method": "GET",
-        "headers": {"Authorization": "Bearer xxx"}
+        "path": "/path/to/file.txt"
     }
 }
 ```
 
-### SQL 工具
+### Shell 工具
 
-执行 SQL 查询：
+=== "Go"
 
-```go
-import "agentprimordia.dev/agentprimordia/plugins/sql"
+    ```go
+    shell := ap.NewShell(builtin.ShellConfig{
+        CommandWhitelist: []string{"ls", "cat", "echo"},
+        Timeout:          30 * time.Second,
+    })
+    registry.Register(shell)
+    ```
 
-sqlTool := sql.NewTool(sql.Config{
-    Driver: "sqlite",
-    DSN:    "./data/app.db",
-    ReadOnly: true,  // 只读模式
-})
-toolMgr.Register(sqlTool)
-```
+=== "TypeScript"
 
-### Git 工具
+    ```typescript
+    import { ShellTool } from '@agentprimordia/sdk';
 
-执行 Git 操作：
+    const shell = new ShellTool({
+      allowedCommands: ['ls', 'cat', 'echo'],
+      timeout: 30000,
+    });
+    registry.register(shell);
+    ```
 
-```go
-import "agentprimordia.dev/agentprimordia/plugins/git"
+### Web 工具
 
-gitTool := git.NewTool(git.Config{
-    RepoPath: "/path/to/repo",
-    AllowedOps: []string{"status", "log", "diff"},
-})
-toolMgr.Register(gitTool)
-```
+=== "Go"
 
-### JSON 工具
+    ```go
+    web := ap.NewWeb()
+    registry.Register(web)
+    ```
 
-处理 JSON 数据：
+=== "TypeScript"
 
-```go
-import "agentprimordia.dev/agentprimordia/plugins/json"
+    ```typescript
+    import { WebTool } from '@agentprimordia/sdk';
 
-jsonTool := json.NewTool()
-toolMgr.Register(jsonTool)
-```
+    registry.register(new WebTool());
+    ```
 
-### Email 工具
+### 数据处理工具
 
-发送邮件：
+=== "Go"
 
-```go
-import "agentprimordia.dev/agentprimordia/plugins/email"
+    ```go
+    // JSON / CSV / Git / SQLite / Calculator / DateTime
+    registry.Register(ap.NewJSONTool())
+    registry.Register(ap.NewCSVTool())
+    registry.Register(ap.NewGitTool())
+    registry.Register(ap.NewSQLiteTool())
+    registry.Register(ap.NewCalculator())
+    registry.Register(ap.NewDateTime())
+    ```
 
-emailTool := email.NewTool(email.Config{
-    SMTPHost: "smtp.example.com",
-    SMTPPort: 587,
-    Username: os.Getenv("EMAIL_USER"),
-    Password: os.Getenv("EMAIL_PASS"),
-})
-toolMgr.Register(emailTool)
-```
+=== "TypeScript"
 
-### KV 工具
+    ```typescript
+    import { JSONTool, CSVTool, GitTool, DatabaseTool } from '@agentprimordia/sdk';
 
-键值存储：
-
-```go
-import "agentprimordia.dev/agentprimordia/plugins/kv"
-
-kvTool := kv.NewTool(kv.Config{
-    Path: "./data/kv.db",
-})
-toolMgr.Register(kvTool)
-```
+    registry.register(new JSONTool());
+    registry.register(new CSVTool());
+    registry.register(new GitTool({ repoPath: '.' }));
+    registry.register(new DatabaseTool({ path: './data.db' }));
+    ```
 
 ## 自定义工具
 
-### 基本结构
+=== "Go"
 
-```go
-package main
+    使用 `ap.NewFunctionTool` 快速创建：
 
-import (
-    "context"
-    "fmt"
-)
-
-type MyTool struct {
-    // 工具配置字段
-    apiKey string
-}
-
-func (t *MyTool) Name() string {
-    return "my_tool"
-}
-
-func (t *MyTool) Description() string {
-    return "我的自定义工具，用于处理特定任务。参数：input (string) - 输入数据"
-}
-
-func (t *MyTool) Parameters() map[string]interface{} {
-    return map[string]interface{}{
-        "type": "object",
-        "properties": map[string]interface{}{
-            "input": map[string]interface{}{
-                "type":        "string",
-                "description": "输入数据",
-            },
-            "format": map[string]interface{}{
-                "type":        "string",
-                "description": "输出格式: json/text",
-                "enum":        []string{"json", "text"},
-            },
+    ```go
+    agent.AddTool(ap.NewFunctionTool("search", "搜索信息",
+        func(ctx context.Context, args map[string]any) (any, error) {
+            query := args["query"].(string)
+            return searchResults(query), nil
         },
-        "required": []string{"input"},
-    }
-}
+    ))
+    ```
 
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    input, ok := params["input"].(string)
-    if !ok {
-        return "", fmt.Errorf("input is required and must be a string")
-    }
-    
-    format, _ := params["format"].(string)
-    if format == "" {
-        format = "text"
-    }
-    
-    // 实现工具逻辑
-    result := processData(input, format)
-    
-    return result, nil
-}
+    或实现完整的 `Tool` 接口：
 
-func processData(input, format string) string {
-    // 实际处理逻辑
-    return fmt.Sprintf("处理完成: %s (格式: %s)", input, format)
-}
-```
+    ```go
+    type MyTool struct{}
 
-### 参数验证
-
-在 Execute 方法中进行参数验证：
-
-```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    // 必填参数检查
-    input, ok := params["input"].(string)
-    if !ok || input == "" {
-        return "", fmt.Errorf("input is required")
-    }
-    
-    // 类型检查
-    count, ok := params["count"].(float64)  // JSON 数字解析为 float64
-    if !ok {
-        return "", fmt.Errorf("count must be a number")
-    }
-    
-    // 范围检查
-    if count < 1 || count > 100 {
-        return "", fmt.Errorf("count must be between 1 and 100")
-    }
-    
-    // 枚举检查
-    format, _ := params["format"].(string)
-    validFormats := map[string]bool{"json": true, "text": true, "xml": true}
-    if format != "" && !validFormats[format] {
-        return "", fmt.Errorf("format must be one of: json, text, xml")
-    }
-    
-    // 执行业务逻辑
-    return t.process(input, int(count), format)
-}
-```
-
-### 错误处理
-
-返回清晰的错误信息：
-
-```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    result, err := t.doWork(params)
-    if err != nil {
-        // 返回可操作的错误信息
-        return "", fmt.Errorf("工具执行失败: %w。请检查输入参数是否正确", err)
-    }
-    return result, nil
-}
-```
-
-### 超时处理
-
-长时间运行的工具支持超时：
-
-```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    // 使用带超时的 context
-    ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-    defer cancel()
-    
-    done := make(chan string, 1)
-    errCh := make(chan error, 1)
-    
-    go func() {
-        result, err := t.longRunningTask(params)
-        if err != nil {
-            errCh <- err
-        } else {
-            done <- result
+    func (t *MyTool) Name() string        { return "my_tool" }
+    func (t *MyTool) Description() string { return "我的自定义工具" }
+    func (t *MyTool) Parameters() ap.ToolDefinition {
+        return ap.ToolDefinition{
+            Type: "function",
+            Function: ap.FunctionDefinition{
+                Name:        "my_tool",
+                Description: "我的自定义工具",
+                Parameters: ap.SchemaDef{
+                    Type: "object",
+                    Properties: map[string]any{
+                        "input": map[string]any{
+                            "type":        "string",
+                            "description": "输入数据",
+                        },
+                    },
+                    Required: []string{"input"},
+                },
+            },
         }
-    }()
-    
-    select {
-    case result := <-done:
-        return result, nil
-    case err := <-errCh:
-        return "", err
-    case <-ctx.Done():
-        return "", fmt.Errorf("工具执行超时")
     }
-}
-```
 
-## 工具注册
+    func (t *MyTool) Execute(ctx context.Context, params map[string]any) (ap.ToolResult, error) {
+        input := params["input"].(string)
+        return ap.NewToolResult(fmt.Sprintf("处理结果: %s", input)), nil
+    }
 
-### 单个注册
+    registry.Register(&MyTool{})
+    ```
 
-```go
-toolMgr := tools.NewToolManager()
-toolMgr.Register(&MyTool{apiKey: "xxx"})
-```
+=== "TypeScript"
 
-### 批量注册
+    实现 `Tool` 接口：
 
-```go
-toolMgr.RegisterAll(
-    &WeatherTool{},
-    &CalculatorTool{},
-    &SearchTool{},
-)
-```
+    ```typescript
+    import { Tool, ToolRegistry } from '@agentprimordia/sdk';
 
-### 插件注册
+    class WeatherTool implements Tool {
+      name = 'get_weather';
+      description = 'Get current weather for a city';
+      parameters = {
+        type: 'object' as const,
+        properties: {
+          city: { type: 'string', description: 'City name' },
+        },
+        required: ['city'],
+      };
 
-```go
-import "agentprimordia.dev/agentprimordia/plugins/http"
+      async execute(args: { city: string }): Promise<string> {
+        return `Weather in ${args.city}: 22°C, sunny`;
+      }
+    }
 
-plugin := http.NewPlugin()
-plugin.Init(map[string]interface{}{
-    "timeout": 30,
-})
-
-toolMgr.RegisterPlugin(plugin)
-```
+    const registry = new ToolRegistry();
+    registry.register(new WeatherTool());
+    ```
 
 ## MCP 工具
 
-从 MCP 服务器加载工具：
+从 MCP Server 加载外部工具：
 
-```go
-import "agentprimordia.dev/agentprimordia/pkg/mcp"
+=== "Go"
 
-client := mcp.NewClient("http://localhost:3000")
-toolsList, err := client.ListTools()
-if err != nil {
-    log.Fatal(err)
-}
+    ```go
+    // 连接外部 MCP Server
+    client := ap.NewMCPClient("http://localhost:3001/mcp")
+    client.Initialize(ctx)
+    client.RegisterIntoRegistry(toolRegistry)
 
-for _, t := range toolsList {
-    toolMgr.Register(t)
-}
-```
-
-## 工具权限
-
-### 白名单
-
-```go
-toolMgr := tools.NewToolManager().
-    WithAllowedTools([]string{"http_request", "calculator"})
-```
-
-### 黑名单
-
-```go
-toolMgr := tools.NewToolManager().
-    WithBlockedTools([]string{"shell_exec", "file_delete"})
-```
-
-### 参数验证器
-
-```go
-tool := &MyTool{}.
-    WithValidator(func(params map[string]interface{}) error {
-        url, _ := params["url"].(string)
-        if !strings.HasPrefix(url, "https://") {
-            return fmt.Errorf("only HTTPS URLs are allowed")
-        }
-        return nil
+    // 或通过 Registry 管理多个 MCP Server
+    mcpReg := ap.NewMCPRegistry()
+    mcpReg.Register(ap.MCPClientConfig{
+        Name:    "filesystem",
+        Command: "npx",
+        Args:    []string{"@modelcontextprotocol/server-filesystem", "/tmp"},
     })
-```
+    mcpReg.StartAll(ctx)
+    mcpReg.RegisterIntoRegistry(toolRegistry)
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { MCPClient, MCPRegistry } from '@agentprimordia/sdk';
+
+    // 连接单个 MCP Server
+    const client = new MCPClient({ url: 'http://localhost:3001/mcp' });
+    await client.initialize();
+    client.registerIntoRegistry(registry);
+
+    // 或管理多个 MCP Server
+    const mcpReg = new MCPRegistry();
+    mcpReg.register({
+      name: 'filesystem',
+      command: 'npx',
+      args: ['@modelcontextprotocol/server-filesystem', '/tmp'],
+    });
+    await mcpReg.startAll();
+    mcpReg.registerIntoRegistry(registry);
+    ```
+
+## 工具权限控制
+
+=== "Go"
+
+    ```go
+    // 通过 ScopePolicy 控制文件访问范围
+    scope := ap.NewFileScopePolicy().
+        Allow("/tmp").
+        Deny("/etc")
+
+    agent := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithFileScope(scope),
+    )
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { FileScopePolicy } from '@agentprimordia/sdk';
+
+    const scope = new FileScopePolicy()
+      .allow('/tmp')
+      .deny('/etc');
+
+    // 注入到 Agent 配置中
+    ```
 
 ## 最佳实践
 

@@ -115,7 +115,7 @@ data/
 
 go 1.23
 
-require agentprimordia v0.0.0
+require agentprimordia v1.0.0
 
 replace agentprimordia => ..
 `, opts.Name)

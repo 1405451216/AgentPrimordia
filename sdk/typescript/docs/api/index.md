@@ -208,7 +208,22 @@ External vector database providers.
 
 ### RAGStore / RAGPipeline / RAGReranker
 
-RAG retrieval-augmented generation pipeline.
+RAG retrieval-augmented generation pipeline with hybrid search (FTS + Vector).
+
+**RAGStore** supports two fusion modes (v1.0.0+):
+
+- `LinearFusion` — Weighted score fusion (default)
+- `RFFFusion` — Reciprocal Rank Fusion, robust to score scale differences
+
+```typescript
+const store = new RAGStore(memory, embedder, {
+  fusionMode: 'rrf',
+  rrfK: 60,
+  topK: 10,
+});
+```
+
+**Retrieval flow:** Query → Embedding → Vector Search → FTS Search → RRF Fusion → Rerank → TopK → Context injection
 
 ### ConversationalMemory / SharedStore
 

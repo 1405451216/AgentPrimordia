@@ -1,0 +1,149 @@
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mE:/codecast/codecast/AgentPrimordia/sdk/typescript[39m
+[2m      Coverage enabled with [22m[33mv8[39m
+
+ [32m鉁?[39m tests/unit/database-code-knowledge.test.ts [2m ([22m[2m50 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m鉁?[39m tests/unit/builtin-index.test.ts [2m ([22m[2m37 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m鉁?[39m tests/unit/prompt.test.ts [2m ([22m[2m85 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m鉁?[39m tests/unit/scope-extended-pipeline.test.ts [2m ([22m[2m31 tests[22m[2m)[22m[90m 75[2mms[22m[39m
+ [32m鉁?[39m tests/unit/a2a-transport.test.ts [2m ([22m[2m47 tests[22m[2m)[22m[90m 89[2mms[22m[39m
+ [32m鉁?[39m tests/unit/core.test.ts [2m ([22m[2m56 tests[22m[2m)[22m[90m 25[2mms[22m[39m
+ [32m鉁?[39m tests/unit/agent-coverage.test.ts [2m ([22m[2m80 tests[22m[2m)[22m[90m 27[2mms[22m[39m
+ [32m鉁?[39m tests/unit/dispatcher-autoscaler.test.ts [2m ([22m[2m38 tests[22m[2m)[22m[90m 191[2mms[22m[39m
+ [32m鉁?[39m tests/unit/document-loaders.test.ts [2m ([22m[2m83 tests[22m[2m)[22m[90m 284[2mms[22m[39m
+ [32m鉁?[39m tests/unit/security-extended.test.ts [2m ([22m[2m43 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m鉁?[39m tests/unit/extended-coverage.test.ts [2m ([22m[2m68 tests[22m[2m)[22m[90m 296[2mms[22m[39m
+ [33m鉂?[39m tests/unit/sqlite-checkpoint.test.ts [2m ([22m[2m17 tests[22m [2m|[22m [31m17 failed[39m[2m)[22m[90m 13[2mms[22m[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould create in-memory store[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould save and load checkpoint[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould return null for non-existent checkpoint[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould list checkpoints by session[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould return empty list for session with no checkpoints[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould delete checkpoint[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould throw when deleting non-existent checkpoint[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould overwrite checkpoint on re-save[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould save and load state[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould return null for non-existent state[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould list states by session[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould delete state[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould throw when deleting non-existent state[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould close database[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould handle close when already closed[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould handle empty messages and metrics[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+[31m   [33m鉂?[31m tests/unit/sqlite-checkpoint.test.ts[2m > [22mSQLiteCheckpointStore[2m > [22mshould handle complex messages with metadata[39m
+[31m     鈫?better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3[39m
+[31m     鈫?Cannot read properties of undefined (reading 'close')[39m
+ [32m鉁?[39m tests/unit/mcp.test.ts [2m ([22m[2m14 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m鉁?[39m tests/unit/features.test.ts [2m ([22m[2m49 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m鉁?[39m tests/unit/audit.test.ts [2m ([22m[2m16 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m鉁?[39m tests/unit/utils-advanced.test.ts [2m ([22m[2m43 tests[22m[2m)[22m[33m 395[2mms[22m[39m
+ [32m鉁?[39m tests/sdk.test.ts [2m ([22m[2m30 tests[22m[2m)[22m[90m 19[2mms[22m[39m
+ [32m鉁?[39m tests/unit/admin.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[90m 92[2mms[22m[39m
+ [32m鉁?[39m tests/unit/scope.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m鉁?[39m tests/unit/llm-providers.test.ts [2m ([22m[2m100 tests[22m[2m)[22m[33m 445[2mms[22m[39m
+ [32m鉁?[39m tests/e2e/integration.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 42[2mms[22m[39m
+ [32m鉁?[39m tests/unit/health.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 46[2mms[22m[39m
+ [32m鉁?[39m tests/unit/document-loader.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 16[2mms[22m[39m
+ [32m鉁?[39m tests/unit/builtin-tools.test.ts [2m ([22m[2m52 tests[22m[2m)[22m[33m 554[2mms[22m[39m
+ [32m鉁?[39m tests/unit/batch.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 150[2mms[22m[39m
+ [32m鉁?[39m tests/unit/memory-extended.test.ts [2m ([22m[2m104 tests[22m[2m)[22m[33m 738[2mms[22m[39m
+ [32m鉁?[39m tests/unit/llm-advanced.test.ts [2m ([22m[2m76 tests[22m[2m)[22m[33m 836[2mms[22m[39m
+ [32m鉁?[39m tests/unit/orchestration-advanced.test.ts [2m ([22m[2m48 tests[22m[2m)[22m[33m 1127[2mms[22m[39m
+ [32m鉁?[39m tests/unit/resilience.test.ts [2m ([22m[2m29 tests[22m[2m)[22m[33m 1217[2mms[22m[39m
+
+鈳幆鈳幆鈳幆 Failed Tests 17 鈳幆鈳幆鈳幆鈳?[39m
+
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should create in-memory store
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should save and load checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should return null for non-existent checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should list checkpoints by session
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should return empty list for session with no checkpoints
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should delete checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should throw when deleting non-existent checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should overwrite checkpoint on re-save
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should save and load state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should return null for non-existent state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should list states by session
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should delete state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should throw when deleting non-existent state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should close database
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should handle close when already closed
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should handle empty messages and metrics
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should handle complex messages with metadata
+Error: better-sqlite3 is required for SQLiteCheckpointStore. Install it with: npm install better-sqlite3
+ 鉂?[22m new SQLiteCheckpointStore src/persist/sqlite-checkpoint.ts:73:13
+     71|       `);
+     72|     } catch {
+     73|       throw new Error(
+       |             ^
+     74|         'better-sqlite3 is required for SQLiteCheckpointStore. Install鈥?     75|       );
+ 鉂?[22m SQLiteCheckpointStore.inMemory src/persist/sqlite-checkpoint.ts:87:12
+ 鉂?[22m tests/unit/sqlite-checkpoint.test.ts:11:35
+
+鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳痆1/34]鈳?[22m
+
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should create in-memory store
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should save and load checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should return null for non-existent checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should list checkpoints by session
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should return empty list for session with no checkpoints
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should delete checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should throw when deleting non-existent checkpoint
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should overwrite checkpoint on re-save
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should save and load state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should return null for non-existent state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should list states by session
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should delete state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should throw when deleting non-existent state
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should close database
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should handle close when already closed
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should handle empty messages and metrics
+ FAIL  tests/unit/sqlite-checkpoint.test.ts > SQLiteCheckpointStore > should handle complex messages with metadata
+TypeError: Cannot read properties of undefined (reading 'close')
+ 鉂?[22m tests/unit/sqlite-checkpoint.test.ts:15:11
+     13| 
+     14|   afterEach(() => {
+     15|     store.close();
+       |           ^
+     16|   });
+     17| 
+
+鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳幆鈳痆2/34]鈳?[22m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m28 passed[39m[22m[90m (29)[39m
+[2m      Tests [22m [1m[31m17 failed[39m[22m[2m | [22m[1m[32m1237 passed[39m[22m[90m (1254)[39m
+[2m   Start at [22m 01:35:32
+[2m   Duration [22m 1.93s[2m (transform 2.61s, setup 1ms, collect 4.78s, tests 6.77s, environment 5ms, prepare 3.53s)[22m
+

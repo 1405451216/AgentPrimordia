@@ -2,7 +2,7 @@
 
 > 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v0.8.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
+**版本**: v1.0.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
 
 ---
 
@@ -68,10 +68,10 @@
 | **LLM 抽象** | 10+ 家 Provider（OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / 弹性包装器） |
 | **Resilient Provider** | 自动重试 / 降级 / 熔断 |
 | **Pool 调度** | 信号量并发控制，会话隔离，重试策略 |
-| **安全防护** | ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 |
+| **安全防护** | ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护 |
 | **可观测性** | Prometheus Metrics / OpenTelemetry / Grafana Dashboard |
 | **K8s Operator** | AgentDeployment CRD 声明式部署 |
-| **CLI 工具** | `ap init / run / debug / test / mcp / plugin` |
+| **CLI 工具** | `ap init / run / debug / loop / test / mcp / plugin / doctor / completion` |
 | **TypeScript SDK** | 100% Go 功能对等，24 模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure） |
 
 ### 数据流
@@ -143,8 +143,8 @@
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │
 │  │ Memory   │ │ EventBus │ │ Metrics  │ │ Guardrails │  │
 │  │SQLite+FTS│ │(Pub/Sub) │ │OTel/Prom │ │ACL/Sandbox │  │
-│  │ +Vector  │ │          │ │          │ │  PII检测   │  │
-│  │ +RAG     │ │          │ │          │ │            │  │
+│  │ +Vector  │ │          │ │ +pprof   │ │  PII检测   │  │
+│  │ +RAG(RRF)│ │          │ │          │ │            │  │
 │  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -611,7 +611,23 @@ type Memory interface {
 #### RAG Pipeline
 
 ```
-查询 → Embedding → Vector Search → FTS Search → Rerank → TopK → 上下文注入
+查询 → Embedding → Vector Search → FTS Search → RRF 融合 → Rerank → TopK → 上下文注入
+```
+
+#### RRF 融合模式
+
+v0.8.0 新增 Reciprocal Rank Fusion（RRF）混合检索算法，支持运行时切换：
+
+```go
+// Linear 模式（默认）— 基于原始分数加权融合
+store, _ := memory.NewRAGStoreWithFusionConfig(mem, emb, memory.LinearFusion)
+
+// RRF 模式 — 基于排名融合，对量纲差异鲁棒
+store.SetFusionConfig(memory.RAGFusionConfig{
+    Mode:    memory.RFFFusion,
+    RRFK:    60,  // RRF 常数，默认 60
+    TopK:    10,
+})
 ```
 
 | 组件 | 文件 | 说明 |
@@ -957,6 +973,11 @@ prompt := fewshot.BuildPrompt("输入: 谢谢")
 ```bash
 # 启动调试服务器
 ap debug
+
+# ReAct Loop 工程化工具
+ap loop trace                 # 查看 Agent 执行追踪
+ap loop inspect               # 查看 Agent 当前状态
+ap loop resume                # 从检查点恢复运行
 
 # 访问端点
 http://localhost:6060/debug/pprof/     # pprof 性能分析
@@ -1337,6 +1358,11 @@ ap init my-agent --template multi-agent # 多 Agent 模板
 ap run                        # 编译运行
 ap run --watch                # 监视模式
 ap debug                      # 调试服务器 (http://localhost:6060)
+ap loop trace                 # 查看 Agent 执行追踪
+ap loop inspect               # 查看 Agent 当前状态
+ap loop resume                # 从检查点恢复运行
+ap doctor                     # 健康检查
+ap completion bash            # 生成 Shell 补全脚本 (bash/zsh/fish/powershell)
 ```
 
 ### MCP 管理
@@ -1482,6 +1508,18 @@ BenchmarkLatency-8           100    12.5 ms/op    1024 B/op    15 allocs/op
 BenchmarkConcurrent-8         50    25.3 ms/op    2048 B/op    30 allocs/op
 BenchmarkToolCall-8          200     6.2 ms/op     512 B/op     8 allocs/op
 ```
+
+### 性能优化（v0.8.0 perf-v11）
+
+| 优化项 | 位置 | 说明 |
+|--------|------|------|
+| **BufferPool** | `internal/agent/bufferpool.go` | `sync.Pool` 复用 `bytes.Buffer`，减少 LLM 请求体构造和 SSE chunk 解析热路径上的内存分配 |
+| **TokenCache** | `internal/agent/tokencache.go` | FNV-1a hash + `sync.Map` 的 token 估算缓存，面向长文档 chunk 和重复消息场景 |
+| **JSON Buffer Pool** | `internal/jsonutil/pool.go` | JSON 序列化/反序列化的 buffer 复用池 |
+| **pprof 端点** | `internal/health/pprof.go` | `ap.RegisterPProf(mux)` 和 `ap.PProfHandler()` 导出至 `pkg/`，支持所有标准 profile 类型 |
+| **PGO** | `docs/advanced/pgo.md` | Profile-Guided Optimization 使用指南 |
+| **Fuzz 测试** | `internal/security/`, `internal/memory/`, `internal/tools/` | Sandbox 路径遍历、RAG 检索、工具执行器安全模糊测试 |
+| **供应链安全** | `docs/advanced/supply-chain-security.md` | govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成 |
 
 ---
 
@@ -1888,6 +1926,9 @@ agent := ap.NewReActAgent(config).
 | Go 生态 | `ecosystem/docs/go-ecosystem.md` | Go 生态集成 |
 | 向量库指南 | `ecosystem/docs/vector-db-guide.md` | 向量数据库集成 |
 | Cookbook | `ecosystem/docs/cookbook/` | 实战菜谱 |
+| 供应链安全 | `docs/advanced/supply-chain-security.md` | govulncheck + Trivy + cosign 签名 + SBOM |
+| PGO 性能调优 | `docs/advanced/pgo.md` | Profile-Guided Optimization 指南 |
+| Go vs TypeScript 基准 | `docs/benchmarks/go-vs-typescript.md` | 双 SDK 性能对比报告 |
 
 ### 贡献指南
 
@@ -1916,5 +1957,5 @@ agent := ap.NewReActAgent(config).
 
 ---
 
-*文档更新时间：2026-06-28*
-*版本：v0.8.0 (Go + TypeScript 100% Parity)*
+*文档更新时间：2026-06-30*
+*版本：v1.0.0 (Go + TypeScript 100% Parity)*

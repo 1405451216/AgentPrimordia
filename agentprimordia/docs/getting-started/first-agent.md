@@ -12,7 +12,6 @@
 ```
 my-agent/
 ├── main.go          # 入口文件
-├── agent.go         # Agent 定义
 ├── tools.go         # 工具定义
 ├── go.mod           # Go 模块文件
 └── data/            # 数据目录
@@ -24,268 +23,183 @@ my-agent/
 ```bash
 mkdir my-agent && cd my-agent
 go mod init my-agent
-go get agentprimordia.dev/agentprimordia
+go get agentprimordia@v1.0.0
 ```
 
 ## Step 2: 定义工具
 
-创建 `tools.go`：
+创建 `tools.go`。自定义工具只需实现 `Tool` 接口的 4 个方法：
 
 ```go
 package main
 
 import (
-    "context"
-    "fmt"
-    "net/http"
-    "io"
-    
-    "agentprimordia.dev/agentprimordia/pkg/tools"
+	"context"
+	"encoding/json"
+	"fmt"
+
+	ap "agentprimordia/pkg"
 )
 
 // WeatherTool 天气查询工具
 type WeatherTool struct{}
 
 func (t *WeatherTool) Name() string        { return "get_weather" }
-func (t *WeatherTool) Description() string { return "获取指定城市的天气信息。参数：city (string)" }
-func (t *WeatherTool) Parameters() map[string]interface{} {
-    return map[string]interface{}{
-        "type": "object",
-        "properties": map[string]interface{}{
-            "city": map[string]interface{}{
-                "type":        "string",
-                "description": "城市名称，如：北京、上海",
-            },
-        },
-        "required": []string{"city"},
-    }
+func (t *WeatherTool) Description() string { return "获取指定城市的天气信息" }
+func (t *WeatherTool) Parameters() json.RawMessage {
+	return json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"city": {
+				"type": "string",
+				"description": "城市名称，如：北京、上海"
+			}
+		},
+		"required": ["city"]
+	}`)
 }
 
-func (t *WeatherTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    city, ok := params["city"].(string)
-    if !ok {
-        return "", fmt.Errorf("city parameter is required")
-    }
-    
-    // 模拟天气查询（实际项目中调用真实 API）
-    return fmt.Sprintf("%s: 晴, 25°C, 湿度 60%%", city), nil
+func (t *WeatherTool) Execute(ctx context.Context, args json.RawMessage) (*ap.ToolResult, error) {
+	var params struct {
+		City string `json:"city"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("参数解析失败: %w", err)
+	}
+
+	// 模拟天气查询（实际项目中调用真实 API）
+	return &ap.ToolResult{
+		Content: fmt.Sprintf("%s: 晴, 25°C, 湿度 60%%", params.City),
+	}, nil
 }
 
 // CalculatorTool 计算器工具
 type CalculatorTool struct{}
 
 func (t *CalculatorTool) Name() string        { return "calculator" }
-func (t *CalculatorTool) Description() string { return "执行数学计算。参数：expression (string)" }
-func (t *CalculatorTool) Parameters() map[string]interface{} {
-    return map[string]interface{}{
-        "type": "object",
-        "properties": map[string]interface{}{
-            "expression": map[string]interface{}{
-                "type":        "string",
-                "description": "数学表达式，如：2 + 3 * 4",
-            },
-        },
-        "required": []string{"expression"},
-    }
+func (t *CalculatorTool) Description() string { return "执行数学计算" }
+func (t *CalculatorTool) Parameters() json.RawMessage {
+	return json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"expression": {
+				"type": "string",
+				"description": "数学表达式，如：2 + 3 * 4"
+			}
+		},
+		"required": ["expression"]
+	}`)
 }
 
-func (t *CalculatorTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    expr, ok := params["expression"].(string)
-    if !ok {
-        return "", fmt.Errorf("expression parameter is required")
-    }
-    
-    // 简化实现，实际项目中使用安全的表达式解析器
-    return fmt.Sprintf("计算结果: %s = 14", expr), nil
-}
+func (t *CalculatorTool) Execute(ctx context.Context, args json.RawMessage) (*ap.ToolResult, error) {
+	var params struct {
+		Expression string `json:"expression"`
+	}
+	if err := json.Unmarshal(args, &params); err != nil {
+		return nil, fmt.Errorf("参数解析失败: %w", err)
+	}
 
-// HTTPTool HTTP 请求工具
-type HTTPTool struct{}
-
-func (t *HTTPTool) Name() string        { return "http_request" }
-func (t *HTTPTool) Description() string { return "发送 HTTP GET 请求。参数：url (string)" }
-func (t *HTTPTool) Parameters() map[string]interface{} {
-    return map[string]interface{}{
-        "type": "object",
-        "properties": map[string]interface{}{
-            "url": map[string]interface{}{
-                "type":        "string",
-                "description": "请求 URL",
-            },
-        },
-        "required": []string{"url"},
-    }
-}
-
-func (t *HTTPTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    url, ok := params["url"].(string)
-    if !ok {
-        return "", fmt.Errorf("url parameter is required")
-    }
-    
-    resp, err := http.Get(url)
-    if err != nil {
-        return "", fmt.Errorf("HTTP request failed: %w", err)
-    }
-    defer resp.Body.Close()
-    
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return "", fmt.Errorf("read response failed: %w", err)
-    }
-    
-    return string(body), nil
+	// 简化实现，实际项目中使用安全的表达式解析器
+	return &ap.ToolResult{
+		Content: fmt.Sprintf("计算结果: %s = 14", params.Expression),
+	}, nil
 }
 ```
 
 ## Step 3: 创建 Agent
 
-创建 `agent.go`：
+创建 `main.go`，使用 `ap.NewAgent()` 推荐入口：
 
 ```go
 package main
 
 import (
-    "context"
-    
-    "agentprimordia.dev/agentprimordia/pkg/agent"
-    "agentprimordia.dev/agentprimordia/pkg/llm"
-    "agentprimordia.dev/agentprimordia/pkg/memory"
-    "agentprimordia.dev/agentprimordia/pkg/tools"
-)
+	"bufio"
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"strings"
 
-// MyAgent 自定义 Agent
-type MyAgent struct {
-    agent   agent.Agent
-    memory  memory.Memory
-    tools   *tools.ToolManager
-}
-
-// NewMyAgent 创建 Agent
-func NewMyAgent() (*MyAgent, error) {
-    // 1. 创建 LLM
-    llmProvider, err := llm.NewOpenAIProvider(llm.OpenAIConfig{
-        APIKey: "your-api-key",  // 生产环境使用环境变量
-        Model:  "gpt-4",
-    })
-    if err != nil {
-        return nil, err
-    }
-    
-    // 2. 创建记忆系统
-    mem, err := memory.NewSQLiteMemory(memory.SQLiteConfig{
-        Path: "./data/memory.db",
-        FTS5: true,
-    })
-    if err != nil {
-        return nil, err
-    }
-    
-    // 3. 创建工具管理器
-    toolMgr := tools.NewToolManager()
-    toolMgr.Register(&WeatherTool{})
-    toolMgr.Register(&CalculatorTool{})
-    toolMgr.Register(&HTTPTool{})
-    
-    // 4. 创建 Agent
-    a := agent.NewAgent(llmProvider, toolMgr).
-        WithMemory(mem).
-        WithMaxIterations(10).
-        WithBeforeThink(func(ctx context.Context, input string) error {
-            // 从记忆中加载相关上下文
-            items, _ := mem.Search(ctx, input, 3)
-            if len(items) > 0 {
-                // 将相关记忆注入上下文
-                // ...
-            }
-            return nil
-        }).
-        WithAfterAct(func(ctx context.Context, action string, result string) error {
-            // 将结果存储到记忆
-            _ = mem.Store(ctx, action, result)
-            return nil
-        })
-    
-    return &MyAgent{
-        agent:  a,
-        memory: mem,
-        tools:  toolMgr,
-    }, nil
-}
-
-// Run 运行 Agent
-func (a *MyAgent) Run(ctx context.Context, input string) (string, error) {
-    return a.agent.Run(ctx, input)
-}
-
-// Close 关闭 Agent
-func (a *MyAgent) Close() error {
-    return a.memory.Close()
-}
-```
-
-## Step 4: 编写入口文件
-
-创建 `main.go`：
-
-```go
-package main
-
-import (
-    "bufio"
-    "context"
-    "fmt"
-    "os"
-    "strings"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
-    // 创建 Agent
-    myAgent, err := NewMyAgent()
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "创建 Agent 失败: %v\n", err)
-        os.Exit(1)
-    }
-    defer myAgent.Close()
-    
-    fmt.Println("🤖 我的第一个 Agent 已启动！")
-    fmt.Println("输入你的问题，输入 'quit' 退出")
-    fmt.Println(strings.Repeat("-", 50))
-    
-    // 交互式循环
-    scanner := bufio.NewScanner(os.Stdin)
-    for {
-        fmt.Print("\n> ")
-        if !scanner.Scan() {
-            break
-        }
-        
-        input := strings.TrimSpace(scanner.Text())
-        if input == "" {
-            continue
-        }
-        if input == "quit" || input == "exit" {
-            fmt.Println("再见！")
-            break
-        }
-        
-        // 运行 Agent
-        ctx := context.Background()
-        result, err := myAgent.Run(ctx, input)
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "错误: %v\n", err)
-            continue
-        }
-        
-        fmt.Printf("\n%s\n", result)
-    }
+	ctx := context.Background()
+
+	// 1. 创建 LLM Provider
+	provider, err := ap.NewOpenAIProvider(ap.Config{
+		APIKey: os.Getenv("OPENAI_API_KEY"),
+		Model:  "gpt-4o-mini",
+	})
+	if err != nil {
+		log.Fatalf("创建 Provider 失败: %v", err)
+	}
+
+	// 2. 创建工具注册表
+	registry := ap.NewToolRegistry()
+	if err := registry.Register(&WeatherTool{}); err != nil {
+		log.Fatalf("注册 WeatherTool 失败: %v", err)
+	}
+	if err := registry.Register(&CalculatorTool{}); err != nil {
+		log.Fatalf("注册 CalculatorTool 失败: %v", err)
+	}
+
+	// 3. 创建记忆存储
+	memory, err := ap.WithInMemory()
+	if err != nil {
+		log.Fatalf("创建 Memory 失败: %v", err)
+	}
+	defer memory.Close()
+
+	// 4. 创建 Agent（推荐入口：ap.NewAgent）
+	agent, err := ap.NewAgent("my-agent", "你是一个智能助手，可以查询天气和做计算。",
+		provider,
+		ap.WithMaxTurns(10),
+		ap.WithToolkit(registry),
+		ap.WithMemory(memory),
+	)
+	if err != nil {
+		log.Fatalf("创建 Agent 失败: %v", err)
+	}
+
+	fmt.Println("🤖 我的第一个 Agent 已启动！")
+	fmt.Println("输入你的问题，输入 'quit' 退出")
+	fmt.Println(strings.Repeat("-", 50))
+
+	// 5. 交互式循环
+	scanner := bufio.NewScanner(os.Stdin)
+	for {
+		fmt.Print("\n> ")
+		if !scanner.Scan() {
+			break
+		}
+
+		input := strings.TrimSpace(scanner.Text())
+		if input == "" {
+			continue
+		}
+		if input == "quit" || input == "exit" {
+			fmt.Println("再见！")
+			break
+		}
+
+		// 运行 Agent
+		resp, err := agent.Run(ctx, ap.UserMessage(input))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "错误: %v\n", err)
+			continue
+		}
+
+		fmt.Printf("\n%s\n", resp.Content)
+	}
 }
 ```
 
-## Step 5: 运行
+## Step 4: 运行
 
 ```bash
-# 创建数据目录
+# 创建数据目录（使用 SQLite 持久化时需要）
 mkdir -p data
 
 # 设置 API Key（以 OpenAI 为例）
@@ -319,55 +233,72 @@ go run .
 ### 添加多 Agent 编排
 
 ```go
-// 创建多个 Agent
-analyzer := agent.NewAgent(llm, toolMgr)
-executor := agent.NewAgent(llm, toolMgr)
-reviewer := agent.NewAgent(llm, toolMgr)
+analyzer, _ := ap.NewAgent("analyzer", "你是代码分析专家", provider, ap.WithMaxTurns(5))
+executor, _ := ap.NewAgent("executor", "你是开发工程师", provider, ap.WithMaxTurns(5))
+reviewer, _ := ap.NewAgent("reviewer", "你是代码审查员", provider, ap.WithMaxTurns(5))
 
 // 顺序编排
-orch := orchestration.NewSequentialOrchestrator([]agent.Agent{
-    analyzer, executor, reviewer,
-})
+pipeline := ap.NewPipeline(
+	ap.PipelineStep{Name: "分析", Agent: analyzer},
+	ap.PipelineStep{Name: "实现", Agent: executor},
+	ap.PipelineStep{Name: "审查", Agent: reviewer},
+)
 
-result, _ := orch.Run(ctx, "开发一个新功能")
+result, err := pipeline.Run(ctx, "开发一个新功能")
+fmt.Println(result.Final)
 ```
 
 ### 添加 RAG 能力
 
 ```go
-// 创建向量存储
-vectorStore := memory.NewVectorStore(memory.VectorConfig{
-    Path:       "./data/vectors.db",
-    Dimensions: 1536,
-})
+// 创建记忆存储
+store, _ := ap.NewSQLiteStore("./data/memory.db")
+defer store.Close()
 
-// 创建 RAG 管道
-rag := memory.NewRAGPipeline(memory.RAGConfig{
-    Memory:      mem,
-    VectorStore: vectorStore,
-    Embedder:    openaiEmbedder,
-})
+// 创建 Embedding 适配器（将 LLM Provider 适配为 EmbeddingProvider）
+embedder := ap.NewEmbeddingAdapter(provider, 1536)
 
-// 使用 RAG
-answer, _ := rag.Query(ctx, "如何优化 Agent 性能？")
+// 创建 RAG Store（FTS5 + 向量混合检索）
+ragStore := ap.NewRAGStore(store, embedder)
+
+// 一步完成 RAG 组装
+agent, _ := ap.NewAgent("rag-agent", "你是知识库问答助手", provider,
+	ap.WithMaxTurns(15),
+	ap.WithRAGMemory(store, embedder),
+)
 ```
 
 ### 添加 Inspector 监控
 
-```go
-inspector := debugger.NewInspector()
-a := agent.NewAgent(llm, toolMgr).
-    WithInspector(inspector)
-
-// 启动 Inspector UI
-server := debugger.NewInspectorServer(inspector)
-go http.ListenAndServe(":8080", server.Handler())
+```bash
+# 启动调试服务器
+ap debug
 ```
 
-访问 `http://localhost:8080` 查看实时追踪。
+在浏览器中打开 `http://localhost:6060` 查看实时追踪。
+
+### 添加生命周期钩子
+
+```go
+hooks := ap.NewHookManager()
+hooks.Register(ap.HookBeforeTool, func(ctx context.Context, hctx *ap.HookContext) error {
+	log.Printf("即将执行工具: %s", hctx.ToolCall.Name)
+	return nil
+})
+hooks.Register(ap.HookAfterTool, func(ctx context.Context, hctx *ap.HookContext) error {
+	log.Printf("工具 %s 执行完成", hctx.ToolCall.Name)
+	return nil
+})
+
+agent, _ := ap.NewAgent("hooked-agent", "你是助手", provider,
+	ap.WithMaxTurns(10),
+	ap.WithHooks(hooks),
+)
+```
 
 ## 下一步
 
-- 学习 [核心概念](agent.md) 深入理解架构
+- 学习 [核心概念](../concepts/agent.md) 深入理解架构
 - 查看 [使用指南](../guides/create-agent.md) 了解更多用法
-- 阅读 [示例](../examples/basic.md) 学习更多实际案例
+- 阅读 [工具系统](../concepts/tools.md) 学习更多工具开发
+- 尝试 [多 Agent 编排](../guides/multi-agent.md) 构建协作系统

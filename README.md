@@ -14,7 +14,7 @@
 - **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子
 - **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
 - **工具系统** — FileSystem / Shell / Web / Knowledge 内置，MCP 协议集成，插件扩展
-- **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索
+- **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索（支持 RRF 融合）
 - **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / 弹性包装器
 - **Resilient Provider** — 自动重试 / 降级 / 熔断
 - **并发调度** — Pool 信号量调度，会话隔离，重试策略
@@ -22,15 +22,22 @@
 - **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard
 - **K8s Operator** — AgentDeployment CRD 声明式部署
 - **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure）
-- **CLI 工具** — `ap init / run / debug / test / mcp / plugin`
+- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
 - **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
 
-## v0.8.0 Highlights
+## v1.0.0 Highlights
 
 - **开发者体验重构** — `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
 - **`WithRAGMemory()` 一步 RAG** — 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
+- **`ap loop` 工程化子命令** — `trace`（执行追踪）/ `inspect`（状态检查）/ `resume`（检查点恢复）
+- **RAG RRF 融合** — Reciprocal Rank Fusion 混合检索算法，支持运行时切换 Linear / RRF 模式
+- **性能优化** — BufferPool（bytes.Buffer 复用）、TokenCache、JSON Pool、pprof 端点
+- **供应链安全** — govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成
+- **PGO 性能调优** — Profile-Guided Optimization 指南
+- **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试
 - **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
 - **向后兼容** — 旧 `ap.NewReActAgent()` API 仍然可用
+- **版本统一** — Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0，API 稳定性承诺锁定
 
 ## TypeScript SDK — 100% Go Parity
 
@@ -118,15 +125,26 @@ import (
 )
 
 func main() {
-    agent := ap.NewAgent("HelloAgent", "你是一个智能助手",
-        ap.NewOpenAIProvider(ap.Config{
-            APIKey: os.Getenv("OPENAI_API_KEY"),
-            Model:  "gpt-4o",
-        }),
+    provider, err := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    agent, err := ap.NewAgent("HelloAgent", "你是一个智能助手",
+        provider,
         ap.WithMaxTurns(10),
     )
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    resp, _ := agent.Run(context.Background(), ap.UserMessage("你好"))
+    resp, err := agent.Run(context.Background(), ap.UserMessage("你好"))
+    if err != nil {
+        log.Fatal(err)
+    }
     fmt.Println(resp.Content)
 }
 ```
@@ -144,9 +162,14 @@ registry, _ := ap.DefaultToolkit(ap.ToolkitConfig{
 memory, _ := ap.WithInMemory()
 defer memory.Close()
 
-agent := ap.NewAgent("CodingAssistant", "", provider,
+agent, err := ap.NewAgent("CodingAssistant", "", provider,
     ap.WithMaxTurns(20),
-).WithToolkit(registry).WithMemory(memory)
+    ap.WithToolkit(registry),
+    ap.WithMemory(memory),
+)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### 多 Agent 调度
@@ -282,7 +305,6 @@ agent := ap.NewAgent("hello", "你是助手", provider, ap.WithMaxTurns(10)).
     WithToolkit(toolkit).
     WithMemory(mem).
     WithRAG(ragProvider)
-```
 
 ```
 $ go run ./ecosystem/examples/chain-api/
@@ -425,12 +447,17 @@ agentprimordia/
 ap init my-agent              # 创建项目 (--template basic|with-tools|multi-agent)
 ap run                        # 编译运行 (--watch 监视模式)
 ap debug                      # 调试服务器 (http://localhost:6060)
+ap loop trace                 # 查看 Agent 执行追踪
+ap loop inspect               # 查看 Agent 当前状态
+ap loop resume                # 从检查点恢复运行
 ap test                       # 运行 eval 测试套件
 ap mcp list                   # 列出 MCP Server
 ap mcp add fs --command npx --args "@mcp/server-filesystem,/tmp"
 ap mcp test fs                # 测试连通性
 ap plugin install github.com/user/ap-plugin-xxx
 ap plugin create ap-plugin-weather
+ap doctor                     # 健康检查
+ap completion bash            # 生成 Shell 补全脚本 (bash/zsh/fish/powershell)
 ```
 
 ## Vector DB 选型
@@ -527,6 +554,7 @@ golangci-lint run
 ## 文档
 
 - [CHANGELOG](CHANGELOG.md)
+- [v1.0.0 发布说明](RELEASE-NOTES-v1.0.0.md)
 - [v0.8.0 发布说明](RELEASE-NOTES-v0.8.0.md)
 - [v0.7.0 发布说明](RELEASE-NOTES-v0.7.0.md)
 - [架构图](architecture-mermaid.md)

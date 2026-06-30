@@ -5,428 +5,376 @@ LLM（大语言模型）API 参考文档。
 ## Provider 接口
 
 ```go
+// Provider 是 LLM Provider 的统一接口。
+// 实现者需提供同步补全（Complete）、流式补全（Stream）和工具调用（CallTools）能力。
 type Provider interface {
-    // Complete 生成补全
-    Complete(ctx context.Context, req Request) (Response, error)
-    
-    // Name 返回 Provider 名称
-    Name() string
-    
-    // Close 关闭 Provider
-    Close() error
+    Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error)
+    Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error)
+    CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error)
+    Info() ModelInfo
 }
 ```
 
-## Request 结构
+## Embedder 接口
 
 ```go
-type Request struct {
-    // Messages 消息列表
-    Messages []Message
-    
-    // MaxTokens 最大生成 token 数
-    MaxTokens int
-    
-    // Temperature 温度参数（0-2）
-    Temperature float64
-    
-    // TopP 核采样参数
-    TopP float64
-    
-    // Stop 停止序列
-    Stop []string
-    
-    // Tools 可用工具列表
-    Tools []ToolDefinition
-    
-    // Stream 是否流式输出
-    Stream bool
+// Embedder 嵌入接口，用于需要嵌入功能的场景
+// 不支持 Embeddings 的 Provider 可不实现此接口，调用方通过类型断言检查
+type Embedder interface {
+    Embeddings(ctx context.Context, texts []string) ([][]float32, error)
 }
 ```
 
-## Response 结构
+## Config
+
+统一的 Provider 配置结构：
 
 ```go
-type Response struct {
-    // Content 生成的内容
-    Content string
-    
-    // ToolCalls 工具调用列表
-    ToolCalls []ToolCall
-    
-    // Usage token 使用情况
-    Usage Usage
-    
-    // FinishReason 结束原因
-    FinishReason string
+type Config struct {
+    APIKey      string         `json:"-"`
+    BaseURL     string         `json:"base_url,omitempty"`
+    Model       string         `json:"model"`
+    Temperature float64        `json:"temperature,omitempty"`
+    MaxTokens   int            `json:"max_tokens,omitempty"`
+    Extra       map[string]any `json:"extra,omitempty"`
 }
 ```
 
-## Message 结构
+## 核心类型
+
+### CompletionRequest
 
 ```go
-type Message struct {
-    // Role 角色: system, user, assistant, tool
-    Role string
-    
-    // Content 内容
-    Content string
-    
-    // Name 名称（可选）
-    Name string
-    
-    // ToolCalls 工具调用（assistant 消息）
-    ToolCalls []ToolCall
-    
-    // ToolCallID 工具调用 ID（tool 消息）
-    ToolCallID string
+type CompletionRequest struct {
+    Messages       []ChatMessage   `json:"messages"`
+    Model          string          `json:"model,omitempty"`
+    Temperature    *float64        `json:"temperature,omitempty"`  // 指针类型，区分"未设置"和 0
+    MaxTokens      int             `json:"max_tokens,omitempty"`
+    Stream         bool            `json:"stream,omitempty"`
+    ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 }
 ```
 
-## ToolCall 结构
+### ChatMessage
 
 ```go
-type ToolCall struct {
-    // ID 调用 ID
-    ID string
-    
-    // Name 工具名称
-    Name string
-    
-    // Arguments 参数（JSON 字符串）
-    Arguments string
+type ChatMessage struct {
+    Role        string         `json:"role"`           // system / user / assistant / tool
+    Content     string         `json:"content"`
+    ToolCalls   []FunctionCall `json:"tool_calls,omitempty"`
+    ToolCallID  string         `json:"tool_call_id,omitempty"`
+    IsToolError bool           `json:"is_error,omitempty"`
 }
 ```
 
-## Usage 结构
+### CompletionResponse
+
+```go
+type CompletionResponse struct {
+    ID      string `json:"id"`
+    Model   string `json:"model"`
+    Content string `json:"content"`
+    Role    string `json:"role"`
+    Usage   Usage  `json:"usage"`
+}
+```
+
+### Chunk（流式）
+
+```go
+type Chunk struct {
+    Content string `json:"content"`
+    Done    bool   `json:"done"`
+    Usage   *Usage `json:"usage,omitempty"`
+}
+```
+
+### Usage
 
 ```go
 type Usage struct {
-    // PromptTokens 提示 token 数
-    PromptTokens int
-    
-    // CompletionTokens 生成 token 数
-    CompletionTokens int
-    
-    // TotalTokens 总 token 数
-    TotalTokens int
+    PromptTokens     int `json:"prompt_tokens"`
+    CompletionTokens int `json:"completion_tokens"`
+    TotalTokens      int `json:"total_tokens"`
 }
 ```
 
-## OpenAI Provider
-
-### NewOpenAIProvider
+### ModelInfo
 
 ```go
-func NewOpenAIProvider(config OpenAIConfig) (Provider, error)
+type ModelInfo struct {
+    Name              string `json:"name"`
+    Provider          string `json:"provider"`
+    MaxContext        int    `json:"max_context"`
+    SupportsTools     bool   `json:"supports_tools"`
+    SupportsStreaming bool   `json:"supports_streaming"`
+}
 ```
 
-**OpenAIConfig 结构：**
+### 工具调用类型
+
 ```go
-type OpenAIConfig struct {
-    // APIKey API 密钥
-    APIKey string
-    
-    // BaseURL 自定义端点（可选）
-    BaseURL string
-    
-    // Model 模型名称
-    Model string
-    
-    // MaxTokens 最大 token 数
-    MaxTokens int
-    
-    // Temperature 温度
-    Temperature float64
-    
-    // Organization 组织 ID（可选）
-    Organization string
+type ToolCallRequest struct {
+    Messages []ChatMessage    `json:"messages"`
+    Tools    []ToolDefinition `json:"tools"`
+    Model    string           `json:"model,omitempty"`
 }
+
+type ToolDefinition struct {
+    Type     string             `json:"type"`  // 固定 "function"
+    Function FunctionDefinition `json:"function"`
+}
+
+type FunctionDefinition struct {
+    Name        string         `json:"name"`
+    Description string         `json:"description"`
+    Parameters  map[string]any `json:"parameters"`
+}
+
+type ToolCallResponse struct {
+    Content   string         `json:"content"`
+    ToolCalls []FunctionCall `json:"tool_calls,omitempty"`
+    Usage     Usage          `json:"usage"`
+}
+
+type FunctionCall struct {
+    ID        string `json:"id"`
+    Name      string `json:"name"`
+    Arguments string `json:"arguments"`  // JSON-encoded
+}
+```
+
+## Provider 实现
+
+### OpenAIProvider
+
+```go
+func NewOpenAIProvider(config Config) *OpenAIProvider
 ```
 
 **示例：**
+
+=== "Go"
+
+    ```go
+    provider := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o",
+    })
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    const provider = new OpenAIProvider({
+      apiKey: process.env.OPENAI_API_KEY!,
+      model: 'gpt-4o',
+    });
+    ```
+
+### AnthropicProvider
+
 ```go
-provider, err := llm.NewOpenAIProvider(llm.OpenAIConfig{
-    APIKey:      os.Getenv("OPENAI_API_KEY"),
-    Model:       "gpt-4",
-    MaxTokens:   4096,
-    Temperature: 0.7,
-})
-```
-
-## Anthropic Provider
-
-### NewAnthropicProvider
-
-```go
-func NewAnthropicProvider(config AnthropicConfig) (Provider, error)
-```
-
-**AnthropicConfig 结构：**
-```go
-type AnthropicConfig struct {
-    // APIKey API 密钥
-    APIKey string
-    
-    // Model 模型名称
-    Model string
-    
-    // MaxTokens 最大 token 数
-    MaxTokens int
-    
-    // Temperature 温度
-    Temperature float64
-}
+func NewAnthropicProvider(config Config) *AnthropicProvider
 ```
 
 **示例：**
+
 ```go
-provider, err := llm.NewAnthropicProvider(llm.AnthropicConfig{
+provider := ap.NewAnthropicProvider(ap.Config{
     APIKey: os.Getenv("ANTHROPIC_API_KEY"),
-    Model:  "claude-3-opus-20240229",
+    Model:  "claude-haiku-4-5-20251001",
 })
 ```
+
+### GeminiProvider
+
+```go
+func NewGeminiProvider(config Config) *GeminiProvider
+```
+
+### OllamaProvider
+
+```go
+func NewOllamaProvider(config Config) *OllamaProvider
+```
+
+**示例：**
+
+```go
+provider := ap.NewOllamaProvider(ap.Config{
+    BaseURL: "http://localhost:11434",
+    Model:   "llama3",
+})
+```
+
+### AzureOpenAIProvider
+
+```go
+func NewAzureOpenAIProvider(config Config) *AzureOpenAIProvider
+```
+
+### QwenProvider
+
+```go
+func NewQwenProvider(config Config) *QwenProvider
+```
+
+### GLMProvider
+
+```go
+func NewGLMProvider(config Config) *GLMProvider
+```
+
+### MistralProvider
+
+```go
+func NewMistralProvider(config Config) *MistralProvider
+```
+
+### CohereProvider
+
+```go
+func NewCohereProvider(config Config) *CohereProvider
+```
+
+> **注意：** DeepSeek 已合并到 OpenAI 兼容模式，使用 `NewOpenAIProvider` 并设置 `BaseURL` 即可：
+> ```go
+> provider := ap.NewOpenAIProvider(ap.Config{
+>     BaseURL: "https://api.deepseek.com/v1",
+>     APIKey:  os.Getenv("DEEPSEEK_API_KEY"),
+>     Model:   "deepseek-chat",
+> })
+> ```
 
 ## ResilientProvider
 
-带重试、熔断和降级的 Provider：
-
-### NewResilientProvider
+带重试、熔断和降级的弹性 Provider 包装器：
 
 ```go
-func NewResilientProvider(base Provider, config ResilientConfig) Provider
+func NewResilientProvider(primary Provider, config ResilientConfig) *ResilientProvider
 ```
 
 **ResilientConfig 结构：**
+
 ```go
 type ResilientConfig struct {
-    // MaxRetries 最大重试次数
-    MaxRetries int
-    
-    // RetryDelay 重试延迟
-    RetryDelay time.Duration
-    
-    // CircuitBreaker 是否启用熔断器
-    CircuitBreaker bool
-    
-    // CBConfig 熔断器配置
-    CBConfig CircuitBreakerConfig
-    
-    // FallbackProvider 降级 Provider
-    FallbackProvider Provider
+    MaxRetries       int           // 最大重试次数（默认 3）
+    RetryDelay       time.Duration // 重试延迟
+    CircuitBreaker   bool          // 是否启用熔断器
+    CBConfig         CircuitBreakerConfig
 }
 
 type CircuitBreakerConfig struct {
-    // MaxFailures 最大失败次数
-    MaxFailures int
-    
-    // Timeout 熔断超时
-    Timeout time.Duration
-    
-    // HalfOpenMax 半开状态最大请求数
-    HalfOpenMax int
+    MaxFailures int           // 最大失败次数（触发熔断）
+    Timeout     time.Duration // 熔断恢复超时
+    HalfOpenMax int           // 半开状态最大请求数
 }
 ```
 
-**示例：**
-```go
-resilient := llm.NewResilientProvider(baseProvider, llm.ResilientConfig{
-    MaxRetries:     3,
-    RetryDelay:     time.Second,
-    CircuitBreaker: true,
-    CBConfig: llm.CircuitBreakerConfig{
-        MaxFailures: 5,
-        Timeout:     60 * time.Second,
-    },
-    FallbackProvider: fallbackLLM,
-})
-```
-
-## DemoLLM
-
-演示用 LLM（无需 API Key）：
-
-### NewDemoLLM
-
-```go
-func NewDemoLLM() Provider
-```
+**功能：**
+- **重试** — 指数退避 + 随机抖动
+- **熔断** — 失败次数超阈值后熔断，定时恢复（closed / open / halfOpen 三态）
+- **降级** — 主 Provider 失败后自动切换 Fallback
 
 **示例：**
+
 ```go
-demoLLM := llm.NewDemoLLM()
+primary := ap.NewOpenAIProvider(ap.Config{APIKey: key, Model: "gpt-4o"})
+fallback := ap.NewGeminiProvider(ap.Config{APIKey: geminiKey, Model: "gemini-1.5-pro"})
+
+resilient := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
+resilient.AddFallback(fallback)
 ```
 
-## LoadBalancer
-
-多 Provider 负载均衡：
-
-### NewLoadBalancer
+## LLMCache
 
 ```go
-func NewLoadBalancer(providers []Provider, config LBConfig) Provider
-```
-
-**LBConfig 结构：**
-```go
-type LBConfig struct {
-    // Strategy 负载均衡策略
-    Strategy LBStrategy
-    
-    // HealthCheck 是否启用健康检查
-    HealthCheck bool
-    
-    // HealthCheckInterval 健康检查间隔
-    HealthCheckInterval time.Duration
-}
-
-type LBStrategy int
-const (
-    RoundRobin LBStrategy = iota
-    Random
-    LeastConnections
-    WeightedRoundRobin
-)
-```
-
-**示例：**
-```go
-providers := []Provider{openAI, anthropic, local}
-lb := llm.NewLoadBalancer(providers, llm.LBConfig{
-    Strategy:    llm.RoundRobin,
-    HealthCheck: true,
-})
-```
-
-## Embedding Provider
-
-嵌入模型 Provider：
-
-### Embedder 接口
-
-```go
-type Embedder interface {
-    // Embed 生成嵌入向量
-    Embed(ctx context.Context, text string) ([]float32, error)
-    
-    // EmbedBatch 批量生成嵌入
-    EmbedBatch(ctx context.Context, texts []string) ([][]float32, error)
-    
-    // Dimensions 返回向量维度
-    Dimensions() int
-    
-    // Name 返回 Provider 名称
-    Name() string
-    
-    // Close 关闭 Provider
-    Close() error
+type LLMCache interface {
+    Get(key string) (*CompletionResponse, bool)
+    Set(key string, resp *CompletionResponse, ttl time.Duration)
+    Stats() CacheStats
+    Clear()
 }
 ```
 
-### NewOpenAIEmbedder
+通过 `WithCache()` 注入 Agent：
 
 ```go
-func NewOpenAIEmbedder(config OpenAIEmbedConfig) (Embedder, error)
+agent := ap.NewReActAgent(cfg).WithCache(llm.NewMemoryCache())
 ```
 
-**OpenAIEmbedConfig 结构：**
+## 结构化输出
+
 ```go
-type OpenAIEmbedConfig struct {
-    // APIKey API 密钥
-    APIKey string
-    
-    // Model 模型名称
-    Model string  // 例如: text-embedding-3-small
-    
-    // Dimensions 向量维度（可选）
-    Dimensions int
+type StructuredExtractor interface {
+    Extract(ctx context.Context, text string) (any, error)
 }
 ```
 
-**示例：**
-```go
-embedder, err := llm.NewOpenAIEmbedder(llm.OpenAIEmbedConfig{
-    APIKey:     os.Getenv("OPENAI_API_KEY"),
-    Model:      "text-embedding-3-small",
-    Dimensions: 1536,
-})
-```
-
-## 错误定义
-
-```go
-var (
-    // ErrProviderUnavailable Provider 不可用
-    ErrProviderUnavailable = errors.New("provider unavailable")
-    
-    // ErrRateLimited 触发速率限制
-    ErrRateLimited = errors.New("rate limited")
-    
-    // ErrInvalidRequest 请求无效
-    ErrInvalidRequest = errors.New("invalid request")
-    
-    // ErrAuthenticationFailed 认证失败
-    ErrAuthenticationFailed = errors.New("authentication failed")
-    
-    // ErrModelNotFound 模型未找到
-    ErrModelNotFound = errors.New("model not found")
-    
-    // ErrContextLengthExceeded 上下文长度超限
-    ErrContextLengthExceeded = errors.New("context length exceeded")
-)
-```
+支持从 Go struct 生成 JSON Schema，预定义模板：情感分析、NER、分类、摘要。
 
 ## 完整示例
 
-```go
-package main
+=== "Go"
 
-import (
-    "context"
-    "fmt"
-    "log"
-    "os"
-    "time"
-    
-    "agentprimordia.dev/agentprimordia/pkg/llm"
-)
+    ```go
+    package main
 
-func main() {
-    // 创建 Provider
-    provider, err := llm.NewOpenAIProvider(llm.OpenAIConfig{
-        APIKey:      os.Getenv("OPENAI_API_KEY"),
-        Model:       "gpt-4",
-        MaxTokens:   4096,
-        Temperature: 0.7,
-    })
-    if err != nil {
-        log.Fatal(err)
+    import (
+        "context"
+        "fmt"
+        "os"
+
+        ap "agentprimordia/pkg"
+    )
+
+    func main() {
+        provider := ap.NewOpenAIProvider(ap.Config{
+            APIKey: os.Getenv("OPENAI_API_KEY"),
+            Model:  "gpt-4o",
+        })
+
+        // 使用 ResilientProvider
+        resilient := ap.NewResilientProvider(provider, ap.DefaultResilientConfig())
+
+        // 创建 Agent
+        agent, _ := ap.NewAgent("demo", "你是助手", resilient,
+            ap.WithMaxTurns(5),
+        )
+
+        resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
+        if err != nil {
+            fmt.Fatal(err)
+        }
+
+        fmt.Printf("回复: %s\n", resp.Content)
+        fmt.Printf("Token: %d\n", resp.Usage.TotalTokens)
     }
-    defer provider.Close()
-    
-    // 创建 ResilientProvider
-    resilient := llm.NewResilientProvider(provider, llm.ResilientConfig{
-        MaxRetries: 3,
-        RetryDelay: time.Second,
-    })
-    
-    // 构建请求
-    req := llm.Request{
-        Messages: []llm.Message{
-            {Role: "system", Content: "你是一个有帮助的助手。"},
-            {Role: "user", Content: "你好！"},
-        },
-        MaxTokens:   100,
-        Temperature: 0.7,
-    }
-    
-    // 调用
-    resp, err := resilient.Complete(context.Background(), req)
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Printf("回复: %s\n", resp.Content)
-    fmt.Printf("Token 使用: %d\n", resp.Usage.TotalTokens)
-}
-```
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { ReActAgent, OpenAIProvider, ResilientProvider } from '@agentprimordia/sdk';
+
+    const provider = new OpenAIProvider({
+      apiKey: process.env.OPENAI_API_KEY!,
+      model: 'gpt-4o',
+    });
+
+    const resilient = new ResilientProvider(provider, {
+      maxRetries: 3,
+    });
+
+    const agent = new ReActAgent({
+      name: 'demo',
+      systemPrompt: '你是助手',
+      model: resilient,
+      maxTurns: 5,
+    });
+
+    const resp = await agent.run('你好！');
+    console.log(`回复: ${resp.content}`);
+    console.log(`Token: ${resp.usage.totalTokens}`);
+    ```

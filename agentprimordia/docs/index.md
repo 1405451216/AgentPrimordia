@@ -1,27 +1,42 @@
 # AgentPrimordia
 
-**Go 语言生产级 AI Agent 开发框架**
+> 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证
+> **Go + TypeScript 双语言 SDK，100% 功能对等**
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Documentation](https://img.shields.io/badge/docs-在线文档-green.svg)](https://docs.agentprimordia.dev)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/AgentPrimordia/agentprimordia)
+[![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-100%25%20Go%20Parity-3178C6.svg)](../../sdk/typescript/)
 
 ---
 
-## 什么是 AgentPrimordia？
+## 框架概览
 
-AgentPrimordia 是一个用 Go 语言编写的生产级 AI Agent 开发框架，提供完整的工具来构建、部署和管理智能 Agent 系统。
+AgentPrimordia（AP）是一个用 Go 语言编写、同时提供 TypeScript SDK 的生产级 AI Agent 开发框架。它提供完整的工具来构建、部署和管理智能 Agent 系统，核心能力覆盖从单 Agent ReAct 循环到多 Agent DAG 编排的全链路场景。
 
 ### 核心特性
 
-- **🚀 高性能**: Go 语言原生性能，启动速度快 20-30 倍，内存占用低 7-10 倍
-- **🔧 协议式微内核**: 14 个 Capable 接口，能力自动发现
-- **🛠️ 完整工具系统**: 内置工具 + 插件生态 + MCP 协议支持
-- **🧠 三层记忆**: SQLite FTS5 + 向量存储 + RAG 管道
-- **👥 多 Agent 编排**: 6 种编排模式（Sequential/Parallel/DAG/GroupChat/Workflow）
-- **🔍 可观测性**: AP Inspector 实时追踪和调试
-- **🎨 可视化编排**: Web UI 拖拽式 DAG 编排
-- **📦 零外部依赖**: 仅依赖纯 Go SQLite，部署极简
+- **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子，支持检查点恢复
+- **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
+- **工具系统** — FileSystem / Shell / Web / Knowledge / Database / CodeExecution / API 内置工具，MCP 协议集成，插件扩展
+- **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索（支持 RRF 融合）
+- **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / Resilient 弹性包装器
+- **并发调度** — Pool 信号量调度，会话隔离，自动扩缩容
+- **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
+- **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard / pprof 性能分析
+- **K8s Operator** — AgentDeployment CRD 声明式部署 + HPA 自动扩缩容
+- **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖
+- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor`
+
+### v1.0.0 亮点
+
+- **开发者体验重构** — `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
+- **`WithRAGMemory()` 一步 RAG** — 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
+- **`ap loop` 工程化子命令** — `trace`（执行追踪）/ `inspect`（状态检查）/ `resume`（检查点恢复）
+- **RAG RRF 融合** — Reciprocal Rank Fusion 混合检索算法，支持运行时切换 Linear / RRF 模式
+- **性能优化** — BufferPool（bytes.Buffer 复用）、TokenCache、JSON Pool、pprof 端点
+- **供应链安全** — govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成
+- **PGO 性能调优** — Profile-Guided Optimization 指南
+- **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试
 
 ## 快速开始
 
@@ -36,41 +51,81 @@ ap init my-agent --template quickstart
 cd my-agent
 
 # 运行
-go run main.go
+ap run
 ```
 
-### 5 分钟创建第一个 Agent
+### 5 行代码创建 Agent
 
-```go
-package main
+=== "Go"
 
-import (
-    "context"
-    "fmt"
-    ap "agentprimordia/pkg"
-)
+    ```go
+    package main
 
-func main() {
-    // 创建 Agent
-    agent := ap.NewReActAgent(ap.ReActConfig{
-        Name:         "my-first-agent",
-        SystemPrompt: "你是一个友好的助手",
-        Model: ap.NewOpenAIProvider(ap.OpenAIConfig{
-            APIKey: "your-api-key",
-            Model:  "gpt-4o-mini",
-        }),
-        MaxTurns: 10,
-    })
+    import (
+        "context"
+        "fmt"
+        "os"
+        ap "agentprimordia/pkg"
+    )
 
-    // 运行
-    resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
-    if err != nil {
-        panic(err)
+    func main() {
+        agent := ap.NewAgent("HelloAgent", "你是一个智能助手",
+            ap.NewOpenAIProvider(ap.Config{
+                APIKey: os.Getenv("OPENAI_API_KEY"),
+                Model:  "gpt-4o",
+            }),
+            ap.WithMaxTurns(10),
+        )
+
+        resp, _ := agent.Run(context.Background(), ap.UserMessage("你好"))
+        fmt.Println(resp.Content)
     }
+    ```
 
-    fmt.Println(resp.Content)
-}
-```
+=== "TypeScript"
+
+    ```bash
+    npm install @agentprimordia/sdk
+    ```
+
+    ```typescript
+    import { ReActAgent, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';
+
+    const agent = new ReActAgent({
+      name: 'HelloAgent',
+      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+      systemPrompt: '你是一个智能助手',
+    });
+
+    const resp = await agent.run('你好');
+    console.log(resp.content);
+    ```
+
+### 链式 API — 工具 + 记忆 + RAG 一步到位
+
+=== "Go"
+
+    ```go
+    agent := ap.NewAgent("assistant", "你是助手", provider, ap.WithMaxTurns(10)).
+        WithToolkit(toolkit).
+        WithMemory(mem).
+        WithRAG(ragProvider)
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: provider,
+      toolkit: registry,
+      maxTurns: 10,
+      systemPrompt: '你是助手',
+      memory,
+    });
+    ```
 
 ## 性能对比
 
@@ -81,157 +136,79 @@ func main() {
 | 并发吞吐 | 852 req/s | 98 req/s | **8.7x** |
 | 部署体积 | 15MB | 280MB | **18x** |
 
-详细性能报告：[性能基准对比](docs/benchmarks/performance-comparison-2026.md)
+详细性能报告：[Go vs TypeScript 基准对比](benchmarks/go-vs-typescript.md)
 
-## 核心概念
+## 架构
 
-### 1. Agent 架构
-
-Agent 是框架的核心单元，基于 ReAct（Reasoning + Acting）循环模式运行。
-
-```go
-// 创建 Agent
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "assistant",
-    SystemPrompt: "你是一个专业的助手",
-    Model:        provider,
-    MaxTurns:     10,
-})
-
-// 运行
-response, err := agent.Run(ctx, ap.UserMessage("帮我分析这段代码"))
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Your Application                       │
+├──────────────────────────────────────────────────────────┤
+│                   AgentPrimordia Framework                 │
+│                                                            │
+│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────────┐  │
+│  │ ReActLoop │ │   Pool   │ │  DAG   │ │  Pipeline    │  │
+│  │ (Engine) │ │(Dispatch)│ │(Graph) │ │(Sequential)  │  │
+│  └────┬─────┘ └────┬─────┘ └───┬────┘ └──────┬───────┘  │
+│       └────────────┼───────────┼──────────────┘          │
+│              ┌──────┴──────┐                               │
+│              │ Tool System │                               │
+│              │ ┌─────────┐ │                               │
+│              │ │Built-in │ │  MCP  │  Plugin │             │
+│              │ │FS/Shell/│ │  Client│  System │             │
+│              │ │Web/Know │ │  Reg.  │         │             │
+│              │ └─────────┘ │        │         │             │
+│              └─────────────┘        │         │             │
+│                                    │         │             │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │                  LLM Layer                          │  │
+│  │  OpenAI │ Anthropic │ Gemini │ Ollama │ Azure │ ...│  │
+│  │              ResilientProvider                       │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │
+│  │ Memory   │ │ EventBus │ │ Metrics  │ │ Guardrails │  │
+│  │SQLite+FTS│ │(Pub/Sub) │ │OTel/Prom │ │ACL/Sandbox │  │
+│  │ +Vector  │ │          │ │ +pprof   │ │  PII检测   │  │
+│  │ +RAG(RRF)│ │          │ │          │ │            │  │
+│  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### 2. 工具系统
+## CLI 命令
 
-Agent 可以通过工具与外部世界交互。
-
-```go
-// 注册工具
-agent.AddTool(ap.NewFunctionTool("search", "搜索信息", func(ctx context.Context, args map[string]interface{}) (interface{}, error) {
-    query := args["query"].(string)
-    // 实现搜索逻辑
-    return results, nil
-}))
+```bash
+ap init my-agent              # 创建项目 (--template basic|with-tools|multi-agent)
+ap run                        # 编译运行 (--watch 监视模式)
+ap debug                      # 调试服务器 (http://localhost:6060)
+ap loop trace                 # 查看 Agent 执行追踪
+ap loop inspect               # 查看 Agent 当前状态
+ap loop resume                # 从检查点恢复运行
+ap test                       # 运行 eval 测试套件
+ap mcp list                   # 列出 MCP Server
+ap mcp add fs --command npx --args "@mcp/server-filesystem,/tmp"
+ap plugin install github.com/user/ap-plugin-xxx
+ap doctor                     # 健康检查
+ap completion bash            # 生成 Shell 补全脚本
 ```
 
-### 3. 记忆系统
+## 文档导览
 
-三层记忆架构支持短期、长期和语义记忆。
-
-```go
-// 配置记忆
-agent.WithMemory(ap.MemoryConfig{
-    Backend: "sqlite",
-    Path:    "./data/memory.db",
-})
-```
-
-### 4. 多 Agent 编排
-
-支持多种编排模式协调多个 Agent。
-
-```go
-// 创建编排器
-orchestrator := ap.NewOrchestrator(ap.OrchestratorConfig{
-    Mode: ap.DAGMode,
-})
-
-// 添加步骤
-orchestrator.AddStep(ap.AgentStep{
-    ID:    "research",
-    Agent: researchAgent,
-})
-
-orchestrator.AddStep(ap.AgentStep{
-    ID:        "write",
-    Agent:     writeAgent,
-    InputFrom: []string{"research"},
-})
-
-// 执行
-result, err := orchestrator.Execute(ctx, input)
-```
-
-## 使用场景
-
-### 🎮 游戏 AI NPC
-
-```go
-npc := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "game-npc",
-    SystemPrompt: "你是一个友好的游戏NPC",
-    MaxTurns:     5,
-})
-
-// 响应玩家
-response, _ := npc.Run(ctx, ap.UserMessage("你好，请问任务在哪里？"))
-```
-
-### 💼 企业自动化
-
-```go
-// 文档处理 Agent
-docAgent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "doc-processor",
-    SystemPrompt: "你是一个专业的文档处理助手",
-})
-
-docAgent.AddTool(ap.NewFunctionTool("extract", "提取文档内容", extractFunc))
-docAgent.AddTool(ap.NewFunctionTool("summarize", "总结文档", summarizeFunc))
-```
-
-### 📊 数据分析
-
-```go
-// 数据分析 Agent
-analyzer := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "data-analyst",
-    SystemPrompt: "你是一个数据分析专家",
-})
-
-analyzer.AddTool(ap.NewFunctionTool("query_db", "查询数据库", queryDBFunc))
-analyzer.AddTool(ap.NewFunctionTool("visualize", "生成图表", visualizeFunc))
-```
-
-## 生态系统
-
-### 官方插件
-
-- **HTTP 插件**: HTTP 请求工具
-- **SQL 插件**: 数据库操作
-- **Git 插件**: Git 操作
-- **JSON 插件**: JSON 处理
-- **Email 插件**: 邮件发送
-- **KV 插件**: 键值存储
-
-### 社区项目
-
-- [AgentPrimordia Web](https://github.com/AgentPrimordia/web) - Web 界面
-- [AgentPrimordia Examples](https://github.com/AgentPrimordia/examples) - 示例集合
-- [AgentPrimordia Plugins](https://github.com/AgentPrimordia/plugins) - 插件市场
-
-## 文档
-
-- 📖 [完整文档](https://docs.agentprimordia.dev)
-- 🚀 [快速开始](getting-started/quickstart.md)
-- 📚 [API 参考](api/agent.md)
-- 💡 [示例代码](examples/basic.md)
+| 类别 | 内容 |
+|------|------|
+| **快速开始** | [安装](getting-started/installation.md) · [入门](getting-started/quickstart.md) · [第一个Agent](getting-started/first-agent.md) |
+| **核心概念** | [Agent架构](concepts/agent.md) · [ReAct循环](concepts/react-loop.md) · [工具系统](concepts/tools.md) · [记忆系统](concepts/memory.md) · [RAG](concepts/rag.md) · [编排](concepts/orchestration.md) · [A2A](concepts/a2a.md) · [护栏](concepts/guardrail.md) |
+| **使用指南** | [创建Agent](guides/create-agent.md) · [添加工具](guides/add-tools.md) · [并发调度](guides/pool.md) · [流式输出](guides/streaming.md) · [多模态](guides/multimodal.md) · [部署](guides/deployment.md) |
+| **API参考** | [Agent](api/agent.md) · [LLM](api/llm.md) · [Tools](api/tools.md) · [Memory](api/memory.md) · [Pool](api/pool.md) · [A2A](api/a2a.md) |
+| **进阶主题** | [性能优化](advanced/performance.md) · [PGO调优](advanced/pgo.md) · [安全](advanced/security.md) · [供应链安全](advanced/supply-chain-security.md) · [Debugger](advanced/debugger.md) · [Metrics](advanced/metrics.md) · [OTel](advanced/otel.md) |
+| **基准测试** | [Go vs TypeScript](benchmarks/go-vs-typescript.md) · [性能对比](benchmarks/performance-comparison-2026.md) |
 
 ## 社区
 
-- 💬 [GitHub Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions)
-- 🐦 [Twitter](https://twitter.com/AgentPrimordia)
-- 📺 [视频教程](https://www.youtube.com/@AgentPrimordia)
+- [GitHub Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions)
+- [贡献指南](https://github.com/AgentPrimordia/agentprimordia/blob/main/CONTRIBUTING.md)
+- [TypeScript SDK 文档](../../sdk/typescript/README.md)
 
-## 贡献
+## License
 
-欢迎贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解详情。
-
-## 许可证
-
-MIT License - 详见 [LICENSE](LICENSE) 文件
-
----
-
-**开始构建你的第一个 AI Agent 吧！** 🚀
+Apache-2.0 © AgentPrimordia Contributors

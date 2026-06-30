@@ -3,6 +3,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&style=for-the-badge" alt="TypeScript">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Zero_CGO-✓-brightgreen?style=for-the-badge" alt="Zero CGO">
+  <img src="https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge" alt="Version">
 </p>
 
 <h1 align="center">⚡ AgentPrimordia</h1>
@@ -78,6 +79,11 @@ resilient.AddFallback(fallback)  // 主模型挂了自动切备用
 | **Gemini** | Google Gemini |
 | **Ollama** | 本地模型（Llama、Qwen 等） |
 | **Azure OpenAI** | Azure 部署的 OpenAI 模型 |
+| **Qwen** | 通义千问（DashScope 兼容） |
+| **GLM** | 智谱 GLM |
+| **Cohere** | Cohere v2 API |
+| **Mistral** | Mistral AI |
+| **DeepSeek** | 通过 OpenAI 兼容模式使用 |
 | **ResilientProvider** | 任意 Provider 的弹性包装 |
 
 ### 🔧 工具系统
@@ -192,7 +198,18 @@ if err != nil {
 
 ---
 
-## 🆕 v0.10.0 亮点 (2026-06)
+## 🎉 v1.0.0 正式发布 (2026-06-30)
+
+**Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0，API 稳定性承诺锁定。**
+
+- 🔒 **API 稳定性承诺** — Stable API 向后兼容，破坏性变更需大版本（v2.0）
+- 📊 **全局版本统一** — Go `pkg.Version`、TypeScript `package.json`、CLI `ap version` 全部对齐 v1.0.0
+- 📖 **文档全面更新** — API 参考文档、CODE_WIKI、README 同步至 v1.0.0
+- ✅ **生产就绪** — 47 包 2900+ Go 测试用例 + 154 TypeScript 测试用例全部通过
+
+---
+
+## 🆕 v1.0.0 性能优化亮点
 
 ### 代码审查与质量
 
@@ -224,12 +241,15 @@ if err != nil {
 - 🛡️ **类型安全**: TypeScript SDK `role` 字段从 `string` 强化为联合类型
 - ✅ **测试覆盖**: Go 47 包 2900+ 用例 + TS 6 文件 154 用例，全部 PASS
 
-## 🆕 v0.8.0 亮点
+## 🆕 v1.0.0 亮点
 
 - 🚀 **开发者体验重构**: `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
 - 🔌 **`WithRAGMemory()` 一步 RAG**: 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
+- 🔀 **RRF 融合算法**: Reciprocal Rank Fusion 混合检索，支持运行时切换 Linear / RRF 模式
 - 🧪 **`testutil` 测试包**: `MockProvider` + `NewTestAgent()`，无需手写 Mock
+- ⚡ **性能优化**: BufferPool、TokenCache、JSON Pool、pprof 端点、SSE 背压
 - ✅ **向后兼容**: 旧 `ap.NewReActAgent()` API 仍然可用
+- 🔒 **API 稳定性承诺**: Stable API 向后兼容，破坏性变更需大版本（v2.0）
 
 ## v0.7.0 亮点
 
@@ -260,13 +280,12 @@ import (
     "log"
     "os"
 
-    "agentprimordia/internal/llm"
     ap "agentprimordia/pkg"
 )
 
 func main() {
     // 1. 创建 LLM Provider
-    provider, err := llm.NewOpenAIProvider(llm.Config{
+    provider, err := ap.NewOpenAIProvider(ap.Config{
         APIKey: os.Getenv("OPENAI_API_KEY"),
         Model:  "gpt-4o-mini",
     })
@@ -275,13 +294,17 @@ func main() {
     }
 
     // 2. 创建工具注册表
-    registry := tools.NewRegistry()
+    registry := ap.NewToolRegistry()
 
     // 3. 创建 Agent（推荐入口：ap.NewAgent）
-    agent := ap.NewAgent("my-agent", "You are a helpful assistant.",
+    agent, err := ap.NewAgent("my-agent", "You are a helpful assistant.",
         provider,
         ap.WithMaxTurns(10),
-    ).WithToolkit(registry)
+        ap.WithToolkit(registry),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // 4. 运行！
     resp, err := agent.Run(context.Background(), ap.UserMessage("Hello!"))
@@ -300,8 +323,8 @@ func main() {
 
 ```go
 // 工具
-registry := tools.NewRegistry()
-fsTool, _ := builtin.NewFileSystem(".")
+registry := ap.NewToolRegistry()
+fsTool, _ := ap.NewFileSystem(".")
 registry.Register(fsTool)
 
 // 记忆
@@ -309,17 +332,23 @@ memory, _ := ap.WithInMemory()
 defer memory.Close()
 
 // Hook：审计每个工具调用
-hooks := agent.NewHookManager()
-hooks.Register(agent.HookBeforeTool, func(ctx context.Context, hctx *agent.HookContext) error {
+hooks := ap.NewHookManager()
+hooks.Register(ap.HookBeforeTool, func(ctx context.Context, hctx *ap.HookContext) error {
     slog.Info("工具调用", "tool", hctx.ToolCall.Name)
     return nil
 })
 
 // Agent
-agent := ap.NewAgent("smart-agent", "You are a file analysis assistant.",
+agent, err := ap.NewAgent("smart-agent", "You are a file analysis assistant.",
     resilientProvider,
     ap.WithMaxTurns(5),
-).WithToolkit(registry).WithMemory(memory).WithHooks(hooks)
+    ap.WithToolkit(registry),
+    ap.WithMemory(memory),
+    ap.WithHooks(hooks),
+)
+if err != nil {
+    log.Fatal(err)
+}
 
 // 运行
 resp, _ := agent.Run(ctx, ap.UserMessage("分析当前目录的文件结构"))
@@ -332,10 +361,10 @@ fmt.Printf("记忆了 %d 条交互记录\n", len(episodes))
 ### 10 分钟构建多 Agent 并发系统
 
 ```go
-pool := pool.NewPool(pool.PoolConfig{
+pool := ap.NewPool(ap.PoolConfig{
     MaxConcurrency: 3,
     Timeout:        30 * time.Second,
-    DefaultAgent: pool.ReActAgentConfig{
+    DefaultAgent: ap.ReActAgentConfig{
         SystemPrompt: "You are a task assistant.",
         MaxTurns:     3,
     },
@@ -353,7 +382,7 @@ go func() {
 }()
 
 // 提交任务
-results, _ := pool.Dispatch(ctx, []pool.TaskConfig{
+results, _ := pool.Dispatch(ctx, []ap.TaskConfig{
     {ID: "1", Title: "代码审查", Prompt: "Review the pull request"},
     {ID: "2", Title: "文档生成", Prompt: "Generate API documentation"},
     {ID: "3", Title: "测试编写", Prompt: "Write unit tests for auth module"},
@@ -590,28 +619,30 @@ agentprimordia/
 
 ## 🗺️ 优化路线图
 
-### ✅ 已完成 (v0.10)
+## ✅ 已完成 (v1.0)
 
 - [x] **代码审查**: 全量审查 Go 47 包 + TypeScript 6 文件，修复 24 个问题
 - [x] **并发调度优化**: `sync.Cond` 动态信号量 + 协程池通知机制
 - [x] **内存优化**: HookContext/Buffer `sync.Pool` 池化，benchmark 2.2x 加速
 - [x] **LLM 层优化**: SSE 流式背压控制 + Token 缓存评估
 - [x] **向量搜索升级**: RRF 融合算法 + `RAGFusionConfig` 可配置化
+- [x] **版本统一**: Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0
+- [x] **API 稳定性承诺**: Stable API 向后兼容锁定
 
-### 近期 (v0.11)
+### 近期 (v1.1)
 
 - [ ] **高并发压测**: 编写 `bench/` 套件，覆盖 Pool 1000+ 并发任务、GoroutinePool 10K goroutine 场景
 - [ ] **LLM 请求批量合并**: 实现 Request Batching 减少 API 调用次数
 - [ ] **RRF 生产调优**: 基于真实负载调整 RRF k 值与 over-fetch 比例
 
-### 中期 (v0.12)
+### 中期 (v1.2)
 
 - [ ] **向量搜索扩展**: 大规模数据场景迁移到 pgvector 或 Milvus 后端
 - [ ] **TypeScript SDK 性能**: 添加 Node.js 性能基准测试
 - [ ] **分布式追踪**: 完善 OpenTelemetry Span 链路
 - [ ] **eBPF 可观测性**: 内核级 Agent 行为监控
 
-### 长期 (v1.0)
+### 长期 (v2.0)
 
 - [ ] **WASM 沙箱**: 基于 WasmEdge 的代码执行隔离
 - [ ] **多租户隔离**: 命名空间级别的资源隔离

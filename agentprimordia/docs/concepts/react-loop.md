@@ -31,178 +31,300 @@ ReAct 循环由三个阶段组成：
 └─────────────────────────────────────────┘
 ```
 
-## 循环流程
+## 使用方式
 
-```go
-for {
-    // 1. Think
-    thought, action, err := agent.Think(ctx, input)
-    if err != nil {
-        return err
+ReAct 循环由 `Agent.Run()` 方法内部驱动，用户无需手动管理循环：
+
+=== "Go"
+
+    ```go
+    package main
+
+    import (
+        "context"
+        "fmt"
+        ap "agentprimordia/pkg"
+    )
+
+    func main() {
+        agent := ap.NewAgent("assistant", "你是一个专业的助手",
+            provider,
+            ap.WithMaxTurns(10), // 控制最大迭代次数
+        )
+
+        // Run 内部自动执行 Think → Act → Observe 循环
+        response, err := agent.Run(ctx, ap.UserMessage("帮我分析这段代码"))
+        if err != nil {
+            panic(err)
+        }
+        fmt.Println(response.Content)
     }
-    
-    // 检查是否需要停止
-    if action == ActionFinish {
-        return thought
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { ReActAgent, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';
+
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+      systemPrompt: '你是一个专业的助手',
+    });
+
+    // run() 内部自动执行 Think → Act → Observe 循环
+    const response = await agent.run('帮我分析这段代码');
+    console.log(response.content);
+    ```
+
+### 流式运行
+
+使用 `StreamRun()` / `stream()` 可逐 token 获取推理过程：
+
+=== "Go"
+
+    ```go
+    for event := range agent.StreamRun(ctx, ap.UserMessage("分析这段代码")) {
+        switch event.Type {
+        case ap.StreamEventThought:
+            fmt.Printf("[思考] %s\n", event.Content)
+        case ap.StreamEventToolCall:
+            fmt.Printf("[工具调用] %s\n", event.Content)
+        case ap.StreamEventToolResult:
+            fmt.Printf("[工具结果] %s\n", event.Content)
+        case ap.StreamEventComplete:
+            fmt.Printf("[完成] %s\n", event.Content)
+        }
     }
-    
-    // 2. Act
-    result, err := agent.Act(ctx, action)
-    if err != nil {
-        return err
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    for await (const chunk of agent.stream('分析这段代码')) {
+      // chunk 是逐 token 输出的文本片段
+      process.stdout.write(chunk);
     }
-    
-    // 3. Observe
-    input = result  // 将结果作为下一轮输入
-    
-    // 检查最大迭代次数
-    if iterations >= maxIterations {
-        return ErrMaxIterationsReached
-    }
-    iterations++
-}
-```
+    ```
 
 ## 生命周期钩子
 
 ReAct 循环的每个阶段都可以注入自定义逻辑：
 
-### BeforeThink
+=== "Go"
 
-在推理前执行，用于预处理输入或记录日志：
+    通过 `WithHooks()` Option 注入：
 
-```go
-agent.WithBeforeThink(func(ctx context.Context, input string) error {
-    log.Printf("开始推理，输入: %s", input)
-    return nil
-})
-```
+    ```go
+    agent := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithMaxTurns(10),
+        ap.WithHooks(ap.LifecycleHooks{
+            BeforeThink: func(ctx context.Context, messages []ap.Message) error {
+                log.Printf("即将开始推理")
+                return nil
+            },
+            AfterThink: func(ctx context.Context, thought ap.Thought) error {
+                log.Printf("推理完成，工具调用: %d", len(thought.ToolCalls))
+                return nil
+            },
+            BeforeAct: func(ctx context.Context, toolCall ap.ToolCall) error {
+                if !isAllowed(toolCall.Name) {
+                    return fmt.Errorf("工具 %s 不允许执行", toolCall.Name)
+                }
+                return nil
+            },
+            AfterAct: func(ctx context.Context, toolCall ap.ToolCall, result ap.ToolResult) error {
+                log.Printf("工具 %s 执行完成", toolCall.Name)
+                return nil
+            },
+        }),
+    )
+    ```
 
-### AfterThink
+=== "TypeScript"
 
-在推理后、行动前执行，用于拦截或修改动作：
+    通过 `HookManager` 注入：
 
-```go
-agent.WithAfterThink(func(ctx context.Context, thought string, action string) error {
-    if containsSensitiveAction(action) {
-        return ErrActionNotAllowed
-    }
-    return nil
-})
-```
+    ```typescript
+    import { ReActAgent, HookManager, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';
 
-### BeforeAct
+    const hooks = new HookManager();
+    hooks.register('before_llm', (ctx) => {
+      console.log(`Turn ${ctx.turn}: 即将调用 LLM`);
+    });
+    hooks.register('after_tool', (ctx) => {
+      console.log(`工具 ${ctx.toolCall?.name} 执行完成`);
+    });
 
-在行动前执行，用于权限检查或参数验证：
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+      hooks,
+    });
+    ```
 
-```go
-agent.WithBeforeAct(func(ctx context.Context, action string) error {
-    if !hasPermission(action) {
-        return ErrPermissionDenied
-    }
-    return nil
-})
-```
+支持的钩子阶段：
 
-### AfterAct
-
-在行动后执行，用于结果处理或日志记录：
-
-```go
-agent.WithAfterAct(func(ctx context.Context, action string, result string) error {
-    log.Printf("执行动作: %s, 结果: %s", action, result)
-    metrics.Record(action, result)
-    return nil
-})
-```
+| 钩子 | 触发时机 | 典型用途 |
+|------|----------|----------|
+| `BeforeThink` | LLM 推理前 | 日志、输入预处理 |
+| `AfterThink` | LLM 推理后、工具调用前 | 拦截敏感操作 |
+| `BeforeAct` | 工具执行前 | 权限检查、参数验证 |
+| `AfterAct` | 工具执行后 | 结果记录、指标收集 |
+| `OnComplete` | 循环结束 | 资源清理 |
+| `OnError` | 发生错误 | 错误上报 |
 
 ## 最大迭代控制
 
-防止无限循环，默认最大迭代次数为 10：
+通过 `WithMaxTurns()` / `maxTurns` 防止无限循环（默认 50）：
 
-```go
-agent := NewAgent(llm, tools).
-    WithMaxIterations(20)  // 自定义最大迭代次数
-```
+=== "Go"
+
+    ```go
+    agent := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithMaxTurns(20), // 最大 20 轮
+    )
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: provider,
+      toolkit: new ToolRegistry(),
+      maxTurns: 20, // 最大 20 轮
+    });
+    ```
 
 ## 错误处理
 
 ReAct 循环中的错误处理策略：
 
-1. **Think 错误**：立即返回，停止循环
-2. **Act 错误**：根据重试策略决定是否重试
-3. **Observe 错误**：记录错误，继续下一轮
+1. **Think 错误**（LLM 调用失败）：立即返回，停止循环
+2. **Act 错误**（工具执行失败）：错误信息注入上下文，继续下一轮推理
+3. **上下文取消**：通过 `ctx.Done()` 检查，100ms 内响应取消
 
-```go
-agent := NewAgent(llm, tools).
-    WithRetryPolicy(RetryPolicy{
-        MaxRetries: 3,
-        Backoff:    ExponentialBackoff,
-    })
-```
+对于 LLM 调用失败，建议使用 `ResilientProvider` 包装：
+
+=== "Go"
+
+    ```go
+    resilient := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
+    resilient.AddFallback(fallbackProvider)
+
+    agent := ap.NewAgent("assistant", "你是助手", resilient,
+        ap.WithMaxTurns(10),
+    )
+    ```
+
+=== "TypeScript"
+
+    ```typescript
+    import { ResilientProvider } from '@agentprimordia/sdk';
+
+    const resilient = new ResilientProvider(primaryProvider);
+    resilient.addFallback(fallbackProvider);
+
+    const agent = new ReActAgent({
+      name: 'assistant',
+      model: resilient,
+      toolkit: new ToolRegistry(),
+      maxTurns: 10,
+    });
+    ```
 
 ## 上下文传递
 
-ReAct 循环支持上下文传递，用于跨迭代保持状态：
+ReAct 循环通过 `context.Context` 传递请求 ID、会话 ID 等信息：
 
 ```go
-ctx := context.WithValue(context.Background(), "session_id", "123")
-result, err := agent.Run(ctx, "任务")
+// 注入请求 ID（用于链路追踪）
+ctx := ap.WithRequestID(context.Background(), ap.NewRequestID())
+
+// 设置会话 ID（关联记忆）
+agent := ap.NewAgent("assistant", "你是助手", provider,
+    ap.WithSessionID("session-123"),
+)
+
+result, err := agent.Run(ctx, ap.UserMessage("任务"))
 ```
 
 ## 性能优化
 
-### 缓存推理结果
+### 缓存 LLM 响应
 
-对于相同的输入，可以缓存推理结果：
+使用 `CachedProvider` 包装 LLM Provider，对相同输入缓存响应：
 
 ```go
-agent := NewAgent(llm, tools).
-    WithCache(NewInMemoryCache())
+cached := ap.NewCachedProvider(provider, ap.NewInMemoryCache())
+agent := ap.NewAgent("assistant", "你是助手", cached,
+    ap.WithMaxTurns(10),
+)
 ```
 
 ### 并行工具调用
 
-支持并行执行多个独立的工具调用：
+当 LLM 在一轮推理中输出多个工具调用时，框架自动并行执行：
 
 ```go
-// LLM 输出多个工具调用时，自动并行执行
-actions := []string{"tool1", "tool2", "tool3"}
-results := agent.ActParallel(ctx, actions)
+// LLM 返回多个 tool_calls 时自动并行执行
+// 无需额外配置
 ```
+
+### BufferPool 优化
+
+框架内部使用 `sync.Pool` 复用 `bytes.Buffer`，减少 LLM 请求体构造和
+SSE chunk 解析热路径上的内存分配。此优化对用户透明，无需配置。
 
 ## 调试技巧
 
-### 启用详细日志
+### 使用 `ap debug` 命令
 
-```go
-agent := NewAgent(llm, tools).
-    WithLogLevel(LogLevelDebug)
+启动调试服务器，查看实时追踪：
+
+```bash
+ap debug  # 启动调试服务器 http://localhost:6060
 ```
 
-### 使用 Inspector
+### 使用 `ap loop` 命令
 
-通过 AP Inspector 可视化查看 ReAct 循环的每一步：
+查看 Agent 执行追踪和状态，从检查点恢复：
 
-```go
-inspector := debugger.NewInspector()
-agent := NewAgent(llm, tools).
-    WithInspector(inspector)
-
-// 启动 Inspector UI
-server := debugger.NewInspectorServer(inspector)
-go server.Start(":8080")
+```bash
+ap loop trace     # 查看 Agent 执行追踪
+ap loop inspect   # 查看 Agent 当前状态
+ap loop resume    # 从检查点恢复运行
 ```
 
-访问 `http://localhost:8080` 查看实时追踪。
+### 使用 pprof 性能分析
+
+```go
+mux := http.NewServeMux()
+ap.RegisterPProf(mux)
+go http.ListenAndServe("127.0.0.1:6060", mux)
+```
+
+```bash
+# CPU 分析
+go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30
+
+# 内存分析
+go tool pprof http://localhost:6060/debug/pprof/heap
+```
 
 ## 最佳实践
 
-1. **设置合理的最大迭代次数**：防止无限循环消耗资源
-2. **使用生命周期钩子记录日志**：便于调试和监控
+1. **设置合理的 `MaxTurns`**：防止无限循环消耗资源（默认 50）
+2. **使用 `WithHooks` 记录日志和监控**：便于调试和审计
 3. **实现幂等的工具**：支持重试和恢复
-4. **及时释放资源**：在 Close 方法中清理资源
-5. **监控循环耗时**：设置超时防止阻塞
+4. **及时调用 `Close()`**：释放 Agent 持有的资源
+5. **使用 `context.WithTimeout`**：防止长时间阻塞
+6. **用 `ResilientProvider` 包装 LLM**：自动重试和故障转移
 
 ## 下一步
 

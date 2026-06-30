@@ -4,6 +4,37 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-30
+
+### Added
+
+- **全局版本统一 v1.0.0** — Go SDK (`pkg.Version`)、TypeScript SDK (`package.json`)、CLI (`ap version`)、脚手架模板全部对齐为 `v1.0.0`
+- **API 稳定性承诺锁定** — Stable API 向后兼容，破坏性变更需大版本（v2.0）
+- **API 参考文档全面重写** — `docs/api/` 下 7 个文件（agent / llm / tools / memory / pool / a2a / guardrail）对照源码逐行校验，修正接口签名、导入路径、类型定义
+- **Go vs TypeScript 基准对比** (`docs/benchmarks/go-vs-typescript.md`): 双 SDK 性能基准报告
+
+### Added (Go 性能优化 — perf-v11)
+
+- **RAG RRF 融合算法** (`internal/memory/rag.go`): 新增 `HybridFusionMode`（Linear / RRF）和 `RAGFusionConfig`，
+  支持 Reciprocal Rank Fusion 混合检索。RRF 基于排名而非原始分数融合，对量纲差异鲁棒。
+  `NewRAGStoreWithFusionConfig()` 和 `RAGStore.SetFusionConfig()` 支持运行时切换融合模式。
+- **BufferPool** (`internal/agent/bufferpool.go`): `sync.Pool` 复用 `bytes.Buffer`，
+  减少 LLM 请求体构造和 SSE chunk 解析热路径上的内存分配。大 buffer（>4KB）归还时自动截断。
+- **TokenCache** (`internal/agent/tokencache.go`): FNV-1a hash + `sync.Map` 的 token 估算缓存，
+  面向长文档 chunk 和重复消息场景。当前保留供未来启用（`len()/4` 启发式已足够快）。
+- **JSON Buffer Pool** (`internal/jsonutil/pool.go`): JSON 序列化/反序列化的 buffer 复用池。
+- **pprof 端点** (`internal/health/pprof.go`): `ap.RegisterPProf(mux)` 和 `ap.PProfHandler()`
+  导出至 `pkg/`，支持所有标准 profile 类型（heap / goroutine / cpu / block / mutex）。
+- **`ap loop` CLI 子命令** (`cmd/ap/loop.go`): ReAct Loop 工程化工具
+  - `ap loop trace` — 查看 Agent 执行追踪
+  - `ap loop inspect` — 查看 Agent 当前状态
+  - `ap loop resume` — 从检查点恢复运行
+- **Fuzz 测试**: Sandbox 路径遍历（`sandbox_fuzz_test.go`）、RAG 检索（`rag_fuzz_test.go`）、
+  工具执行器（`executor_fuzz_test.go`）安全模糊测试
+- **供应链安全文档** (`docs/advanced/supply-chain-security.md`): govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成完整指南
+- **PGO 性能调优文档** (`docs/advanced/pgo.md`): Profile-Guided Optimization 使用指南
+- **Go vs TypeScript 基准对比** (`docs/benchmarks/go-vs-typescript.md`): 双 SDK 性能基准报告
+
 ### Added (TypeScript SDK — 100% Go Parity)
 
 - **TypeScript SDK 基础设施补全 (Phase 24)**: 5 个模块实现 Go `internal/` 全覆盖
@@ -38,7 +69,7 @@
   - `prompt.Registry.MustRegister()` — panic 前增加 `slog.Error` 日志
   - `prompt.Template.MustRender()` — panic 前增加 `slog.Error` 日志
   - 文档统一标注「生产建议：使用对应的 error 版本」
-- **`pkg/version.go` 版本号修正**: 从 `3.0.0` 修正为 `0.8.0`，与 README / Release Notes / 迁移文档一致
+- **`pkg/agent.go` 版本号修正**: 从 `0.8.0` 修正为 `1.0.0`，与 README / Release Notes / 迁移文档一致
 - **Dockerfile 基础镜像升级**: `golang:1.23-alpine` → `golang:1.26-alpine`，与 `go.mod` 声明的 `go 1.26` 对齐
 - **`.gitignore` 补全**: 新增 `bin/` 和各类覆盖率产物（`llm_cover`、`pkg_cov`、`pkg_cover` 等）的忽略规则
 

@@ -683,7 +683,7 @@ Step 4: 检索 Progress Board
 |------|----------|----------|------|
 | 后端语言 | Go | ≥ 1.26 | 主开发语言，零 CGO 依赖 |
 | 前端语言 | TypeScript | ≥ 5.4 | SDK 对等实现 |
-| Agent 框架 | AgentPrimordia | ≥ v0.8.0 | 编排、协作、记忆、工具 |
+| Agent 框架 | AgentPrimordia | ≥ v1.0.0 | 编排、协作、记忆、工具 |
 | 数据库 | SQLite (modernc.org/sqlite) | 纯 Go 驱动 | 记忆持久化，零 CGO |
 | 配置 | YAML (gopkg.in/yaml.v3) | — | 声明式配置 |
 

@@ -64,37 +64,49 @@ ReActLoop 是 Agent 的核心引擎，实现了 **Reason → Act → Observe** �
 #### 创建 Agent
 
 ```go
-import "agentprimordia/internal/agent"
+import ap "agentprimordia/pkg"
 
-agent := agent.NewReActAgent(agent.ReActConfig{
+// 推荐入口（v0.7.0 起）
+agent, err := ap.NewAgent("MyAgent", "你是一个专业的AI助手", llmProvider,
+    ap.WithMaxTurns(50),
+)
+
+// 传统入口（仍然兼容）
+agent := ap.NewReActAgent(ap.ReActConfig{
     Name:         "MyAgent",
     SystemPrompt: "你是一个专业的AI助手",
     Model:        llmProvider,
-})
+}).WithToolkit(tools).WithMemory(mem)
 ```
 
-#### ReactConfig 配置项
+#### ReActConfig 配置项
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 |------|------|------|--------|------|
 | `Name` | string | ✅ | - | Agent 名称，用于日志和标识 |
-| `SystemPrompt` | string | ✅ | - | 系统提示词，定义 Agent 行为 |
-| `Model` | LLM | ✅ | - | LLM Provider 实现 |
-| `Tools` | *tools.Registry | ❌ | nil | 工具注册表 |
-| `Memory` | memory.Memory | ❌ | nil | 记忆存储 |
+| `SystemPrompt` | string | ❌ | "" | 系统提示词，定义 Agent 行为 |
+| `Model` | llm.Provider | ✅ | - | LLM Provider 实现 |
 | `MaxTurns` | int | ❌ | 50 | 最大推理轮数 |
-| `Temperature` | float64 | ❌ | 0.7 | 生成温度（0-1） |
+| `Temperature` | float64 | ❌ | 0 | 生成温度 |
+| `SessionID` | string | ❌ | "" | 会话 ID，用于跨轮记忆关联 |
+| `PromptTemplate` | *PromptTemplate | ❌ | nil | 提示词模板 |
+| `Lifecycle` | *Lifecycle | ❌ | 自动创建 | 生命周期管理器 |
+| `Logger` | *slog.Logger | ❌ | slog.Default() | 日志 |
+
+> **注意：** 工具、记忆等能力通过链式 API `WithToolkit()` / `WithMemory()` 注入，不再通过 ReActConfig 字段配置（已废弃）。
 
 #### 运行 Agent
 
 ```go
 // 同步运行
-resp, err := agent.Run(ctx, agent.UserMessage("你好"))
+resp, err := agent.Run(ctx, ap.UserMessage("你好"))
 
 // 流式运行（逐 token 返回）
-stream, err := agent.RunStream(ctx, agent.UserMessage("解释量子计算"))
-for token := range stream {
-    fmt.Print(token.Content)
+stream, err := agent.StreamRun(ctx, ap.UserMessage("解释量子计算"))
+for event := range stream {
+    if event.Type == ap.StreamEventToken {
+        fmt.Print(event.Content)
+    }
 }
 ```
 
@@ -102,33 +114,46 @@ for token := range stream {
 
 ```go
 type Response struct {
-    Content    string            // 最终回复内容
-    Metrics    ExecutionMetrics  // 执行指标
-    ToolCalls  []ToolCallRecord  // 工具调用记录
+    RequestID string     // 请求 ID
+    Content   string     // 最终回复内容
+    ToolCalls []ToolCall // 工具调用记录
+    Usage     Usage      // Token 用量
+    Metrics   Metrics    // 执行指标
+    Error     error      // 错误（如有）
 }
 
-type ExecutionMetrics struct {
-    TotalTurns   int           // 总轮数
-    TotalTokens  int           // 总 Token 数
-    Duration     time.Duration // 执行时长
+type Usage struct {
+    PromptTokens     int // 提示 Token 数
+    CompletionTokens int // 生成 Token 数
+    TotalTokens      int // 总 Token 数
+}
+
+type Metrics struct {
+    TotalTurns  int           // 总轮数
+    Duration    time.Duration // 执行时长
+    ToolsCalled map[string]int // 工具调用次数
 }
 ```
 
 ### 生命周期管理
 
 ```go
-// 启动 Agent
-agent.Start()
-
 // 停止 Agent
 agent.Stop()
 
 // 获取状态
 stats := agent.Stats()
-fmt.Printf("状态: %s, 已完成 %d 轮\n", stats.Status, stats.TotalTurns)
+fmt.Printf("状态: %s, 已完成 %d 轮\n", stats.Status, stats.Turns)
 
-// 重置 Agent 状态
-agent.Reset()
+// 暂停 / 恢复
+agent.Pause()
+agent.Resume()
+
+// 优雅关闭
+agent.GracefulShutdown(ctx)
+
+// 从检查点恢复
+agent.ResumeFromCheckpoint(ctx)
 ```
 
 ---
@@ -140,10 +165,15 @@ Pool 管理多个 Agent 的并发执行，提供任务分发、状态查询和�
 ### 创建与配置
 
 ```go
-import "agentprimordia/internal/pool"
+import ap "agentprimordia/pkg"
 
-p := pool.NewPool(pool.PoolConfig{
+p := ap.NewPool(ap.PoolConfig{
     MaxConcurrency: 10,  // 最大并发 Agent 数
+    Timeout:        60 * time.Second,
+    DefaultAgent: ap.ReActAgentConfig{
+        SystemPrompt: "你是任务处理助手",
+        MaxTurns:     10,
+    },
 })
 p.SetModel(llmProvider)  // 设置 LLM Provider
 defer p.Close()

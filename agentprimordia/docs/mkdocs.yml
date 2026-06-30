@@ -106,29 +106,50 @@ nav:
     - ReAct循环: concepts/react-loop.md
     - 工具系统: concepts/tools.md
     - 记忆系统: concepts/memory.md
+    - RAG检索增强: concepts/rag.md
     - 多Agent编排: concepts/orchestration.md
+    - A2A通信: concepts/a2a.md
+    - 事件总线: concepts/events.md
+    - 安全护栏: concepts/guardrail.md
+    - 状态持久化: concepts/persist.md
+    - 任务规划: concepts/planning.md
+    - 自反思: concepts/reflection.md
+    - 工具学习: concepts/tool-learning.md
   - 使用指南:
     - 创建Agent: guides/create-agent.md
     - 添加工具: guides/add-tools.md
     - 配置记忆: guides/configure-memory.md
+    - 配置护栏: guides/configure-guardrail.md
     - 多Agent协作: guides/multi-agent.md
+    - 并发调度: guides/pool.md
+    - 流式输出: guides/streaming.md
+    - 多模态: guides/multimodal.md
+    - 人机协作: guides/hitl.md
+    - 提示词模板: guides/prompt-templates.md
+    - 配置热加载: guides/config-hot-reload.md
     - 部署到生产: guides/deployment.md
   - API参考:
     - Agent API: api/agent.md
     - LLM API: api/llm.md
     - Tools API: api/tools.md
     - Memory API: api/memory.md
+    - Pool API: api/pool.md
+    - A2A API: api/a2a.md
+    - Guardrail API: api/guardrail.md
   - 进阶主题:
     - 性能优化: advanced/performance.md
+    - PGO性能调优: advanced/pgo.md
     - 安全最佳实践: advanced/security.md
+    - 供应链安全: advanced/supply-chain-security.md
+    - 并发原语: advanced/concurrency.md
     - 自定义Provider: advanced/custom-provider.md
     - 插件开发: advanced/plugin-development.md
-  - 示例:
-    - 基础示例: examples/basic.md
-    - 工具使用: examples/tools.md
-    - 多Agent: examples/multi-agent.md
-    - 生产案例: examples/production.md
-  - 社区:
-    - 贡献指南: community/contributing.md
-    - 行为准则: community/code-of-conduct.md
-    - 路线图: community/roadmap.md
+    - Admin API: advanced/admin-api.md
+    - Debugger调试器: advanced/debugger.md
+    - Metrics指标: advanced/metrics.md
+    - OpenTelemetry: advanced/otel.md
+  - 基准测试:
+    - Go vs TypeScript: benchmarks/go-vs-typescript.md
+    - 性能对比2026: benchmarks/performance-comparison-2026.md
+  - 版本管理:
+    - 版本策略: VERSIONING.md

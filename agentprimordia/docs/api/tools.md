@@ -5,466 +5,374 @@
 ## Tool 接口
 
 ```go
+// Tool 是所有工具必须实现的接口
 type Tool interface {
-    // Name 返回工具名称（唯一标识）
     Name() string
-    
-    // Description 返回工具描述
     Description() string
-    
-    // Parameters 返回参数定义（JSON Schema）
-    Parameters() map[string]interface{}
-    
-    // Execute 执行工具
-    Execute(ctx context.Context, params map[string]interface{}) (string, error)
+    Parameters() json.RawMessage           // JSON Schema 参数定义
+    Execute(ctx context.Context, args json.RawMessage) (*Result, error)
 }
 ```
 
-## ToolManager
-
-工具管理器：
-
-### NewToolManager
+## Result
 
 ```go
-func NewToolManager() *ToolManager
-```
-
-**示例：**
-```go
-mgr := tools.NewToolManager()
-```
-
-### Register
-
-注册工具：
-
-```go
-func (m *ToolManager) Register(tool Tool) error
-```
-
-**参数：**
-- `tool`: 工具实例
-
-**返回：**
-- `error`: 注册错误（如名称冲突）
-
-**示例：**
-```go
-err := mgr.Register(&MyTool{})
-```
-
-### RegisterAll
-
-批量注册工具：
-
-```go
-func (m *ToolManager) RegisterAll(tools ...Tool) error
-```
-
-**示例：**
-```go
-err := mgr.RegisterAll(&Tool1{}, &Tool2{}, &Tool3{})
-```
-
-### RegisterPlugin
-
-注册插件工具：
-
-```go
-func (m *ToolManager) RegisterPlugin(plugin ToolPlugin) error
-```
-
-**示例：**
-```go
-err := mgr.RegisterPlugin(httpPlugin)
-```
-
-### Get
-
-获取工具：
-
-```go
-func (m *ToolManager) Get(name string) (Tool, error)
-```
-
-**示例：**
-```go
-tool, err := mgr.Get("http_request")
-```
-
-### List
-
-列出所有工具：
-
-```go
-func (m *ToolManager) List() []Tool
-```
-
-**示例：**
-```go
-tools := mgr.List()
-for _, t := range tools {
-    fmt.Printf("工具: %s\n", t.Name())
+type Result struct {
+    Content  string         `json:"content"`
+    IsError  bool           `json:"is_error"`
+    Metadata map[string]any `json:"metadata,omitempty"`
 }
+
+// 辅助构造函数
+func NewResult(content string) *Result       // 成功结果
+func NewErrorResult(content string) *Result  // 错误结果
 ```
 
-### Execute
-
-执行工具：
+## Permission
 
 ```go
-func (m *ToolManager) Execute(ctx context.Context, name string, params map[string]interface{}) (string, error)
+type Permission struct {
+    AllowedRoles        []string         `json:"allowed_roles,omitempty"`
+    BlockedPaths        []string         `json:"blocked_paths,omitempty"`
+    RequireConfirmation bool             `json:"require_confirmation,omitempty"`
+    ConfirmFunc         ConfirmationFunc `json:"-"`
+}
+
+type ConfirmationFunc func(toolName string, args json.RawMessage) bool
 ```
+
+## Registry
+
+工具注册中心，管理工具注册、查找和权限：
+
+```go
+func NewRegistry() *Registry
+```
+
+### 主要方法
+
+| 方法 | 说明 |
+|------|------|
+| `Register(tool Tool) error` | 注册工具（同名幂等覆盖） |
+| `Get(name string) (Tool, error)` | 按名称获取工具 |
+| `List() []Tool` | 列出所有工具 |
+| `Count() int64` | 工具数量 |
+| `Definitions() []map[string]any` | 获取所有工具定义（用于 LLM） |
+| `SetPermission(name string, perm *Permission)` | 设置工具权限 |
+| `GetPermission(name string) *Permission` | 获取工具权限 |
 
 **示例：**
+
 ```go
-result, err := mgr.Execute(ctx, "http_request", map[string]interface{}{
-    "url":    "https://api.example.com",
-    "method": "GET",
-})
+registry := ap.NewToolRegistry()
+registry.Register(myTool)
+registry.Register(shellTool)
+
+tool, err := registry.Get("shell")
 ```
 
-### WithAllowedTools
+## Executor
 
-设置工具白名单：
+工具执行器，负责超时控制、权限检查和文件锁：
 
 ```go
-func (m *ToolManager) WithAllowedTools(names []string) *ToolManager
+func NewExecutor(registry *Registry) *Executor
+
+func (e *Executor) Execute(ctx context.Context, toolName string, args json.RawMessage) (*Result, error)
 ```
 
-**示例：**
-```go
-mgr := tools.NewToolManager().
-    WithAllowedTools([]string{"http_request", "calculator"})
+**执行流程：**
+
+```
+ToolCall → Executor.Execute()
+    ↓
+1. Registry.Get(name) 查找工具
+2. ScopePolicy.Allow(agent, path) 权限检查
+3. Permission.RequireConfirmation 确认检查
+4. context.WithTimeout 设置超时
+5. tool.Execute(ctx, args) 执行
+6. 记录指标、返回 Result
 ```
 
-### WithBlockedTools
+## ScopePolicy
 
-设置工具黑名单：
-
-```go
-func (m *ToolManager) WithBlockedTools(names []string) *ToolManager
-```
-
-**示例：**
-```go
-mgr := tools.NewToolManager().
-    WithBlockedTools([]string{"shell_exec", "file_delete"})
-```
-
-## ToolPlugin 接口
-
-工具插件接口：
+作用域权限策略接口：
 
 ```go
-type ToolPlugin interface {
-    // Name 返回插件名称
-    Name() string
-    
-    // Version 返回插件版本
-    Version() string
-    
-    // Tools 返回工具列表
-    Tools() []Tool
-    
-    // Init 初始化插件
-    Init(config map[string]interface{}) error
-    
-    // Close 关闭插件
-    Close() error
+type ScopePolicy interface {
+    Allow(agentName string, path string) error
+}
+
+// 基于文件路径的权限策略
+type FileScopePolicy struct {
+    AllowedPaths []string
+    BlockedPaths []string
+    ReadOnly     bool
 }
 ```
 
 ## 内置工具
 
-### HTTPTool
+### DefaultToolkit
+
+一键创建内置工具包：
+
+```go
+func DefaultToolkit(config ToolkitConfig) (*Registry, error)
+
+type ToolkitConfig struct {
+    RootDir     string
+    EnableFS    bool
+    EnableShell bool
+    EnableWeb   bool
+}
+```
+
+**示例：**
+
+```go
+registry, _ := ap.DefaultToolkit(ap.ToolkitConfig{
+    RootDir:     ".",
+    EnableFS:    true,
+    EnableShell: true,
+    EnableWeb:   true,
+})
+```
+
+### FileSystem
+
+文件系统操作工具（读写、搜索、编辑）：
+
+```go
+// 自动注册到 DefaultToolkit(EnableFS=true)
+// 工具名: "filesystem"
+// 支持: read_file, write_file, edit_file, search_directory
+```
+
+### Shell
+
+Shell 命令执行工具（白名单、超时）：
+
+```go
+// 自动注册到 DefaultToolkit(EnableShell=true)
+// 工具名: "shell"
+// 支持: 命令白名单、超时控制、工作目录限制
+```
+
+### Web
 
 HTTP 请求工具：
 
 ```go
-func NewHTTPTool() Tool
+// 自动注册到 DefaultToolkit(EnableWeb=true)
+// 工具名: "web"
+// 支持: GET / POST / PUT / DELETE
 ```
 
-**参数定义：**
-```json
-{
-    "type": "object",
-    "properties": {
-        "url": {"type": "string"},
-        "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"]},
-        "headers": {"type": "object"},
-        "body": {"type": "string"}
-    },
-    "required": ["url"]
-}
+### KnowledgeSearch
+
+知识库搜索工具：
+
+```go
+// 工具名: "knowledge_search"
+// 通过 RAG Provider 检索知识库
+```
+
+### 其他内置工具
+
+| 工具 | 说明 |
+|------|------|
+| `API` | REST API 调用（白名单、超时） |
+| `Database` | SQL 数据库查询 |
+| `CodeExecution` | 代码执行（沙箱） |
+
+## MCP 协议集成
+
+### MCPClient
+
+连接外部 MCP Server：
+
+```go
+func NewMCPClient(url string) *MCPClient
+
+func (c *MCPClient) Initialize(ctx context.Context) error
+func (c *MCPClient) RegisterIntoRegistry(registry *Registry) error
 ```
 
 **示例：**
+
 ```go
-httpTool := tools.NewHTTPTool()
-mgr.Register(httpTool)
+client := ap.NewMCPClient("http://localhost:3001/mcp")
+client.Initialize(ctx)
+client.RegisterIntoRegistry(toolRegistry)
 ```
 
-### ShellTool
+### MCPRegistry
 
-Shell 命令工具：
+管理多个 MCP Server：
 
 ```go
-func NewShellTool(config ShellConfig) Tool
+func NewMCPRegistry() *MCPRegistry
 
-type ShellConfig struct {
-    AllowedCommands []string        // 允许的命令
-    Timeout         time.Duration   // 超时时间
-    WorkDir         string          // 工作目录
-    Env             []string        // 环境变量
-}
+func (r *MCPRegistry) Register(config MCPClientConfig)
+func (r *MCPRegistry) StartAll(ctx context.Context) error
+func (r *MCPRegistry) RegisterIntoRegistry(registry *Registry) error
 ```
 
 **示例：**
+
 ```go
-shellTool := tools.NewShellTool(tools.ShellConfig{
-    AllowedCommands: []string{"ls", "cat", "echo"},
-    Timeout:         30 * time.Second,
+mcpReg := ap.NewMCPRegistry()
+mcpReg.Register(ap.MCPClientConfig{
+    Name:      "filesystem",
+    Command:   "npx",
+    Args:      []string{"@modelcontextprotocol/server-filesystem", "/tmp"},
+    AutoStart: true,
 })
-mgr.Register(shellTool)
+mcpReg.StartAll(ctx)
+mcpReg.RegisterIntoRegistry(toolRegistry)
 ```
 
-### FileTool
+## 插件系统
 
-文件操作工具：
+### ToolPlugin 接口
 
 ```go
-func NewFileTool(config FileConfig) Tool
-
-type FileConfig struct {
-    AllowedPaths []string  // 允许的路径
-    ReadOnly     bool      // 只读模式
+type ToolPlugin interface {
+    Name() string
+    Version() string
+    Tools() []Tool
+    Init(config map[string]any) error
+    Close() error
 }
 ```
 
-**示例：**
+### PluginLoader
+
 ```go
-fileTool := tools.NewFileTool(tools.FileConfig{
-    AllowedPaths: []string{"/tmp", "/home/user"},
-    ReadOnly:     false,
-})
-mgr.Register(fileTool)
+func NewPluginLoader(registry *Registry) *PluginLoader
+
+func (l *PluginLoader) Load(plugin ToolPlugin) error
+func (l *PluginLoader) LoadWithConfig(plugin ToolPlugin, config map[string]any) error
+```
+
+**示例：**
+
+```go
+loader := ap.NewPluginLoader(registry)
+loader.Load(jsonplugin.New())
+loader.LoadWithConfig(kvplugin.New(), map[string]any{"db_path": "test.db"})
 ```
 
 ## 自定义工具
 
-### 基本结构
-
 ```go
-type MyTool struct {
-    // 配置字段
-    apiKey string
-}
+type WeatherTool struct{}
 
-func (t *MyTool) Name() string {
-    return "my_tool"
-}
-
-func (t *MyTool) Description() string {
-    return "我的自定义工具。参数：input (string) - 输入数据"
-}
-
-func (t *MyTool) Parameters() map[string]interface{} {
-    return map[string]interface{}{
+func (t *WeatherTool) Name() string { return "get_weather" }
+func (t *WeatherTool) Description() string { return "获取天气信息。参数：city (string)" }
+func (t *WeatherTool) Parameters() json.RawMessage {
+    return json.RawMessage(`{
         "type": "object",
-        "properties": map[string]interface{}{
-            "input": map[string]interface{}{
-                "type":        "string",
-                "description": "输入数据",
-            },
+        "properties": {
+            "city": {"type": "string", "description": "城市名称"}
         },
-        "required": []string{"input"},
-    }
+        "required": ["city"]
+    }`)
 }
-
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    input, ok := params["input"].(string)
-    if !ok {
-        return "", fmt.Errorf("input is required")
+func (t *WeatherTool) Execute(ctx context.Context, args json.RawMessage) (*tools.Result, error) {
+    var params struct{ City string `json:"city"` }
+    if err := json.Unmarshal(args, &params); err != nil {
+        return nil, err
     }
-    
-    // 实现工具逻辑
-    result := process(input)
-    return result, nil
+    return tools.NewResult(fmt.Sprintf("%s: 晴, 25°C", params.City)), nil
 }
 ```
 
-### 参数验证
+## 官方插件
 
-```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    // 必填参数
-    input, ok := params["input"].(string)
-    if !ok || input == "" {
-        return "", fmt.Errorf("input is required")
-    }
-    
-    // 类型检查
-    count, ok := params["count"].(float64)  // JSON 数字为 float64
-    if !ok {
-        return "", fmt.Errorf("count must be a number")
-    }
-    
-    // 范围检查
-    if count < 1 || count > 100 {
-        return "", fmt.Errorf("count must be between 1 and 100")
-    }
-    
-    return t.process(input, int(count))
-}
-```
-
-### 超时处理
-
-```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-    defer cancel()
-    
-    done := make(chan string, 1)
-    errCh := make(chan error, 1)
-    
-    go func() {
-        result, err := t.longRunningTask(params)
-        if err != nil {
-            errCh <- err
-        } else {
-            done <- result
-        }
-    }()
-    
-    select {
-    case result := <-done:
-        return result, nil
-    case err := <-errCh:
-        return "", err
-    case <-ctx.Done():
-        return "", fmt.Errorf("tool execution timeout")
-    }
-}
-```
-
-## 工具定义
-
-### ToolDefinition
-
-工具定义（用于 LLM）：
-
-```go
-type ToolDefinition struct {
-    // Name 工具名称
-    Name string
-    
-    // Description 工具描述
-    Description string
-    
-    // Parameters 参数定义
-    Parameters map[string]interface{}
-}
-```
-
-### 转换为 LLM 格式
-
-```go
-func (t *Tool) ToDefinition() llm.ToolDefinition
-```
-
-**示例：**
-```go
-def := myTool.ToDefinition()
-// 传递给 LLM
-req := llm.Request{
-    Tools: []llm.ToolDefinition{def},
-}
-```
+| 插件 | 分类 | 工具 | 说明 |
+|------|------|------|------|
+| http | network | `http_client` | HTTP 客户端封装 |
+| sql | database | `sqlite_processor` | SQLite 数据处理 |
+| git | vcs | `git_tool` | Git 版本控制 |
+| json | data | `json_processor` + `csv_processor` | JSON/CSV 处理 |
+| email | communication | `email_sender` | 邮件发送 |
+| kv | database | `kv_store` | 键值存储 |
 
 ## 错误定义
 
 ```go
 var (
-    // ErrToolNotFound 工具未找到
-    ErrToolNotFound = errors.New("tool not found")
-    
-    // ErrToolNotAllowed 工具不允许
-    ErrToolNotAllowed = errors.New("tool not allowed")
-    
-    // ErrToolBlocked 工具被阻止
-    ErrToolBlocked = errors.New("tool blocked")
-    
-    // ErrToolExecutionFailed 工具执行失败
-    ErrToolExecutionFailed = errors.New("tool execution failed")
-    
-    // ErrInvalidParams 参数无效
-    ErrInvalidParams = errors.New("invalid parameters")
+    ErrInvalidConfig = errors.New("invalid configuration")
+    ErrToolNotFound  = errors.New("tool not found")
+    ErrToolExecution = errors.New("tool execution failed")
+    ErrConfirmDenied = errors.New("tool confirmation denied")
 )
 ```
 
 ## 完整示例
 
-```go
-package main
+=== "Go"
 
-import (
-    "context"
-    "fmt"
-    "log"
-    
-    "agentprimordia.dev/agentprimordia/pkg/tools"
-)
+    ```go
+    package main
 
-// WeatherTool 天气工具
-type WeatherTool struct{}
+    import (
+        "context"
+        "fmt"
+        "log"
+        "os"
 
-func (t *WeatherTool) Name() string        { return "get_weather" }
-func (t *WeatherTool) Description() string { return "获取天气信息。参数：city (string)" }
-func (t *WeatherTool) Parameters() map[string]interface{} {
-    return map[string]interface{}{
-        "type": "object",
-        "properties": map[string]interface{}{
-            "city": map[string]interface{}{
-                "type":        "string",
-                "description": "城市名称",
-            },
-        },
-        "required": []string{"city"},
+        ap "agentprimordia/pkg"
+    )
+
+    func main() {
+        // 创建工具包
+        registry, _ := ap.DefaultToolkit(ap.ToolkitConfig{
+            RootDir:     ".",
+            EnableFS:    true,
+            EnableShell: true,
+        })
+
+        // 注册自定义工具
+        registry.Register(&WeatherTool{})
+
+        // 创建 Agent
+        provider := ap.NewOpenAIProvider(ap.Config{
+            APIKey: os.Getenv("OPENAI_API_KEY"),
+            Model:  "gpt-4o",
+        })
+        agent, _ := ap.NewAgent("tool-agent", "你是助手", provider,
+            ap.WithMaxTurns(10),
+            ap.WithToolkit(registry),
+        )
+
+        resp, err := agent.Run(context.Background(), ap.UserMessage("北京天气怎么样？"))
+        if err != nil {
+            log.Fatal(err)
+        }
+        fmt.Println(resp.Content)
     }
-}
+    ```
 
-func (t *WeatherTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    city, ok := params["city"].(string)
-    if !ok {
-        return "", fmt.Errorf("city is required")
-    }
-    return fmt.Sprintf("%s: 晴, 25°C", city), nil
-}
+=== "TypeScript"
 
-func main() {
-    // 创建工具管理器
-    mgr := tools.NewToolManager()
-    
-    // 注册工具
-    mgr.Register(&WeatherTool{})
-    mgr.Register(tools.NewHTTPTool())
-    
-    // 列出工具
-    for _, t := range mgr.List() {
-        fmt.Printf("工具: %s - %s\n", t.Name(), t.Description())
-    }
-    
-    // 执行工具
-    result, err := mgr.Execute(context.Background(), "get_weather", map[string]interface{}{
-        "city": "北京",
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    fmt.Printf("结果: %s\n", result)
-}
-```
+    ```typescript
+    import { ReActAgent, OpenAIProvider, ToolRegistry, FileSystemTool, ShellTool } from '@agentprimordia/sdk';
+
+    const registry = new ToolRegistry();
+    registry.register(new FileSystemTool({ rootDir: '.' }));
+    registry.register(new ShellTool({ allowedCommands: ['ls', 'cat'] }));
+
+    const agent = new ReActAgent({
+      name: 'tool-agent',
+      systemPrompt: '你是助手',
+      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),
+      maxTurns: 10,
+      toolkit: registry,
+    });
+
+    const resp = await agent.run('当前目录有哪些文件？');
+    console.log(resp.content);
+    ```
