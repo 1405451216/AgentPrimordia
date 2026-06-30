@@ -115,6 +115,14 @@ coverage
 diff_*.txt
 coverage-output.txt
 
+# ---------- Test/Lint Output ----------
+*-test.txt
+*-verify.txt
+test-output.txt
+coverage-check.txt
+eslint-*.txt
+final-*.txt
+
 # ---------- Wiki / Generated ----------
 agent_bench.txt
 count_lines.ps1
