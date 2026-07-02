@@ -220,73 +220,70 @@ git commit -m "test(agent): remove duplicate/redundant orchestration tests
 
 ### P1.1 复活 11 个 `//go:build ignore` 零成本文件（+134 测试，2.5h）
 
+**⚠️ 2026-07-02 实测修正：原文档预测"+134 测试"是子代理对源码 API 的浅层 grep 推断，**实际执行后**：
+
+**真实情况（基于实测）**：
+
+| # | 文件 | 测试数 | 实测复活结果 | 真实问题 |
+|---|------|------:|-------------|---------|
+| 1 | `multimodal_test.go` | 16 | ❌ 编译失败 | `[]Message` (agent) vs `[]multimodal.Message` 类型不兼容 |
+| 2 | `multimodal_adapter_test.go` | 9 | ❌ 编译失败 | `multimodal.Role` vs `Role` 类型不兼容 |
+| 3 | `lifecycle_state_test.go` | 29 | ❌ 编译失败 | `lc.AddGuard` 方法不存在 |
+| 4 | `group_chat_test.go` | 14 | ❌ 编译失败 | `[]collaboration.Message` vs `[]agent.Message` 类型不兼容 |
+| 5 | `http_transport_api_full_test.go` | 10 | ❌ 编译失败 | `tr.handleMessage` (transport 包内 unexported) |
+| 6 | `tcp_transport_api_full_test.go` | 14 | ❌ 编译失败 | 同上，跨包 unexported |
+| 7 | `distributed_integration_test.go` | 4 | ⚠️ **能编译但 hang** | `TestDiscoveryServer_DoubleStart` 在 `discovery.go:307` 卡住：`Start()` 同步阻塞 `ListenAndServe()` 而测试期望异步 |
+| 8 | `session_test.go` | 8 | ❌ 编译失败 | `session.Role` vs `Role` 类型不兼容 |
+| 9 | `eval_test.go` | 22 | ❌ 编译失败 | `eval.Response` vs `*Response` 类型不兼容 + `normalizeWhitespace` 未定义 |
+| 10 | `discovery_api_full_test.go` | 24 | ⚠️ **能编译但 hang** | 同 #7，`TestDiscoveryServer_DoubleStart` hang |
+| 11 | `distributed_test.go` | 4 | ⚠️ **能编译但 hang** | 同 #7，`TestDiscoveryServer_DoubleStart` hang |
+
+**实际净收益**：
+- 净复活测试数：**0 个**
+- 实际工作量：30 分钟（浪费在子代理误判 + hang 排查）
+- **结论**：子代理"零成本"的判断完全错误，每个文件都有**真实的** API 漂移或**预先存在的**实现缺陷
+
+**根因**：`45c17f3` (2026-06-24) 提交批量添加 `//go:build ignore` **不是因为 API drift**，而是因为：
+1. 部分文件测试的是 `eval/`、`session/`、`multimodal/`、`collaboration/` 子包，而这些子包的类型与 `agent/` 主包**故意不兼容**（不同 package 隔离）
+2. 部分测试（如 `DiscoveryServer.Start`）假设**异步 API**，但生产代码是同步实现（**预先存在的 BUG**）
+
+**正确的复活路径（每个 0.5-1h 工作量）**：
+
+| # | 文件 | 需要的修复 |
+|---|------|---------|
+| 1 | `multimodal_test.go` | 在测试里手动构造 `multimodal.Message{}` 而不是用 `agent.Message{}` |
+| 2 | `multimodal_adapter_test.go` | 同上，或在 `multimodal.Role` 与 `agent.Role` 间做转换 |
+| 3 | `lifecycle_state_test.go` | 添加 `Lifecycle.AddGuard` 方法（生产代码缺）|
+| 4 | `group_chat_test.go` | 测试迁到 `agent/collaboration/` 子包内（`package collaboration`）|
+| 5,6 | `http/tcp_transport_api_full_test.go` | 迁到 `agent/transport/` 子包内（`package transport`）|
+| 7,10,11 | `discovery_*_test.go` | **生产代码 BUG**：`DiscoveryServer.Start()` 应改为 goroutine 异步 |
+| 8 | `session_test.go` | 同 #1/#4，迁到 `session/` 子包内 |
+| 9 | `eval_test.go` | 同上，迁到 `eval/` 子包内 |
+
+**为什么这些测试都坏了还放着？**
+- 大概率是开发者在生产代码变更后用 `//go:build ignore` 快速**禁用**而不是**修复**
+- 这是技术债的典型症状 — 表面上"暂时屏蔽"，实际永久留下
+
+**建议处理（重写 P1.1）**：
+
+不要批量复活，而是一次**修复一个**：
+1. 先修 `DiscoveryServer.Start()` 异步化（修生产代码 bug，3 个测试同时复活）
+2. 评估每个跨包子包测试的迁移成本，决定是否值得
+
+**预计真实工作量**：每个文件 0.5-1h（共 11 个 = 5-11h），且部分需要修生产代码
+
+**重新评估**：P1.1 实际优先级从"高 ROI（2.5h）"降为"低 ROI（5-11h 含生产代码修复）"，应放到 P2 处理。
+
+---
+
+## 旧 P1.1 描述（保留作历史，仅作对比）
+
 **已验证**（逐个文件 `^func Test` 计数）：15 个 ignore `_test.go` 文件共 155 测试；扣除 P0.3 删的 12 个，剩 143。
 
 **问题**：
 - `45c17f3` (2026-06-24) 提交批量添加了 `//go:build ignore`
 - 大多数文件源码符号仍存在，仅 build tag 阻止编译
 - 这是**审计层面最难受的债务** — 显式禁用测试会被外部 reviewer 视为不专业
-
-**可立即复活的 11 个文件**（API 漂移程度 = 无/已迁移）：
-
-| # | 文件 | 测试数 | 漂移 | 唯一动作 |
-|---|------|------:|------|---------|
-| 1 | `multimodal_test.go` | 16 | 无 | 删 build tag |
-| 2 | `multimodal_adapter_test.go` | 9 | 无 | 删 build tag |
-| 3 | `lifecycle_state_test.go` | 29 | 无 | 删 build tag |
-| 4 | `group_chat_test.go` | 14 | 无 | 删 build tag |
-| 5 | `http_transport_api_full_test.go` | 10 | 无 | 删 build tag |
-| 6 | `tcp_transport_api_full_test.go` | 14 | 无 | 删 build tag |
-| 7 | `distributed_integration_test.go` | 4 | 无 | 删 build tag |
-| 8 | `session_test.go` | 8 | 已迁移 | 删 build tag + `sed s/hasPrefix/strings.HasPrefix/g` |
-| 9 | `eval_test.go` | 22 | 已迁移 | 删 build tag |
-| 10 | `discovery_api_full_test.go` | 24 | 已迁移 | 删 build tag |
-| 11 | `distributed_test.go` | 4 | 已迁移 | 删 build tag |
-
-**修复步骤**（可直接复制执行）：
-
-```bash
-cd e:\codecast\codecast\AgentPrimordia\agentprimordia
-
-# 1. 批量删除 11 个文件的 build tag
-for f in \
-  internal/agent/multimodal_test.go \
-  internal/agent/multimodal_adapter_test.go \
-  internal/agent/lifecycle_state_test.go \
-  internal/agent/group_chat_test.go \
-  internal/agent/http_transport_api_full_test.go \
-  internal/agent/tcp_transport_api_full_test.go \
-  internal/agent/distributed_integration_test.go \
-  internal/agent/session_test.go \
-  internal/agent/eval_test.go \
-  internal/agent/discovery_api_full_test.go \
-  internal/agent/distributed_test.go; do
-  sed -i '/^\/\/go:build ignore$/d' "$f"
-  echo "removed build tag: $f"
-done
-
-# 2. 修 session_test.go 的 hasPrefix 调用
-sed -i 's/\bhasPrefix\b/strings.HasPrefix/g' internal/agent/session_test.go
-
-# 3. 确保 session_test.go 顶部有 strings import（如果没有则补）
-# 检查: grep -q '"strings"' internal/agent/session_test.go || sed -i '/^import/a\\t"strings"' internal/agent/session_test.go
-
-# 4. 验证编译
-go test ./internal/agent -count=1 2>&1 | tail -20
-
-# 5. 跑覆盖率看效果
-go test -cover ./internal/agent
-```
-
-**预计效果**（已计算）：
-- 134 个新测试
-- 内部 `agent` 包覆盖率 +2.0~2.5pp
-- 整体 51 包平均 +0.5~1.0pp
-- 工作量 2.5h
-
-**特别推荐**（价值/成本最高）：
-- `group_chat_test.go` (14 tests) — **无活跃 GroupChat 测试覆盖**（活跃 `orchestration_pipeline_test.go` 只覆盖 Pipeline/Handoff/Parallel）
-- `dag_test.go` (26 tests) — 测的是旧 `DAGWorkflow` 类（`dag.go` 仍有 761 LoC），活跃 `dag_builder_test.go` 只测新 `DAGBuilder`
 
 ---
 
