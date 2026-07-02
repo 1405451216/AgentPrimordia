@@ -57,7 +57,9 @@ export class ToolRegistry {
     try {
       const args = JSON.parse(call.arguments);
       const content = await tool.execute(args);
-      return { toolCallId: call.id, content, isError: false };
+      // Ensure content is always a string — tools may return objects/arrays
+      const contentStr = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+      return { toolCallId: call.id, content: contentStr, isError: false };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return { toolCallId: call.id, content: msg, isError: true };
