@@ -1,3 +1,12 @@
+/** 事件类型联合。
+ *
+ * 包含 SDK 内置事件类型，同时通过 `(string & {})` 交叉类型
+ * 支持下游应用（如 AELA）发布自定义事件（如 'model.suggestion'、
+ * 'guardrail.blocked'、'context.tokens'），无需修改 SDK 源码。
+ *
+ * `(string & {})` 是 TypeScript 常见模式：它允许任意字符串赋值，
+ * 同时保留已知字面量的自动补全和类型检查。
+ */
 export type EventType =
   | 'agent.start'
   | 'agent.stop'
@@ -9,7 +18,8 @@ export type EventType =
   | 'llm.call'
   | 'llm.response'
   | 'pool.dispatch'
-  | 'pool.complete';
+  | 'pool.complete'
+  | (string & {});
 
 export interface Event {
   id: string;

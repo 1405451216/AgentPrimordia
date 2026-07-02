@@ -62,6 +62,46 @@ export class ResilientProvider implements Provider {
     return this.primary.info();
   }
 
+  /** 获取熔断器运行时状态（公开 API，替代直接访问私有字段）。
+   *
+   * 返回值说明：
+   * - state: 'closed'（正常）/ 'open'（熔断中）/ 'half_open'（已过恢复时间，下次请求将放行）
+   * - failures: 当前连续失败次数
+   * - lastFailTime: 上次失败的时间戳（毫秒）
+   * - circuitThreshold: 触发熔断的失败次数阈值
+   * - circuitRecoverMs: 熔断恢复时间（毫秒）
+   */
+  getBreakerState(): {
+    state: 'closed' | 'open' | 'half_open';
+    failures: number;
+    lastFailTime: number;
+    circuitThreshold: number;
+    circuitRecoverMs: number;
+  } {
+    let state: 'closed' | 'open' | 'half_open' = 'closed';
+    if (this.circuitOpen) {
+      if (Date.now() - this.lastFailTime > this.circuitRecoverAfter) {
+        state = 'half_open';
+      } else {
+        state = 'open';
+      }
+    }
+    return {
+      state,
+      failures: this.failures,
+      lastFailTime: this.lastFailTime,
+      circuitThreshold: this.circuitThreshold,
+      circuitRecoverMs: this.circuitRecoverAfter,
+    };
+  }
+
+  /** 重置熔断器状态（将 failures 清零、circuitOpen 置 false） */
+  resetBreaker(): void {
+    this.failures = 0;
+    this.circuitOpen = false;
+    this.lastFailTime = 0;
+  }
+
   private checkCircuit(): void {
     if (this.circuitOpen && Date.now() - this.lastFailTime > this.circuitRecoverAfter) {
       this.circuitOpen = false;

@@ -132,10 +132,21 @@ export interface AgentMetrics {
   toolLatency: number;
 }
 
-/** Agent 最终响应，包含内容和指标 */
+/** Agent 最终响应，包含内容和指标。
+ *
+ * 字段说明：
+ * - content: 响应文本内容
+ * - metrics: Agent 运行指标（轮次、工具数、延迟等）
+ * - usage: Token 用量统计（可选，运行时 LLM 响应实际携带）
+ * - model: 实际使用的模型名称（可选，用于成本追踪和模型路由）
+ */
 export interface Response {
   content: string;
   metrics: AgentMetrics;
+  /** Token 用量统计（运行时由 LLM 响应携带） */
+  usage?: Usage;
+  /** 实际使用的模型名称（用于成本追踪和模型路由） */
+  model?: string;
 }
 
 /** Agent 状态，与 Go 端 AgentStatus 对齐 */
@@ -153,7 +164,7 @@ export interface Tool {
 export interface MemoryEpisode {
   id: string;
   sessionId: string;
-  role: 'system' | 'user' | 'assistant' | 'tool';
+  role: string;
   content: string;
   summary?: string;
   topics?: string;
