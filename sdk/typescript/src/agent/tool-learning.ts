@@ -25,6 +25,8 @@ export interface ToolUsageRecord {
   error?: string;
   success: boolean;
   timestamp: string;
+  /** 可选：执行耗时（毫秒）。未记录时 avgLatencyMs 在聚合时被跳过。 */
+  latencyMs?: number;
 }
 
 export interface ToolLearner {
@@ -154,7 +156,7 @@ export class MemoryToolLearner implements ToolLearner {
     };
   }
 
-  private addToCache(record: ToolUsageRecord): void {
+  protected addToCache(record: ToolUsageRecord): void {
     if (!this.records.has(record.toolName)) {
       this.records.set(record.toolName, []);
     }
@@ -164,7 +166,7 @@ export class MemoryToolLearner implements ToolLearner {
     if (records.length > 100) records.shift();
   }
 
-  private extractPattern(args: string): string {
+  protected extractPattern(args: string): string {
     // Simple pattern extraction: extract action/operation type
     try {
       const parsed = JSON.parse(args);
@@ -266,12 +268,54 @@ export class EnhancedToolLearner extends MemoryToolLearner {
     });
   }
 
+  /** 带执行耗时的 recordSuccess 入口（推荐使用，avgLatencyMs 才有真实数据） */
+  async recordSuccessWithTiming(
+    toolName: string, args: string, result: string, latencyMs: number,
+  ): Promise<void> {
+    // 直接写父类 cache 以保留 latencyMs
+    const ts = new Date().toISOString();
+    this.addToCache({ toolName, args, result, success: true, timestamp: ts, latencyMs });
+    await this.memory.add({
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sessionId: 'tool-learning',
+      role: 'system',
+      content: JSON.stringify({ toolName, args, result, success: true, timestamp: ts, latencyMs }),
+      metadata: { type: 'tool_learning', toolName, success: 'true' },
+      createdAt: ts,
+    });
+    this.addEnhancedRecord({
+      toolName, args, result, success: true,
+      timestamp: ts, latencyMs,
+    });
+  }
+
   /** 覆盖 recordFailure，同时记录到本地缓存 */
   async recordFailure(toolName: string, args: string, errorMsg: string): Promise<void> {
     await super.recordFailure(toolName, args, errorMsg);
     this.addEnhancedRecord({
       toolName, args, error: errorMsg, success: false,
       timestamp: new Date().toISOString(),
+    });
+  }
+
+  /** 带执行耗时的 recordFailure 入口 */
+  async recordFailureWithTiming(
+    toolName: string, args: string, errorMsg: string, latencyMs: number,
+  ): Promise<void> {
+    // 直接写父类 cache 以保留 latencyMs
+    const ts = new Date().toISOString();
+    this.addToCache({ toolName, args, error: errorMsg, success: false, timestamp: ts, latencyMs });
+    await this.memory.add({
+      id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      sessionId: 'tool-learning',
+      role: 'system',
+      content: JSON.stringify({ toolName, args, error: errorMsg, success: false, timestamp: ts, latencyMs }),
+      metadata: { type: 'tool_learning', toolName, success: 'false' },
+      createdAt: ts,
+    });
+    this.addEnhancedRecord({
+      toolName, args, error: errorMsg, success: false,
+      timestamp: ts, latencyMs,
     });
   }
 
@@ -331,15 +375,31 @@ export class EnhancedToolLearner extends MemoryToolLearner {
     const practices = await this.getBestPractices(toolName);
     if (practices.length < this.config.minRecordsForPattern) return [];
 
-    const patterns: ToolUsagePattern[] = practices.map((p) => ({
-      toolName,
-      patternName: p.pattern,
-      argTemplate: this.extractArgTemplate(p.examples[0] ?? ''),
-      frequency: p.examples.length,
-      successRate: p.successRate,
-      avgLatencyMs: 0, // TODO: 从记录中计算
-      scenarios: this.extractScenarios(p),
-    }));
+    // 从 enhancedRecords 中按 pattern 分组，计算真实平均延迟
+    const records = this.enhancedRecords.get(toolName) ?? [];
+    const patternLatencies = new Map<string, number[]>();
+    for (const r of records) {
+      if (r.latencyMs == null) continue;
+      const pattern = this.extractPattern(r.args);
+      if (!patternLatencies.has(pattern)) patternLatencies.set(pattern, []);
+      patternLatencies.get(pattern)!.push(r.latencyMs);
+    }
+
+    const patterns: ToolUsagePattern[] = practices.map((p) => {
+      const latencies = patternLatencies.get(p.pattern) ?? [];
+      const avgLatencyMs = latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : 0;
+      return {
+        toolName,
+        patternName: p.pattern,
+        argTemplate: this.extractArgTemplate(p.examples[0] ?? ''),
+        frequency: p.examples.length,
+        successRate: p.successRate,
+        avgLatencyMs,
+        scenarios: this.extractScenarios(p),
+      };
+    });
 
     const sorted = patterns.sort((a, b) => b.successRate * b.frequency - a.successRate * a.frequency);
     this.patternCache.set(toolName, sorted);
