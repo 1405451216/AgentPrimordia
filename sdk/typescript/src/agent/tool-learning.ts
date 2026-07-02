@@ -39,7 +39,11 @@ export interface ToolLearner {
 // ===== Memory Tool Learner =====
 
 export class MemoryToolLearner implements ToolLearner {
-  private memory: Memory;
+  // 提升为 protected 以允许子类（EnhancedToolLearner）在 recordSuccessWithTiming
+  // / recordFailureWithTiming 中直接复用同一 memory 句柄写入 tool_learning 事件。
+  // 修复 TS2341: Property 'memory' is private and only accessible within class 'MemoryToolLearner'.
+  // 仅类型可见性变更，运行时行为不变。
+  protected memory: Memory;
   private records: Map<string, ToolUsageRecord[]> = new Map();
 
   constructor(memory: Memory) {
