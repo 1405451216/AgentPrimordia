@@ -131,6 +131,8 @@ lint-go:
 
 lint-ts:
 	cd ../sdk/typescript && npm run lint
+	@echo "=== TS typecheck (tsc --noEmit) ==="
+	cd ../sdk/typescript && npx tsc --noEmit
 
 # 统一 TS SDK 测试入口
 # sdk/typescript 使用 vitest（直接测试 TS 源码）
