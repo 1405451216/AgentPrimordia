@@ -1,10 +1,31 @@
 # 长期愿景优化实施计划（6-12 个月）
 
 > **状态：进行中** 🔄
+> **最后核对：2026-07-02**（P0 路线图刷新）
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 实现极致性能优化、安全合规体系、生态建设，使 AP 成为企业级 AI Agent 框架的标杆
+## 任务跟踪块（2026-07-02 更新）
+
+> 维护规则：每个 Task 的 checkbox 状态由负责人在开工/完工时同步更新；停滞超过 4 周的 Task 在本表登记到"⚠️ 待重激活"列。
+
+| Phase | Task | 状态 | 负责人 | 最近更新 | 备注 |
+|---|---|---|---|---|---|
+| 7 性能 | 15 零拷贝消息 | ✅ 已完成 | core | 2026-06-30 | `internal/agent/zerocopy.go` 上线 |
+| 7 性能 | 16 协程池动态调优 | ⬜ 未开始 | — | — | 等待 Phase 6 实际负载数据 |
+| 7 性能 | 17 LLM 批处理 | ⬜ 未开始 | — | — | 与 ResilientProvider 解耦后再启 |
+| 8 安全 | 18 PII 自动脱敏 | 🟡 部分 | core | 2026-07-01 | `internal/guardrail/pii.go` 基础完成，待覆盖输出端 |
+| 8 安全 | 19 完整审计日志 | 🟡 部分 | core | 2026-07-01 | `internal/audit` 基础就位，需补 HTTP/工具调用事件 |
+| 8 安全 | 20 权限继承 | ⬜ 未开始 | — | — | 需先统一 `pkg/security.go` 接口 |
+| 8 安全 | 21 合规报告 | ⬜ 未开始 | — | — | 依赖 Task 19 完整数据 |
+| 9 生态 | 22 插件市场 | ⬜ 未开始 | — | — | 等待 v1.0.0 用户反馈 |
+| 9 生态 | 23 企业版多租户 | ⬜ 未开始 | — | — | 商业化讨论中 |
+| 9 生态 | 24 K8s Operator 升级 | 🟡 部分 | infra | 2026-06-25 | HPA 已落地，待补 Pod 指标真实采集 |
+| 9 生态 | 25 社区运营工具链 | ⬜ 未开始 | — | — | — |
+
+> ⚠️ **待重激活**（停滞 ≥ 4 周）：
+> - Task 16/17：等待业务反馈
+> - Task 20-25：暂无明确 owner，建议在下一次 planning meeting 上指派
 
 **Architecture:** 性能层通过零拷贝消息传递、协程池动态调优、LLM 批处理降低成本；安全层实现 PII 自动脱敏、完整审计日志、权限继承、合规报告生成；生态层构建插件市场、企业版多租户、Kubernetes Operator 成熟度提升、社区运营工具链。所有新模块遵循接口优先、并发安全、仅使用 Go 标准库原则。
 

@@ -1,8 +1,23 @@
 # 中优先级优化实施计划（3-6 个月）
 
 > **状态：已完成** ✅（所有 Task 9-14 已实现并通过测试，2026-06-29 验证）
+> **最后核对：2026-07-02**（交付物落点追踪）
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+## 交付物清单（2026-07-02 复核）
+
+| Phase | Task | 交付物路径 | 验证 | 覆盖率 |
+|---|---|---|---|---|
+| 4 记忆 | 9 HNSW | `internal/memory/hnsw.go` + `hnsw_test.go` | ✅ | — |
+| 4 记忆 | 10 压缩 | `internal/memory/compressor.go` | ✅ | 81.2% |
+| 4 记忆 | 11 共享存储 | `internal/memory/shared_store.go` | ✅ | — |
+| 5 编排 | 12 可视化 | `internal/orchestration/visualize.go` | ✅ | 90.5% |
+| 5 编排 | 13 动态拓扑 | `internal/orchestration/dynamic.go` | ✅ | — |
+| 6 DX | 14 Playground | 单文件 HTML/JS（`internal/agent/visualize.go` 内嵌） | ✅ | — |
+
+> ✅ = 全部测试通过；覆盖率列空表示该包未单独统计（已合并到上层包）。
+> 后续如需补覆盖率，按 `cover-check` 流程走。
 
 **Goal:** 升级记忆系统（HNSW 索引、压缩、共享）、增强多 Agent 编排（可视化、动态拓扑）、提升开发者体验（CLI 增强、Playground）
 
