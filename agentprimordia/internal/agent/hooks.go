@@ -533,84 +533,138 @@ func (m *HookManager) RegisteredPoints() []HookPoint {
 }
 
 // ===== 便捷方法 =====
+//
+// perf-v12 (2026-07-03)：便捷方法内部使用 BufferPool 复用 HookContext，
+// 替代每次 &HookContext{...} 字面量分配。
+//
+// 约束：注册的 HookFunc 不应保留 hctx 引用或异步访问 hctx 字段。
+// 由于 Fire 同步执行（所有 hook 串行返回后才走 ReleaseHookContext），
+// 同步 hook 安全；异步访问 hctx 会读到已被 Reset 的字段，需用户自行拷贝。
+//
+// 迁移路径：用户从 Fire(ctx, &HookContext{...}) 切换到 OnXxx 便捷方法
+// 即可享受池化收益；继续用 Fire 的代码路径保持兼容（按字面量分配）。
 
 func (m *HookManager) OnReasoning(ctx context.Context, thought *Thought) {
-	_ = m.Fire(ctx, &HookContext{Point: HookAfterLLM})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookAfterLLM
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnComplete(ctx context.Context, resp *Response) {
-	_ = m.Fire(ctx, &HookContext{Point: HookOnComplete, Response: resp})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookOnComplete
+	hctx.Response = resp
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnTurnComplete(ctx context.Context, turn int, thought *Thought) {
-	_ = m.Fire(ctx, &HookContext{Point: HookAfterTurn, Turn: turn})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookAfterTurn
+	hctx.Turn = turn
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnToolUse(ctx context.Context, tc *ToolCall) {
-	_ = m.Fire(ctx, &HookContext{Point: HookBeforeTool, ToolCall: tc})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookBeforeTool
+	hctx.ToolCall = tc
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnToolResult(ctx context.Context, result *ToolResult) {
-	_ = m.Fire(ctx, &HookContext{Point: HookAfterTool, ToolResult: result})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookAfterTool
+	hctx.ToolResult = result
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnError(ctx context.Context, err error) {
-	_ = m.Fire(ctx, &HookContext{Point: HookOnError, Error: err})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookOnError
+	hctx.Error = err
+	_ = m.Fire(ctx, hctx)
 }
 
 // ===== 新增便捷方法 =====
 
 func (m *HookManager) OnStream(ctx context.Context, event *StreamEvent) {
-	_ = m.Fire(ctx, &HookContext{Point: HookOnStream, StreamChunk: event})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookOnStream
+	hctx.StreamChunk = event
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnStreamStart(ctx context.Context) {
-	_ = m.Fire(ctx, &HookContext{Point: HookOnStreamStart})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookOnStreamStart
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnStreamEnd(ctx context.Context, duration time.Duration) {
-	_ = m.Fire(ctx, &HookContext{Point: HookOnStreamEnd, Duration: duration})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookOnStreamEnd
+	hctx.Duration = duration
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnStateChange(ctx context.Context, agentID, oldState, newState, reason string) {
-	_ = m.Fire(ctx, &HookContext{
-		Point:    HookOnStateChange,
-		AgentID:  agentID,
-		OldState: oldState,
-		NewState: newState,
-		Reason:   reason,
-	})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookOnStateChange
+	hctx.AgentID = agentID
+	hctx.OldState = oldState
+	hctx.NewState = newState
+	hctx.Reason = reason
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnMemoryRead(ctx context.Context, query string, result any) {
-	_ = m.Fire(ctx, &HookContext{
-		Point:        HookAfterMemoryRead,
-		MemoryQuery:  query,
-		MemoryResult: result,
-	})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookAfterMemoryRead
+	hctx.MemoryQuery = query
+	hctx.MemoryResult = result
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnMemoryWrite(ctx context.Context, sessionID string) {
-	_ = m.Fire(ctx, &HookContext{
-		Point:     HookAfterMemoryWrite,
-		SessionID: sessionID,
-	})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookAfterMemoryWrite
+	hctx.SessionID = sessionID
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnContextWindowUpdate(ctx context.Context, usage float64, limit int) {
-	_ = m.Fire(ctx, &HookContext{
-		Point:              HookContextWindowUpdate,
-		ContextWindowUsage: usage,
-		ContextWindowLimit: limit,
-	})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookContextWindowUpdate
+	hctx.ContextWindowUsage = usage
+	hctx.ContextWindowLimit = limit
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnShutdown(ctx context.Context) {
-	_ = m.Fire(ctx, &HookContext{Point: HookBeforeShutdown})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookBeforeShutdown
+	_ = m.Fire(ctx, hctx)
 }
 
 func (m *HookManager) OnShutdownComplete(ctx context.Context) {
-	_ = m.Fire(ctx, &HookContext{Point: HookAfterShutdown})
+	hctx := AcquireHookContext()
+	defer ReleaseHookContext(hctx)
+	hctx.Point = HookAfterShutdown
+	_ = m.Fire(ctx, hctx)
 }
 
 // AllHookPoints 返回所有定义的钩子点常量
