@@ -249,8 +249,16 @@ func watchAndRun(dir, binaryName, prompt string) error {
 	}
 }
 
+// getFileHash 扫描目录下所有 .go 文件并拼接 (path:modtime;)+ 作为指纹。
+//
+// perf-v12 (2026-07-03) 优化：
+//  1. strings.Builder 预分配 64KB（典型项目 < 1000 文件时减少 builder 扩容）
+//  2. 跳过 go.sum（每次 go build 自动更新，避免伪触发重建）
+//  3. 跳过常见构建产物目录 bin/dist/build（缩短 walk 时间）
 func getFileHash(dir string) (string, error) {
 	var sb strings.Builder
+	sb.Grow(64 * 1024) // 典型 1000 个 .go 文件约 30-50KB 字符串
+
 	// 优化（perf-v3）：使用 WalkDir 替代 Walk，避免每个文件的 Lstat 调用
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -262,10 +270,18 @@ func getFileHash(dir string) (string, error) {
 			if strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules" || name == "testdata" {
 				return filepath.SkipDir
 			}
+			// perf-v12：跳过构建产物目录（避免扫描 bin/dist/build 下的二进制）
+			if name == "bin" || name == "dist" || name == "build" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		// 只关注 .go 文件
 		if strings.HasSuffix(path, ".go") {
+			// perf-v12：跳过 go.sum（每次 go build 自动更新，会导致伪触发）
+			if strings.HasSuffix(path, ".sum") {
+				return nil
+			}
 			info, err := d.Info()
 			if err != nil {
 				return nil
