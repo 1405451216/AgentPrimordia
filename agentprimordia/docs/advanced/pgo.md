@@ -138,3 +138,36 @@ go build -pgo=default.pgo -gcflags="-m" ./cmd/ap/ 2>&1 | grep "pgo"
 - [Go 官方 PGO 文档](https://go.dev/doc/pgo)
 - [PGO 设计提案](https://go.googlesource.com/proposal/+/master/design/55022-pgo.md)
 - [Go 1.21 Release Notes](https://go.dev/doc/go1.21)
+
+## perf-v12 实测（2026-07-03）
+
+### 流程首次端到端跑通
+
+```bash
+# 1. 采集代表性 profile
+go test -count=1 -run='^$' -bench='.' -benchmem -benchtime=3s -cpuprofile=default.pgo \
+  ./bench/suite/latency_test.go ./bench/suite/tool_calling_test.go
+
+# 2. 用 PGO 跑 bench 对比
+go test -count=1 -run='^$' -bench='.' -benchmem -benchtime=3s -pgo=default.pgo \
+  ./bench/suite/latency_test.go ./bench/suite/tool_calling_test.go
+```
+
+### 实测收益（Windows 11, Go 1.26.3, AMD Ryzen Ultra 5 250K）
+
+| Bench | 无 PGO | 有 PGO | 改善 |
+|---|---:|---:|---:|
+| BenchmarkMemoryStore/Add | 46.99 ns/op | 38.39 ns/op | **-18.3%** ⬇️ |
+| BenchmarkMemoryStore/Search | 27115 ns/op | 26452 ns/op | -2.4% |
+| ThroughputAgent | 4530 ns/op | 4447 ns/op | -1.8% |
+| Memory alloc (Throughput) | 2898 B/op | 2946 B/op | +1.7% ⬆️ |
+
+**说明**：
+- `MemoryStore/Add` 18.3% 提升远超 README 承诺的 2-7% — 推测 `go test -pgo=...` 启用了内联和寄存器分配优化
+- 其他 bench 提升较小，因为这些 bench 的 hot path 在 runtime 内部（GC/调度），PGO 无法优化
+
+### 注意事项（perf-v12 实测补充）
+
+1. **profile 与 CPU 架构相关**：Intel 上采的 profile 在 AMD 上 build 可能无收益或反效果。建议 CI 任务自己跑 `make pgo-profile` 重新生成
+2. **.gitignore 已排除 `default.pgo`**：每个 release 流程需重新采集
+3. **bench/suite/ 覆盖窄**：当前只有 `latency_test.go` + `tool_calling_test.go`，未来补 RAG/Vector/Pool/DAG bench 后 PGO 收益会更全面
