@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,6 +36,10 @@ type AgentDeploymentReconciler struct {
 	client.Client
 	Scheme       *runtime.Scheme
 	DefaultImage string
+	// MetricsAdapter 可选：自定义 Metrics Adapter（Phase 4 Task 6）
+	// nil 时跳过 Pod 指标采集；不为 nil 时会在 updateStatus 之后抓取 Pod /metrics 并把
+	// 关键值（concurrent_tasks/cost/tokens）回写到 AgentDeployment.Status
+	MetricsAdapter *ReconcileMetricsAdapter
 }
 
 // +kubebuilder:rbac:groups=agent.primordia.dev,resources=agentdeployments,verbs=get;list;watch;create;update;patch;delete
@@ -43,6 +49,7 @@ type AgentDeploymentReconciler struct {
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=autoscaling,resources=horizontalpodautoscalers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=policy,resources=poddisruptionbudgets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile 调谐 AgentDeployment 到期望状态
 func (r *AgentDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -96,12 +103,40 @@ func (r *AgentDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, fmt.Errorf("创建 HPA 失败: %w", err)
 	}
 
+	// 4.5 确保 PodDisruptionBudget 存在（Phase 4 Task 7）
+	if err := r.ensurePDB(ctx, &agentDeploy); err != nil {
+		return ctrl.Result{}, fmt.Errorf("创建 PDB 失败: %w", err)
+	}
+
 	// 5. 更新状态
 	if err := r.updateStatus(ctx, &agentDeploy); err != nil {
 		return ctrl.Result{}, fmt.Errorf("更新状态失败: %w", err)
 	}
 
+	// 6. 自定义 Metrics Adapter 采集（best-effort，不阻塞 Reconcile）
+	if r.MetricsAdapter != nil {
+		r.collectCustomMetrics(ctx, &agentDeploy, logger)
+	}
+
 	return ctrl.Result{}, nil
+}
+
+// collectCustomMetrics 调用 MetricsAdapter 抓取 Pod 指标并把成本/token 写回 status
+//
+// 设计为 best-effort：失败时打日志但不返回错误，避免单 Pod 抓取异常导致
+// controller 整体反复重试。
+func (r *AgentDeploymentReconciler) collectCustomMetrics(ctx context.Context, agentDeploy *agentv1.AgentDeployment, logger logr.Logger) {
+	status, err := r.MetricsAdapter.Reconcile(ctx, agentDeploy)
+	if err != nil {
+		logger.Info("自定义指标采集失败，跳过", "name", agentDeploy.Name, "error", err.Error())
+		return
+	}
+	// 写回 Status 已有的 cost/token 字段，AvgConcurrent 暂未在 CRD 中暴露（保持兼容）
+	agentDeploy.Status.EstimatedCostUSD = status.CostUSD
+	agentDeploy.Status.TotalTokens = status.TotalTokens
+	if updateErr := r.Status().Update(ctx, agentDeploy); updateErr != nil {
+		logger.Info("更新自定义指标 status 失败", "error", updateErr.Error())
+	}
 }
 
 // imageOrDefault 返回容器镜像，优先使用 spec 中的配置
@@ -168,9 +203,32 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 
 	err := r.Get(ctx, types.NamespacedName{Name: deployName, Namespace: agentDeploy.Namespace}, &existingDeploy)
 	if err == nil {
-		// 已存在，检查是否需要更新副本数
+		// 已存在，检查是否需要更新（副本数 / Strategy / Lifecycle）
+		needsUpdate := false
 		if existingDeploy.Spec.Replicas == nil || *existingDeploy.Spec.Replicas != agentDeploy.Spec.Replicas {
 			existingDeploy.Spec.Replicas = &agentDeploy.Spec.Replicas
+			needsUpdate = true
+		}
+		// 检查 Strategy 字段（Phase 4 Task 9）
+		desiredStrategy := buildDeploymentStrategy()
+		if !rollingStrategyEqual(existingDeploy.Spec.Strategy, desiredStrategy) {
+			existingDeploy.Spec.Strategy = desiredStrategy
+			needsUpdate = true
+		}
+		// 检查 TerminationGracePeriodSeconds 与 preStop（Phase 4 Task 9）
+		podSpec := &existingDeploy.Spec.Template.Spec
+		beforeGrace := podSpec.TerminationGracePeriodSeconds
+		applyTerminationLifecycle(podSpec)
+		if !int64PtrEqual(beforeGrace, podSpec.TerminationGracePeriodSeconds) {
+			needsUpdate = true
+		}
+		// preStop 注入与否不影响 needsUpdate（applyTerminationLifecycle 总会检查并注入）
+		// 为简化：单独检查 preStop 是否变化
+		if !allContainersHavePreStop(*podSpec) {
+			applyTerminationLifecycle(podSpec)
+			needsUpdate = true
+		}
+		if needsUpdate {
 			return r.Update(ctx, &existingDeploy)
 		}
 		return nil
@@ -242,6 +300,7 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 					"agent-deploy": agentDeploy.Name,
 				},
 			},
+			Strategy: buildDeploymentStrategy(),
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
@@ -331,6 +390,9 @@ func (r *AgentDeploymentReconciler) ensureDeployment(ctx context.Context, agentD
 		}
 	}
 
+	// Phase 4 Task 9: 注入 terminationGracePeriodSeconds + preStop hook
+	applyTerminationLifecycle(&deploy.Spec.Template.Spec)
+
 	return r.Create(ctx, deploy)
 }
 
@@ -387,6 +449,7 @@ func (r *AgentDeploymentReconciler) ensureHPA(ctx context.Context, agentDeploy *
 	hpaName := fmt.Sprintf("%s-hpa", agentDeploy.Name)
 	deployName := fmt.Sprintf("%s-agent", agentDeploy.Name)
 	targetConcurrentTasks := agentDeploy.Spec.Autoscaling.TargetConcurrentTasks
+	desiredBehavior := buildHPABehavior(agentDeploy.Spec.Autoscaling.Behavior)
 
 	var existingHPA autoscalingv2.HorizontalPodAutoscaler
 	err := r.Get(ctx, types.NamespacedName{Name: hpaName, Namespace: agentDeploy.Namespace}, &existingHPA)
@@ -409,6 +472,11 @@ func (r *AgentDeploymentReconciler) ensureHPA(ctx context.Context, agentDeploy *
 				existingHPA.Spec.Metrics[0].Pods.Target.AverageValue = resourcePtr(newVal)
 				needsUpdate = true
 			}
+		}
+		// 检查 Behavior 字段（Phase 4 Task 8）
+		if !hpaBehaviorEqual(existingHPA.Spec.Behavior, desiredBehavior) {
+			existingHPA.Spec.Behavior = desiredBehavior
+			needsUpdate = true
 		}
 		if needsUpdate {
 			return r.Update(ctx, &existingHPA)
@@ -453,6 +521,7 @@ func (r *AgentDeploymentReconciler) ensureHPA(ctx context.Context, agentDeploy *
 					},
 				},
 			},
+			Behavior: desiredBehavior,
 		},
 	}
 
@@ -651,5 +720,6 @@ func (r *AgentDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&corev1.ConfigMap{}).
 		Owns(&corev1.Service{}).
 		Owns(&autoscalingv2.HorizontalPodAutoscaler{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
 		Complete(r)
 }

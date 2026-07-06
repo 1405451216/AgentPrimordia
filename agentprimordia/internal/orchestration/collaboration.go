@@ -605,16 +605,15 @@ func (s *CollaborationSession) GetResult() *CollaborationResult {
 	return s.result
 }
 
-// Export 导出为JSON
+// Export 导出为JSON（perf-v5 Task 5：锁内只快照，锁外 marshal）
 func (s *CollaborationSession) Export() ([]byte, error) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	data := map[string]any{
 		"config":        s.config,
 		"result":        s.result,
 		"collaborators": s.collaborators,
 	}
+	s.mu.RUnlock()
 	return json.MarshalIndent(data, "", "  ")
 }
 

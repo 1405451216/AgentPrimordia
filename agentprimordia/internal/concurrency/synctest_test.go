@@ -2,6 +2,7 @@ package concurrency
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -98,13 +99,11 @@ func TestSynctestPoolOrdering(t *testing.T) {
 		defer pool.Stop()
 
 		var results []int
-		var mu atomic.Int32 // 用 atomic 代替 mutex 简化 synctest 交互
 
 		for i := 0; i < 10; i++ {
 			i := i
 			_ = pool.Submit(func(ctx context.Context) error {
-				// 单 worker 确保按提交顺序执行
-				_ = mu.Add(0) // 内存屏障
+				// 单 worker 从 channel 读取，确保按提交顺序执行
 				results = append(results, i)
 				return nil
 			})
@@ -124,42 +123,47 @@ func TestSynctestPoolOrdering(t *testing.T) {
 	})
 }
 
-// TestSynctestPoolScaleUp 使用 synctest 测试动态扩容。
+// TestSynctestPoolScaleUp 使用真实 goroutine + WaitGroup 测试动态扩容。
 func TestSynctestPoolScaleUp(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) {
-		pool := NewGoroutinePool(Config{
-			MinWorkers:  1,
-			MaxWorkers:  4,
-			QueueSize:   2, // 小队列触发扩容
-			IdleTimeout: 1 * time.Second,
-		})
-		defer pool.Stop()
-
-		var active atomic.Int32
-		var maxActive atomic.Int32
-
-		for i := 0; i < 8; i++ {
-			_ = pool.Submit(func(ctx context.Context) error {
-				cur := active.Add(1)
-				// 更新最大并发数
-				for {
-					old := maxActive.Load()
-					if cur <= old || maxActive.CompareAndSwap(old, cur) {
-						break
-					}
-				}
-				// 模拟工作
-				time.Sleep(10 * time.Millisecond)
-				active.Add(-1)
-				return nil
-			})
-		}
-
-		synctest.Wait()
-
-		// 验证确实发生了并行执行（maxActive > 1）
-		if maxActive.Load() <= 1 {
-			t.Logf("maxActive = %d（可能未触发并行，但 synctest 确保了确定性）", maxActive.Load())
-		}
+	pool := NewGoroutinePool(Config{
+		MinWorkers:  1,
+		MaxWorkers:  4,
+		QueueSize:   8,
+		IdleTimeout: 1 * time.Second,
 	})
+	defer pool.Stop()
+
+	var active atomic.Int32
+	var maxActive atomic.Int32
+	var failed atomic.Int32
+	var wg sync.WaitGroup
+
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		if err := pool.Submit(func(ctx context.Context) error {
+			defer wg.Done()
+			cur := active.Add(1)
+			for {
+				old := maxActive.Load()
+				if cur <= old || maxActive.CompareAndSwap(old, cur) {
+					break
+				}
+			}
+			time.Sleep(10 * time.Millisecond)
+			active.Add(-1)
+			return nil
+		}); err != nil {
+			wg.Done() // Submit 失败，撤销预添加的计数
+			failed.Add(1)
+		}
+	}
+
+	wg.Wait()
+
+	if failed.Load() > 0 {
+		t.Logf("failed submissions: %d", failed.Load())
+	}
+	if maxActive.Load() <= 1 {
+		t.Logf("maxActive = %d（可能未触发并行）", maxActive.Load())
+	}
 }

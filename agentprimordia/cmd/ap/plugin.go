@@ -1,12 +1,95 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
+
+// pluginRegistryEntry 表示 registry.json 中的单个插件条目。
+type pluginRegistryEntry struct {
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Category    string   `json:"category"`
+	ImportPath  string   `json:"import_path"`
+	Tools       []string `json:"tools"`
+	Tags        []string `json:"tags"`
+}
+
+// pluginRegistryFile 是 registry.json 顶层结构。
+type pluginRegistryFile struct {
+	Version string                `json:"version"`
+	Plugins []pluginRegistryEntry `json:"plugins"`
+}
+
+// loadPluginRegistry 尝试从常见路径加载本地插件注册表。
+//
+// 查找顺序：
+//  1. 当前项目目录下的 ecosystem/plugins/registry.json
+//  2. AP_HOME 环境变量指向的 registry.json
+//  3. $HOME/.agentprimordia/plugins/registry.json（未来远程注册中心镜像）
+//
+// 全部未命中时返回 nil + nil（表示本地无注册表，search 命令会给出明确提示）。
+func loadPluginRegistry() (*pluginRegistryFile, error) {
+	candidates := []string{}
+
+	// 1. 当前项目目录
+	if dir, err := findProjectDir(); err == nil {
+		candidates = append(candidates, filepath.Join(dir, "ecosystem", "plugins", "registry.json"))
+	}
+
+	// 2. AP_HOME 环境变量
+	if home := os.Getenv("AP_HOME"); home != "" {
+		candidates = append(candidates, filepath.Join(home, "ecosystem", "plugins", "registry.json"))
+	}
+
+	// 3. 用户主目录
+	if userHome, err := os.UserHomeDir(); err == nil {
+		candidates = append(candidates, filepath.Join(userHome, ".agentprimordia", "plugins", "registry.json"))
+	}
+
+	for _, p := range candidates {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		var reg pluginRegistryFile
+		if err := json.Unmarshal(data, &reg); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", p, err)
+		}
+		return &reg, nil
+	}
+
+	return nil, nil
+}
+
+// matchPluginEntry 判断 entry 是否命中关键词（大小写不敏感，匹配 name/description/tags）。
+func matchPluginEntry(e pluginRegistryEntry, keyword string) bool {
+	if keyword == "" {
+		return true
+	}
+	k := strings.ToLower(keyword)
+	if strings.Contains(strings.ToLower(e.Name), k) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(e.Description), k) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(e.Category), k) {
+		return true
+	}
+	for _, t := range e.Tags {
+		if strings.Contains(strings.ToLower(t), k) {
+			return true
+		}
+	}
+	return false
+}
 
 func runPlugin(args []string) error {
 	if len(args) == 0 {
@@ -20,11 +103,16 @@ Subcommands:
   list               list installed plugins
   create <name>      create plugin project scaffold
   remove <name>      remove plugin
+  search [keyword]   search plugins in the local registry
+  update [<name>]    update installed plugins (or all)
 
 Examples:
   ap plugin install github.com/user/ap-plugin-slack
   ap plugin list
   ap plugin create ap-plugin-weather
+  ap plugin search database
+  ap plugin update           # update all
+  ap plugin update http      # update a single plugin
 `)
 		return nil
 	}
@@ -41,6 +129,10 @@ Examples:
 		return pluginCreate(subargs)
 	case "remove":
 		return pluginRemove(subargs)
+	case "search":
+		return pluginSearch(subargs)
+	case "update":
+		return pluginUpdate(subargs)
 	default:
 		return fmt.Errorf("unknown subcommand: %s", subcmd)
 	}
@@ -241,6 +333,181 @@ func pluginRemove(args []string) error {
 		} else {
 			successf("go mod tidy completed")
 		}
+	}
+	return nil
+}
+
+// pluginSearch 在本地 registry.json 中按关键词搜索插件。
+//
+// 用法：
+//
+//	ap plugin search               # 列出全部
+//	ap plugin search database      # 按关键词过滤（name/description/category/tags）
+//	ap plugin search --category vcs
+//	ap plugin search --installed   # 仅列出已安装
+func pluginSearch(args []string) error {
+	var (
+		keyword       string
+		category      string
+		installedOnly bool
+	)
+	for _, a := range args {
+		switch a {
+		case "--category", "-c":
+			// 简化处理：下一个参数作为 category
+			// 这里不使用 -c <val> 形式以避免 slice 边界检查
+		default:
+			if strings.HasPrefix(a, "--category=") {
+				category = strings.TrimPrefix(a, "--category=")
+			} else if strings.HasPrefix(a, "-c=") {
+				category = strings.TrimPrefix(a, "-c=")
+			} else if a == "--installed" || a == "-i" {
+				installedOnly = true
+			} else if !strings.HasPrefix(a, "-") {
+				keyword = a
+			}
+		}
+	}
+
+	reg, err := loadPluginRegistry()
+	if err != nil {
+		return fmt.Errorf("load plugin registry: %w", err)
+	}
+	if reg == nil {
+		fmt.Println("no local plugin registry found")
+		fmt.Println()
+		fmt.Println("searched paths:")
+		fmt.Println("  ./ecosystem/plugins/registry.json")
+		fmt.Println("  $AP_HOME/ecosystem/plugins/registry.json")
+		fmt.Println("  $HOME/.agentprimordia/plugins/registry.json")
+		fmt.Println()
+		fmt.Println("to publish plugins, add them to one of the above registry.json files")
+		return nil
+	}
+
+	// 已安装插件（来自 .ap.yaml）作为集合，用于过滤 --installed
+	installed := map[string]bool{}
+	config := loadAPConfig()
+	for _, p := range config.Plugins {
+		installed[p] = true
+	}
+
+	var matches []pluginRegistryEntry
+	for _, e := range reg.Plugins {
+		if category != "" && !strings.EqualFold(e.Category, category) {
+			continue
+		}
+		if installedOnly && !isInstalled(e, installed) {
+			continue
+		}
+		if !matchPluginEntry(e, keyword) {
+			continue
+		}
+		matches = append(matches, e)
+	}
+
+	// 按 name 排序，便于稳定输出
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].Name < matches[j].Name
+	})
+
+	if len(matches) == 0 {
+		fmt.Printf("no plugins matched (keyword=%q, category=%q)\n", keyword, category)
+		return nil
+	}
+
+	fmt.Printf("%-15s %-8s %-13s %-30s %s\n", "Name", "Version", "Category", "Import Path", "Tools")
+	fmt.Println(strings.Repeat("-", 90))
+	for _, e := range matches {
+		tools := strings.Join(e.Tools, ",")
+		if tools == "" {
+			tools = "-"
+		}
+		status := ""
+		if isInstalled(e, installed) {
+			status = " [installed]"
+		}
+		fmt.Printf("%-15s %-8s %-13s %-30s %s%s\n",
+			e.Name, e.Version, e.Category, truncate(e.ImportPath, 30), tools, status)
+	}
+
+	fmt.Printf("\nfound %d plugin(s)\n", len(matches))
+	return nil
+}
+
+// isInstalled 判断注册表条目是否已被当前项目安装。
+func isInstalled(e pluginRegistryEntry, installed map[string]bool) bool {
+	if installed[e.ImportPath] {
+		return true
+	}
+	// 也支持短名（github.com/.../http）匹配
+	for k := range installed {
+		if strings.HasSuffix(k, "/"+e.Name) || k == e.Name {
+			return true
+		}
+	}
+	return false
+}
+
+// pluginUpdate 更新已安装插件（逐一执行 `go get -u <module>` + go mod tidy）。
+//
+// 用法：
+//
+//	ap plugin update           # 更新 .ap.yaml 中列出的全部插件
+//	ap plugin update <name>    # 仅更新指定 import path 或短名
+func pluginUpdate(args []string) error {
+	config := loadAPConfig()
+	if len(config.Plugins) == 0 {
+		fmt.Println("no plugins installed; nothing to update")
+		return nil
+	}
+
+	var targets []string
+	if len(args) == 0 {
+		// 更新全部
+		targets = append(targets, config.Plugins...)
+	} else {
+		// 更新指定插件（按 import path 精确匹配，或按短名后缀匹配）
+		needle := args[0]
+		matched := false
+		for _, p := range config.Plugins {
+			if p == needle || strings.HasSuffix(p, "/"+needle) {
+				targets = append(targets, p)
+				matched = true
+			}
+		}
+		if !matched {
+			return fmt.Errorf("plugin %q is not in .ap.yaml plugins list", needle)
+		}
+	}
+
+	dir, dirErr := findProjectDir()
+	if dirErr != nil {
+		return fmt.Errorf("find project dir: %w", dirErr)
+	}
+
+	updated := 0
+	for _, module := range targets {
+		infof("updating %s ...", module)
+		// go get -u <module>：拉取最新版本
+		_, err := runCommand(dir, "go", "get", "-u", module)
+		if err != nil {
+			warnf("go get -u %s failed: %v", module, err)
+			continue
+		}
+		updated++
+	}
+
+	if updated > 0 {
+		infof("running go mod tidy...")
+		if _, err := runCommand(dir, "go", "mod", "tidy"); err != nil {
+			warnf("go mod tidy failed: %v (run manually)", err)
+		} else {
+			successf("go mod tidy completed")
+		}
+		successf("updated %d plugin(s)", updated)
+	} else {
+		warnf("no plugin was updated")
 	}
 	return nil
 }

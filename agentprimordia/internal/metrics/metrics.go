@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,11 +36,29 @@ type AgentMetrics struct {
 	LLMCallsByLabel  map[string]*labeledCounter // key: "provider|model"
 	ToolCallsByLabel map[string]*labeledCounter // key: "tool_name"
 	TurnsByAgent     map[string]*labeledCounter // key: "agent_name"
+
+	// 成本追踪（按 provider|model|agent 维度聚合）
+	// CostByLabel 累计成本（USD）
+	CostByLabel map[string]*labeledCost // key: "provider|model|agent"
+	// CostTokensByLabel 累计 token 数（按 kind 拆分：prompt/completion/total）
+	CostTokensByLabel map[string]*labeledCost // key: "provider|model|agent|kind"
+	// CostLastUSD 最近一次调用成本（Gauge 语义）
+	CostLastUSDByLabel map[string]float64 // key: "provider|model|agent"
 }
 
 type labeledCounter struct {
 	calls  atomic.Int64
 	errors atomic.Int64
+}
+
+// labeledCost 累计 cost 与 token 计数器
+//
+// 与 labeledCounter 不同的是：cost 是浮点累加，token 也可能很大。
+// 使用 atomic.Uint64 存储 math.Float64bits / uint64 位模式，实现无锁累加。
+type labeledCost struct {
+	costBits atomic.Uint64 // math.Float64bits
+	tokens   atomic.Int64
+	calls    atomic.Int64 // LLM 调用次数（用于 ap_cost_calls_total）
 }
 
 type TokenUsageStats struct {
@@ -297,6 +316,128 @@ func (m *AgentMetrics) SetMemorySize(bytes int64) {
 	atomic.StoreInt64(&m.MemorySizeBytes, bytes)
 }
 
+// RecordCostUSD 增加指定 (provider, model, agentName) 维度的累计成本（USD）
+//
+// 使用 atomic.Uint64 存储 math.Float64bits 位模式，CAS 自旋累加，
+// 既保证并发安全，又避免 mutex 阻塞。
+func (m *AgentMetrics) RecordCostUSD(provider, model, agentName string, cost float64) {
+	lc := m.costOrInit(provider, model, agentName, false)
+	costAtomicAdd(&lc.costBits, cost)
+}
+
+// RecordCostCalls 增加指定 (provider, model, agentName) 维度下的 LLM 调用次数
+//
+// 调用次数本质是整数计数；签名仍为 float64 是为了与 cost 维度保持调用风格一致，
+// 内部仍以整数原子累加；调用方传入非负 float64，截断为整数。
+func (m *AgentMetrics) RecordCostCalls(provider, model, agentName string, calls float64) {
+	if calls <= 0 {
+		return
+	}
+	lc := m.costOrInit(provider, model, agentName, false)
+	lc.calls.Add(int64(calls))
+}
+
+// RecordCostTokens 增加 (provider, model, agentName, kind) 维度下的 token 计数
+//
+// kind 用于区分 prompt / completion / total 等子维度；底层使用独立的
+// CostTokensByLabel map，与 cost 累计互不影响。
+func (m *AgentMetrics) RecordCostTokens(provider, model, agentName, kind string, tokens float64) {
+	if tokens <= 0 {
+		return
+	}
+	key := provider + "|" + model + "|" + agentName + "|" + kind
+	m.mu.Lock()
+	if m.CostTokensByLabel == nil {
+		m.CostTokensByLabel = make(map[string]*labeledCost)
+	}
+	lc, ok := m.CostTokensByLabel[key]
+	if !ok {
+		lc = &labeledCost{}
+		m.CostTokensByLabel[key] = lc
+	}
+	m.mu.Unlock()
+	lc.tokens.Add(int64(tokens))
+}
+
+// SetLastCostUSD 设置最近一次调用的成本（USD，gauge 语义）
+//
+// 该方法是覆盖式赋值（gauge 而非 counter），用于 dashboard 展示最近一笔成本。
+func (m *AgentMetrics) SetLastCostUSD(provider, model, agentName string, cost float64) {
+	key := provider + "|" + model + "|" + agentName
+	m.mu.Lock()
+	if m.CostLastUSDByLabel == nil {
+		m.CostLastUSDByLabel = make(map[string]float64)
+	}
+	m.CostLastUSDByLabel[key] = cost
+	m.mu.Unlock()
+}
+
+// costOrInit 取或惰性初始化 (provider, model, agentName) 对应的 labeledCost
+//
+// kindOnly 暂未使用，预留以便将来引入额外的 cost 子分类（例如 input/output）。
+// 返回的对象即使不在锁内创建，调用方仍依赖 atomic 操作访问其字段，因此安全。
+func (m *AgentMetrics) costOrInit(provider, model, agentName string, _ bool) *labeledCost {
+	key := provider + "|" + model + "|" + agentName
+	m.mu.Lock()
+	if m.CostByLabel == nil {
+		m.CostByLabel = make(map[string]*labeledCost)
+	}
+	lc, ok := m.CostByLabel[key]
+	if !ok {
+		lc = &labeledCost{}
+		m.CostByLabel[key] = lc
+	}
+	m.mu.Unlock()
+	return lc
+}
+
+// costAtomicAdd 用 CAS 自旋把 delta 累加到 atomic.Uint64 存储的 float64 浮点值中
+//
+// 选择这种实现是为了与 cost_tracker.go 中 totalCostBits 的累加方式保持一致，
+// 同时避免在高频写路径上引入 mutex 开销。
+func costAtomicAdd(target *atomic.Uint64, delta float64) {
+	for {
+		oldBits := target.Load()
+		oldVal := math.Float64frombits(oldBits)
+		newVal := oldVal + delta
+		if target.CompareAndSwap(oldBits, math.Float64bits(newVal)) {
+			return
+		}
+	}
+}
+
+// ===== 包级 helper：默认 metrics 实例（用于零样板快速接入） =====
+
+var defaultMetrics = NewMetrics()
+
+// DefaultMetrics 返回包级共享的默认指标实例（适合不需要多副本隔离的简单场景）
+//
+// 大型部署应自行 NewMetrics() 并显式注入；这里提供的全局入口只是简化
+// 在脚本式调用或 cmd/ 内部直接打点的成本。
+func DefaultMetrics() *AgentMetrics {
+	return defaultMetrics
+}
+
+// RecordCostUSD 向默认 metrics 实例记录累计成本（USD）
+func RecordCostUSD(provider, model, agentName string, cost float64) {
+	defaultMetrics.RecordCostUSD(provider, model, agentName, cost)
+}
+
+// RecordCostCalls 向默认 metrics 实例记录 LLM 调用次数
+func RecordCostCalls(provider, model, agentName string, calls float64) {
+	defaultMetrics.RecordCostCalls(provider, model, agentName, calls)
+}
+
+// RecordCostTokens 向默认 metrics 实例记录 token 数
+func RecordCostTokens(provider, model, agentName, kind string, tokens float64) {
+	defaultMetrics.RecordCostTokens(provider, model, agentName, kind, tokens)
+}
+
+// SetLastCostUSD 向默认 metrics 实例设置最近一次调用成本
+func SetLastCostUSD(provider, model, agentName string, cost float64) {
+	defaultMetrics.SetLastCostUSD(provider, model, agentName, cost)
+}
+
 func (m *AgentMetrics) Snapshot() MetricsSnapshot {
 	return MetricsSnapshot{
 		LLMTotalCalls:   atomic.LoadInt64(&m.LLMTotalCalls),
@@ -465,7 +606,114 @@ func (m *AgentMetrics) String() string {
 	writeHistogram(&sb, "ap_tool_latency_ms", snap.ToolLatencyMs)
 	writeHistogram(&sb, "ap_turn_duration_ms", snap.TurnDurationMs)
 
+	// 成本相关指标
+	writeCostMetrics(&sb, m)
+
 	return sb.String()
+}
+
+// writeCostMetrics 输出 Prometheus 成本指标
+func writeCostMetrics(sb *strings.Builder, m *AgentMetrics) {
+	if len(m.CostByLabel) == 0 && len(m.CostTokensByLabel) == 0 && len(m.CostLastUSDByLabel) == 0 {
+		return
+	}
+
+	sb.WriteString("# HELP ap_cost_usd_total Accumulated cost in USD\n")
+	sb.WriteString("# TYPE ap_cost_usd_total counter\n")
+	for key, lc := range m.CostByLabel {
+		provider, model, agentName := splitCostKey(key, 3)
+		cost := math.Float64frombits(lc.costBits.Load())
+		sb.WriteString(`ap_cost_usd_total{provider="`)
+		sb.WriteString(provider)
+		sb.WriteString(`",model="`)
+		sb.WriteString(model)
+		sb.WriteString(`",agent_name="`)
+		sb.WriteString(agentName)
+		sb.WriteString(`"} `)
+		sb.WriteString(strconv.FormatFloat(cost, 'f', -1, 64))
+		sb.WriteByte('\n')
+	}
+
+	sb.WriteString("# HELP ap_cost_calls_total Accumulated LLM call count\n")
+	sb.WriteString("# TYPE ap_cost_calls_total counter\n")
+	for key, lc := range m.CostByLabel {
+		provider, model, agentName := splitCostKey(key, 3)
+		calls := lc.calls.Load()
+		if calls == 0 {
+			continue
+		}
+		sb.WriteString(`ap_cost_calls_total{provider="`)
+		sb.WriteString(provider)
+		sb.WriteString(`",model="`)
+		sb.WriteString(model)
+		sb.WriteString(`",agent_name="`)
+		sb.WriteString(agentName)
+		sb.WriteString(`"} `)
+		sb.WriteString(strconv.FormatInt(calls, 10))
+		sb.WriteByte('\n')
+	}
+
+	sb.WriteString("# HELP ap_cost_tokens_total Accumulated token count\n")
+	sb.WriteString("# TYPE ap_cost_tokens_total counter\n")
+	for key, lc := range m.CostTokensByLabel {
+		parts := strings.SplitN(key, "|", 4)
+		var provider, model, agentName, kind string
+		if len(parts) >= 4 {
+			provider, model, agentName, kind = parts[0], parts[1], parts[2], parts[3]
+		} else {
+			continue
+		}
+		tokens := lc.tokens.Load()
+		if tokens == 0 {
+			continue
+		}
+		sb.WriteString(`ap_cost_tokens_total{provider="`)
+		sb.WriteString(provider)
+		sb.WriteString(`",model="`)
+		sb.WriteString(model)
+		sb.WriteString(`",agent_name="`)
+		sb.WriteString(agentName)
+		sb.WriteString(`",kind="`)
+		sb.WriteString(kind)
+		sb.WriteString(`"} `)
+		sb.WriteString(strconv.FormatInt(tokens, 10))
+		sb.WriteByte('\n')
+	}
+
+	if len(m.CostLastUSDByLabel) > 0 {
+		sb.WriteString("# HELP ap_cost_last_call_usd Last call cost in USD\n")
+		sb.WriteString("# TYPE ap_cost_last_call_usd gauge\n")
+		for key, cost := range m.CostLastUSDByLabel {
+			provider, model, agentName := splitCostKey(key, 3)
+			sb.WriteString(`ap_cost_last_call_usd{provider="`)
+			sb.WriteString(provider)
+			sb.WriteString(`",model="`)
+			sb.WriteString(model)
+			sb.WriteString(`",agent_name="`)
+			sb.WriteString(agentName)
+			sb.WriteString(`"} `)
+			sb.WriteString(strconv.FormatFloat(cost, 'f', -1, 64))
+			sb.WriteByte('\n')
+		}
+	}
+}
+
+// splitCostKey 解析 "a|b|c" 形式的 key
+//
+// parts 指定期望的段数；不足或空段用 "" 填充。
+func splitCostKey(key string, parts int) (string, string, string) {
+	segs := strings.SplitN(key, "|", parts)
+	var a, b, c string
+	if len(segs) > 0 {
+		a = segs[0]
+	}
+	if len(segs) > 1 {
+		b = segs[1]
+	}
+	if len(segs) > 2 {
+		c = segs[2]
+	}
+	return a, b, c
 }
 
 // writeHistogram 输出 Prometheus histogram 格式

@@ -100,23 +100,24 @@ func NewOpenAIProvider(cfg Config) (*OpenAIProvider, error) {
 func (p *OpenAIProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
 	model := p.resolveModel(req.Model)
 
-	body := map[string]any{
-		"model":    model,
-		"messages": p.buildMessages(req.Messages),
+	// perf-v6 round 8 Task 4: typed request struct 减少反射
+	oaiReq := openaiChatRequest{
+		Model:    model,
+		Messages: p.buildMessages(req.Messages),
 	}
 	if temp := ResolveTemperature(req.Temperature, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		oaiReq.Temperature = temp
 	}
 	if req.MaxTokens > 0 {
-		body["max_tokens"] = req.MaxTokens
+		oaiReq.MaxTokens = req.MaxTokens
 	} else if p.config.MaxTokens > 0 {
-		body["max_tokens"] = p.config.MaxTokens
+		oaiReq.MaxTokens = p.config.MaxTokens
 	}
 	if req.ResponseFormat != nil {
-		body["response_format"] = p.buildResponseFormat(req.ResponseFormat)
+		oaiReq.ResponseFormat = convertResponseFormatToTyped(req.ResponseFormat)
 	}
 
-	raw, err := p.doRequest(ctx, "/chat/completions", body)
+	raw, err := p.doRequest(ctx, "/chat/completions", oaiReq)
 	if err != nil {
 		return nil, err
 	}
@@ -149,25 +150,26 @@ func (p *OpenAIProvider) Complete(ctx context.Context, req *CompletionRequest) (
 func (p *OpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error) {
 	model := p.resolveModel(req.Model)
 
-	body := map[string]any{
-		"model":    model,
-		"messages": p.buildMessages(req.Messages),
-		"stream":   true,
+	// perf-v6 round 8 Task 4: typed request struct 减少反射
+	oaiReq := openaiChatRequest{
+		Model:    model,
+		Messages: p.buildMessages(req.Messages),
+		Stream:   true,
 	}
 	if temp := ResolveTemperature(req.Temperature, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		oaiReq.Temperature = temp
 	}
 	if req.MaxTokens > 0 {
-		body["max_tokens"] = req.MaxTokens
+		oaiReq.MaxTokens = req.MaxTokens
 	}
 	if p.config.MaxTokens > 0 && req.MaxTokens == 0 {
-		body["max_tokens"] = p.config.MaxTokens
+		oaiReq.MaxTokens = p.config.MaxTokens
 	}
 	if req.ResponseFormat != nil {
-		body["response_format"] = p.buildResponseFormat(req.ResponseFormat)
+		oaiReq.ResponseFormat = convertResponseFormatToTyped(req.ResponseFormat)
 	}
 
-	bodyBytes, err := jsonutil.Marshal(body) // perf-v6 round 5 Task 1
+	bodyBytes, err := jsonutil.Marshal(oaiReq) // perf-v6 round 5 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -314,19 +316,19 @@ func (p *OpenAIProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 		}
 	}
 
-	body := map[string]any{
-		"model":    model,
-		"messages": p.buildMessages(req.Messages),
-		"tools":    tools,
+	oaiReq := openaiChatRequest{
+		Model:    model,
+		Messages: p.buildMessages(req.Messages),
+		Tools:    tools,
 	}
 	if temp := ResolveTemperature(nil, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		oaiReq.Temperature = temp
 	}
 	if p.config.MaxTokens > 0 {
-		body["max_tokens"] = p.config.MaxTokens
+		oaiReq.MaxTokens = p.config.MaxTokens
 	}
 
-	raw, err := p.doRequest(ctx, "/chat/completions", body)
+	raw, err := p.doRequest(ctx, "/chat/completions", oaiReq)
 	if err != nil {
 		return nil, err
 	}
@@ -373,12 +375,12 @@ func (p *OpenAIProvider) Embeddings(ctx context.Context, texts []string) ([][]fl
 	if embedModel == "" || embedModel == "gpt-4o-mini" {
 		embedModel = defaultOpenAIEmbedModel
 	}
-	body := map[string]any{
-		"model": embedModel,
-		"input": texts,
+	embedReq := openaiEmbedRequest{
+		Model: embedModel,
+		Input: texts,
 	}
 
-	raw, err := p.doRequest(ctx, "/embeddings", body)
+	raw, err := p.doRequest(ctx, "/embeddings", embedReq)
 	if err != nil {
 		return nil, err
 	}

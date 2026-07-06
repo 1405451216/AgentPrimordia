@@ -166,6 +166,24 @@ func (a *ReActAgent) getToolkit() *tools.Registry {
 	return nil
 }
 
+// getOutputGuard 获取输出端 Guardrail 检查函数，通过 GuardrailCapable 接口发现
+// 用于在 LLM 响应后调用（PII 脱敏、注入拦截等）
+func (a *ReActAgent) getOutputGuard() OutputGuard {
+	if c, ok := a.self.(GuardrailCapable); ok {
+		return c.GetOutputGuard()
+	}
+	return nil
+}
+
+// getAuditLogger 获取审计日志器，通过 AuditLoggerCapable 接口发现
+// 用于在 LLM 调用、工具调用、Agent 启动/停止时写入审计事件
+func (a *ReActAgent) getAuditLogger() AuditLogger {
+	if c, ok := a.self.(AuditLoggerCapable); ok {
+		return c.GetAuditLogger()
+	}
+	return nil
+}
+
 func (a *ReActAgent) fireHook(point HookPoint, hctx *HookContext) error {
 	if a.hooks != nil {
 		hctx.Point = point

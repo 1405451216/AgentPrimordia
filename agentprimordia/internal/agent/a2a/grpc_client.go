@@ -8,6 +8,7 @@ import (
 	"time"
 
 	a2av1 "agentprimordia/internal/agent/a2a/proto/a2a/v1"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
@@ -73,6 +74,14 @@ func NewA2AGRPCClientWithConn(conn *grpc.ClientConn, opts ...GRPCClientOption) *
 	return c
 }
 
+// ctx 构造 outgoing context：合并认证头 + Trace Context（W3C traceparent）
+//
+// 调用顺序：
+//  1. 注入认证（API Key / Bearer Token）
+//  2. 注入 Trace Context（若 ctx 中存在 TraceContext）
+//  3. 转换为 gRPC outgoing context（metadata.NewOutgoingContext）
+//
+// 返回的 ctx 可直接传给 gRPC client 方法。
 func (c *A2AGRPCClient) ctx(ctx context.Context) context.Context {
 	md := metadata.MD{}
 	if c.apiKey != "" {
@@ -81,10 +90,16 @@ func (c *A2AGRPCClient) ctx(ctx context.Context) context.Context {
 	if c.bearerToken != "" {
 		md.Set("authorization", "Bearer "+c.bearerToken)
 	}
-	if len(md) == 0 {
-		return ctx
-	}
-	return metadata.NewOutgoingContext(ctx, md)
+
+	// 将 metadata 包装到我们的 outgoing metadata 中，便于 trace 注入层处理
+	wrapped := Metadata(md)
+	ctx = WithOutgoingMetadata(ctx, wrapped)
+
+	// 注入 W3C trace context
+	ctx = InjectTraceParent(ctx)
+
+	// 转为 gRPC outgoing context
+	return ToGRPCOutgoingContext(ctx)
 }
 
 // FetchAgentCard 获取 AgentCard。
@@ -157,4 +172,33 @@ func (c *A2AGRPCClient) Close() error {
 		return c.conn.Close()
 	}
 	return nil
+}
+
+// WithTraceContext 创建一个新的 ctx，其中携带了指定的 TraceContext
+//
+// 调用方应在发送 RPC 之前使用本方法包装 ctx。例如：
+//
+//	tc := a2a.GenerateTraceContext()
+//	ctx = client.WithTraceContext(ctx, tc)
+//	resp, err := client.CreateTask(ctx, msg, taskID)
+//
+// 这样下游 server 端就能通过 metadata 中的 traceparent 还原同一条 trace。
+func (c *A2AGRPCClient) WithTraceContext(ctx context.Context, tc TraceContext) context.Context {
+	return WithTraceContext(ctx, tc)
+}
+
+// StartTrace 生成一个新的 TraceContext 并注入 ctx
+//
+// 适用于 client 端是 trace 起点的场景（无上游 trace）。
+func (c *A2AGRPCClient) StartTrace(ctx context.Context) (context.Context, TraceContext) {
+	tc := GenerateTraceContext()
+	return WithTraceContext(ctx, tc), tc
+}
+
+// ContinueTrace 基于父 TraceContext 创建子 TraceContext 并注入 ctx
+//
+// 适用于 trace 已在 client 进程内创建，需要跨 RPC 调用传播到 server 的场景。
+func (c *A2AGRPCClient) ContinueTrace(ctx context.Context, parent TraceContext) (context.Context, TraceContext) {
+	tc := ChildTraceContext(parent)
+	return WithTraceContext(ctx, tc), tc
 }

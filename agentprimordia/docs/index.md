@@ -17,15 +17,16 @@ AgentPrimordia（AP）是一个用 Go 语言编写、同时提供 TypeScript SDK
 
 - **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子，支持检查点恢复
 - **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
-- **工具系统** — FileSystem / Shell / Web / Knowledge / Database / CodeExecution / API 内置工具，MCP 协议集成，插件扩展
+- **A2A 双传输** — gRPC（默认，性能更优、内建拦截器链） / JSON-RPC over HTTP（兼容）
+- **工具系统** — FileSystem / Shell / Web / Knowledge / Database / CodeExecution / API 内置工具，MCP 协议集成，插件扩展（含 `ap plugin search/update`）
 - **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索（支持 RRF 融合）
 - **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / Resilient 弹性包装器
 - **并发调度** — Pool 信号量调度，会话隔离，自动扩缩容
 - **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
-- **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard / pprof 性能分析
-- **K8s Operator** — AgentDeployment CRD 声明式部署 + HPA 自动扩缩容
+- **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard / pprof 性能分析 + 结构化日志（统一 `logger.Field*` 字段 + trace-id 注入）
+- **K8s Operator** — AgentDeployment CRD 声明式部署 + HPA（Behavior 精细化扩缩容）+ PDB（PodDisruptionBudget）+ 滚动升级（preStop hook）+ 自定义 Metrics Adapter
 - **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖
-- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor`
+- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / config / completion`
 
 ### v1.0.0 亮点
 
@@ -178,7 +179,7 @@ ap run
 ## CLI 命令
 
 ```bash
-ap init my-agent              # 创建项目 (--template basic|with-tools|multi-agent)
+ap init my-agent              # 创建项目 (--template basic|with-tools|multi-agent|agent-with-cache|agent-with-rag|agent-with-metrics|quickstart)
 ap run                        # 编译运行 (--watch 监视模式)
 ap debug                      # 调试服务器 (http://localhost:6060)
 ap loop trace                 # 查看 Agent 执行追踪
@@ -187,10 +188,41 @@ ap loop resume                # 从检查点恢复运行
 ap test                       # 运行 eval 测试套件
 ap mcp list                   # 列出 MCP Server
 ap mcp add fs --command npx --args "@mcp/server-filesystem,/tmp"
-ap plugin install github.com/user/ap-plugin-xxx
-ap doctor                     # 健康检查
-ap completion bash            # 生成 Shell 补全脚本
+ap plugin install github.com/user/ap-plugin-xxx  # 安装插件（go get + 写 .ap.yaml）
+ap plugin list                                  # 列出已安装插件
+ap plugin search database                       # 在本地 registry.json 中按关键词搜索
+ap plugin update                                # 更新全部已安装插件（go get -u + mod tidy）
+ap doctor                                       # 健康检查
+ap completion bash                              # 生成 Shell 补全脚本
 ```
+
+## A2A 协议（默认 gRPC）
+
+自 v1.x 起 **gRPC 是 A2A 的默认传输**，序列化延迟更低、消息体积更小、内建拦截器链。
+JSON-RPC over HTTP 仅作为兼容旧客户端保留，将于 v2.0 移除。
+
+=== "Go（推荐 gRPC）"
+
+    ```go
+    service := ap.NewA2AService(card, taskManager)
+    srv  := ap.NewA2AGRPCServer(service,
+        ap.WithGRPCLogger(slog.Default()),
+        ap.ChainUnaryInterceptors(
+            ap.RecoveryInterceptor(),
+            ap.LoggingInterceptor(ap.A2AInterceptorConfig{...}),
+            ap.MetricsInterceptor(metrics),
+        ),
+    )
+    cli, _ := ap.NewA2AGRPCClient("localhost:50051")
+    resp, _ := cli.GetAgentCard(ctx, &ap.A2AGetAgentCardRequest{})
+    ```
+
+=== "Go（兼容旧 JSON-RPC，已 Deprecated）"
+
+    ```go
+    // Deprecated: 自 v1.x 起请改用 NewA2AGRPCServer
+    srv := ap.NewA2AServer(taskManager)
+    ```
 
 ## 文档导览
 
@@ -202,6 +234,7 @@ ap completion bash            # 生成 Shell 补全脚本
 | **API参考** | [Agent](api/agent.md) · [LLM](api/llm.md) · [Tools](api/tools.md) · [Memory](api/memory.md) · [Pool](api/pool.md) · [A2A](api/a2a.md) |
 | **进阶主题** | [性能优化](advanced/performance.md) · [PGO调优](advanced/pgo.md) · [安全](advanced/security.md) · [供应链安全](advanced/supply-chain-security.md) · [Debugger](advanced/debugger.md) · [Metrics](advanced/metrics.md) · [OTel](advanced/otel.md) |
 | **基准测试** | [Go vs TypeScript](benchmarks/go-vs-typescript.md) · [性能对比](benchmarks/performance-comparison-2026.md) |
+| **实施进度** | [STATUS 总览](STATUS.md) · [Phase 1 性能](plans/phase1-performance-assault.md) · [Phase 2 安全](plans/phase2-security-compliance.md) · [Phase 3 架构](plans/phase3-architecture-evolution.md) · [Phase 4 可观测性](plans/phase4-observability-ops.md) · [Phase 5 生态](plans/phase5-ecosystem-community.md) |
 
 ## 社区
 

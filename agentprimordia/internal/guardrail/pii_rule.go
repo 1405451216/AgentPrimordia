@@ -29,18 +29,29 @@ type PIIRuleConfig struct {
 	DetectEmail    bool
 	DetectBankCard bool
 	DetectIPv4     bool
+	// p2t2：扩展 PII 类型
+	DetectPassport    bool
+	DetectBankAccount bool
+	DetectSSN         bool
+	DetectAPIKey      bool
+	DetectJWT         bool
 }
 
 // DefaultPIIRuleConfig 默认 PII 配置：检测所有类型，脱敏处理
 func DefaultPIIRuleConfig() PIIRuleConfig {
 	return PIIRuleConfig{
-		Action:         ActionSanitize,
-		Severity:       SeverityHigh,
-		DetectPhone:    true,
-		DetectIDCard:   true,
-		DetectEmail:    true,
-		DetectBankCard: true,
-		DetectIPv4:     true,
+		Action:            ActionSanitize,
+		Severity:          SeverityHigh,
+		DetectPhone:       true,
+		DetectIDCard:      true,
+		DetectEmail:       true,
+		DetectBankCard:    true,
+		DetectIPv4:        true,
+		DetectPassport:    true,
+		DetectBankAccount: true,
+		DetectSSN:         true,
+		DetectAPIKey:      true,
+		DetectJWT:         true,
 	}
 }
 
@@ -83,6 +94,42 @@ func NewPIIRule(config PIIRuleConfig) *PIIRule {
 			name:    "ipv4",
 			regex:   regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`),
 			maskLen: 0,
+		})
+	}
+	// p2t2：扩展 PII 模式
+	if config.DetectPassport {
+		r.patterns = append(r.patterns, piiPattern{
+			name:    "passport",
+			regex:   regexp.MustCompile(`(?:E\d{8})|(?:[A-Z]{2}\d{6,9})`),
+			maskLen: 2,
+		})
+	}
+	if config.DetectBankAccount {
+		r.patterns = append(r.patterns, piiPattern{
+			name:    "bank_account",
+			regex:   regexp.MustCompile(`\b[1-9]\d{15,18}\b`),
+			maskLen: 4,
+		})
+	}
+	if config.DetectSSN {
+		r.patterns = append(r.patterns, piiPattern{
+			name:    "ssn",
+			regex:   regexp.MustCompile(`\b\d{3}-\d{2}-\d{4}\b`),
+			maskLen: 0, // 全遮蔽（高敏感）
+		})
+	}
+	if config.DetectAPIKey {
+		r.patterns = append(r.patterns, piiPattern{
+			name:    "api_key",
+			regex:   regexp.MustCompile(`(?:sk-[a-zA-Z0-9_]{20,})|(?:pk_[a-zA-Z0-9_]{20,})|(?:AKIA[A-Z0-9]{16})`),
+			maskLen: 6,
+		})
+	}
+	if config.DetectJWT {
+		r.patterns = append(r.patterns, piiPattern{
+			name:    "jwt",
+			regex:   regexp.MustCompile(`eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+`),
+			maskLen: 0, // 全遮蔽（高敏感）
 		})
 	}
 	return r

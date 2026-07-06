@@ -12,6 +12,18 @@ import (
 	"agentprimordia/internal/tools"
 )
 
+// p2t4：审计动作常量（字符串字面量，与 internal/audit 标准动作保持一致）
+// 避免 agent 包直接 import audit 包造成的循环依赖
+const (
+	auditActionAgentStart        = "agent.start"
+	auditActionAgentStop         = "agent.stop"
+	auditActionLLMCall           = "llm.call"
+	auditActionGuardrailBlock    = "guardrail.block"
+	auditActionGuardrailSanitize = "guardrail.sanitize"
+	auditResultSuccess           = "success"
+	auditResultBlocked           = "blocked"
+)
+
 // runLoop ReAct 循环核心体，被 reactLoopEngine 和 ResumeFromCheckpoint 共享
 // 封装从 startTurn 开始的主循环逻辑，包括 LLM 调用、工具执行、checkpoint 保存等
 func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn int, cfg loopConfig, totalLLMLatency time.Duration, totalToolLatency time.Duration, toolCount int) (*Response, error) {
@@ -45,7 +57,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		_ = a.fireHookWithPool(HookBeforeTurn, turn)
 		// 优化（Task 3）：仅在存在订阅者时构造 payload map，避免热点路径上的堆分配
 		if a.hasEventSubscriber() {
-			a.publishEvent("turn.start", map[string]int{"turn": turn})
+			a.publishEvent(EventTurnStart, map[string]int{"turn": turn})
 		}
 
 		var turnSpan Span = &NoopSpan{}
@@ -107,7 +119,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		llmStart := time.Now()
 		if a.hasEventSubscriber() {
-			a.publishEvent("llm.call", map[string]int{"turn": turn})
+			a.publishEvent(EventLLMCall, map[string]int{"turn": turn})
 		}
 
 		var llmSpan Span = &NoopSpan{}
@@ -145,6 +157,50 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		a.recordUsage(thought.Usage)
 
+		// p2t4：写入 LLMCall 审计事件
+		a.writeAudit(ctx, AuditEvent{
+			Actor:    a.config.Name,
+			Action:   auditActionLLMCall,
+			Resource: a.capCache.model,
+			Result:   auditResultSuccess,
+			Details: map[string]any{
+				"turn":              turn,
+				"latency_ms":        llmLatency.Milliseconds(),
+				"prompt_tokens":     thought.Usage.PromptTokens,
+				"completion_tokens": thought.Usage.CompletionTokens,
+			},
+		})
+
+		// p2t1：Guardrail 输出端检查（PII 脱敏、注入拦截）
+		// 在 LLM 响应返回后、写入消息历史前调用 OutputGuard 检查函数
+		if a.capCache != nil && a.capCache.outputGuard != nil && thought.Content != "" {
+			sanitized, blocked, gerr := a.capCache.outputGuard(thought.Content)
+			if gerr != nil {
+				a.logger.Warn("Guardrail output 检查失败", "err", gerr)
+			} else if blocked {
+				// p2t4：写入 GuardrailBlock 审计事件
+				a.writeAudit(ctx, AuditEvent{
+					Actor:    a.config.Name,
+					Action:   auditActionGuardrailBlock,
+					Resource: cfg.requestID,
+					Result:   auditResultBlocked,
+					Details:  map[string]any{"turn": turn, "rule": "output_guard"},
+				})
+				return &Response{RequestID: cfg.requestID, Error: fmt.Errorf("output blocked by guardrail")}, fmt.Errorf("output blocked by guardrail")
+			} else if sanitized != "" {
+				thought.Content = sanitized
+				a.logger.Debug("Guardrail 已脱敏输出")
+				// p2t4：写入 GuardrailSanitize 审计事件
+				a.writeAudit(ctx, AuditEvent{
+					Actor:    a.config.Name,
+					Action:   auditActionGuardrailSanitize,
+					Resource: cfg.requestID,
+					Result:   auditResultSuccess,
+					Details:  map[string]any{"turn": turn, "rule": "output_guard"},
+				})
+			}
+		}
+
 		assistantMsg := Message{
 			Role:      RoleAssistant,
 			Content:   thought.Content,
@@ -154,7 +210,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		_ = a.fireHookWithPool(HookAfterLLM, turn)
 		if a.hasEventSubscriber() {
-			a.publishEvent("llm.response", map[string]int{"turn": turn})
+			a.publishEvent(EventLLMResponse, map[string]int{"turn": turn})
 		}
 
 		// 无工具调用 → Agent 完成
@@ -178,7 +234,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			_ = a.fireHookWithPool(HookAfterTurn, turn)
 			a.recordTurn(time.Since(turnStart))
 			if a.hasEventSubscriber() {
-				a.publishEvent("turn.end", map[string]int{"turn": turn})
+				a.publishEvent(EventTurnEnd, map[string]int{"turn": turn})
 			}
 			a.emitStream(cfg, StreamEvent{Type: StreamEventComplete, Content: thought.Content, Data: response})
 			if cfg.stream {
@@ -186,6 +242,14 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			} else {
 				a.logger.Info("Agent 完成", "name", a.config.Name, "turns", turn+1, "duration", duration)
 			}
+			// p2t4：写入 AgentStop 审计事件
+			a.writeAudit(ctx, AuditEvent{
+				Actor:    a.config.Name,
+				Action:   auditActionAgentStop,
+				Resource: cfg.requestID,
+				Result:   auditResultSuccess,
+				Details:  map[string]any{"turns": turn + 1, "duration_ms": duration.Milliseconds()},
+			})
 			return response, nil
 		}
 
@@ -198,7 +262,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		_ = a.fireHookWithPool(HookAfterTurn, turn)
 		a.recordTurn(time.Since(turnStart))
 		if a.hasEventSubscriber() {
-			a.publishEvent("turn.end", map[string]int{"turn": turn})
+			a.publishEvent(EventTurnEnd, map[string]int{"turn": turn})
 		}
 
 		if a.lifecycle.IsGracefulShutdown() {
@@ -248,4 +312,19 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 	}
 
 	return response, ErrMaxTurnsExceeded
+}
+
+// writeAudit 写入审计事件（如果 auditLogger 已配置）。
+// p2t4：审计日志集成到 ReAct Loop 关键路径。
+// 该方法是 fire-and-forget 模式，错误仅记录日志，不影响主流程。
+func (a *ReActAgent) writeAudit(ctx context.Context, event AuditEvent) {
+	if a.capCache == nil || a.capCache.auditLogger == nil {
+		return
+	}
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now()
+	}
+	if err := a.capCache.auditLogger.Log(ctx, event); err != nil {
+		a.logger.Warn("写入审计事件失败", "action", event.Action, "err", err)
+	}
 }

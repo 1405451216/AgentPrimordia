@@ -96,20 +96,21 @@ func NewAzureOpenAIProvider(cfg AzureConfig) (*AzureOpenAIProvider, error) {
 
 // Complete 执行补全请求
 func (p *AzureOpenAIProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
-	body := map[string]any{
-		"messages": p.buildMessages(req.Messages),
+	// perf-v6 round 8 Task 4: typed request struct 减少反射
+	azureReq := azureChatRequest{
+		Messages: p.buildMessages(req.Messages),
 	}
 	if temp := ResolveTemperature(req.Temperature, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		azureReq.Temperature = temp
 	}
 	if req.MaxTokens > 0 {
-		body["max_tokens"] = req.MaxTokens
+		azureReq.MaxTokens = req.MaxTokens
 	} else if p.config.MaxTokens > 0 {
-		body["max_tokens"] = p.config.MaxTokens
+		azureReq.MaxTokens = p.config.MaxTokens
 	}
 
 	path := fmt.Sprintf("/openai/deployments/%s/chat/completions", p.config.DeploymentName)
-	raw, err := p.doRequest(ctx, path, body)
+	raw, err := p.doRequest(ctx, path, azureReq)
 	if err != nil {
 		return nil, err
 	}
@@ -141,20 +142,21 @@ func (p *AzureOpenAIProvider) Complete(ctx context.Context, req *CompletionReque
 
 // Stream 执行流式补全请求
 func (p *AzureOpenAIProvider) Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error) {
-	body := map[string]any{
-		"messages": p.buildMessages(req.Messages),
-		"stream":   true,
+	// perf-v6 round 8 Task 4: typed request struct 减少反射
+	azureReq := azureChatRequest{
+		Messages: p.buildMessages(req.Messages),
+		Stream:   true,
 	}
 	if temp := ResolveTemperature(req.Temperature, p.config.Temperature); temp != nil {
-		body["temperature"] = *temp
+		azureReq.Temperature = temp
 	}
 	if req.MaxTokens > 0 {
-		body["max_tokens"] = req.MaxTokens
+		azureReq.MaxTokens = req.MaxTokens
 	} else if p.config.MaxTokens > 0 {
-		body["max_tokens"] = p.config.MaxTokens
+		azureReq.MaxTokens = p.config.MaxTokens
 	}
 
-	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
+	bodyBytes, err := jsonutil.MarshalBody(azureReq) // perf-v6 round 6 Task 1
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
@@ -258,31 +260,38 @@ func (p *AzureOpenAIProvider) Stream(ctx context.Context, req *CompletionRequest
 
 // CallTools 执行工具调用请求
 func (p *AzureOpenAIProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
-	tools := make([]map[string]any, len(req.Tools))
+	tools := make([]openaiTool, len(req.Tools))
 	for i, t := range req.Tools {
-		tools[i] = map[string]any{
-			"type": t.Type,
-			"function": map[string]any{
-				"name":        t.Function.Name,
-				"description": t.Function.Description,
-				"parameters":  t.Function.Parameters,
+		var paramsRaw json.RawMessage
+		if t.Function.Parameters != nil {
+			if raw, err := json.Marshal(t.Function.Parameters); err == nil {
+				paramsRaw = raw
+			}
+		}
+		tools[i] = openaiTool{
+			Type: t.Type,
+			Function: openaiToolFunction{
+				Name:        t.Function.Name,
+				Description: t.Function.Description,
+				Parameters:  paramsRaw,
 			},
 		}
 	}
 
-	body := map[string]any{
-		"messages": p.buildMessages(req.Messages),
-		"tools":    tools,
+	azureReq := azureChatRequest{
+		Messages: p.buildMessages(req.Messages),
+		Tools:    tools,
 	}
 	if p.config.Temperature > 0 {
-		body["temperature"] = p.config.Temperature
+		t := p.config.Temperature
+		azureReq.Temperature = &t
 	}
 	if p.config.MaxTokens > 0 {
-		body["max_tokens"] = p.config.MaxTokens
+		azureReq.MaxTokens = p.config.MaxTokens
 	}
 
 	path := fmt.Sprintf("/openai/deployments/%s/chat/completions", p.config.DeploymentName)
-	raw, err := p.doRequest(ctx, path, body)
+	raw, err := p.doRequest(ctx, path, azureReq)
 	if err != nil {
 		return nil, err
 	}
@@ -329,12 +338,12 @@ func (p *AzureOpenAIProvider) Embeddings(ctx context.Context, texts []string) ([
 		deployment = p.config.DeploymentName
 	}
 
-	body := map[string]any{
-		"input": texts,
+	embedReq := openaiEmbedRequest{
+		Input: texts,
 	}
 
 	path := fmt.Sprintf("/openai/deployments/%s/embeddings", deployment)
-	raw, err := p.doRequest(ctx, path, body)
+	raw, err := p.doRequest(ctx, path, embedReq)
 	if err != nil {
 		return nil, err
 	}

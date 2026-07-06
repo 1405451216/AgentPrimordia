@@ -28,7 +28,9 @@ type EventType string
 const (
 	EventAgentStart   EventType = "agent.start"
 	EventAgentStop    EventType = "agent.stop"
+	EventAgentPanic   EventType = "agent.panic"
 	EventAgentError   EventType = "agent.error"
+	EventAgentResume  EventType = "agent.resume"
 	EventTurnStart    EventType = "turn.start"
 	EventTurnEnd      EventType = "turn.end"
 	EventToolCall     EventType = "tool.call"

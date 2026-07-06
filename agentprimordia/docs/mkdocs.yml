@@ -97,6 +97,13 @@ extra:
 
 nav:
   - 首页: index.md
+  - 实施进度:
+    - 阶段总览: STATUS.md
+    - Phase 1 性能攻坚: plans/phase1-performance-assault.md
+    - Phase 2 安全合规: plans/phase2-security-compliance.md
+    - Phase 3 架构演进: plans/phase3-architecture-evolution.md
+    - Phase 4 可观测性: plans/phase4-observability-ops.md
+    - Phase 5 生态社区: plans/phase5-ecosystem-community.md
   - 快速开始:
     - 安装指南: getting-started/installation.md
     - 5分钟入门: getting-started/quickstart.md
@@ -121,12 +128,16 @@ nav:
     - 配置记忆: guides/configure-memory.md
     - 配置护栏: guides/configure-guardrail.md
     - 多Agent协作: guides/multi-agent.md
+    - 多租户部署: guides/multi-tenant.md
     - 并发调度: guides/pool.md
     - 流式输出: guides/streaming.md
     - 多模态: guides/multimodal.md
     - 人机协作: guides/hitl.md
     - 提示词模板: guides/prompt-templates.md
     - 配置热加载: guides/config-hot-reload.md
+    - React Hooks: guides/react-hooks.md
+    - VS Code 扩展: guides/vscode-extension.md
+    - Edge Runtime: guides/edge-runtime.md
     - 部署到生产: guides/deployment.md
   - API参考:
     - Agent API: api/agent.md
@@ -136,6 +147,19 @@ nav:
     - Pool API: api/pool.md
     - A2A API: api/a2a.md
     - Guardrail API: api/guardrail.md
+    - Orchestration API: api/orchestration.md
+    - Config API: api/config.md
+    - Metrics API: api/metrics.md
+  - 实战菜谱:
+    - 菜谱索引: cookbook/index.md
+    - RAG Agent: cookbook/rag-agent.md
+    - 多 Agent 协作: cookbook/multi-agent-collab.md
+    - 代码审查 Bot: cookbook/code-review-bot.md
+    - 客服 Agent: cookbook/customer-support.md
+    - 数据分析 Agent: cookbook/data-analysis.md
+    - 自定义 Provider: cookbook/custom-provider.md
+    - 自定义工具: cookbook/custom-tool.md
+    - K8s 部署: cookbook/k8s-deployment.md
   - 进阶主题:
     - 性能优化: advanced/performance.md
     - PGO性能调优: advanced/pgo.md
@@ -153,3 +177,23 @@ nav:
     - 性能对比2026: benchmarks/performance-comparison-2026.md
   - 版本管理:
     - 版本策略: VERSIONING.md
+  - 教程系列:
+    - 5分钟入门: guide/getting-started.md
+    - 核心概念: guide/concepts.md
+    - ReAct 循环: guide/react-loop.md
+    - 工具系统: guide/tools.md
+    - 记忆系统: guide/memory.md
+    - 多 Agent 编排: guide/orchestration.md
+    - 部署与运维: guide/deployment.md
+    - 安全最佳实践: guide/security.md
+    - 性能调优: guide/performance.md
+  - API 参考（完整版）:
+    - API 索引: api-reference/index.md
+    - Agent API: api-reference/agent.md
+    - Tools API: api-reference/tools.md
+    - Memory API: api-reference/memory.md
+    - LLM API: api-reference/llm.md
+    - Orchestration API: api-reference/orchestration.md
+    - Pool API: api-reference/pool.md
+    - Guardrail API: api-reference/guardrail.md
+    - Security API: api-reference/security.md

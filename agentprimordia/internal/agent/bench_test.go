@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"log/slog"
 	"testing"
 
@@ -15,12 +14,16 @@ import (
 // benchLogger 用于基准测试的静默日志记录器，避免 slog 默认输出淹没结果
 var benchLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-// suppressToolLogs 临时屏蔽标准 log 输出（工具执行器使用 log.Default）
-func suppressToolLogs(b *testing.B) func() {
+// silentToolLogs 把 tools 包全局 slog 重定向到 io.Discard，benchmark 结束后恢复。
+//
+// Phase 4 Task 10 起，工具执行器已统一使用 slog，不再有 log.Printf 输出。
+// 此函数保留是为了在 benchmark 期间仍然抑制 slog（信息级别 + 调试级别），
+// 避免大量 IO 拖慢结果。
+func silentToolLogs(b *testing.B) func() {
 	b.Helper()
-	old := log.Default().Writer()
-	log.SetOutput(io.Discard)
-	return func() { log.SetOutput(old) }
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	return func() { slog.SetDefault(prev) }
 }
 
 // benchMockTool 用于基准测试的轻量 Mock 工具
@@ -39,7 +42,7 @@ func (m *benchMockTool) Execute(_ context.Context, _ json.RawMessage) (*tools.Re
 
 // BenchmarkReActAgent_SimpleCompletion 测试无工具的单轮完成性能
 func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
-	defer suppressToolLogs(b)()
+	defer silentToolLogs(b)()
 	b.ReportAllocs()
 
 	mockLLM := llm.NewMockLLM(nil).WithResponse("done")
@@ -66,7 +69,7 @@ func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
 
 // BenchmarkReActAgent_SingleToolCall 测试单次工具调用场景性能
 func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
-	defer suppressToolLogs(b)()
+	defer silentToolLogs(b)()
 	b.ReportAllocs()
 
 	registry := tools.NewRegistry()
@@ -97,7 +100,7 @@ func BenchmarkReActAgent_SingleToolCall(b *testing.B) {
 
 // BenchmarkReActAgent_MaxTurns 测试多轮次运行性能（5 轮工具调用循环）
 func BenchmarkReActAgent_MaxTurns(b *testing.B) {
-	defer suppressToolLogs(b)()
+	defer silentToolLogs(b)()
 	b.ReportAllocs()
 
 	registry := tools.NewRegistry()

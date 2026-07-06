@@ -6,8 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"time"
 
 	a2av1 "agentprimordia/internal/agent/a2a/proto/a2a/v1"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -32,6 +34,9 @@ type A2AGRPCServer struct {
 	service *A2AService
 	auth    GRPCAuthFunc
 	logger  *slog.Logger
+	metrics *A2AInterceptorMetrics
+	// slowThreshold 慢请求阈值；0 表示使用默认值（1s）
+	slowThreshold time.Duration
 }
 
 // NewA2AGRPCServer 创建 gRPC 服务实现。
@@ -39,11 +44,20 @@ func NewA2AGRPCServer(service *A2AService, opts ...GRPCServerOption) *A2AGRPCSer
 	s := &A2AGRPCServer{
 		service: service,
 		logger:  slog.Default(),
+		metrics: &A2AInterceptorMetrics{},
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
 	return s
+}
+
+// Metrics 返回当前 gRPC 拦截器收集的指标快照。
+func (s *A2AGRPCServer) Metrics() A2AMetricsSnapshot {
+	if s.metrics == nil {
+		return A2AMetricsSnapshot{}
+	}
+	return s.metrics.Snapshot()
 }
 
 // Register 将服务注册到 *grpc.Server。
@@ -53,6 +67,7 @@ func (s *A2AGRPCServer) Register(server *grpc.Server) {
 
 // GetAgentCard 获取 AgentCard。
 func (s *A2AGRPCServer) GetAgentCard(ctx context.Context, _ *a2av1.GetAgentCardRequest) (*a2av1.AgentCard, error) {
+	ctx = extractServerTraceContext(ctx)
 	card, err := s.service.GetAgentCard(ctx)
 	if err != nil {
 		return nil, mapServiceError(err)
@@ -62,6 +77,7 @@ func (s *A2AGRPCServer) GetAgentCard(ctx context.Context, _ *a2av1.GetAgentCardR
 
 // CreateTask 创建任务。
 func (s *A2AGRPCServer) CreateTask(ctx context.Context, req *a2av1.CreateTaskRequest) (*a2av1.Task, error) {
+	ctx = extractServerTraceContext(ctx)
 	task, err := s.service.CreateTask(ctx, &CreateTaskRequest{
 		Message:   fromProtoMessage(req.Message),
 		TaskID:    req.TaskId,
@@ -75,6 +91,7 @@ func (s *A2AGRPCServer) CreateTask(ctx context.Context, req *a2av1.CreateTaskReq
 
 // GetTask 获取任务。
 func (s *A2AGRPCServer) GetTask(ctx context.Context, req *a2av1.GetTaskRequest) (*a2av1.Task, error) {
+	ctx = extractServerTraceContext(ctx)
 	task, err := s.service.GetTask(ctx, req.Id)
 	if err != nil {
 		return nil, mapServiceError(err)
@@ -84,6 +101,7 @@ func (s *A2AGRPCServer) GetTask(ctx context.Context, req *a2av1.GetTaskRequest) 
 
 // CancelTask 取消任务。
 func (s *A2AGRPCServer) CancelTask(ctx context.Context, req *a2av1.CancelTaskRequest) (*a2av1.Task, error) {
+	ctx = extractServerTraceContext(ctx)
 	task, err := s.service.CancelTask(ctx, req.Id)
 	if err != nil {
 		return nil, mapServiceError(err)
@@ -94,6 +112,7 @@ func (s *A2AGRPCServer) CancelTask(ctx context.Context, req *a2av1.CancelTaskReq
 // SubscribeTaskEvents 订阅任务事件流。
 func (s *A2AGRPCServer) SubscribeTaskEvents(req *a2av1.SubscribeTaskEventsRequest, stream a2av1.A2AService_SubscribeTaskEventsServer) error {
 	ctx := stream.Context()
+	ctx = extractServerTraceContext(ctx)
 	ch, err := s.service.SubscribeTaskEvents(ctx, req.Id)
 	if err != nil {
 		return mapServiceError(err)
@@ -131,17 +150,49 @@ func mapServiceError(err error) error {
 	}
 }
 
+// extractServerTraceContext 从 gRPC incoming ctx 提取 trace context 并注入新 ctx
+//
+// 该函数在每个 RPC handler 入口调用，使得下游 service 能从 ctx.Value 读取 TraceContext。
+// 若 metadata 中无 traceparent header，则 ctx 保持不变。
+func extractServerTraceContext(ctx context.Context) context.Context {
+	enrichedCtx, _ := FromGRPCIncomingContext(ctx)
+	return ExtractTraceParent(enrichedCtx)
+}
+
 // NewGRPCServer 构造并返回一个 *grpc.Server（已注册 A2A 服务）。
+//
+// 默认拦截器链（从外到内）：
+//  1. Recovery —— panic 恢复
+//  2. Logging —— 记录方法、耗时、错误
+//  3. Metrics —— 累计调用次数、错误、延迟
+//  4. Auth（可选）—— 仅当设置了 GRPCAuthFunc 时启用
 func NewGRPCServer(service *A2AService, opts ...GRPCServerOption) *grpc.Server {
 	s := NewA2AGRPCServer(service, opts...)
-	var svrOpts []grpc.ServerOption
-	if s.auth != nil {
-		svrOpts = append(svrOpts,
-			grpc.UnaryInterceptor(UnaryAuthInterceptor(s.auth)),
-			grpc.StreamInterceptor(StreamAuthInterceptor(s.auth)),
-		)
+	cfg := A2AInterceptorConfig{
+		Logger:               s.logger,
+		Metrics:              s.metrics,
+		SlowRequestThreshold: s.slowThreshold,
 	}
-	server := grpc.NewServer(svrOpts...)
+	var unaryInterceptors []grpc.UnaryServerInterceptor
+	var streamInterceptors []grpc.StreamServerInterceptor
+	// Recovery（最外层，确保 panic 不会让后续拦截器无法处理）
+	unaryInterceptors = append(unaryInterceptors, RecoveryInterceptor())
+	streamInterceptors = append(streamInterceptors, StreamRecoveryInterceptor())
+	// Logging
+	unaryInterceptors = append(unaryInterceptors, LoggingInterceptor(cfg))
+	streamInterceptors = append(streamInterceptors, StreamLoggingInterceptor(cfg))
+	// Metrics
+	unaryInterceptors = append(unaryInterceptors, MetricsInterceptor(s.metrics))
+	streamInterceptors = append(streamInterceptors, StreamMetricsInterceptor(s.metrics))
+	// Auth（可选，最内层，确保其他拦截器先记录）
+	if s.auth != nil {
+		unaryInterceptors = append(unaryInterceptors, UnaryAuthInterceptor(s.auth))
+		streamInterceptors = append(streamInterceptors, StreamAuthInterceptor(s.auth))
+	}
+	server := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
+	)
 	s.Register(server)
 	return server
 }
@@ -149,4 +200,23 @@ func NewGRPCServer(service *A2AService, opts ...GRPCServerOption) *grpc.Server {
 // ServeGRPC 在指定 listener 上启动 gRPC server。
 func ServeGRPC(server *grpc.Server, lis net.Listener) error {
 	return server.Serve(lis)
+}
+
+// WithGRPCMetrics 设置拦截器共享的指标收集器。
+// 默认情况下每个 server 内部创建一个新的指标实例；通过该选项可注入共享实例。
+func WithGRPCMetrics(m *A2AInterceptorMetrics) GRPCServerOption {
+	return func(s *A2AGRPCServer) {
+		if m != nil {
+			s.metrics = m
+		}
+	}
+}
+
+// WithGRPCSlowRequestThreshold 设置慢请求日志阈值。
+func WithGRPCSlowRequestThreshold(d time.Duration) GRPCServerOption {
+	return func(s *A2AGRPCServer) {
+		if d > 0 {
+			s.slowThreshold = d
+		}
+	}
 }

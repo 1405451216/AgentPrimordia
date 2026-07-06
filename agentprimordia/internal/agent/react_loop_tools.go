@@ -16,7 +16,7 @@ func (a *ReActAgent) executeToolCalls(ctx context.Context, history []Message, to
 		a.emitStream(cfg, StreamEvent{Type: StreamEventToolCall, Content: tc.Name, Data: tc})
 		_ = a.fireHook(HookBeforeTool, &HookContext{ToolCall: &tc, Turn: turn})
 		if a.hasEventSubscriber() {
-			a.publishEvent("tool.call", map[string]string{"tool": tc.Name, "turn": strconv.Itoa(turn)})
+			a.publishEvent(EventToolCall, map[string]string{"tool": tc.Name, "turn": strconv.Itoa(turn)})
 		}
 
 		// HITL 处理
@@ -55,7 +55,7 @@ func (a *ReActAgent) executeToolCalls(ctx context.Context, history []Message, to
 			a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: fmt.Sprintf("tool %s error: %v", tc.Name, err)})
 			_ = a.fireHook(HookOnError, &HookContext{Error: err, Turn: turn})
 			if a.hasEventSubscriber() {
-				a.publishEvent("agent.error", map[string]string{"tool": tc.Name, "error": err.Error()})
+				a.publishEvent(EventAgentError, map[string]string{"tool": tc.Name, "error": err.Error()})
 			}
 		} else {
 			a.emitStream(cfg, StreamEvent{Type: StreamEventToolResult, Content: result.Content, Data: result})
@@ -68,7 +68,7 @@ func (a *ReActAgent) executeToolCalls(ctx context.Context, history []Message, to
 		} else {
 			_ = a.fireHook(HookAfterTool, &HookContext{ToolResult: result, Turn: turn})
 			if a.hasEventSubscriber() {
-				a.publishEvent("tool.result", map[string]string{"tool": tc.Name})
+				a.publishEvent(EventToolResult, map[string]string{"tool": tc.Name})
 			}
 		}
 

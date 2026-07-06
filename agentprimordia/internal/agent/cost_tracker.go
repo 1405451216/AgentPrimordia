@@ -124,6 +124,29 @@ func (t *CostTracker) Record(model, sessionID, agentName string, usage llm.Usage
 	return nil
 }
 
+// Records 返回所有成本记录的快照（用于导出器等只读消费场景）
+//
+// 返回的切片是 records 字段的浅拷贝，调用方不应修改其中元素；
+// 该方法在锁内完成复制，保证并发安全。
+func (t *CostTracker) Records() []CostRecord {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	out := make([]CostRecord, len(t.records))
+	copy(out, t.records)
+	return out
+}
+
+// LastRecord 返回最近一次调用记录；若不存在则返回 nil
+func (t *CostTracker) LastRecord() *CostRecord {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if len(t.records) == 0 {
+		return nil
+	}
+	last := t.records[len(t.records)-1]
+	return &last
+}
+
 // Summary 返回成本汇总
 func (t *CostTracker) Summary() *CostSummary {
 	t.mu.RLock()

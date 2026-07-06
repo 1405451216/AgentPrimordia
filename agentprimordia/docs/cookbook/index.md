@@ -1,0 +1,35 @@
+# 实战菜谱
+
+> 通过具体案例学习 AgentPrimordia 的高级用法。每篇菜谱都是独立可运行的端到端示例。
+
+## 菜谱列表
+
+| 菜谱 | 描述 | 涉及组件 |
+|------|------|----------|
+| [RAG Agent](./rag-agent.md) | 构建带知识检索的 Agent | Memory(RAG)、Tools(web)、LLM |
+| [多 Agent 协作](./multi-agent-collab.md) | 用 Handoff 模式编排多 Agent | Orchestration、Pool |
+| [代码审查 Bot](./code-review-bot.md) | 自动审查 GitHub PR | Tools(filesystem,shell,web)、MCP |
+| [客服 Agent](./customer-support.md) | 接入向量数据库的客服机器人 | Memory(vector)、RAG、Guardrail |
+| [数据分析 Agent](./data-analysis.md) | 从 CSV 到洞察的端到端流程 | Tools(filesystem,database) |
+| [自定义 Provider](./custom-provider.md) | 接入非内置 LLM | LLM Provider 接口 |
+| [自定义工具](./custom-tool.md) | 实现 ap.Tool 接口 | Tools 系统、Sandbox |
+| [K8s 部署](./k8s-deployment.md) | 用 Operator 部署 AgentPool | Operator、Pool、Metrics |
+
+## 如何阅读
+
+每篇菜谱包含：
+1. **背景** — 场景描述与目标
+2. **架构** — 组件关系图（Mermaid）
+3. **代码** — 完整可运行的 `.go` 文件
+4. **配置** — `.ap.yaml` 参考
+5. **运行** — 启动命令与预期输出
+6. **扩展** — 进阶变体与注意事项
+
+## 运行前提
+
+```bash
+go install agentprimordia/cmd/ap@latest
+ap init my-cookbook --template basic
+cd my-cookbook
+# 按菜谱要求添加依赖与工具配置
+```

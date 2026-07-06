@@ -23,6 +23,15 @@ func NewWizard(input io.Reader, output io.Writer) *Wizard {
 
 // Run 运行向导，返回生成选项
 func (w *Wizard) Run() (*GenerateOptions, error) {
+	types := []struct {
+		name string
+		desc string
+	}{
+		{"agent", "标准 Agent 项目（默认）"},
+		{"plugin", "AgentPrimordia 插件项目（ap.Plugin 接口）"},
+		{"provider", "LLM Provider 项目（ap.Provider 接口）"},
+	}
+
 	templates := []struct {
 		name string
 		desc string
@@ -47,36 +56,67 @@ func (w *Wizard) Run() (*GenerateOptions, error) {
 		return nil, fmt.Errorf("项目名称不能为空")
 	}
 
-	// 步骤 2：选择模板
-	fmt.Fprintln(w.writer, "\n可用模板:")
-	for i, t := range templates {
-		fmt.Fprintf(w.writer, "  %d. %-20s %s\n", i+1, t.name, t.desc)
+	// 步骤 2：选择类型
+	fmt.Fprintln(w.writer, "\n项目类型:")
+	for i, t := range types {
+		fmt.Fprintf(w.writer, "  %d. %-12s %s\n", i+1, t.name, t.desc)
 	}
-	fmt.Fprint(w.writer, "\n选择模板 (1-7 或模板名, 默认 1): ")
-	choice, _ := w.reader.ReadString('\n')
-	choice = strings.TrimSpace(choice)
+	fmt.Fprint(w.writer, "\n选择类型 (1-3 或类型名, 默认 1): ")
+	typeChoice, _ := w.reader.ReadString('\n')
+	typeChoice = strings.TrimSpace(typeChoice)
 
-	template := templates[0].name
-	if choice != "" {
-		// 先尝试按数字解析
+	projectType := types[0].name
+	if typeChoice != "" {
 		var num int
-		if n, _ := fmt.Sscanf(choice, "%d", &num); n == 1 && num >= 1 && num <= len(templates) {
-			template = templates[num-1].name
+		if n, _ := fmt.Sscanf(typeChoice, "%d", &num); n == 1 && num >= 1 && num <= len(types) {
+			projectType = types[num-1].name
 		} else {
-			// 按名称匹配
-			for _, t := range templates {
-				if t.name == choice {
-					template = t.name
+			for _, t := range types {
+				if t.name == typeChoice {
+					projectType = t.name
 					break
 				}
 			}
 		}
 	}
 
-	fmt.Fprintf(w.writer, "\n将创建项目 %q (模板: %s)\n", name, template)
+	// 步骤 3：根据类型选择模板
+	var template string
+	switch projectType {
+	case "plugin":
+		template = "plugin"
+	case "provider":
+		template = "provider"
+	default:
+		fmt.Fprintln(w.writer, "\n可用模板:")
+		for i, t := range templates {
+			fmt.Fprintf(w.writer, "  %d. %-20s %s\n", i+1, t.name, t.desc)
+		}
+		fmt.Fprint(w.writer, "\n选择模板 (1-7 或模板名, 默认 1): ")
+		choice, _ := w.reader.ReadString('\n')
+		choice = strings.TrimSpace(choice)
+
+		template = templates[0].name
+		if choice != "" {
+			var num int
+			if n, _ := fmt.Sscanf(choice, "%d", &num); n == 1 && num >= 1 && num <= len(templates) {
+				template = templates[num-1].name
+			} else {
+				for _, t := range templates {
+					if t.name == choice {
+						template = t.name
+						break
+					}
+				}
+			}
+		}
+	}
+
+	fmt.Fprintf(w.writer, "\n将创建项目 %q (类型: %s, 模板: %s)\n", name, projectType, template)
 
 	return &GenerateOptions{
 		Name:     name,
 		Template: template,
+		Type:     projectType,
 	}, nil
 }

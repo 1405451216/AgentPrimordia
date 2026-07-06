@@ -1,0 +1,349 @@
+# AgentPrimordia Prometheus Alerting Rules
+#
+# 该文件定义了 AgentPrimordia 的核心告警规则，覆盖以下场景：
+#  - LLM 调用延迟、错误率、成本
+#  - Pool 调度饱和、队列积压、错误率
+#  - Memory 写入/检索失败
+#  - Orchestration Step 失败、Pipeline 中止
+#  - 健康检查 / 进程可用性
+#
+# SLO 目标（建议基线，可根据业务调整）：
+#  - LLM 调用可用性: 99.5% (P95 < 5s)
+#  - Pool 任务成功率: 99% (错误率 < 1%)
+#  - Memory 检索 P95 < 200ms
+#  - 进程健康检查可用性: 99.9%
+#
+# 加载方式：
+#   kubectl create configmap prometheus-agentprimordia-rules --from-file=alerts-agentprimordia.yaml
+#   或通过 prometheus.yml:
+#     rule_files:
+#       - /etc/prometheus/rules/*.yaml
+
+groups:
+  # ===== LLM 相关告警 =====
+  - name: agentprimordia_llm
+    interval: 30s
+    rules:
+      - alert: AgentPrimordiaLLMHighErrorRate
+        expr: |
+          100 * sum(rate(ap_llm_errors[5m])) by (provider, model)
+            /
+          clamp_min(sum(rate(ap_llm_calls[5m])) by (provider, model), 1)
+            > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: llm
+          slo: availability
+        annotations:
+          summary: "LLM 错误率过高 ({{ $value | printf \"%.2f\" }}%)"
+          description: |
+            Provider {{ $labels.provider }} 的 {{ $labels.model }} 模型在最近 5 分钟内错误率为 {{ $value | printf "%.2f" }}%，
+            超过 5% 阈值。请检查 LLM Provider 状态、API Key、配额。
+          runbook_url: "https://runbooks.example.com/agentprimordia/llm-high-error-rate"
+
+      - alert: AgentPrimordiaLLMHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ap_llm_duration_ms_bucket[5m])) by (le, provider, model)
+          ) > 10000
+        for: 5m
+        labels:
+          severity: warning
+          component: llm
+          slo: latency
+        annotations:
+          summary: "LLM 调用 P95 延迟过高 ({{ $value | printf \"%.0f\" }}ms)"
+          description: |
+            Provider {{ $labels.provider }} 的 {{ $labels.model }} 模型 P95 延迟已达 {{ $value | printf "%.0f" }}ms，
+            超过 10s 阈值。可能原因：上游 Provider 限流、网络问题、Prompt 过长。
+          runbook_url: "https://runbooks.example.com/agentprimordia/llm-high-latency"
+
+      - alert: AgentPrimordiaLLMHighCost
+        expr: |
+          sum(rate(ap_llm_cost_usd[1h])) by (provider, model) > 10
+        for: 15m
+        labels:
+          severity: warning
+          component: llm
+          slo: cost
+        annotations:
+          summary: "LLM 1h 成本超阈值 (${{ $value | printf \"%.2f\" }})"
+          description: |
+            Provider {{ $labels.provider }} 的 {{ $labels.model }} 在最近 1 小时成本累计已达 ${{ $value | printf "%.2f" }}，
+            超过 $10/h 阈值。请检查是否有异常调用循环、Prompt 注入。
+
+      - alert: AgentPrimordiaLLMTokenBudgetExhausted
+        expr: |
+          sum(increase(ap_llm_tokens_total[24h])) by (provider) > 1000000
+        for: 0m
+        labels:
+          severity: info
+          component: llm
+          slo: cost
+        annotations:
+          summary: "LLM 24h Token 用量已达 1M"
+          description: |
+            Provider {{ $labels.provider }} 在 24 小时内消耗的 Token 已超过 1M。
+            请评估是否需要调整 Rate Limit 或切换到更经济的模型。
+
+  # ===== Pool 调度告警 =====
+  - name: agentprimordia_pool
+    interval: 30s
+    rules:
+      - alert: AgentPrimordiaPoolHighQueueLength
+        expr: ap_pool_queued_tasks > 100
+        for: 3m
+        labels:
+          severity: warning
+          component: pool
+          slo: capacity
+        annotations:
+          summary: "Pool 队列积压 ({{ $value }} tasks)"
+          description: |
+            Pool {{ $labels.pool_name }} 的待处理任务已达 {{ $value }} 个，
+            超过 100 阈值。可能原因：下游处理慢、并发配置过低。
+
+      - alert: AgentPrimordiaPoolHighErrorRate
+        expr: |
+          100 * sum(rate(ap_pool_failed_total[5m])) by (pool_name)
+            /
+          clamp_min(sum(rate(ap_pool_dispatched_total[5m])) by (pool_name), 1)
+            > 5
+        for: 2m
+        labels:
+          severity: critical
+          component: pool
+          slo: availability
+        annotations:
+          summary: "Pool 任务错误率过高 ({{ $value | printf \"%.2f\" }}%)"
+          description: |
+            Pool {{ $labels.pool_name }} 在最近 5 分钟错误率为 {{ $value | printf "%.2f" }}%，
+            超过 5% 阈值。请检查 Agent 健康状态、最近的失败 trace。
+
+      - alert: AgentPrimordiaPoolSaturation
+        expr: |
+          100 * ap_pool_active_workers / clamp_min(ap_pool_max_concurrency, 1) > 90
+        for: 5m
+        labels:
+          severity: warning
+          component: pool
+          slo: capacity
+        annotations:
+          summary: "Pool 饱和度 > 90% ({{ $value | printf \"%.1f\" }}%)"
+          description: |
+            Pool {{ $labels.pool_name }} Worker 利用率持续 5 分钟高于 90%。
+            建议：调高 MaxConcurrency 阈值或扩容实例。
+
+      - alert: AgentPrimordiaPoolAutoScalerStuck
+        expr: |
+          changes(ap_pool_max_concurrency[10m]) == 0
+            and on(pool_name)
+          (100 * ap_pool_active_workers / clamp_min(ap_pool_max_concurrency, 1)) > 80
+        for: 10m
+        labels:
+          severity: info
+          component: pool
+          slo: capacity
+        annotations:
+          summary: "AutoScaler 未响应高负载"
+          description: |
+            Pool {{ $labels.pool_name }} 利用率持续高于 80% 但 AutoScaler 在 10 分钟内未调整并发。
+            请检查 AutoScaler 配置或提升 max_concurrency 上限。
+
+  # ===== Memory 告警 =====
+  - name: agentprimordia_memory
+    interval: 30s
+    rules:
+      - alert: AgentPrimordiaMemoryHighSearchLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ap_memory_hnsw_search_ms_bucket[5m])) by (le, backend)
+          ) > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: memory
+          slo: latency
+        annotations:
+          summary: "HNSW 检索 P95 > 500ms ({{ $value | printf \"%.0f\" }}ms)"
+          description: |
+            Backend {{ $labels.backend }} 的向量检索 P95 延迟为 {{ $value | printf "%.0f" }}ms。
+            可能原因：索引规模过大、未启用 HNSW 量化。
+
+      - alert: AgentPrimordiaMemoryFTSHighLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(ap_memory_fts_search_ms_bucket[5m])) by (le)
+          ) > 200
+        for: 5m
+        labels:
+          severity: warning
+          component: memory
+          slo: latency
+        annotations:
+          summary: "FTS 检索 P95 > 200ms ({{ $value | printf \"%.0f\" }}ms)"
+          description: |
+            FTS 全文检索 P95 延迟为 {{ $value | printf "%.0f" }}ms。
+            请检查 SQLite FTS 索引状态、考虑执行 VACUUM。
+
+      - alert: AgentPrimordiaMemoryDiskUsageHigh
+        expr: ap_memory_size_bytes > 5 * 1024 * 1024 * 1024
+        for: 0m
+        labels:
+          severity: warning
+          component: memory
+          slo: capacity
+        annotations:
+          summary: "Memory 占用 > 5GB"
+          description: |
+            当前 Memory 占用 {{ $value | humanize1024 }}B，已超过 5GB 阈值。
+            建议触发 Memory 压缩或清理过期 Episodes。
+
+  # ===== Orchestration 告警 =====
+  - name: agentprimordia_orchestration
+    interval: 30s
+    rules:
+      - alert: AgentPrimordiaOrchestrationHighStepFailureRate
+        expr: |
+          100 * sum(rate(ap_orchestration_step_failed_total[5m])) by (mode)
+            /
+          clamp_min(sum(rate(ap_orchestration_step_total[5m])) by (mode), 1)
+            > 10
+        for: 3m
+        labels:
+          severity: warning
+          component: orchestration
+          slo: availability
+        annotations:
+          summary: "编排 Step 失败率过高 ({{ $value | printf \"%.2f\" }}%)"
+          description: |
+            模式 {{ $labels.mode }} 在最近 5 分钟的 Step 失败率为 {{ $value | printf "%.2f" }}%，
+            超过 10% 阈值。请检查 Agent 健康与最近失败的 Step。
+
+      - alert: AgentPrimordiaPipelineAbortRateHigh
+        expr: |
+          100 * sum(rate(ap_orchestration_pipeline_failed_total[5m]))
+            /
+          clamp_min(sum(rate(ap_orchestration_pipeline_total[5m])), 1)
+            > 20
+        for: 5m
+        labels:
+          severity: critical
+          component: orchestration
+          slo: availability
+        annotations:
+          summary: "Pipeline 中止率 > 20% ({{ $value | printf \"%.2f\" }}%)"
+          description: |
+            Pipeline 在最近 5 分钟中止率为 {{ $value | printf "%.2f" }}%，已超过 20% 阈值。
+            请检查 Pipeline 配置中各 Stage 的 OnError 策略。
+
+      - alert: AgentPrimordiaWorkflowDurationP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(ap_orchestration_workflow_duration_ms_bucket[5m])) by (le, mode)
+          ) > 300000
+        for: 10m
+        labels:
+          severity: warning
+          component: orchestration
+          slo: latency
+        annotations:
+          summary: "Workflow P99 > 5min ({{ $value | printf \"%.0f\" }}ms)"
+          description: |
+            模式 {{ $labels.mode }} 的 Workflow P99 完成时间超过 5 分钟。
+            可能原因：编排图过深、单个 Step LLM 调用超时。
+
+      - alert: AgentPrimordiaHandoffLoop
+        expr: |
+          sum by (source_agent, target_agent) (
+            rate(ap_orchestration_handoff_total[5m])
+          ) > 10
+        for: 2m
+        labels:
+          severity: warning
+          component: orchestration
+        annotations:
+          summary: "Handoff 频率异常 ({{ $value | printf \"%.2f\" }}/s)"
+          description: |
+            {{ $labels.source_agent }} → {{ $labels.target_agent }} 的交接频率已达 {{ $value | printf "%.2f" }}/s。
+            可能存在 Handoff 循环，请检查路由函数与 max_handoffs 限制。
+
+  # ===== 健康检查 / 进程告警 =====
+  - name: agentprimordia_health
+    interval: 15s
+    rules:
+      - alert: AgentPrimordiaHealthCheckFailing
+        expr: up{job="agentprimordia"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: health
+          slo: availability
+        annotations:
+          summary: "AgentPrimordia 实例 {{ $labels.instance }} 不健康"
+          description: |
+            健康检查端点 /healthz 在最近 1 分钟持续失败。
+            请检查进程状态、依赖服务、磁盘空间。
+
+      - alert: AgentPrimordiaProcessRestarting
+        expr: increase(ap_process_restart_count[1h]) > 3
+        for: 0m
+        labels:
+          severity: warning
+          component: health
+        annotations:
+          summary: "进程在 1h 内重启 > 3 次"
+          description: |
+            进程在过去 1 小时重启次数为 {{ $value }}。
+            请检查崩溃日志与 OOMKilled 状态。
+
+      - alert: AgentPrimordiaMemoryUsageHigh
+        expr: |
+          process_resident_memory_bytes{job="agentprimordia"} > 2 * 1024 * 1024 * 1024
+        for: 5m
+        labels:
+          severity: warning
+          component: health
+        annotations:
+          summary: "进程 RSS > 2GB"
+          description: |
+            进程 RSS 内存占用已达 {{ $value | humanize1024 }}B。
+            可能存在 Memory 泄漏，请抓取 pprof。
+
+  # ===== A2A / gRPC 告警 =====
+  - name: agentprimordia_a2a
+    interval: 30s
+    rules:
+      - alert: AgentPrimordiaA2AHighErrorRate
+        expr: |
+          100 * sum(rate(ap_a2a_error_calls[5m])) by (method)
+            /
+          clamp_min(sum(rate(ap_a2a_total_calls[5m])) by (method), 1)
+            > 5
+        for: 3m
+        labels:
+          severity: warning
+          component: a2a
+          slo: availability
+        annotations:
+          summary: "A2A gRPC 错误率过高 ({{ $value | printf \"%.2f\" }}%)"
+          description: |
+            方法 {{ $labels.method }} 错误率为 {{ $value | printf "%.2f" }}%，
+            超过 5% 阈值。请检查上下游 Agent 健康。
+
+      - alert: AgentPrimordiaA2ASlowRequest
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(ap_a2a_call_duration_ms_bucket[5m])) by (le, method)
+          ) > 30000
+        for: 5m
+        labels:
+          severity: warning
+          component: a2a
+          slo: latency
+        annotations:
+          summary: "A2A gRPC P99 > 30s ({{ $value | printf \"%.0f\" }}ms)"
+          description: |
+            方法 {{ $labels.method }} P99 延迟为 {{ $value | printf "%.0f" }}ms。
+            可能原因：下游 Agent 卡死、网络分区。

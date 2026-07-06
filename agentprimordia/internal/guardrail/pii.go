@@ -10,11 +10,16 @@ import (
 type PIIType string
 
 const (
-	Email      PIIType = "email"
-	Phone      PIIType = "phone"
-	IDCard     PIIType = "id_card"
-	CreditCard PIIType = "credit_card"
-	IPAddress  PIIType = "ip_address"
+	Email       PIIType = "email"
+	Phone       PIIType = "phone"
+	IDCard      PIIType = "id_card"
+	CreditCard  PIIType = "credit_card"
+	IPAddress   PIIType = "ip_address"
+	Passport    PIIType = "passport"     // 护照号（中国：E+8位数字；美国：9位数字）
+	BankAccount PIIType = "bank_account" // 银行账号（16-19位，特定前缀）
+	SSN         PIIType = "ssn"          // 美国社保号（XXX-XX-XXXX）
+	APIKey      PIIType = "api_key"      // API 密钥（sk-/pk-/AKIA 前缀）
+	JWT         PIIType = "jwt"          // JWT 令牌（三段式 base64）
 )
 
 // Finding 单个 PII 检测结果
@@ -60,6 +65,16 @@ func NewPIIDetector() *PIIDetector {
 			{typ: CreditCard, regex: regexp.MustCompile(`\b\d{16,19}\b`)},
 			// IPv4 地址
 			{typ: IPAddress, regex: regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)},
+			// 护照号：中国 E+8位数字；美国 9位数字
+			{typ: Passport, regex: regexp.MustCompile(`(?:E\d{8})|(?:[A-Z]{2}\d{6,9})`)},
+			// 银行账号：16-19 位纯数字（与 CreditCard 区分需前缀，简化：排除已有 IDCard/IPv4）
+			{typ: BankAccount, regex: regexp.MustCompile(`\b[1-9]\d{15,18}\b`)},
+			// 美国社保号：XXX-XX-XXXX
+			{typ: SSN, regex: regexp.MustCompile(`\b\d{3}-\d{2}-\d{4}\b`)},
+			// API 密钥：sk-/pk-/AKIA 前缀（允许 _ 字符）
+			{typ: APIKey, regex: regexp.MustCompile(`(?:sk-[a-zA-Z0-9_]{20,})|(?:pk_[a-zA-Z0-9_]{20,})|(?:AKIA[A-Z0-9]{16})`)},
+			// JWT 令牌：三段式 base64（header.payload.signature）
+			{typ: JWT, regex: regexp.MustCompile(`eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+`)},
 		},
 	}
 }

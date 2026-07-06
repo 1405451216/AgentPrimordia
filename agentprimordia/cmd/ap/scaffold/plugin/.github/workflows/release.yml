@@ -1,0 +1,77 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write   # cosign keyless OIDC
+  contents: write
+
+jobs:
+  build:
+    name: Build & Sign
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Build plugin
+        run: |
+          go build -o {{.ProjectName}}.so -buildmode=plugin .
+          sha256sum {{.ProjectName}}.so | awk '{print $1}' > {{.ProjectName}}.so.sha256
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign blob (keyless OIDC)
+        env:
+          COSIGN_EXPERIMENTAL: '1'
+        run: |
+          cosign sign-blob \
+            --output-signature {{.ProjectName}}.so.sig \
+            --output-certificate {{.ProjectName}}.so.pem \
+            {{.ProjectName}}.so
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            {{.ProjectName}}.so
+            {{.ProjectName}}.so.sig
+            {{.ProjectName}}.so.pem
+            {{.ProjectName}}.so.sha256
+            plugin.json
+
+  publish-registry:
+    name: Publish to Registry
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Install ap CLI
+        run: |
+          go install agentprimordia/cmd/ap@latest
+
+      - name: Publish
+        env:
+          AP_REGISTRY_TOKEN: ${{ secrets.AP_REGISTRY_TOKEN }}
+        run: |
+          ap plugin publish artifacts/{{.ProjectName}}.so \
+            --name {{.ProjectName}} \
+            --version ${GITHUB_REF_NAME#v} \
+            --signature artifacts/{{.ProjectName}}.so.sig \
+            --public-key artifacts/{{.ProjectName}}.so.pem \
+            --checksum artifacts/{{.ProjectName}}.so.sha256

@@ -1,0 +1,18 @@
+# 构建产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# 测试产物
+coverage.out
+*.cover
+*.coverprofile
+
+# IDE
+.vscode/
+.idea/
+
+# 临时
+.DS_Store

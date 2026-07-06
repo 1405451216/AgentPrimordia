@@ -12,6 +12,7 @@ func runInit(args []string) error {
 	var (
 		name        string
 		template    string
+		projectType string
 		dryRun      bool
 		interactive bool
 	)
@@ -23,17 +24,25 @@ func runInit(args []string) error {
 				return fmt.Errorf("--template 需要指定模板名称")
 			}
 			template = args[i]
+		case "--type":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--type 需要指定类型")
+			}
+			projectType = args[i]
 		case "--dry-run":
 			dryRun = true
 		case "--interactive", "-i":
 			interactive = true
 		case "--help", "-h":
-			fmt.Print(`ap init — create a new agent project
+			fmt.Print(`ap init — create a new agent / plugin / provider project
 
 Usage:
-  ap init <项目名> [--template NAME] [--dry-run] [--interactive]
+  ap init <项目名> [--template NAME] [--type TYPE] [--dry-run] [--interactive]
+  ap init <项目名> --type plugin      # 生成插件项目
+  ap init <项目名> --type provider    # 生成 LLM Provider 项目
 
-Templates:
+Templates (--type=agent 时使用):
   quickstart         5分钟快速入门 (推荐新手)
   basic              minimal agent (default)
   with-tools         agent with tools (filesystem + shell + web)
@@ -42,14 +51,22 @@ Templates:
   agent-with-rag     agent + knowledge retrieval (RAG)
   agent-with-metrics agent + Prometheus metrics
 
+Types (--type 时使用):
+  agent              标准 Agent 项目（默认）
+  plugin             AgentPrimordia 插件项目（ap.Plugin 接口）
+  provider           LLM Provider 项目（ap.Provider 接口）
+
 Options:
+  --type TYPE        项目类型: agent | plugin | provider
+  --template NAME    Agent 模板名称（仅 type=agent 时有效）
   --dry-run          preview files without creating
   --interactive, -i  interactive wizard mode
 
 Examples:
   ap init my-agent
   ap init my-agent --template with-tools
-  ap init my-agent --template agent-with-rag --dry-run
+  ap init my-agent --type plugin
+  ap init my-provider --type provider
   ap init --interactive
 `)
 			return nil
@@ -69,18 +86,47 @@ Examples:
 		}
 		name = opts.Name
 		template = opts.Template
+		if opts.Type != "" {
+			projectType = opts.Type
+		}
 	}
 
 	if name == "" {
 		return fmt.Errorf("please specify project name\nUsage: ap init <name>")
 	}
+
+	// 推断 project type
+	if projectType == "" {
+		projectType = "agent"
+	}
+	switch projectType {
+	case "agent":
+		// template 适用
+	case "plugin":
+		if template == "" {
+			template = "plugin"
+		}
+		if template != "plugin" {
+			return fmt.Errorf("--type=plugin 时只能使用 --template=plugin")
+		}
+	case "provider":
+		if template == "" {
+			template = "provider"
+		}
+		if template != "provider" {
+			return fmt.Errorf("--type=provider 时只能使用 --template=provider")
+		}
+	default:
+		return fmt.Errorf("unknown --type %q (支持: agent | plugin | provider)", projectType)
+	}
+
 	if template == "" {
 		template = "basic"
 	}
 
 	// 验证模板（validTemplates 定义在 scaffold.go）
 	if !validTemplates[template] {
-		return fmt.Errorf("unknown template %q, supported: quickstart, basic, with-tools, multi-agent, agent-with-cache, agent-with-rag, agent-with-metrics", template)
+		return fmt.Errorf("unknown template %q, supported: quickstart, basic, with-tools, multi-agent, agent-with-cache, agent-with-rag, agent-with-metrics, plugin, provider", template)
 	}
 
 	// dry-run 模式：只预览

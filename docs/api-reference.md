@@ -708,7 +708,7 @@ bus.Subscribe(ap.EventAgentStart, func(evt ap.Event) {
 bus.PublishAsync(ap.Event{Type: ap.EventAgentStart, Source: "my-agent"})
 ```
 
-事件类型：`EventAgentStart` / `EventAgentStop` / `EventAgentError` / `EventTurnStart` / `EventTurnEnd` / `EventToolCall` / `EventToolResult` / `EventLLMCall` / `EventLLMResponse` / `EventPoolDispatch` / `EventPoolComplete`
+事件类型：`EventAgentStart` / `EventAgentStop` / `EventAgentPanic` / `EventAgentError` / `EventAgentResume` / `EventTurnStart` / `EventTurnEnd` / `EventToolCall` / `EventToolResult` / `EventLLMCall` / `EventLLMResponse` / `EventPoolDispatch` / `EventPoolComplete`
 
 ---
 

@@ -1,0 +1,224 @@
+{
+  "annotations": { "list": [] },
+  "description": "AgentPrimordia Pool 调度可视化：活跃 Workers、队列长度、任务派发率、P50/P95/P99 耗时、错误率、Worker 扩缩事件",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "活跃 Workers",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "ap_pool_active_workers",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "队列长度",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "ap_pool_queued_tasks",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "任务派发速率 (tasks/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(ap_pool_dispatched_total[1m])",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "任务耗时 P50 / P95 / P99 (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ap_pool_task_duration_ms_bucket[5m])) by (le, pool_name))",
+          "legendFormat": "P50 {{pool_name}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ap_pool_task_duration_ms_bucket[5m])) by (le, pool_name))",
+          "legendFormat": "P95 {{pool_name}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ap_pool_task_duration_ms_bucket[5m])) by (le, pool_name))",
+          "legendFormat": "P99 {{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "任务错误率 (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(ap_pool_failed_total[5m])) by (pool_name) / clamp_min(sum(rate(ap_pool_dispatched_total[5m])) by (pool_name), 0.001)",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Worker 扩缩事件",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "changes(ap_pool_max_concurrency[5m])",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 1 }
+        }
+      }
+    },
+    {
+      "title": "Worker 利用率 (%)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "100 * ap_pool_active_workers / clamp_min(ap_pool_max_concurrency, 1)",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "完成任务数（累计）",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 24 },
+      "targets": [
+        {
+          "expr": "ap_pool_completed_total",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "title": "失败任务数（累计）",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "ap_pool_failed_total",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "当前最大并发",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 24 },
+      "targets": [
+        {
+          "expr": "ap_pool_max_concurrency",
+          "legendFormat": "{{pool_name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "tags": ["agentprimordia", "pool", "scheduling"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "AgentPrimordia - Pool Dashboard",
+  "uid": "agentprimordia-pool",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,12 +1,15 @@
 // perf-v4 Task 12.4：LLM Cache 性能基线
 // perf-v6 round 8 Task 1：SSE 解析热路径性能基线
+// phase3 Task 6：LLM BatchProcessor 性能基线
 package llm
 
 import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"agentprimordia/internal/jsonutil"
 )
@@ -93,4 +96,80 @@ func BenchmarkSSE_Decode_Jsonutil(b *testing.B) {
 		var got sseBenchResp
 		_ = jsonutil.DecodeString(sseSampleData, &got)
 	}
+}
+
+// BenchmarkBatchProcessor_Concurrent 对比批处理器在并发场景下的吞吐
+func BenchmarkBatchProcessor_Concurrent(b *testing.B) {
+	mock := newBatchMockProvider()
+	bp := NewBatchProcessor(mock, BatchConfig{
+		MaxBatchSize: 16,
+		FlushTimeout: 50 * time.Millisecond,
+	})
+	defer bp.Close()
+
+	ctx := context.Background()
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		var wg sync.WaitGroup
+		for j := 0; j < 10; j++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, _ = bp.Complete(ctx, &CompletionRequest{
+					Messages: []ChatMessage{{Role: "user", Content: "bench"}},
+					Model:    "batch-mock-model",
+				})
+			}()
+		}
+		wg.Wait()
+	}
+}
+
+// BenchmarkBatchProcessor_vs_Direct 对比批处理 vs 直接调用的吞吐差异
+func BenchmarkBatchProcessor_vs_Direct(b *testing.B) {
+	mock := newBatchMockProvider()
+	bp := NewBatchProcessor(mock, BatchConfig{
+		MaxBatchSize: 16,
+		FlushTimeout: 50 * time.Millisecond,
+	})
+	defer bp.Close()
+
+	ctx := context.Background()
+	b.Run("Batch", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			var wg sync.WaitGroup
+			for j := 0; j < 10; j++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					_, _ = bp.Complete(ctx, &CompletionRequest{
+						Messages: []ChatMessage{{Role: "user", Content: "x"}},
+						Model:    "batch-mock-model",
+					})
+				}()
+			}
+			wg.Wait()
+		}
+	})
+	b.Run("Direct", func(b *testing.B) {
+		b.ResetTimer()
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			var wg sync.WaitGroup
+			for j := 0; j < 10; j++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					_, _ = mock.Complete(ctx, &CompletionRequest{
+						Messages: []ChatMessage{{Role: "user", Content: "x"}},
+						Model:    "batch-mock-model",
+					})
+				}()
+			}
+			wg.Wait()
+		}
+	})
 }

@@ -1,0 +1,95 @@
+{
+  "name": "agentprimordia-vscode",
+  "displayName": "AgentPrimordia Inspector",
+  "description": "Agent 调试与 ReAct 循环可视化（VS Code Inspector Webview）",
+  "version": "0.1.0",
+  "publisher": "agentprimordia",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Debuggers", "Other"],
+  "keywords": [
+    "agent",
+    "react-loop",
+    "inspector",
+    "tool-calls"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCommand:agentprimordia.inspect",
+    "onCommand:agentprimordia.run",
+    "onCommand:agentprimordia.debug",
+    "workspaceContains:.ap.yaml"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentprimordia.inspect",
+        "title": "AgentPrimordia: Open Inspector",
+        "category": "AgentPrimordia"
+      },
+      {
+        "command": "agentprimordia.run",
+        "title": "AgentPrimordia: Run Agent",
+        "category": "AgentPrimordia"
+      },
+      {
+        "command": "agentprimordia.debug",
+        "title": "AgentPrimordia: Debug Agent",
+        "category": "AgentPrimordia"
+      },
+      {
+        "command": "agentprimordia.stop",
+        "title": "AgentPrimordia: Stop",
+        "category": "AgentPrimordia"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "agentprimordia.debug",
+          "when": "config.agentprimordia.enableDebug"
+        }
+      ]
+    },
+    "breakpoints": [
+      {
+        "language": "yaml"
+      }
+    ],
+    "configuration": {
+      "title": "AgentPrimordia",
+      "properties": {
+        "agentprimordia.enableDebug": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable AgentPrimordia debug provider"
+        },
+        "agentprimordia.maxTurns": {
+          "type": "number",
+          "default": 10,
+          "description": "Default max turns when launching an agent run"
+        },
+        "agentprimordia.streamChunkSize": {
+          "type": "number",
+          "default": 16,
+          "description": "Tokens per stream chunk in Inspector view"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "vitest run",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@agentprimordia/typescript": "file:../typescript"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  }
+}

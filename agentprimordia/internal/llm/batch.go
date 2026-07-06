@@ -73,6 +73,17 @@ func NewBatchProcessor(provider Provider, config BatchConfig) *BatchProcessor {
 	return bp
 }
 
+// QueueDepth 返回当前等待 flush 的批次条目数（Phase 3 Task 6 导出指标）。
+//
+// 主要用于：
+//   - Prometheus 导出 llm_batch_queue_depth
+//   - Pool 调度器决策（背压控制）
+func (bp *BatchProcessor) QueueDepth() int {
+	bp.mu.Lock()
+	defer bp.mu.Unlock()
+	return len(bp.entries)
+}
+
 // Complete 提交请求到批量处理器，等待执行结果
 func (bp *BatchProcessor) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
 	// 检查上下文是否已取消

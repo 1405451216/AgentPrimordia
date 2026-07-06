@@ -113,6 +113,18 @@ func (a *ReActAgent) WithCache(cache llm.LLMCache) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, cache: cache})
 }
 
+// WithOutputGuard 注入输出端 Guardrail 检查函数，返回可链式调用的 CapabilityAgent
+// 用于在 LLM 响应后自动进行 PII 脱敏、注入拦截、敏感词过滤等防护
+func (a *ReActAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, outputGuard: g})
+}
+
+// WithAuditLogger 注入审计日志器，返回可链式调用的 CapabilityAgent
+// LLM 调用、工具调用、Agent 启动/停止等关键路径会自动写入审计事件
+func (a *ReActAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, auditLogger: l})
+}
+
 // ===== RAG 简化 API =====
 
 // ragStoreAdapter 将 memory.RAGStore 适配为 agent.RAGProvider，

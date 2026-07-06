@@ -178,15 +178,25 @@ func entryBucket(key string) int {
 	return sum % bucketCount
 }
 
-// CacheEntry 缓存条目
+// CacheEntry 缓存条目（perf-v6 Task B：HitCount 改 atomic.Int64，避免并发计数竞争）
 type CacheEntry struct {
 	Key       string              `json:"key"`
 	Query     string              `json:"query"`
 	Response  *CompletionResponse `json:"response"`
 	CreatedAt time.Time           `json:"created_at"`
-	HitCount  int                 `json:"hit_count"`
+	HitCount  atomic.Int64        `json:"hit_count"`
 	Model     string              `json:"model"`
 	vector    []float32
+}
+
+// AddHit 原子地增加 HitCount（perf-v6 Task B）
+func (e *CacheEntry) AddHit() int64 {
+	return e.HitCount.Add(1)
+}
+
+// GetHits 获取当前 HitCount（perf-v6 Task B）
+func (e *CacheEntry) GetHits() int64 {
+	return e.HitCount.Load()
 }
 
 // CacheStats 缓存统计
@@ -325,7 +335,7 @@ func (c *InMemoryCache) Get(ctx context.Context, query string, similarity float3
 			c.mu.Lock()
 			c.lruList.MoveToBack(elem)
 			c.mu.Unlock()
-			entry.HitCount++
+			entry.AddHit()
 			atomicAdd(&c.hits, 1)
 			if entry.Response != nil {
 				atomicAdd(&c.tokensSave, int64(entry.Response.Usage.TotalTokens))
@@ -406,7 +416,7 @@ func (c *InMemoryCache) Get(ctx context.Context, query string, similarity float3
 		if bestElem != nil {
 			c.lruList.MoveToBack(bestElem) // 命中升级
 		}
-		bestEntry.HitCount++
+		bestEntry.AddHit()
 		atomicAdd(&c.hits, 1)
 		if bestEntry.Response != nil {
 			atomicAdd(&c.tokensSave, int64(bestEntry.Response.Usage.TotalTokens))

@@ -1,0 +1,129 @@
+# AgentPrimordia 实施进度总览（截至 2026-07-06）
+
+> 本文档汇总 5 个核心阶段的实施状态、关键决策与遗留事项。
+> 详细 Task 拆分见 `docs/plans/phase{1..5}-*.md`。
+
+## 阶段总览
+
+| 阶段 | 主题 | 状态 | Task 完成度 | 关键交付物 |
+|------|------|------|------------|-----------|
+| **Phase 1** | 性能攻坚（perf-v5） | ✅ 已完成 | 14 / 14 | BufferPool / TokenCache / JSON Pool / pprof 端点 / 热点优化 -40% ~ -75% |
+| **Phase 2** | 安全合规闭环 | ✅ 已完成 | 7 / 7 | guardrail（PII/注入/主题）+ audit（审计日志/HTTP 报告）+ security（ACL/Sandbox） |
+| **Phase 3** | 架构演进 | 🟡 进行中 | 5 / 8 | A2A gRPC ✅ / 拦截器链 ✅ / gRPC 默认化 ✅ / 包拆分（部分）/ 协程池集成（待） |
+| **Phase 4** | 可观测性 + Operator | ✅ 已完成 | 10 / 10 | 分布式追踪 / Metrics Adapter / PDB / HPA Behavior / 滚动升级 / 结构化日志 |
+| **Phase 5** | 生态与社区 | 🟡 起步 | 1 / 12 | CLI 插件管理（install/list/create/remove/search/update）✅ |
+
+**合计**：37 / 51 个 Task 完成（约 73%）
+
+---
+
+## Phase 3 待办（剩余 3 个 Task）
+
+### Task 1-3：包拆分重构
+
+`internal/agent/` 已拆出以下子包：
+
+```
+internal/agent/
+├── a2a/             ✅ A2A 协议（gRPC + JSON-RPC + 拦截器 + Trace Propagation）
+├── planning/        ✅ 任务规划
+├── reflection/      ✅ Agent 自反思
+├── tool_learning/   ✅ 工具学习 / 自动发现
+├── collaboration/   ✅ 多 Agent 协作
+├── eval/            ✅ 评估
+├── lifecycle/       ✅ Agent 生命周期
+├── transport/       ✅ 传输层
+├── discovery/       ✅ 服务发现
+├── bus/             ✅ 事件总线
+├── session/         ✅ 会话管理
+├── trace/           ✅ 追踪
+├── visualize/       ✅ 可视化
+└── multimodal/      ✅ 多模态
+```
+
+**遗留**：`react_loop.go`、`react_loop_core.go`、`react_loop_tools.go` 等零散文件仍在 `internal/agent/` 根目录，未完全迁出到 `react/` 子包。
+
+### Task 4-5：GoroutinePool 集成
+
+- ✅ `internal/concurrency/pool.go` 已实现动态协程池
+- ⬜ `internal/pool/dispatcher.go` 仍使用固定 worker 模式，未接入 GoroutinePool
+- ⬜ PoolStats 指标未导出到 Prometheus
+
+### Task 6：LLM 批处理
+
+- ✅ `internal/llm/batch.go` BatchProcessor 已实现
+- ⬜ 未与 Pool 调度器集成（多 Agent 并发请求场景下无法自动合并批次）
+
+---
+
+## Phase 5 待办（剩余 11 个 Task）
+
+### Task 1（已完成 80%）
+
+`ap plugin` 子命令覆盖 install / list / create / remove / search / update，
+本地 `ecosystem/plugins/registry.json` 注册表已包含 6 个官方插件（http/sql/git/json/email/kv）。
+
+**遗留**：`install` 流程尚未集成：
+- **Task 2**：远程插件注册中心（当前 search 只查本地 JSON）
+- **Task 3**：cosign 签名验证（当前 install 不校验签名）
+
+### Task 4-12（待启动）
+
+| Task | 主题 | 优先级 |
+|------|------|--------|
+| 4 | 插件沙箱（基于 ScopePolicy） | 中 |
+| 5 | 多租户隔离（Memory 分区 + Pool 配额） | 高 |
+| 6 | 多模式认证（API Key / Bearer / mTLS） | 中 |
+| 7 | Edge Runtime 兼容层补全 | 低 |
+| 8 | React Hooks（useAgent / useReActLoop） | 中 |
+| 9 | VS Code 扩展（Agent Inspector Webview） | 低 |
+| 10 | 插件开发模板（脚手架 + 文档生成） | 中 |
+| 11 | 文档站点（自动构建 + 部署） | 低 |
+| 12 | 社区 CI（govulncheck + Trivy + Cosign 全自动） | 高 |
+
+---
+
+## 关键技术决策（Phase 3-5 期间）
+
+### 1. A2A gRPC 成为默认（Phase 3 Task 7）
+
+- **Decision**：保留 JSON-RPC 类型为 Deprecated 别名，不直接重定向到 gRPC，避免破坏旧示例代码。
+- **Trade-off**：pkg 公共 API 表面多了一倍，但通过 `Deprecated:` 注解引导用户迁移。
+- **后续**：v2.0 移除所有 JSON-RPC 公共 API。
+
+### 2. 结构化日志统一字段（Phase 4 Task 10）
+
+- **Decision**：所有模块使用 `internal/logger.Field*` 常量作为 slog 的 key，避免散落的字符串字面量。
+- **机制**：`logger.FromContext(ctx, l)` 自动注入 trace-id / span-id（来自 W3C Trace Context）。
+- **影响**：替换 `internal/tools/executor.go` 中全部 `log.Printf` 调用（6 处）；清零生产代码的 `log.Printf` 使用。
+
+### 3. CLI 插件搜索走本地 JSON（Phase 5 Task 1）
+
+- **Decision**：`ap plugin search` 只查 `ecosystem/plugins/registry.json`（项目级）/ `$HOME/.agentprimordia/plugins/registry.json`（用户级），不引入远程 HTTP 请求。
+- **理由**：避免 CLI 强依赖网络；远程注册中心留待 Task 2 单独实现（可独立于本地缓存）。
+- **后续**：Task 2 完成后 `search` 会自动尝试远程 → 本地降级。
+
+---
+
+## 验证状态
+
+```bash
+# 主项目（agentprimordia/）
+go build ./...                            # ✅ 全部模块编译通过
+go vet ./...                              # ✅ 无警告
+go test -count=1 ./internal/...           # ✅ 全绿
+go test -count=1 ./cmd/ap/                # ✅ 全绿（含新 plugin search/update 17 个测试）
+go test -count=1 ./internal/logger/...    # ✅ 24/24
+
+# K8s Operator（agentprimordia/operator/）
+GOWORK=off go test -count=1 ./...         # ✅ 全绿（含 Phase 4 Task 6-9 新增测试）
+```
+
+---
+
+## 下一步建议
+
+1. **完成 Phase 3 残留**（包拆分 + GoroutinePool 集成 + LLM Batch 与 Pool 对接），约 2-3 周
+2. **Phase 5 Task 2-3**（远程注册中心 + cosign 签名），约 1-2 周（解锁安全的 `plugin install`）
+3. **Phase 5 Task 5**（多租户隔离），约 2-3 周（解锁企业版 SaaS 场景）
+4. **Phase 5 Task 12**（社区 CI），约 1 周（解锁外部贡献者）

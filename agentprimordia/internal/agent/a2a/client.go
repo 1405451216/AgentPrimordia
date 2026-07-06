@@ -35,7 +35,10 @@ func WithClientBearerToken(token string) ClientOption {
 	return func(c *A2AClient) { c.bearerToken = token }
 }
 
-// A2AClient A2A 协议客户端
+// A2AClient A2A 协议客户端（基于 JSON-RPC over HTTP）
+//
+// Deprecated: 自 v1.x 起 gRPC 成为 A2A 的默认传输；新代码请使用 A2AGRPCClient（见 grpc_client.go）。
+// 本类型仅保留用于兼容已有 JSON-RPC 客户端，将在 v2.0 移除。
 type A2AClient struct {
 	baseURL     string
 	httpClient  *http.Client
@@ -49,6 +52,9 @@ type A2AClient struct {
 // defaultA2AHTTPTimeout 是 A2A 客户端默认的总请求超时。
 const defaultA2AHTTPTimeout = 30 * time.Second
 
+// NewA2AClient 创建基于 JSON-RPC over HTTP 的 A2A 协议客户端（兼容旧 API）。
+//
+// Deprecated: 新代码请使用 NewA2AGRPCClient；本函数保留到 v2.0 移除。
 func NewA2AClient(baseURL string, opts ...ClientOption) *A2AClient {
 	c := &A2AClient{
 		baseURL: strings.TrimRight(baseURL, "/"),

@@ -64,6 +64,26 @@ type PoolConfig struct {
 	DefaultAgent     ReActAgentConfig `json:"default_agent"`
 	// Task 9：动态 Agent 池（自动扩缩容）
 	AutoScaler *AutoScalerConfig `json:"auto_scaler,omitempty"`
+	// Phase 3 Task 4：可选的动态协程池配置（concurrency.GoroutinePool）。
+	// 设置后 Pool 会创建一个内部 GoroutinePool 用于后台任务调度，并允许
+	// 调用方通过 Pool.GoroutinePoolStats() 获取运行指标。
+	GoroutinePool *GoroutinePoolConfig `json:"goroutine_pool,omitempty"`
+}
+
+// GoroutinePoolConfig 描述内部 GoroutinePool 的运行参数（Phase 3 Task 4）。
+//
+// Pool 创建时如果设置了 GoroutinePool，会在内部实例化一个
+// concurrency.GoroutinePool 并用于 SubmitBackground 任务；底层协程池
+// 的统计通过 Pool.GoroutinePoolStats() 暴露给 Prometheus。
+type GoroutinePoolConfig struct {
+	MinWorkers  int           `json:"min_workers"`
+	MaxWorkers  int           `json:"max_workers"`
+	QueueSize   int           `json:"queue_size"`
+	IdleTimeout time.Duration `json:"idle_timeout"`
+	// EnableLLMBatch（Phase 3 Task 6）：当 GoroutinePool 与 LLMBatch 同时启用时，
+	// 通过协程池调度 BatchProcessor 的 flushLoop，减少阻塞主 Pool 调度线程。
+	// 注意：开启此选项需要 Pool.SetModel 已被调用（BatchProcessor 需要 Provider）。
+	EnableLLMBatch bool `json:"enable_llm_batch,omitempty"`
 }
 
 type RetryPolicy struct {

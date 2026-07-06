@@ -535,7 +535,9 @@ bus.Close()
 |------|-----|------|
 | `EventAgentStart` | `"agent.start"` | Agent 启动 |
 | `EventAgentStop` | `"agent.stop"` | Agent 停止 |
+| `EventAgentPanic` | `"agent.panic"` | Agent panic 恢复 |
 | `EventAgentError` | `"agent.error"` | Agent 错误 |
+| `EventAgentResume` | `"agent.resume"` | Agent 从检查点恢复 |
 | `EventTurnStart` | `"turn.start"` | 轮次开始 |
 | `EventTurnEnd` | `"turn.end"` | 轮次结束 |
 | `EventToolCall` | `"tool.call"` | 工具调用 |

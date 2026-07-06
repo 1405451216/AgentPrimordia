@@ -2,14 +2,22 @@
 //
 // Stability: Experimental
 //
-// A2A 协议允许不同 Agent 之间通过 JSON-RPC 2.0 进行任务委派、状态查询
-// 和事件订阅。本文件将 internal/agent/a2a 包中的核心类型与构造函数
-// 通过类型别名导出，用户无需直接 import internal 包。
+// 自 v1.x 起，**A2A 的默认传输是 gRPC**（性能更优、二进制更小、内建拦截器链）。
+// JSON-RPC over HTTP 仅作为兼容旧客户端的传输层保留，会在 v2.0 移除。
+// 推荐使用：
+//
+//	srv  := ap.NewA2AGRPCServer(service)
+//	cli, _ := ap.NewA2AGRPCClient("localhost:50051")
+//
+// 本文件将 internal/agent/a2a 包中的核心类型与构造函数通过类型别名导出，
+// 用户无需直接 import internal 包。
 
 package ap
 
 import (
+	"context"
 	"log/slog"
+	"time"
 
 	"agentprimordia/internal/agent/a2a"
 
@@ -105,18 +113,26 @@ func NewA2ADataPart(data []byte) A2ADataPart {
 // Server
 // ============================================================================
 
-// A2AServer A2A 协议服务端
+// A2AServer JSON-RPC over HTTP 版的 A2A 服务端（兼容旧 API）
+//
+// Deprecated: 自 v1.x 起 A2AGRPCServer 成为默认服务端；本类型保留到 v2.0 移除。
 type A2AServer = a2a.A2AServer
 
-// A2AServerOption 服务端配置选项
+// A2AServerOption JSON-RPC 服务端配置选项
+//
+// Deprecated: 请改用 A2AGRPCServerOption。
 type A2AServerOption = a2a.ServerOption
 
-// NewA2AServer 创建 A2A HTTP 服务端
+// NewA2AServer 创建 JSON-RPC over HTTP 版 A2A 服务端
+//
+// Deprecated: 新代码请使用 NewA2AGRPCServer。
 func NewA2AServer(tm A2ATaskManager, opts ...A2AServerOption) *A2AServer {
 	return a2a.NewA2AServer(tm, opts...)
 }
 
-// NewA2AServerWithService 使用已有的 A2AService 创建 A2A HTTP 服务端
+// NewA2AServerWithService 使用已有的 A2AService 创建 JSON-RPC A2A 服务端
+//
+// Deprecated: 新代码请使用 NewA2AGRPCServerWithService。
 func NewA2AServerWithService(service *A2AService, opts ...A2AServerOption) *A2AServer {
 	return a2a.NewA2AServerWithService(service, opts...)
 }
@@ -125,13 +141,19 @@ func NewA2AServerWithService(service *A2AService, opts ...A2AServerOption) *A2AS
 // Client
 // ============================================================================
 
-// A2AClient A2A 协议客户端
+// A2AClient JSON-RPC over HTTP 版的 A2A 客户端（兼容旧 API）
+//
+// Deprecated: 自 v1.x 起 A2AGRPCClient 成为默认客户端；本类型保留到 v2.0 移除。
 type A2AClient = a2a.A2AClient
 
-// A2AClientOption 客户端配置选项
+// A2AClientOption JSON-RPC 客户端配置选项
+//
+// Deprecated: 请改用 A2AGRPCClientOption。
 type A2AClientOption = a2a.ClientOption
 
-// NewA2AClient 创建 A2A 客户端
+// NewA2AClient 创建 JSON-RPC over HTTP 版 A2A 客户端
+//
+// Deprecated: 新代码请使用 NewA2AGRPCClient。
 func NewA2AClient(baseURL string, opts ...A2AClientOption) *A2AClient {
 	return a2a.NewA2AClient(baseURL, opts...)
 }
@@ -201,16 +223,22 @@ func NewA2ALocalDiscovery() *A2ALocalDiscovery {
 }
 
 // ============================================================================
-// JSON-RPC
+// JSON-RPC（兼容旧 API）
 // ============================================================================
 
 // A2AJSONRPCRequest JSON-RPC 2.0 请求
+//
+// Deprecated: JSON-RPC over HTTP 已被 gRPC 取代；本类型仅供序列化兼容。
 type A2AJSONRPCRequest = a2a.JSONRPCRequest
 
 // A2AJSONRPCResponse JSON-RPC 2.0 响应
+//
+// Deprecated: 详见 A2AJSONRPCRequest。
 type A2AJSONRPCResponse = a2a.JSONRPCResponse
 
 // A2AJSONRPCError JSON-RPC 2.0 错误
+//
+// Deprecated: 详见 A2AJSONRPCRequest。
 type A2AJSONRPCError = a2a.JSONRPCError
 
 // ============================================================================
@@ -286,4 +314,126 @@ func WithGRPCAuth(auth A2AGRPCAuthFunc) A2AGRPCServerOption {
 // WithGRPCLogger 设置 gRPC server 日志器
 func WithGRPCLogger(logger *slog.Logger) A2AGRPCServerOption {
 	return a2a.WithGRPCLogger(logger)
+}
+
+// A2AInterceptorMetrics gRPC 拦截器共享的指标收集器
+type A2AInterceptorMetrics = a2a.A2AInterceptorMetrics
+
+// A2AMetricsSnapshot 指标快照
+type A2AMetricsSnapshot = a2a.A2AMetricsSnapshot
+
+// A2AInterceptorConfig gRPC 拦截器共享配置
+type A2AInterceptorConfig = a2a.A2AInterceptorConfig
+
+// NewA2AInterceptorMetrics 创建新的指标收集器
+func NewA2AInterceptorMetrics() *A2AInterceptorMetrics {
+	return a2a.NewA2AInterceptorMetrics()
+}
+
+// WithGRPCMetrics 注入共享的指标收集器
+func WithGRPCMetrics(m *A2AInterceptorMetrics) A2AGRPCServerOption {
+	return a2a.WithGRPCMetrics(m)
+}
+
+// WithGRPCSlowRequestThreshold 设置慢请求日志阈值
+func WithGRPCSlowRequestThreshold(d time.Duration) A2AGRPCServerOption {
+	return a2a.WithGRPCSlowRequestThreshold(d)
+}
+
+// RecoveryInterceptor panic 恢复拦截器（链最外层）
+func RecoveryInterceptor() grpc.UnaryServerInterceptor { return a2a.RecoveryInterceptor() }
+
+// StreamRecoveryInterceptor 流式 panic 恢复拦截器
+func StreamRecoveryInterceptor() grpc.StreamServerInterceptor { return a2a.StreamRecoveryInterceptor() }
+
+// LoggingInterceptor 日志拦截器
+func LoggingInterceptor(cfg A2AInterceptorConfig) grpc.UnaryServerInterceptor {
+	return a2a.LoggingInterceptor(cfg)
+}
+
+// StreamLoggingInterceptor 流式日志拦截器
+func StreamLoggingInterceptor(cfg A2AInterceptorConfig) grpc.StreamServerInterceptor {
+	return a2a.StreamLoggingInterceptor(cfg)
+}
+
+// MetricsInterceptor 指标拦截器
+func MetricsInterceptor(m *A2AInterceptorMetrics) grpc.UnaryServerInterceptor {
+	return a2a.MetricsInterceptor(m)
+}
+
+// StreamMetricsInterceptor 流式指标拦截器
+func StreamMetricsInterceptor(m *A2AInterceptorMetrics) grpc.StreamServerInterceptor {
+	return a2a.StreamMetricsInterceptor(m)
+}
+
+// ChainUnaryInterceptors 组合多个 unary 拦截器
+func ChainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return a2a.ChainUnaryInterceptors(interceptors...)
+}
+
+// ChainStreamInterceptors 组合多个 stream 拦截器
+func ChainStreamInterceptors(interceptors ...grpc.StreamServerInterceptor) grpc.StreamServerInterceptor {
+	return a2a.ChainStreamInterceptors(interceptors...)
+}
+
+// ============================================================================
+// Trace Propagation（W3C Trace Context 跨 A2A 调用传播）
+// ============================================================================
+
+// A2ATraceContext W3C Trace Context 表示（version-trace_id-span_id-flags）
+type A2ATraceContext = a2a.TraceContext
+
+// A2AMetadata gRPC metadata 抽象，便于不直接依赖 google.golang.org/grpc/metadata
+type A2AMetadata = a2a.Metadata
+
+// A2AStartTrace 在 client 端启动一条新的 trace 并注入 ctx
+//
+// 适用于本进程是 trace 起点的场景。
+func A2AStartTrace(ctx context.Context) (context.Context, A2ATraceContext) {
+	return a2a.GenerateTraceContextInCtx(ctx)
+}
+
+// A2AContinueTrace 基于父 TraceContext 创建子 TraceContext 并注入 ctx
+//
+// 适用于本进程已有父 trace，需要跨 A2A RPC 调用传递到 server 的场景。
+func A2AContinueTrace(ctx context.Context, parent A2ATraceContext) (context.Context, A2ATraceContext) {
+	return a2a.ContinueTraceInCtx(ctx, parent)
+}
+
+// A2AExtractTraceContext 从 ctx 提取当前生效的 TraceContext
+//
+// server 端在 RPC handler 入口调用本方法获取上游 client 注入的 trace。
+func A2AExtractTraceContext(ctx context.Context) (A2ATraceContext, bool) {
+	return a2a.TraceContextFromContext(ctx)
+}
+
+// A2AInjectTraceToGRPCClient 将 TraceContext 写入 A2AGRPCClient 的 outgoing context
+//
+// 调用方应在调用 *A2AGRPCClient 的 RPC 方法之前使用本方法包装 ctx。
+// 例如：
+//
+//	tc := ap.A2AGenerateTraceContext()
+//	ctx := ap.A2AInjectTraceToGRPCClient(ctx, tc)
+//	resp, err := client.GetAgentCard(ctx)
+//
+// 实际上更推荐使用 client.WithTraceContext(ctx, tc) 形式（同义）。
+func A2AInjectTraceToGRPCClient(ctx context.Context, tc A2ATraceContext) context.Context {
+	return a2a.WithTraceContext(ctx, tc)
+}
+
+// A2AGenerateTraceContext 生成一个新的 W3C TraceContext
+func A2AGenerateTraceContext() A2ATraceContext {
+	return a2a.GenerateTraceContext()
+}
+
+// A2AChildTraceContext 基于父 TraceContext 创建子 TraceContext
+//
+// 子 span 共享父 trace ID，但 span ID 不同；用于 trace 在同一进程内的延续。
+func A2AChildTraceContext(parent A2ATraceContext) A2ATraceContext {
+	return a2a.ChildTraceContext(parent)
+}
+
+// A2AParseTraceParent 解析 W3C traceparent header（"00-<trace>-<span>-<flags>"）
+func A2AParseTraceParent(header string) (A2ATraceContext, error) {
+	return a2a.ParseTraceParent(header)
 }

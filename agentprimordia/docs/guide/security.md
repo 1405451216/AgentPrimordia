@@ -1,0 +1,122 @@
+# 安全最佳实践
+
+> 部署 Agent 到生产环境的安全清单。
+
+## 认证与授权
+
+### 多模式认证链
+
+```yaml
+auth:
+  chain:
+    - type: api_key
+      header: X-API-Key
+    - type: bearer
+      jwks_url: https://auth.example.com/.well-known/jwks.json
+    - type: mtls
+      client_cert_header: X-Client-Cert
+```
+
+### 工具权限
+
+```go
+registry.SetRole("admin", []string{"shell", "filesystem", "web"})
+registry.SetRole("readonly", []string{"filesystem"})
+```
+
+只拥有 `filesystem` 角色的 Agent 无法执行 shell 命令。
+
+## 输入 / 输出护栏
+
+```yaml
+guardrail:
+  - type: prompt_injection
+    action: reject
+    model: "claude-3-5-sonnet"  # 注入检测专用模型
+  - type: pii_filter
+    action: mask
+  - type: topic_boundary
+    allowed_topics: ["产品使用", "订单查询"]
+```
+
+## 沙箱隔离
+
+| 资源 | 限制 |
+|------|------|
+| 文件系统 | 读取/写目录白名单 |
+| 网络 | 请求域名白名单 |
+| Shell | 命令 allowlist |
+| 内存 | 单工具调用最大内存 |
+| CPU | 单工具调用最大执行时间 |
+
+```yaml
+sandbox:
+  max_execution_time: 30s
+  max_memory_mb: 128
+  disable_subprocess: true
+  allowed_network_hosts:
+    - "*.example.com"
+```
+
+## 供应链安全
+
+所有发布二进制使用 Cosign 签名：
+
+```bash
+# 验证签名
+cosign verify-blob \
+  --certificate release.pem \
+  --signature release.sig \
+  ap-linux-amd64
+
+# 验证容器镜像
+cosign verify ghcr.io/agentprimordia/agentprimordia:v1.0.0
+```
+
+## SBOM（软件物料清单）
+
+每个 release 附带 SPDX 格式 SBOM：
+
+```
+sbom-go.spdx.json       # Go 依赖
+sbom-node.spdx.json     # Node 依赖
+```
+
+## 审计日志
+
+所有 Agent 操作可追溯：
+
+```go
+audit := audit.NewLogger(audit.Config{
+    Output:    "./audit/audit.log",
+    RedactPII: true,
+})
+defer audit.Close()
+
+// 每条记录包含：timestamp, tenant, user, action, target, result
+```
+
+## 漏洞扫描（CI 集成）
+
+```bash
+# 开源依赖漏洞扫描
+govulncheck ./...
+
+# 容器 / 代码漏洞扫描
+trivy fs --severity HIGH,CRITICAL .
+
+# 许可证合规
+go-licenses check ./...
+```
+
+## 配置加密
+
+敏感字段（如 api_key）支持加密存储：
+
+```yaml
+# .ap.yaml
+llm:
+  api_key: "enc:v1:AQIDBAUG..."  # AES-256-GCM 加密
+```
+
+运行时通过 `AP_ENCRYPTION_KEY` 环境变量解密。

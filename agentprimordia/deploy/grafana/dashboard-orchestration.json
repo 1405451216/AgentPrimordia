@@ -1,0 +1,214 @@
+{
+  "annotations": { "list": [] },
+  "description": "AgentPrimordia 编排层可视化：Workflow 执行速率、Step 耗时、Handoff 频率、GroupChat 轮次、Pipeline 失败率",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Workflow 执行速率 (wf/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(ap_orchestration_workflow_total[1m])",
+          "legendFormat": "{{mode}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "Step 执行耗时 P50 / P95 / P99 (ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ap_orchestration_step_duration_ms_bucket[5m])) by (le, mode))",
+          "legendFormat": "P50 {{mode}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ap_orchestration_step_duration_ms_bucket[5m])) by (le, mode))",
+          "legendFormat": "P95 {{mode}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ap_orchestration_step_duration_ms_bucket[5m])) by (le, mode))",
+          "legendFormat": "P99 {{mode}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "Workflow 状态分布",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (status) (ap_orchestration_workflow_total)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "title": "Step 失败率 (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(ap_orchestration_step_failed_total[5m])) by (mode) / clamp_min(sum(rate(ap_orchestration_step_total[5m])) by (mode), 0.001)",
+          "legendFormat": "{{mode}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Workflow 平均耗时 (ms)",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "expr": "ap_orchestration_workflow_duration_avg_ms",
+          "legendFormat": "{{mode}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "ms" }
+      }
+    },
+    {
+      "title": "Handoff 频率 (handoff/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(ap_orchestration_handoff_total[1m])",
+          "legendFormat": "{{source_agent}}→{{target_agent}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "GroupChat 轮次分布",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ap_orchestration_groupchat_rounds_bucket[5m])) by (le))",
+          "legendFormat": "P50 轮次"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ap_orchestration_groupchat_rounds_bucket[5m])) by (le))",
+          "legendFormat": "P95 轮次"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "Pipeline 失败率 (%)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(ap_orchestration_pipeline_failed_total[5m])) / clamp_min(sum(rate(ap_orchestration_pipeline_total[5m])), 0.001)",
+          "legendFormat": "Pipeline 失败"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 50,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "并发 Workflow 数",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 24 },
+      "targets": [
+        {
+          "expr": "ap_orchestration_workflow_concurrent",
+          "legendFormat": "{{mode}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "title": "Step 重试率 (%)",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 24 },
+      "targets": [
+        {
+          "expr": "100 * ap_orchestration_step_retries / clamp_min(ap_orchestration_step_total, 1)",
+          "legendFormat": "重试占比"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 50
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "tags": ["agentprimordia", "orchestration", "workflow"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "AgentPrimordia - Orchestration Dashboard",
+  "uid": "agentprimordia-orchestration",
+  "version": 1,
+  "weekStart": ""
+}

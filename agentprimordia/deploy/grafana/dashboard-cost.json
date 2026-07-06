@@ -1,28 +1,21 @@
 {
   "annotations": { "list": [] },
+  "description": "AgentPrimordia 成本监控：累计 USD、按 provider / model / agent 拆分、Token 数、最近一次调用成本、每小时趋势",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
   "links": [],
+  "liveNow": false,
   "panels": [
     {
-      "title": "Cost Dashboard - Notice",
-      "type": "text",
-      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
-      "options": {
-        "mode": "markdown",
-        "content": "## Cost Tracking Dashboard\n\nThis dashboard is a **placeholder**. The AgentPrimordia Prometheus metrics endpoint does not currently export cost metrics.\n\nCost data is available through the **CostTracker API** (not Prometheus). To populate this dashboard:\n\n1. Integrate the CostTracker service with your deployment.\n2. Configure a Prometheus exporter or recording rule to bridge CostTracker data into Prometheus.\n3. Once a metric such as `ap_cost_usd{provider, model, agent_name}` is available, the placeholder panels below will begin to display data.\n\nSee the AgentPrimordia documentation for details on the CostTracker integration."
-      }
-    },
-    {
-      "title": "总成本 (USD) [Placeholder]",
-      "description": "Requires ap_cost_usd metric from CostTracker integration",
+      "title": "总成本 (USD)",
+      "description": "ap_cost_usd_total — 累计 LLM 调用成本，按 provider/model/agent_name 聚合",
       "type": "stat",
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 6 },
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "targets": [
         {
-          "expr": "sum(ap_cost_usd)",
+          "expr": "sum(ap_cost_usd_total)",
           "legendFormat": "总计"
         }
       ],
@@ -41,40 +34,83 @@
       }
     },
     {
-      "title": "按 Provider 成本 [Placeholder]",
-      "description": "Requires ap_cost_usd metric from CostTracker integration",
+      "title": "按 Provider 成本 (USD)",
+      "description": "ap_cost_usd_total 按 provider 聚合的累计金额",
       "type": "barchart",
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 6 },
+      "gridPos": { "h": 6, "w": 9, "x": 6, "y": 0 },
       "targets": [
         {
-          "expr": "sum(ap_cost_usd) by (provider)",
+          "expr": "sum(ap_cost_usd_total) by (provider)",
           "legendFormat": "{{provider}}"
         }
-      ]
-    },
-    {
-      "title": "成本趋势 [Placeholder]",
-      "description": "Requires ap_cost_usd metric from CostTracker integration",
-      "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
-      "targets": [
-        {
-          "expr": "sum(increase(ap_cost_usd[1h])) by (provider)",
-          "legendFormat": "{{provider}} 每小时"
-        }
       ],
-      "fieldConfig": {
-        "defaults": { "unit": "currencyUSD" }
+      "options": {
+        "orientation": "horizontal",
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "list", "placement": "right" }
       }
     },
     {
-      "title": "按 Agent 成本 [Placeholder]",
-      "description": "Requires ap_cost_usd metric from CostTracker integration",
-      "type": "table",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "title": "按 Model 成本 Top-10 (USD)",
+      "description": "ap_cost_usd_total 按 model 维度的累计成本 Top 10",
+      "type": "barchart",
+      "gridPos": { "h": 6, "w": 9, "x": 15, "y": 0 },
       "targets": [
         {
-          "expr": "sum(ap_cost_usd) by (agent_name, provider, model)",
+          "expr": "topk(10, sum(ap_cost_usd_total) by (provider, model))",
+          "legendFormat": "{{provider}}/{{model}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      }
+    },
+    {
+      "title": "成本小时趋势 (USD)",
+      "description": "近 24h 每小时成本增量，按 provider 聚合",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum(increase(ap_cost_usd_total[1h])) by (provider)",
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      }
+    },
+    {
+      "title": "调用次数小时趋势",
+      "description": "近 24h 每小时 LLM 调用次数，按 provider 聚合",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "targets": [
+        {
+          "expr": "sum(increase(ap_cost_calls_total[1h])) by (provider)",
+          "legendFormat": "{{provider}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "按 Agent 成本排行",
+      "description": "按 agent_name 维度累计成本 Top",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "expr": "sum(ap_cost_usd_total) by (agent_name, provider, model)",
           "format": "table",
           "instant": true
         }
@@ -93,12 +129,126 @@
           }
         }
       ]
+    },
+    {
+      "title": "Token 用量 (Prompt/Completion)",
+      "description": "ap_cost_tokens_total 按 kind=prompt|completion 拆分",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "targets": [
+        {
+          "expr": "sum(rate(ap_cost_tokens_total[5m])) by (kind)",
+          "legendFormat": "{{kind}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "title": "最近一次调用成本 (USD)",
+      "description": "ap_cost_last_call_usd — 最近一次 LLM 调用的成本",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 22 },
+      "targets": [
+        {
+          "expr": "max(ap_cost_last_call_usd) by (provider, model, agent_name)",
+          "legendFormat": "{{provider}}/{{model}} ({{agent_name}})"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.05 },
+              { "color": "red", "value": 0.2 }
+            ]
+          },
+          "custom": { "displayMode": "list", "placement": "right" }
+        }
+      }
+    },
+    {
+      "title": "单次成本 P95 (USD)",
+      "description": "按 provider/model 计算近 5min 的 cost_usd 增加率中位数近似 P95",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 22 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ap_cost_last_call_usd_bucket[5m])) by (provider, model, le))",
+          "legendFormat": "{{provider}}/{{model}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "comment": "成本 P95 通过最近调用 gauge 估算；若有 histogram 则更精确"
+    },
+    {
+      "title": "成本 / 调用 (USD/call)",
+      "description": "近 1h 平均单次调用成本（cost_total / calls_total）",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(increase(ap_cost_usd_total[1h])) / clamp_min(sum(increase(ap_cost_calls_total[1h])), 1)",
+          "legendFormat": "USD/call"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      }
+    },
+    {
+      "title": "Token / 调用 (tokens/call)",
+      "description": "近 1h 平均 token/调用 = tokens_total / calls_total",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(increase(ap_cost_tokens_total{kind=\"total\"}[1h])) / clamp_min(sum(increase(ap_cost_calls_total[1h])), 1)",
+          "legendFormat": "tokens/call"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
     }
   ],
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": ["agentprimordia", "cost"],
+  "templating": {
+    "list": [
+      {
+        "name": "provider",
+        "label": "Provider",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+        "query": "label_values(ap_cost_usd_total, provider)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": { "selected": false, "text": "All", "value": "$__all" }
+      }
+    ]
+  },
   "time": { "from": "now-24h", "to": "now" },
   "title": "AgentPrimordia - Cost Tracking",
   "uid": "ap-cost-tracking"

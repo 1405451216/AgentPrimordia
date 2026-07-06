@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"context"
+	"time"
+
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
@@ -9,6 +12,43 @@ import (
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 )
+
+// OutputGuard 是输出端 Guardrail 检查函数类型（避免 agent → guardrail 反向依赖）
+// 返回值：
+//   - sanitized: 脱敏后的内容（空字符串表示无变化）
+//   - blocked: 是否拒绝（如 reject 动作）
+//   - err: 检查过程中的错误
+//
+// 使用示例（外部 guardrail 包适配）：
+//
+//	adapter := func(content string) (string, bool, error) {
+//	    report, err := engine.CheckOutput(content)
+//	    if err != nil { return "", false, err }
+//	    if report.Action == ActionReject { return "", true, nil }
+//	    if report.Action == ActionSanitize && len(report.Results) > 0 {
+//	        return report.Results[len(report.Results)-1].Sanitized, false, nil
+//	    }
+//	    return "", false, nil
+//	}
+//	agent.WithOutputGuard(adapter)
+type OutputGuard func(content string) (sanitized string, blocked bool, err error)
+
+// AuditEvent 简化的审计事件结构（避免直接 import audit 包造成的循环依赖）
+// 完整定义见 internal/audit.Event
+type AuditEvent struct {
+	Timestamp time.Time
+	Actor     string
+	Action    string
+	Resource  string
+	Result    string
+	Details   map[string]any
+}
+
+// AuditLogger 审计日志接口（agent 内部使用）
+// audit.Logger 实现了此接口
+type AuditLogger interface {
+	Log(ctx context.Context, event AuditEvent) error
+}
 
 // 此文件定义 Capable 接口协议，实现协议式微内核架构。
 //
@@ -122,4 +162,16 @@ type ReflectionCapable interface {
 // Agent 可以记录工具使用经验，获取最佳实践，并基于历史经验建议改进。
 type ToolLearningCapable interface {
 	GetToolLearner() tool_learning.ToolLearner
+}
+
+// GuardrailCapable 标识 Agent 具备 Guardrail 防护能力。
+// 引擎在 LLM 响应返回后会调用 OutputGuard 函数进行 PII 脱敏、注入拦截等。
+type GuardrailCapable interface {
+	GetOutputGuard() OutputGuard
+}
+
+// AuditLoggerCapable 标识 Agent 具备审计日志能力。
+// 引擎在 LLM 调用、工具调用、Agent 启动/停止等关键路径自动写入审计事件。
+type AuditLoggerCapable interface {
+	GetAuditLogger() AuditLogger
 }

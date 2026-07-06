@@ -18,7 +18,7 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 		if r := recover(); r != nil {
 			a.logger.Error("ReAct 循环 panic 恢复", "error", r)
 			_ = a.lifecycle.SetStatus(StatusFailed)
-			a.publishEvent("agent.panic", map[string]string{"name": a.config.Name, "error": fmt.Sprintf("%v", r)})
+			a.publishEvent(EventAgentPanic, map[string]string{"name": a.config.Name, "error": fmt.Sprintf("%v", r)})
 			err = fmt.Errorf("agent panic recovered: %v", r)
 			resp = &Response{RequestID: cfg.requestID, Error: err}
 		}
@@ -43,8 +43,21 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	} else {
 		a.logger.Info("Agent 启动", "name", a.config.Name, "session", a.config.SessionID)
 	}
-	a.publishEvent("agent.start", map[string]string{"name": a.config.Name})
+	a.publishEvent(EventAgentStart, map[string]string{"name": a.config.Name})
 	_ = a.fireHook(HookBeforeRun, &HookContext{})
+
+	// p2t4：写入 AgentStart 审计事件
+	a.writeAudit(ctx, AuditEvent{
+		Actor:    a.config.Name,
+		Action:   auditActionAgentStart,
+		Resource: cfg.requestID,
+		Result:   auditResultSuccess,
+		Details: map[string]any{
+			"session_id": a.config.SessionID,
+			"stream":     cfg.stream,
+			"max_turns":  a.config.MaxTurns,
+		},
+	})
 
 	if a.capCache.metricsRecorder != nil {
 		a.capCache.metricsRecorder.IncActiveAgents()
@@ -58,7 +71,7 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 			_ = a.lifecycle.SetStatus(StatusCompleted)
 		}
 		// flushMemoryWriter 在外层 defer 已调用，此处不再重复等待
-		a.publishEvent("agent.stop", map[string]string{
+		a.publishEvent(EventAgentStop, map[string]string{
 			"name":   a.config.Name,
 			"status": string(a.lifecycle.Status()),
 		})
@@ -98,7 +111,7 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 		systemPrompt, err = tmpl.Render()
 		if err != nil {
 			a.logger.Warn("渲染默认系统提示词模板失败", "error", err)
-			systemPrompt = fmt.Sprintf("你是一个 AI 助手，名为 %s。", a.config.Name)
+			systemPrompt = a.config.Name + ": AI assistant ready to help."
 		}
 	}
 

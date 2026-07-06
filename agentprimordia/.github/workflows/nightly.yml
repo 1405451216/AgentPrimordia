@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
 
       - name: Download dependencies
         run: go mod download
@@ -28,6 +28,67 @@ jobs:
 
       - name: Coverage report
         run: |
+          go tool cover -func=coverage.out | tail -1
+
+  security-scan:
+    name: Nightly Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Run govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck -test ./... 2>&1 | tee govulncheck-report.txt
+
+      - name: Upload govulncheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: govulncheck-report
+          path: govulncheck-report.txt
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+
+      - name: Run Trivy container scan (if Dockerfile exists)
+        if: hashFiles('Dockerfile') != ''
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: image
+          image-ref: 'agentprimordia:latest'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+  dependency-freshness:
+    name: Dependency Freshness Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Check for outdated dependencies
+        run: |
+          go install github.com/psampaz/go-mod-outdated@latest
+          go list -u -m -json all 2>/dev/null | go-mod-outdated -update -direct || true
+
+      - name: npm audit (TypeScript SDK)
+        working-directory: ../sdk/typescript
+        run: |
+          npm ci
+          npm audit --audit-level=high || echo "::warning::npm audit 发现问题"
           echo "## 覆盖率报告" >> $GITHUB_STEP_SUMMARY
           go tool cover -func=coverage.out >> $GITHUB_STEP_SUMMARY
 

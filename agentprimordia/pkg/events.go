@@ -22,8 +22,12 @@ const (
 	EventAgentStart = events.EventAgentStart
 	// EventAgentStop 表示 Agent 停止事件
 	EventAgentStop = events.EventAgentStop
+	// EventAgentPanic 表示 Agent panic 恢复事件
+	EventAgentPanic = events.EventAgentPanic
 	// EventAgentError 表示 Agent 错误事件
 	EventAgentError = events.EventAgentError
+	// EventAgentResume 表示 Agent 从检查点恢复事件
+	EventAgentResume = events.EventAgentResume
 	// EventTurnStart 表示推理轮次开始事件
 	EventTurnStart = events.EventTurnStart
 	// EventTurnEnd 表示推理轮次结束事件

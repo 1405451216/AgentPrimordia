@@ -43,6 +43,8 @@ type CapabilityAgent struct {
 	planner     planning.Planner
 	reflector   reflection.Reflector
 	toolLearner tool_learning.ToolLearner
+	outputGuard OutputGuard
+	auditLogger AuditLogger
 }
 
 // ===== Agent 接口委托 =====
@@ -271,4 +273,28 @@ func (c *CapabilityAgent) WithToolLearner(tl tool_learning.ToolLearner) *Capabil
 // GetToolLearner 返回工具学习器
 func (c *CapabilityAgent) GetToolLearner() tool_learning.ToolLearner {
 	return c.toolLearner
+}
+
+// WithOutputGuard 注入输出端 Guardrail 检查函数
+// 在 LLM 响应后会调用该函数进行 PII 脱敏、注入拦截等
+func (c *CapabilityAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
+	c.outputGuard = g
+	return c
+}
+
+// GetOutputGuard 返回输出端 Guardrail 检查函数
+func (c *CapabilityAgent) GetOutputGuard() OutputGuard {
+	return c.outputGuard
+}
+
+// WithAuditLogger 注入审计日志器
+// LLM 调用、工具调用、Agent 启动/停止等关键路径会自动写入审计事件
+func (c *CapabilityAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
+	c.auditLogger = l
+	return c
+}
+
+// GetAuditLogger 返回审计日志器
+func (c *CapabilityAgent) GetAuditLogger() AuditLogger {
+	return c.auditLogger
 }

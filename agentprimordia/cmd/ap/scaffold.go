@@ -10,6 +10,8 @@ import (
 //go:embed scaffold/basic scaffold/with-tools scaffold/multi-agent
 //go:embed scaffold/agent-with-cache scaffold/agent-with-rag scaffold/agent-with-metrics
 //go:embed scaffold/quickstart
+//go:embed scaffold/plugin scaffold/plugin/.github scaffold/plugin/.github/workflows
+//go:embed scaffold/provider scaffold/provider/.github scaffold/provider/.github/workflows
 var scaffoldFS embed.FS
 
 // validTemplates 支持的模板列表（供 init.go 和 scaffold.go 共享）
@@ -21,12 +23,15 @@ var validTemplates = map[string]bool{
 	"agent-with-cache":   true,
 	"agent-with-rag":     true,
 	"agent-with-metrics": true,
+	"plugin":             true,
+	"provider":           true,
 }
 
 // GenerateOptions 定义脚手架生成选项
 type GenerateOptions struct {
 	Name     string // 项目名称
 	Template string // 模板名称
+	Type     string // 项目类型: agent | plugin | provider
 	DryRun   bool   // 预览模式（不写盘）
 }
 

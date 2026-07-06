@@ -1,0 +1,98 @@
+name: VS Code Extension Release
+
+on:
+  push:
+    tags:
+      - 'vscode-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: sdk/vscode
+        run: npm ci
+
+      - name: Build
+        working-directory: sdk/vscode
+        run: npm run build
+
+      - name: Test
+        working-directory: sdk/vscode
+        run: npm test
+
+      - name: Install vsce
+        run: npm install -g @vscode/vsce
+
+      - name: Package extension
+        working-directory: sdk/vscode
+        run: vsce package
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: sdk/vscode/*.vsix
+
+  publish-marketplace:
+    name: Publish to VS Code Marketplace
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/vscode-v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension
+
+      - name: Publish
+        run: |
+          npx @vscode/vsce publish --packagePath agentprimordia-vscode-*.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+  publish-ovsx:
+    name: Publish to Open VSX Registry
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/vscode-v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension
+
+      - name: Publish to Open VSX
+        run: |
+          npx ovsx publish agentprimordia-vscode-*.vsix
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+  attach-release:
+    name: Attach to GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/vscode-v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension
+
+      - name: Create release with VSIX
+        uses: softprops/action-gh-release@v2
+        with:
+          files: agentprimordia-vscode-*.vsix
+          generate_release_notes: true

@@ -743,6 +743,11 @@ func TestReconcile_UpdatesHPA_WhenSpecChanges(t *testing.T) {
 	}
 
 	// Update autoscaling spec
+	// 重新从 fake client 读取最新版本，避免 reconcile 触发 Status().Update 后
+	// ResourceVersion 不匹配导致 "object was modified" 错误。
+	if err := fakeClient.Get(context.Background(), types.NamespacedName{Name: "hpa-update", Namespace: "default"}, ad); err != nil {
+		t.Fatalf("Failed to re-fetch AgentDeployment: %v", err)
+	}
 	ad.Spec.Autoscaling.MaxReplicas = 20
 	ad.Spec.Autoscaling.MinReplicas = 3
 	if err := fakeClient.Update(context.Background(), ad); err != nil {

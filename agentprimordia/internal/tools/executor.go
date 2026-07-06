@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"log/slog"
 	"regexp"
 	"sync"
 	"time"
 
 	"agentprimordia/internal/concurrency"
+	"agentprimordia/internal/logger"
 )
 
 const (
@@ -34,11 +34,10 @@ type FunctionCall struct {
 }
 
 // Executor 处理工具执行，包含日志、计时和错误处理
-// perf-v5 Task 20：内部新增 slogLogger 字段（结构化日志）；保留 logger *log.Logger 兼容旧 API
+// slog logger 使用 internal/logger.FieldTool/FieldDuration 等统一字段常量。
 type Executor struct {
 	registry       *Registry
-	logger         *log.Logger
-	slogger        *slog.Logger // perf-v5 Task 20：结构化日志（slog），优先使用
+	slogger        *slog.Logger // 结构化日志（slog），Phase 4 Task 10 起强制唯一日志通道
 	timeout        time.Duration
 	perToolTimeout map[string]time.Duration // 按工具名设置超时（覆盖默认值）
 	scopePolicy    ScopePolicy
@@ -51,8 +50,7 @@ type Executor struct {
 func NewExecutor(registry *Registry) *Executor {
 	return &Executor{
 		registry: registry,
-		logger:   log.Default(),
-		slogger:  slog.Default(), // perf-v5 Task 20：默认 slog
+		slogger:  slog.Default(),
 		timeout:  defaultToolTimeout,
 	}
 }
@@ -65,7 +63,6 @@ func NewExecutorWithConfig(registry *Registry, cfg ExecutorConfig) *Executor {
 	}
 	e := &Executor{
 		registry:       registry,
-		logger:         log.Default(),
 		slogger:        slog.Default(),
 		timeout:        timeout,
 		perToolTimeout: cfg.PerToolTimeout,
@@ -108,15 +105,17 @@ func (e *Executor) WithFileLock(fl *concurrency.FileLockManager) *Executor {
 func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, error) {
 	start := time.Now()
 
-	// perf-v5 Task 20：对参数做脱敏后再记录，避免 password/token 等敏感字段泄漏到日志
-	e.logger.Printf("[TOOL] Executing: %s(args_len=%d)", tc.Name, len(tc.Args))
-	if e.slogger != nil {
-		e.slogger.Debug("tool executing",
-			"tool", tc.Name,
-			"args_len", len(tc.Args),
-			"args_preview", redactSensitiveArgs(tc.Args),
-		)
+	// Phase 4 Task 10：从 ctx 取出 trace-id 注入 slog，使所有日志自动可关联
+	l := e.slogger
+	if l == nil {
+		l = slog.Default()
 	}
+	l = logger.FromContext(ctx, l)
+	l.Debug("tool executing",
+		logger.FieldTool, tc.Name,
+		logger.FieldArgsLen, len(tc.Args),
+		"args_preview", redactSensitiveArgs(tc.Args),
+	)
 
 	tool, exists := e.registry.Get(tc.Name)
 	if !exists {
@@ -138,7 +137,7 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	// 优化：合并两次 GetPermission 调用为一次，避免冗余的 sync.Map.Load
 	if perm, ok := e.registry.GetPermission(tc.Name); ok {
 		if perm.RequireConfirmation {
-			e.logger.Printf("[TOOL] Tool %s requires confirmation", tc.Name)
+			l.Debug("tool requires confirmation", logger.FieldTool, tc.Name)
 			if perm.ConfirmFunc != nil {
 				if !perm.ConfirmFunc(tc.Name, args) {
 					return NewErrorResult(fmt.Sprintf("tool %s requires confirmation and was denied", tc.Name)), ErrConfirmDenied
@@ -155,9 +154,7 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	if e.cache != nil {
 		cacheKey = e.buildCacheKey(tc.Name, tc.Args)
 		if cached, ok := e.cache.Get(cacheKey); ok {
-			if e.slogger != nil {
-				e.slogger.Debug("tool cache hit", "tool", tc.Name, "cache_key", cacheKey)
-			}
+			l.Debug("tool cache hit", logger.FieldTool, tc.Name, "cache_key", cacheKey)
 			// 复制缓存结果，避免修改原始数据
 			result := &Result{
 				Content:  cached.Content,
@@ -185,14 +182,21 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	duration := time.Since(start)
 
 	if err != nil {
-		e.logger.Printf("[TOOL] Error in %s (%v): %v", tc.Name, duration, err)
+		l.Error("tool execution failed",
+			logger.FieldTool, tc.Name,
+			logger.FieldDuration, duration.Milliseconds(),
+			logger.FieldError, err.Error(),
+		)
 		if result == nil {
 			result = NewErrorResult(err.Error())
 		}
 		return result, err
 	}
 
-	e.logger.Printf("[TOOL] %s completed in %v", tc.Name, duration)
+	l.Info("tool completed",
+		logger.FieldTool, tc.Name,
+		logger.FieldDuration, duration.Milliseconds(),
+	)
 
 	if result.Metadata == nil {
 		result.Metadata = make(map[string]any)
@@ -220,10 +224,14 @@ func (e *Executor) buildCacheKey(toolName, args string) string {
 func (e *Executor) safeExecute(ctx context.Context, tool Tool, args json.RawMessage) (result *Result, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			e.logger.Printf("[TOOL] panic recovered in %s: %v", tool.Name(), r)
-			if e.slogger != nil {
-				e.slogger.Error("tool panic recovered", "tool", tool.Name(), "panic", r)
+			l := e.slogger
+			if l == nil {
+				l = slog.Default()
 			}
+			logger.FromContext(ctx, l).Error("tool panic recovered",
+				logger.FieldTool, tool.Name(),
+				"panic", r,
+			)
 			result = NewErrorResult(fmt.Sprintf("tool %s panic: %v", tool.Name(), r))
 			err = fmt.Errorf("tool %s panic: %v", tool.Name(), r)
 		}
@@ -257,10 +265,14 @@ func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*
 			// perf-v5 Task 1：goroutine 顶层 panic recover
 			defer func() {
 				if r := recover(); r != nil {
-					e.logger.Printf("[TOOL] panic in batch goroutine: %v", r)
-					if e.slogger != nil {
-						e.slogger.Error("tool batch panic", "panic", r)
+					l := e.slogger
+					if l == nil {
+						l = slog.Default()
 					}
+					logger.FromContext(ctx, l).Error("tool batch panic",
+						logger.FieldTool, call.Name,
+						"panic", r,
+					)
 					results[idx] = NewErrorResult(fmt.Sprintf("tool panic: %v", r))
 					errs[idx] = fmt.Errorf("tool panic: %v", r)
 				}

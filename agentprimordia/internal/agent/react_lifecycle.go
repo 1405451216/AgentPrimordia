@@ -150,7 +150,7 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	}()
 
 	_ = a.fireHook(HookBeforeRun, &HookContext{})
-	a.publishEvent("agent.resume", map[string]string{"name": a.config.Name, "from_turn": fmt.Sprintf("%d", state.TurnCount)})
+	a.publishEvent(EventAgentResume, map[string]string{"name": a.config.Name, "from_turn": fmt.Sprintf("%d", state.TurnCount)})
 
 	prevMetrics := state.Metrics
 	var totalLLMLatency time.Duration

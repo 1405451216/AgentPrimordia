@@ -340,10 +340,10 @@ func TestReActAgent_StreamRun_WithEventPublisher(t *testing.T) {
 	hasStart := false
 	hasStop := false
 	for _, e := range pub.events {
-		if e.eventType == "agent.start" {
+		if e.eventType == EventAgentStart {
 			hasStart = true
 		}
-		if e.eventType == "agent.stop" {
+		if e.eventType == EventAgentStop {
 			hasStop = true
 		}
 	}

@@ -139,6 +139,46 @@ func (p *GoroutinePool) ActiveWorkers() int {
 	return int(p.workers.Load())
 }
 
+// QueueDepth 返回当前任务队列中的待处理任务数。
+// Phase 3 Task 5：用于 Pool 调度器监控与 Prometheus 导出。
+func (p *GoroutinePool) QueueDepth() int {
+	return len(p.taskQueue)
+}
+
+// Capacity 返回任务队列容量（创建时配置）。
+// Phase 3 Task 5：用于 Pool 调度器监控与 Prometheus 导出。
+func (p *GoroutinePool) Capacity() int {
+	return cap(p.taskQueue)
+}
+
+// PoolStats 是协程池运行时统计快照（Phase 3 Task 5）。
+//
+// 用于：
+//   - Prometheus /metrics 端点导出（pool_workers / pool_queue_depth）
+//   - 调试与自适应调度决策
+type PoolStats struct {
+	Workers       int   // 当前 worker 数
+	ActiveWorkers int   // 正在执行任务的 worker 数
+	QueueDepth    int   // 队列中待处理任务数
+	QueueCapacity int   // 队列容量
+	MinWorkers    int   // 配置最小值
+	MaxWorkers    int   // 配置最大值
+	IsStopped     bool  // 是否已停止
+}
+
+// Stats 返回当前协程池统计快照（Phase 3 Task 5）。
+func (p *GoroutinePool) Stats() PoolStats {
+	return PoolStats{
+		Workers:       int(p.workers.Load()),
+		ActiveWorkers: int(p.active.Load()),
+		QueueDepth:    len(p.taskQueue),
+		QueueCapacity: cap(p.taskQueue),
+		MinWorkers:    p.cfg.MinWorkers,
+		MaxWorkers:    p.cfg.MaxWorkers,
+		IsStopped:     p.stopped.Load(),
+	}
+}
+
 func (p *GoroutinePool) startWorker() {
 	p.workers.Add(1)
 	p.wg.Add(1)
@@ -165,7 +205,18 @@ func (p *GoroutinePool) startWorker() {
 				idleTimer.Reset(p.cfg.IdleTimeout)
 
 				p.active.Add(1)
-				_ = item.task(item.ctx)
+				// 在独立 goroutine 中执行任务，使 worker 能在 p.ctx.Done() 时退出
+				// 注意：Pool 停止时 worker 从 ctx.Done() 分支退出，任务 goroutine 仍会继续
+				// 运行直到 item.ctx 被取消或任务完成，这是 graceful shutdown 的预期行为
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					_ = item.task(item.ctx)
+				}()
+				select {
+				case <-done:
+				case <-p.ctx.Done():
+				}
 				p.active.Add(-1)
 				// 唤醒 Wait() 等待者
 				p.waitCond.Broadcast()

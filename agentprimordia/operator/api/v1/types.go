@@ -3,6 +3,7 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // AgentDeployment 是 Agent 部署的 CRD
@@ -33,6 +34,29 @@ type AgentDeploymentSpec struct {
 	// 健康检查配置
 	// +optional
 	HealthCheck *HealthCheckSpec `json:"healthCheck,omitempty"`
+
+	// PodDisruptionBudget 配置（Phase 4 Task 7 新增）
+	// +optional
+	DisruptionBudget *DisruptionBudgetSpec `json:"disruptionBudget,omitempty"`
+}
+
+// DisruptionBudgetSpec 定义 Pod Disruption Budget 配置
+//
+// MinAvailable / MaxUnavailable 二选一。Replica 为 1 时 controller 会自动跳过 PDB 创建，
+// 因为 PDB 至少需要 2 个 Pod 才能生效。
+// +kubebuilder:object:generate=true
+type DisruptionBudgetSpec struct {
+	// MinAvailable 最小可用 Pod 数（绝对值或百分比字符串如 "50%"）
+	// +optional
+	MinAvailable *intstr.IntOrString `json:"minAvailable,omitempty"`
+
+	// MaxUnavailable 最大不可用 Pod 数（绝对值或百分比字符串）
+	// +optional
+	MaxUnavailable *intstr.IntOrString `json:"maxUnavailable,omitempty"`
+
+	// Enabled 显式启用/禁用 PDB，nil 时按默认规则（replicas >= 2 自动启用）
+	// +optional
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // AgentTemplateSpec 定义 Agent 的配置模板
@@ -178,6 +202,58 @@ type AutoscalingSpec struct {
 
 	// 每个副本的目标并发任务数
 	TargetConcurrentTasks int32 `json:"targetConcurrentTasks"`
+
+	// HPA 行为配置（Phase 4 Task 8 新增）
+	// +optional
+	Behavior *HPABehaviorSpec `json:"behavior,omitempty"`
+}
+
+// HPABehaviorSpec 定义 HPA Behavior 字段
+//
+// 稳定窗口（StabilizationWindowSeconds）控制缩容/扩容决策的时间窗口，
+// 避免短时间内反复抖动。Policy 控制单次扩缩容的步进幅度与频率。
+//
+// 不配置时使用 controller 默认（缩容 5min/25%、扩容 30s/100%）。
+// +kubebuilder:object:generate=true
+type HPABehaviorSpec struct {
+	// ScaleDown 缩容策略
+	// +optional
+	ScaleDown *HPAScalingRulesSpec `json:"scaleDown,omitempty"`
+
+	// ScaleUp 扩容策略
+	// +optional
+	ScaleUp *HPAScalingRulesSpec `json:"scaleUp,omitempty"`
+}
+
+// HPAScalingRulesSpec 定义单方向（缩容/扩容）的扩缩规则
+// +kubebuilder:object:generate=true
+type HPAScalingRulesSpec struct {
+	// StabilizationWindowSeconds 稳定窗口（秒）。在该窗口内的扩缩决策会被平滑。
+	// +optional
+	StabilizationWindowSeconds *int32 `json:"stabilizationWindowSeconds,omitempty"`
+
+	// Policies 扩缩策略列表，按顺序尝试直到找到可执行的
+	// +optional
+	Policies []HPAScalingPolicySpec `json:"policies,omitempty"`
+
+	// SelectPolicy 选择策略：Max / Min / Disabled
+	// +optional
+	SelectPolicy *string `json:"selectPolicy,omitempty"`
+}
+
+// HPAScalingPolicySpec 定义单条扩缩策略
+// +kubebuilder:object:generate=true
+type HPAScalingPolicySpec struct {
+	// Type 策略类型：Pods / Percent
+	// +optional
+	Type string `json:"type,omitempty"`
+
+	// Value 数值（Pods 时为绝对数，Percent 时为百分比 0-100）
+	Value int32 `json:"value"`
+
+	// PeriodSeconds 应用周期（秒）
+	// +optional
+	PeriodSeconds int32 `json:"periodSeconds,omitempty"`
 }
 
 // HealthCheckSpec 定义健康检查配置

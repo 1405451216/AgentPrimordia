@@ -1,0 +1,100 @@
+# 自定义工具
+
+> 实现 `ap.Tool` 接口，为 Agent 扩充任意外部系统操作。
+
+## 工具接口
+
+```go
+type Tool interface {
+    Name() string
+    Description() string
+    Parameters() json.RawMessage
+    Execute(ctx context.Context, args json.RawMessage) (*Result, error)
+}
+```
+
+## 示例：天气查询工具
+
+```go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "fmt"
+    "net/http"
+
+    "agentprimordia/internal/tools"
+)
+
+type WeatherTool struct{ apiKey string }
+
+func NewWeatherTool(apiKey string) *WeatherTool {
+    return &WeatherTool{apiKey: apiKey}
+}
+
+func (t *WeatherTool) Name() string {
+    return "get_weather"
+}
+
+func (t *WeatherTool) Description() string {
+    return "查询指定城市的实时天气"
+}
+
+func (t *WeatherTool) Parameters() json.RawMessage {
+    return json.RawMessage(`{
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "description": "城市名，如 Beijing"}
+        },
+        "required": ["city"]
+    }`)
+}
+
+func (t *WeatherTool) Execute(_ context.Context, args json.RawMessage) (*tools.Result, error) {
+    var in struct {
+        City string `json:"city"`
+    }
+    if err := json.Unmarshal(args, &in); err != nil {
+        return nil, fmt.Errorf("参数解析失败: %w", err)
+    }
+
+    // 调用天气 API
+    url := fmt.Sprintf("https://api.weather.com/v1/current?city=%s&appkey=%s", in.City, t.apiKey)
+    resp, err := http.Get(url)
+    if err != nil {
+        return nil, fmt.Errorf("天气请求失败: %w", err)
+    }
+    defer resp.Body.Close()
+
+    var data struct {
+        Temp     float64 `json:"temp"`
+        Humidity int     `json:"humidity"`
+        Summary  string  `json:"summary"`
+    }
+    if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+        return nil, fmt.Errorf("响应解析失败: %w", err)
+    }
+
+    out, _ := json.Marshal(data)
+    return tools.NewResult(string(out)), nil
+}
+```
+
+## 注册
+
+```go
+agent := ap.NewAgent(ap.AgentConfig{
+    Tools: []ap.Tool{
+        NewWeatherTool(os.Getenv("WEATHER_API_KEY")),
+        ap.NewWebSearchTool(),
+    },
+})
+```
+
+## 扩展
+
+- **沙箱隔离**：工具在受限子进程运行，无法访问主进程内存
+- **超时控制**：工具调用超时被自动中断
+- **缓存**：相同参数返回缓存结果，减少 API 调用
+- **重试**：网络错误按退避重试

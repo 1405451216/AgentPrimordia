@@ -1,0 +1,10 @@
+{
+  "name": "{{.ProjectName}}",
+  "version": "0.1.0",
+  "type": "tool",
+  "description": "{{.ProjectName}} — AgentPrimordia plugin scaffolded via `ap init --type plugin`",
+  "author": "your-name",
+  "entry": "{{.ProjectName}}",
+  "homepage": "https://github.com/your-name/{{.ProjectName}}",
+  "license": "MIT"
+}

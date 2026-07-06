@@ -90,11 +90,12 @@ type ReActAgent struct {
 	logger    *slog.Logger
 	startTime time.Time
 	stats     AgentStats
-	statsMu   sync.RWMutex
-	runMu     sync.Mutex
-	mu        sync.Mutex
-	hitlMgr   *HITLManager
-	idGen     idCounter // 实例级 ID 生成器，消除全局可变状态
+	statsMu   sync.RWMutex // 锁层级 L1：统计信息（最外层，先获取）
+	runMu     sync.Mutex   // 锁层级 L2：运行状态
+	mu        sync.Mutex   // 锁层级 L3：通用字段（最内层，最后获取）
+	// 锁顺序：statsMu → runMu → mu，禁止反向获取
+	hitlMgr *HITLManager
+	idGen   idCounter // 实例级 ID 生成器，消除全局可变状态
 
 	// currentRequestID 当前运行的请求 ID，用于可观测性关联
 	currentRequestID string
@@ -180,6 +181,8 @@ type capabilityCache struct {
 	systemInfoCached bool
 	provider         string
 	model            string
+	outputGuard      OutputGuard // p2t1：输出端 Guardrail 检查函数（PII 自动脱敏）
+	auditLogger      AuditLogger // p2t4：审计日志器（合规事件记录）
 }
 
 // resolveCapabilities 一次性查找所有能力并填充到 capabilityCache。
@@ -197,6 +200,8 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		summarizer:      a.getSummarizer(),
 		fileScope:       a.getFileScope(),
 		toolkit:         a.getToolkit(),
+		outputGuard:     a.getOutputGuard(),
+		auditLogger:     a.getAuditLogger(),
 	}
 	// 缓存 labeled 记录器
 	if c.metricsRecorder != nil {

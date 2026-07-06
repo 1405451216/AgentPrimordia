@@ -1,0 +1,24 @@
+# 构建产物
+*.so
+*.dll
+*.dylib
+*.exe
+
+# 测试产物
+coverage.out
+*.cover
+*.coverprofile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# 临时
+.tmp/
+.DS_Store
+
+# 密钥
+*.key
+*.pem
+.cosign/
