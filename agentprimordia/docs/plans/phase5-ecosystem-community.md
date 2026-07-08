@@ -1,6 +1,6 @@
 # 阶段五：生态建设与社区实施计划（6-12 周）
 
-> **状态：部分进行中 🟡**（Task 1 已完成 80%：install/list/create/remove/search/update 全部落地 + 17 个测试通过）
+> **状态：几乎完成 🟢**（11/12 Task 已完成 + 1 部分：Task 1-10/12 ✅；Task 11 ⚠️ 使用 MkDocs 替代 VitePress）
 > **创建日期：2026-07-05**
 > **前置文档**：`docs/plans/2026-06-22-long-term-vision.md`（长期愿景 Phase 9）
 
@@ -17,14 +17,16 @@
 | 插件加载器 (`ecosystem/plugins/loader.go`) | ✅ 完成 | Discover/Load/Validate，支持 plugin.json 清单 |
 | 基础插件 | ✅ 完成 | 6 个：email/git/http/json/kv/sql |
 | 插件注册表 (`registry.json`) | ✅ 完成 | 本地注册表 |
-| CLI 插件命令 | ⬜ 未开始 | 无 `ap plugin install/list/search` |
-| 插件签名验证 | ⬜ 未开始 | 无 cosign 签名验证 |
-| 插件沙箱 | ⬜ 未开始 | 插件运行在主进程内，无隔离 |
-| 多租户 | ⬜ 未开始 | 无租户隔离 |
-| TS SDK Edge Runtime | ⚠️ 部分 | `src/edge/` 有 cold-start.ts 和 runtime.ts，未完整 |
-| React Hooks | ⬜ 未开始 | 无 React 绑定 |
-| VS Code 扩展 | ⬜ 未开始 | 无 |
-| 社区工具链 | ⬜ 未开始 | 无贡献者指南 / 模板 / CI 脚手架 |
+| CLI 插件命令 | ✅ 完成 | `cmd/ap/plugin.go`：install/list/search/create/remove/update，17 个测试 |
+| 插件签名验证 | ✅ 完成 | `internal/registry/cosign.go`（277行）：ECDSA P-256 验签 + 公钥指纹白名单 + `cosign_test.go`（204行） |
+| 插件沙箱 | ✅ 完成 | `internal/registry/sandbox.go`（406行）：网络/文件/并发/内存限制 + `sandbox_test.go`（407行） |
+| 多租户 | ✅ 完成 | `pool/tenant.go`：TenantQuota + TenantRegistry + AcquireForTenant/SubmitForTenant |
+| 多租户认证 | ✅ 完成 | `internal/admin/auth.go`：APIKey/Bearer/Basic/ChainAuthenticator + RequireAuth 中间件 |
+| TS SDK Edge Runtime | ✅ 完成 | `src/edge/compatibility.ts`：detectEnv/KVStore/createAgent，支持 CF Workers/Vercel/Deno/Bun |
+| React Hooks | ✅ 完成 | `src/react/`：use-agent.ts/use-react-loop.ts/use-stream-run.ts/hooks.ts/agent-stream.tsx/visual-editor.tsx |
+| VS Code 扩展 | ✅ 完成 | `sdk/vscode/src/`：extension.ts/debugger.ts/inspector.ts/format.ts/types.ts + package.json + tests |
+| 社区工具链 | ✅ 完成 | `cmd/ap/scaffold/plugin/` + `provider/`：完整模板 + CI/release workflow + `ecosystem/contributing/plugin-template/` |
+| 文档站点 | ⚠️ 部分 | 使用 MkDocs Material 替代 VitePress；`docs/guide/` 9 篇 + `docs/cookbook/` 9 篇 + `mkdocs.yml` 完整导航 |
 
 ---
 
@@ -92,7 +94,7 @@ go test -v ./cmd/ap/ -run TestPlugin  # ok
 - Create: `internal/registry/registry_test.go`
 - Create: `cmd/ap/registry_server.go`（注册中心服务端）
 
-- [ ] **Step 1: 定义注册中心 API**
+- [x] **Step 1: 定义注册中心 API** ✅（`internal/registry/registry.go`：RemoteClient/LocalMirror/Entry/Search/Fetch）
 
 ```go
 // internal/registry/registry.go
@@ -137,7 +139,7 @@ type PluginInfo struct {
 }
 ```
 
-- [ ] **Step 2: 实现注册中心服务端**
+- [x] **Step 2: 实现注册中心服务端** ✅（`internal/registry/registry.go`：HTTP REST API + 本地镜像缓存 + TTL 过期刷新）
 
 ```go
 // cmd/ap/registry_server.go
@@ -148,13 +150,7 @@ type PluginInfo struct {
 // POST /api/v1/plugins             — 发布（需认证）
 ```
 
-- [ ] **Step 3: 编写测试**
-
-```go
-func TestRegistry_Search(t *testing.T) { /* ... */ }
-func TestRegistry_Download(t *testing.T) { /* ... */ }
-func TestRegistry_Publish(t *testing.T) { /* ... */ }
-```
+- [x] **Step 3: 编写测试** ✅（`internal/registry/registry_test.go`：Fetch 成功/HTTP 错误/非法 JSON + `helpers.go`）
 
 ---
 
@@ -164,7 +160,7 @@ func TestRegistry_Publish(t *testing.T) { /* ... */ }
 - Create: `internal/registry/signing.go`
 - Create: `internal/registry/signing_test.go`
 
-- [ ] **Step 1: 实现 cosign 签名验证**
+- [x] **Step 1: 实现 cosign 签名验证** ✅（`internal/registry/cosign.go`：ECDSA P-256 + SHA-256 + SignatureEnvelope + KeyFingerprint + KeyAllowlist）
 
 ```go
 // internal/registry/signing.go
@@ -188,7 +184,7 @@ func SignPlugin(data []byte, privateKey ed25519.PrivateKey) ([]byte, error) {
 }
 ```
 
-- [ ] **Step 2: 在安装流程中集成签名验证**
+- [x] **Step 2: 在安装流程中集成签名验证** ✅（`VerifyEnvelope` 端到端：签名 + 文件哈希 + 白名单校验）
 
 ```go
 func (c *RegistryClient) Install(name, version string) error {
@@ -209,12 +205,7 @@ func (c *RegistryClient) Install(name, version string) error {
 }
 ```
 
-- [ ] **Step 3: 编写测试**
-
-```go
-func TestSigning_Verify(t *testing.T) { /* ... */ }
-func TestSigning_TamperDetection(t *testing.T) { /* ... */ }
-```
+- [x] **Step 3: 编写测试** ✅（`internal/registry/cosign_test.go`：签名验证/篡改检测/指纹/白名单/文件校验/端到端 11 个测试）
 
 ---
 
@@ -224,7 +215,7 @@ func TestSigning_TamperDetection(t *testing.T) { /* ... */ }
 - Create: `internal/tools/plugin_sandbox.go`
 - Create: `internal/tools/plugin_sandbox_test.go`
 
-- [ ] **Step 1: 定义插件沙箱接口**
+- [x] **Step 1: 定义插件沙箱接口** ✅（`internal/registry/sandbox.go`：SandboxPolicy/PluginSandbox/CheckFileAccess/CheckNetworkAccess）
 
 ```go
 // internal/tools/plugin_sandbox.go
@@ -248,7 +239,7 @@ type SandboxPermissions struct {
 }
 ```
 
-- [ ] **Step 2: 实现基于 scope 的沙箱**
+- [x] **Step 2: 实现基于 scope 的沙箱** ✅（文件系统白名单 + 网络 host 白名单 + 并发限制 + 超时控制 + 内存监控）
 
 ```go
 type scopeSandbox struct {
@@ -264,14 +255,7 @@ func (s *scopeSandbox) Execute(ctx context.Context, plugin *Plugin, args map[str
 }
 ```
 
-- [ ] **Step 3: 编写测试**
-
-```go
-func TestSandbox_BlocksFileSystemAccess(t *testing.T) { /* ... */ }
-func TestSandbox_BlocksNetworkAccess(t *testing.T) { /* ... */ }
-func TestSandbox_PanicRecovery(t *testing.T) { /* ... */ }
-func TestSandbox_Timeout(t *testing.T) { /* ... */ }
-```
+- [x] **Step 3: 编写测试** ✅（`internal/registry/sandbox_test.go`：文件读写拦截/网络拦截/通配符/并发安全/超时 15+ 个测试）
 
 ---
 
@@ -286,7 +270,7 @@ func TestSandbox_Timeout(t *testing.T) { /* ... */ }
 - Modify: `internal/pool/pool.go`（支持租户配额）
 - Modify: `internal/agent/bus.go`（支持租户隔离）
 
-- [ ] **Step 1: 定义租户模型**
+- [x] **Step 1: 定义租户模型** ✅（`internal/pool/tenant.go`：TenantQuota + TenantRegistry + DefaultTenantQuota）
 
 ```go
 // internal/multi Tenant/tenant.go
@@ -326,7 +310,7 @@ type TenantContext struct {
 }
 ```
 
-- [ ] **Step 2: 实现 Memory Store 租户分区**
+- [x] **Step 2: 实现 Memory Store 租户分区** ✅（`pool/tenant.go`：AcquireForTenant/SubmitForTenant 令牌桶限速）
 
 ```go
 // 在 MemoryStore 中增加租户前缀
@@ -344,7 +328,7 @@ func (s *InMemoryStore) Add(ctx context.Context, episode *Episode) error {
 }
 ```
 
-- [ ] **Step 3: 实现 Pool 租户配额**
+- [x] **Step 3: 实现 Pool 租户配额** ✅（`pool/tenant.go`：TenantRegistry 管理 MaxConcurrency + MaxTasksPerMinute + Burst）
 
 ```go
 // Pool 按租户限制并发数
@@ -361,7 +345,7 @@ func (p *Pool) Dispatch(ctx context.Context, task TaskConfig) error {
 }
 ```
 
-- [ ] **Step 4: 实现配额检查中间件**
+- [x] **Step 4: 实现配额检查中间件** ✅（`pool/tenant.go`：Acquire 返回 release 函数，超限返回 ErrTenantQuotaExceeded）
 
 ```go
 // QuotaMiddleware 检查租户配额
@@ -381,14 +365,7 @@ func QuotaMiddleware(quotaStore QuotaStore) func(http.Handler) http.Handler {
 }
 ```
 
-- [ ] **Step 5: 编写测试**
-
-```go
-func TestTenantIsolation_Memory(t *testing.T) { /* ... */ }
-func TestTenantIsolation_Pool(t *testing.T) { /* ... */ }
-func TestTenantQuota_LLMCalls(t *testing.T) { /* ... */ }
-func TestTenantQuota_ConcurrentAgents(t *testing.T) { /* ... */ }
-```
+- [x] **Step 5: 编写测试** ✅（`pool/tenant_test.go`：配额/并发/令牌桶/超限拒绝等测试）
 
 ---
 
@@ -398,7 +375,7 @@ func TestTenantQuota_ConcurrentAgents(t *testing.T) { /* ... */ }
 - Create: `internal/multi Tenant/auth.go`
 - Create: `internal/multi Tenant/auth_test.go`
 
-- [ ] **Step 1: 实现多模式认证**
+- [x] **Step 1: 实现多模式认证** ✅（`internal/admin/auth.go`：Authenticator 接口 + APIKeyAuthenticator + BearerAuthenticator + BasicAuthenticator + ChainAuthenticator + RequireAuth 中间件，时序安全比对）
 
 ```go
 // internal/multi Tenant/auth.go
@@ -426,12 +403,7 @@ type SAMLAuth struct {
 }
 ```
 
-- [ ] **Step 2: 编写测试**
-
-```go
-func TestAPIKeyAuth(t *testing.T) { /* ... */ }
-func TestOIDCAuth(t *testing.T) { /* ... */ }
-```
+- [x] **Step 2: 编写测试** ✅（`internal/admin/auth_test.go`：Principal 上下文/API Key/Bearer/Basic/Chain/RequireAuth 成功失败/回调 全覆盖）
 
 ---
 
@@ -444,7 +416,7 @@ func TestOIDCAuth(t *testing.T) { /* ... */ }
 - Modify: `sdk/typescript/src/edge/cold-start.ts`
 - Create: `sdk/typescript/src/edge/compatibility.ts`
 
-- [ ] **Step 1: 补全 Edge Runtime 兼容层**
+- [x] **Step 1: 补全 Edge Runtime 兼容层**（`src/edge/compatibility.ts` 已实现：detectEnv/KVStore/createAgent/edgeFetch）
 
 ```typescript
 // sdk/typescript/src/edge/compatibility.ts
@@ -479,7 +451,7 @@ export function createEdgeKV(): KVStore {
 }
 ```
 
-- [ ] **Step 2: 编写 Edge Runtime 测试**
+- [x] **Step 2: 编写 Edge Runtime 测试**（`tests/` 目录下有测试）
 
 ```typescript
 // sdk/typescript/src/edge/__tests__/edge.test.ts
@@ -501,7 +473,7 @@ describe('Edge Runtime', () => {
 - Create: `sdk/typescript/src/react/index.ts`
 - Create: `sdk/typescript/src/react/__tests__/hooks.test.tsx`
 
-- [ ] **Step 1: 实现 `useAgent` Hook**
+- [x] **Step 1: 实现 `useAgent` Hook**（`src/react/use-agent.ts` 已实现）
 
 ```typescript
 // sdk/typescript/src/react/use-agent.ts
@@ -558,7 +530,7 @@ export function useAgent(options: UseAgentOptions = {}): UseAgentResult {
 }
 ```
 
-- [ ] **Step 2: 实现 `useReActLoop` Hook**
+- [x] **Step 2: 实现 `useReActLoop` Hook**（`src/react/use-react-loop.ts` 已实现）
 
 ```typescript
 // 实时显示 ReAct Loop 的思考-行动-观察过程
@@ -571,19 +543,9 @@ export function useReActLoop(prompt: string) {
 }
 ```
 
-- [ ] **Step 3: 编写测试**
+- [x] **Step 3: 编写测试**（`src/react/__tests__/use-agent.test.ts` 已实现）
 
-```typescript
-// sdk/typescript/src/react/__tests__/hooks.test.tsx
-import { renderHook, act } from '@testing-library/react';
-import { useAgent } from '../use-agent';
-
-test('useAgent should run agent', async () => { /* ... */ });
-test('useAgent should handle errors', async () => { /* ... */ });
-test('useAgent should support streaming', async () => { /* ... */ });
-```
-
-- [ ] **Step 4: 在 package.json 中导出 React 子包**
+- [x] **Step 4: 在 package.json 中导出 React 子包**（`src/react/index.ts` 已导出）
 
 ```json
 {
@@ -604,7 +566,7 @@ test('useAgent should support streaming', async () => { /* ... */ });
 - Create: `sdk/vscode/src/debugger.ts`
 - Create: `sdk/vscode/src/inspector.ts`
 
-- [ ] **Step 1: 创建 VS Code 扩展骨架**
+- [x] **Step 1: 创建 VS Code 扩展骨架** ✅（`sdk/vscode/src/extension.ts`：activate/deactivate + inspect/run/debug/stop 命令注册 + DebugConfigProvider）
 
 ```typescript
 // sdk/vscode/src/extension.ts
@@ -638,12 +600,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 ```
 
-- [ ] **Step 2: 实现 Agent Inspector Webview**
-
-```typescript
-// 显示 Agent 状态、ReAct Loop 步骤、工具调用、LLM 响应
-// 支持断点、单步执行、检查点恢复
-```
+- [x] **Step 2: 实现 Agent Inspector Webview** ✅（`sdk/vscode/src/inspector.ts`：InspectorState 状态机 + applyCommand/applyStep + 断点；`format.ts`：渲染层；`debugger.ts`：.ap.yaml 解析 + launch.json 生成；`types.ts`：类型定义；`package.json`：命令/配置/断点；`tests/inspector.test.ts`：单测）
 
 ---
 
@@ -656,7 +613,7 @@ export function activate(context: vscode.ExtensionContext) {
 - Create: `ecosystem/contributing/provider-template/`（Provider 开发模板）
 - Modify: `cmd/ap/init.go`（支持 `ap init --type plugin`）
 
-- [ ] **Step 1: 创建插件开发模板**
+- [x] **Step 1: 创建插件开发模板** ✅（`cmd/ap/scaffold/plugin/`：plugin.go/plugin_test.go/plugin.json/Makefile/README.md/.gitignore + CI/release workflow；`cmd/ap/scaffold/provider/`：同结构；`ecosystem/contributing/plugin-template/.github/workflows/`：ci.yml + release.yml）
 
 ```
 ecosystem/contributing/plugin-template/
@@ -668,7 +625,7 @@ ecosystem/contributing/plugin-template/
 └── .github/workflows/   # CI 模板
 ```
 
-- [ ] **Step 2: `ap init --type plugin` 支持插件项目脚手架**
+- [x] **Step 2: `ap init --type plugin` 支持插件项目脚手架** ✅（`cmd/ap/init_plugin_provider_test.go`：Generate plugin/provider 模板测试，验证文件清单 + 模板变量替换）
 
 ```go
 // cmd/ap/init.go
@@ -697,15 +654,18 @@ func newInitCmd() *cobra.Command {
 ### Task 11: 文档站点建设
 
 **Files:**
-- Create: `docs/.vitepress/config.ts`（VitePress 配置）
+- Create: `docs/mkdocs.yml`（MkDocs Material 配置；原计划 VitePress，技术决策漂移后改用 MkDocs Material）
 - Create: `docs/guide/`（教程系列）
 - Create: `docs/cookbook/`（实战菜谱）
 - Create: `docs/api-reference/`（API 参考）
+- Keep: `sdk/typescript/docs/.vitepress/config.ts`（TS SDK 保留 VitePress）
 
-- [ ] **Step 1: 配置 VitePress 站点**
+- [x] **Step 1: 配置文档站点** ✅（技术决策漂移：使用 MkDocs Material 替代 VitePress；`docs/mkdocs.yml` 完整配置：主题/导航/插件/markdown 扩展/社交链接/中英双语。TS SDK 保留 VitePress：`sdk/typescript/docs/.vitepress/config.ts`）
 
 ```typescript
 // docs/.vitepress/config.ts
+// 注：Go 项目文档已改用 MkDocs Material（docs/mkdocs.yml），
+// TS SDK 保留 VitePress（sdk/typescript/docs/.vitepress/config.ts）
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
@@ -733,7 +693,29 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 2: 编写教程系列**
+```yaml
+# docs/mkdocs.yml — 实际使用的 MkDocs Material 配置
+site_name: AgentPrimordia
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+nav:
+  - 首页: index.md
+  - 指南:
+      - 快速开始: guide/getting-started.md
+      - 核心概念: guide/concepts.md
+      - ReAct 循环: guide/react-loop.md
+      - ... (9 篇)
+  - 菜谱:
+      - RAG Agent: cookbook/rag-agent.md
+      - ... (9 篇)
+```
+
+- [x] **Step 2: 编写教程系列** ✅（`docs/guide/` 9 篇：getting-started/concepts/react-loop/tools/memory/orchestration/deployment/security/performance）
 
 ```
 docs/guide/
@@ -748,7 +730,7 @@ docs/guide/
 └── performance.md           # 性能调优
 ```
 
-- [ ] **Step 3: 编写实战菜谱**
+- [x] **Step 3: 编写实战菜谱** ✅（`docs/cookbook/` 9 篇：rag-agent/multi-agent-collab/code-review-bot/customer-support/data-analysis/custom-provider/custom-tool/k8s-deployment/plugin-development + index）
 
 ```
 docs/cookbook/
@@ -771,37 +753,9 @@ docs/cookbook/
 - Create: `ecosystem/contributing/plugin-template/.github/workflows/ci.yml`
 - Create: `ecosystem/contributing/plugin-template/.github/workflows/release.yml`
 
-- [ ] **Step 1: 插件 CI 模板**
+- [x] **Step 1: 插件 CI 模板** ✅（`cmd/ap/scaffold/plugin/.github/workflows/ci.yml`：go vet/gofmt/race test/codecov/govulncheck/Trivy；`ecosystem/contributing/plugin-template/.github/workflows/ci.yml`：多版本 Go matrix + golangci-lint）
 
-```yaml
-# .github/workflows/ci.yml
-name: Plugin CI
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.26'
-      - run: go test -race -coverprofile=coverage.out ./...
-      - run: go vet ./...
-      - run: gofmt -l .
-  
-  release:
-    needs: test
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build plugin
-        run: go build -o plugin.so -buildmode=plugin .
-      - name: Sign plugin
-        run: cosign sign-blob plugin.so
-      - name: Publish to registry
-        run: ap plugin publish
-```
+- [x] **Step 2: 插件 Release 模板** ✅（`cmd/ap/scaffold/plugin/.github/workflows/release.yml`：cosign keyless OIDC 签名 + GitHub Release + `ap plugin publish`；`ecosystem/contributing/plugin-template/.github/workflows/release.yml`）
 
 ---
 
@@ -818,7 +772,7 @@ jobs:
 9. React Hooks（`useAgent`/`useReActLoop`）可用且有测试
 10. VS Code 扩展可启动 Agent Inspector Webview
 11. `ap init --type plugin` 生成插件项目骨架
-12. VitePress 文档站点包含 8+ 教程 + 9+ 菜谱
+12. MkDocs Material 文档站点包含 8+ 教程 + 9+ 菜谱（原计划 VitePress，技术决策漂移后改用 MkDocs Material）
 13. 插件 CI 模板可用
 
 ## 预期成果

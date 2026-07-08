@@ -36,7 +36,7 @@
 - Modify: `internal/agent/react_loop_core.go`（在 LLM 响应后插入 output 检查点）
 - Create: `internal/guardrail/pii_output_test.go`
 
-- [ ] **Step 1: 编写输出端 PII 拦截测试**
+- [x] **Step 1: 编写输出端 PII 拦截测试**
 
 ```go
 // internal/guardrail/pii_output_test.go
@@ -59,11 +59,11 @@ func TestPIIRule_OutputCheckpoint(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: 确保 PII Rule 在 Output 检查点生效**
+- [x] **Step 2: 确保 PII Rule 在 Output 检查点生效**
 
 检查 `pii_rule.go` 的 `Check` 方法是否已支持 `CheckPointOutput`。如果 `Check` 不区分检查点，则天然支持。如果需要在 output 端使用不同策略（如仅记录不拦截），添加 `CheckPoint` 参数判断。
 
-- [ ] **Step 3: 在 ReAct Loop 中插入 output 检查点**
+- [x] **Step 3: 在 ReAct Loop 中插入 output 检查点**
 
 在 `react_loop_core.go` 中，LLM 响应返回后、写入消息历史前，调用 Guardrail Engine 的 output 检查：
 
@@ -83,7 +83,7 @@ if a.guardrail != nil {
 }
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 go test -race -count=1 ./internal/guardrail/ -run TestPII
@@ -99,7 +99,7 @@ go test -race -count=1 ./internal/agent/ -run TestGuardrail
 **Files:**
 - Modify: `internal/guardrail/pii.go`
 
-- [ ] **Step 1: 添加新 PII 类型**
+- [x] **Step 1: 添加新 PII 类型**
 
 ```go
 const (
@@ -118,7 +118,7 @@ const (
 )
 ```
 
-- [ ] **Step 2: 编写正则模式**
+- [x] **Step 2: 编写正则模式**
 
 ```go
 {typ: Passport, regex: regexp.MustCompile(`(?:E\d{8})|(?:[A-Z]{2}\d{6})`)},
@@ -128,7 +128,7 @@ const (
 {typ: JWT, regex: regexp.MustCompile(`eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+`)},
 ```
 
-- [ ] **Step 3: 编写测试**
+- [x] **Step 3: 编写测试**
 
 ```go
 func TestPIIDetector_Passport(t *testing.T) { /* ... */ }
@@ -138,7 +138,7 @@ func TestPIIDetector_APIKey(t *testing.T) { /* ... */ }
 func TestPIIDetector_JWT(t *testing.T) { /* ... */ }
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 go test -v ./internal/guardrail/ -run TestPII
@@ -156,7 +156,7 @@ go test -v ./internal/guardrail/ -run TestPII
 - Create: `internal/audit/event_types.go`
 - Create: `internal/audit/event_types_test.go`
 
-- [ ] **Step 1: 定义标准审计事件类型**
+- [x] **Step 1: 定义标准审计事件类型**
 
 ```go
 // internal/audit/event_types.go
@@ -204,7 +204,7 @@ const (
 )
 ```
 
-- [ ] **Step 2: 验证**
+- [x] **Step 2: 验证**
 
 ```bash
 go test -v ./internal/audit/ -run TestEventTypes
@@ -221,7 +221,7 @@ go test -v ./internal/audit/ -run TestEventTypes
 - Modify: `internal/agent/react_loop_tools.go`
 - Modify: `internal/agent/react_lifecycle.go`
 
-- [ ] **Step 1: 在 Agent 中注入 AuditLogger**
+- [x] **Step 1: 在 Agent 中注入 AuditLogger**
 
 ```go
 type ReActAgent struct {
@@ -235,7 +235,7 @@ func (a *ReActAgent) WithAuditLogger(l *audit.Logger) *ReActAgent {
 }
 ```
 
-- [ ] **Step 2: 在关键路径写入审计事件**
+- [x] **Step 2: 在关键路径写入审计事件**
 
 在 `react_loop_core.go` 的 LLM 调用后：
 ```go
@@ -268,7 +268,7 @@ if a.auditLogger != nil {
 }
 ```
 
-- [ ] **Step 3: 异步写入（避免阻塞主循环）**
+- [x] **Step 3: 异步写入（避免阻塞主循环）**
 
 ```go
 // 使用 buffered channel 异步写入审计日志
@@ -299,7 +299,7 @@ func (l *AsyncAuditLogger) Log(ctx context.Context, event audit.Event) error {
 }
 ```
 
-- [ ] **Step 4: 编写集成测试**
+- [x] **Step 4: 编写集成测试**
 
 ```go
 func TestReActLoop_AuditLogWritten(t *testing.T) {
@@ -315,7 +315,7 @@ func TestReActLoop_AuditLogWritten(t *testing.T) {
 }
 ```
 
-- [ ] **Step 5: 验证**
+- [x] **Step 5: 验证**
 
 ```bash
 go test -race -count=1 ./internal/agent/ -run TestAudit
@@ -330,7 +330,7 @@ go test -race -count=1 ./internal/audit/
 - Create: `internal/audit/http_handler.go`
 - Create: `internal/audit/http_handler_test.go`
 
-- [ ] **Step 1: 实现 HTTP handler**
+- [x] **Step 1: 实现 HTTP handler**
 
 ```go
 // GET /audit/events?actor=xxx&action=xxx&limit=100
@@ -349,7 +349,7 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-- [ ] **Step 2: 在 pkg/ 中导出**
+- [x] **Step 2: 在 pkg/ 中导出**
 
 ```go
 // pkg/audit.go
@@ -357,7 +357,7 @@ type AuditHTTPHandler = audit.HTTPHandler
 var NewAuditHTTPHandler = audit.NewHTTPHandler
 ```
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 ```bash
 go test -v ./internal/audit/ -run TestHTTP
@@ -376,7 +376,7 @@ go test -v ./internal/audit/ -run TestHTTP
 - Create: `internal/security/permission_test.go`
 - Modify: `pkg/security.go`（导出公共 API）
 
-- [ ] **Step 1: 定义权限接口**
+- [x] **Step 1: 定义权限接口**
 
 ```go
 // internal/security/permission.go
@@ -406,7 +406,7 @@ const (
 )
 ```
 
-- [ ] **Step 2: 实现 RBAC + Scope 组合权限管理器**
+- [x] **Step 2: 实现 RBAC + Scope 组合权限管理器**
 
 ```go
 type PermissionManager struct {
@@ -423,7 +423,7 @@ type Role struct {
 }
 ```
 
-- [ ] **Step 3: 实现权限继承**
+- [x] **Step 3: 实现权限继承**
 
 ```go
 // Inherit 让子 Agent 继承父 Agent 的权限（可收窄不可放大）
@@ -449,7 +449,7 @@ func (pm *PermissionManager) Inherit(parentID, childID string) error {
 }
 ```
 
-- [ ] **Step 4: 编写测试**
+- [x] **Step 4: 编写测试**
 
 ```go
 func TestPermission_Inherit(t *testing.T) { /* ... */ }
@@ -458,7 +458,7 @@ func TestPermission_Revoke(t *testing.T) { /* ... */ }
 func TestPermission_ChildCannotExceedParent(t *testing.T) { /* ... */ }
 ```
 
-- [ ] **Step 5: 验证**
+- [x] **Step 5: 验证**
 
 ```bash
 go test -race -count=1 ./internal/security/
@@ -474,7 +474,7 @@ go test -race -count=1 ./internal/security/
 - Create: `internal/audit/report_templates.go`
 - Create: `internal/audit/report_templates_test.go`
 
-- [ ] **Step 1: 定义报告模板**
+- [x] **Step 1: 定义报告模板**
 
 ```go
 // internal/audit/report_templates.go
@@ -510,7 +510,7 @@ func (l *Logger) GenerateComplianceReport(ctx context.Context, cfg ReportConfig)
 }
 ```
 
-- [ ] **Step 2: SOC2 报告生成**
+- [x] **Step 2: SOC2 报告生成**
 
 ```go
 func (l *Logger) generateSOC2Report(ctx context.Context, cfg ReportConfig) (*ComplianceReport, error) {
@@ -538,7 +538,7 @@ func (l *Logger) generateSOC2Report(ctx context.Context, cfg ReportConfig) (*Com
 }
 ```
 
-- [ ] **Step 3: GDPR 报告生成**
+- [x] **Step 3: GDPR 报告生成**
 
 ```go
 func (l *Logger) generateGDPRReport(ctx context.Context, cfg ReportConfig) (*ComplianceReport, error) {
@@ -551,20 +551,20 @@ func (l *Logger) generateGDPRReport(ctx context.Context, cfg ReportConfig) (*Com
 }
 ```
 
-- [ ] **Step 4: 编写测试**
+- [x] **Step 4: 编写测试**
 
 ```go
 func TestGenerateComplianceReport_SOC2(t *testing.T) { /* ... */ }
 func TestGenerateComplianceReport_GDPR(t *testing.T) { /* ... */ }
 ```
 
-- [ ] **Step 5: 在 HTTP handler 中暴露报告接口**
+- [x] **Step 5: 在 HTTP handler 中暴露报告接口**
 
 ```go
 // GET /audit/report?template=soc2&start=...&end=...
 ```
 
-- [ ] **Step 6: 验证**
+- [x] **Step 6: 验证**
 
 ```bash
 go test -race -count=1 ./internal/audit/

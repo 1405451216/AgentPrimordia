@@ -1,304 +1,145 @@
+// types.go — core 子包的类型别名，保持向后兼容
 package agent
 
 import (
-	"agentprimordia/internal/llm"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"errors"
-	"fmt"
-	"time"
+
+	"agentprimordia/internal/agent/core"
 )
 
 // ===== 请求 ID 关联 =====
 
-// requestIDKey 是 context 中存储请求 ID 的 key
-type requestIDKey struct{}
-
-// NewRequestID 生成唯一的请求 ID（16 字节随机 hex）
+// NewRequestID 生成唯一的请求 ID
+// 委托到 core 子包，保持向后兼容
 func NewRequestID() string {
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
+	return core.NewRequestID()
 }
 
 // WithRequestID 将请求 ID 注入 context
+// 委托到 core 子包，保持向后兼容
 func WithRequestID(ctx context.Context, reqID string) context.Context {
-	return context.WithValue(ctx, requestIDKey{}, reqID)
+	return core.WithRequestID(ctx, reqID)
 }
 
-// RequestIDFromCtx 从 context 中提取请求 ID，若不存在返回空字符串
+// RequestIDFromCtx 从 context 中提取请求 ID
+// 委托到 core 子包，保持向后兼容
 func RequestIDFromCtx(ctx context.Context) string {
-	v, _ := ctx.Value(requestIDKey{}).(string)
-	return v
+	return core.RequestIDFromCtx(ctx)
 }
 
 // ===== RAG 接口 =====
 
 // RAGDocument 是 RAG 检索返回的文档片段
-type RAGDocument struct {
-	ID      string  `json:"id"`
-	Content string  `json:"content"`
-	Score   float32 `json:"score"`
-	Source  string  `json:"source,omitempty"` // "fts" 和/或 "vector"
-	Role    string  `json:"role,omitempty"`   // 原始角色 (user/assistant)
-}
+// 类型别名保持向后兼容
+type RAGDocument = core.RAGDocument
 
 // RAGProvider 是 Agent 可使用的 RAG 检索接口
-// 由 memory.RAGStore 通过 pkg/adapters 适配实现
-type RAGProvider interface {
-	// Search 执行 RAG 检索，query 为查询文本，topK 为返回结果数
-	Search(ctx context.Context, query string, topK int) ([]*RAGDocument, error)
-}
+// 类型别名保持向后兼容
+type RAGProvider = core.RAGProvider
 
 // RAGMode 控制 RAG 在 ReAct Loop 中的注入方式
-type RAGMode string
+// 类型别名保持向后兼容
+type RAGMode = core.RAGMode
 
+// RAG 模式常量
 const (
-	// RAGModeAuto 在每轮推理前自动查询知识库并注入上下文
-	RAGModeAuto RAGMode = "auto"
-	// RAGModeFirst 仅在第一轮推理前查询知识库
-	RAGModeFirst RAGMode = "first"
-	// RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search 工具时查询
-	RAGModeOnDemand RAGMode = "on_demand"
+	RAGModeAuto     = core.RAGModeAuto
+	RAGModeFirst    = core.RAGModeFirst
+	RAGModeOnDemand = core.RAGModeOnDemand
 )
 
 // RAGConfig 配置 RAG 注入行为
-type RAGConfig struct {
-	// Provider RAG 检索提供者
-	Provider RAGProvider
-
-	// Mode 注入模式，默认 auto
-	Mode RAGMode
-
-	// TopK 每次检索返回的最大文档数，默认 5
-	TopK int
-
-	// MinScore 最低相关度阈值，低于此值的结果将被过滤，默认 0.3
-	MinScore float32
-
-	// ContextTemplate 上下文注入模板，默认使用 FormatRAGContext
-	// 可用占位符: {{context}}
-	ContextTemplate string
-}
+// 类型别名保持向后兼容
+type RAGConfig = core.RAGConfig
 
 // FormatRAGDocuments 将 RAG 检索结果格式化为可注入 Prompt 的上下文文本
+// 委托到 core 子包，保持向后兼容
 func FormatRAGDocuments(docs []*RAGDocument) string {
-	if len(docs) == 0 {
-		return ""
-	}
-	result := "=== 相关知识 ===\n"
-	for i, doc := range docs {
-		role := doc.Role
-		if role == "" {
-			role = "知识"
-		}
-		result += fmt.Sprintf("[%d | 相关度: %.2f | %s] %s\n", i+1, doc.Score, role, doc.Content)
-	}
-	result += "=== 知识结束 ===\n"
-	return result
+	return core.FormatRAGDocuments(docs)
 }
 
-// RAGContextForPrompt 将单个 RAGDocument 格式化为 Prompt 上下文
-func (d *RAGDocument) RAGContextForPrompt() string {
-	role := d.Role
-	if role == "" {
-		role = "知识"
-	}
-	return fmt.Sprintf("[相关度: %.2f | %s] %s", d.Score, role, d.Content)
-}
+// ===== Agent 核心接口 =====
 
 // Agent 是所有 Agent 实现的核心接口
-// 编排模式（Pipeline/Handoff/Parallel）和 Pool 均面向此接口编程
-type Agent interface {
-	// Run 执行同步推理，接收 Message 输入并返回 Response
-	Run(ctx context.Context, input Message) (*Response, error)
-	// StreamRun 执行流式推理，返回 StreamEvent 通道
-	StreamRun(ctx context.Context, input Message) (<-chan StreamEvent, error)
-	// Stop 停止当前运行
-	Stop()
-	// Stats 返回运行统计
-	Stats() AgentStats
-	// Name 返回 Agent 名称
-	Name() string
-}
+// 类型别名保持向后兼容
+type Agent = core.Agent
 
 // Role represents the role of a message sender
-type Role string
+// 类型别名保持向后兼容
+type Role = core.Role
 
+// 角色常量
 const (
-	RoleSystem    Role = "system"
-	RoleUser      Role = "user"
-	RoleAssistant Role = "assistant"
-	RoleTool      Role = "tool"
+	RoleSystem    = core.RoleSystem
+	RoleUser      = core.RoleUser
+	RoleAssistant = core.RoleAssistant
+	RoleTool      = core.RoleTool
 )
 
 // Message represents a single message in the conversation
-type Message struct {
-	Role         Role          `json:"role"`
-	Content      string        `json:"content"`
-	ContentParts []ContentPart `json:"content_parts,omitempty"`
-	ToolCalls    []ToolCall    `json:"tool_calls,omitempty"`
-	Metadata     Metadata      `json:"metadata,omitempty"`
-}
-
-// HasMultimodal 判断消息是否包含多模态内容
-func (m *Message) HasMultimodal() bool {
-	for _, p := range m.ContentParts {
-		if p.Type != "text" {
-			return true
-		}
-	}
-	return false
-}
-
-// TextContent 提取纯文本内容
-func (m *Message) TextContent() string {
-	if m.Content != "" && len(m.ContentParts) == 0 {
-		return m.Content
-	}
-	result := ""
-	for _, p := range m.ContentParts {
-		if p.Type == "text" && p.Text != "" {
-			if result != "" {
-				result += " "
-			}
-			result += p.Text
-		}
-	}
-	if result == "" {
-		return m.Content
-	}
-	return result
-}
+// 类型别名保持向后兼容
+type Message = core.Message
 
 // Metadata carries additional message information
-type Metadata struct {
-	SessionID string            `json:"session_id,omitempty"`
-	Timestamp time.Time         `json:"timestamp"`
-	Extra     map[string]string `json:"extra,omitempty"`
-}
+// 类型别名保持向后兼容
+type Metadata = core.Metadata
 
 // UserMessage creates a user message helper
+// 委托到 core 子包，保持向后兼容
 func UserMessage(content string) Message {
-	return Message{
-		Role:     RoleUser,
-		Content:  content,
-		Metadata: Metadata{Timestamp: time.Now()},
-	}
+	return core.UserMessage(content)
 }
 
 // SystemMessage creates a system message helper
+// 委托到 core 子包，保持向后兼容
 func SystemMessage(content string) Message {
-	return Message{
-		Role:     RoleSystem,
-		Content:  content,
-		Metadata: Metadata{Timestamp: time.Now()},
-	}
+	return core.SystemMessage(content)
 }
 
 // ToolCall represents a function call request from LLM
-type ToolCall struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Args string `json:"args"` // JSON-encoded arguments
-}
+// 类型别名保持向后兼容
+type ToolCall = core.ToolCall
 
 // ToolResult represents the result of executing a tool
-type ToolResult struct {
-	ToolCallID string `json:"tool_call_id"`
-	Content    string `json:"content"`
-	IsError    bool   `json:"is_error"`
-}
-
-// ToMessage converts ToolResult to a Message with RoleTool
-func (tr *ToolResult) ToMessage() Message {
-	extra := map[string]string{"tool_call_id": tr.ToolCallID}
-	if tr.IsError {
-		extra["is_error"] = "true"
-	}
-	return Message{
-		Role:    RoleTool,
-		Content: tr.Content,
-		Metadata: Metadata{
-			Extra: extra,
-		},
-	}
-}
+// 类型别名保持向后兼容
+type ToolResult = core.ToolResult
 
 // Thought represents the LLM's reasoning output
-type Thought struct {
-	Content   string     `json:"content"`
-	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-	Usage     llm.Usage  `json:"usage,omitempty"`
-}
+// 类型别名保持向后兼容
+type Thought = core.Thought
 
 // Response represents the final response from an Agent
-type Response struct {
-	RequestID string     `json:"request_id"`
-	Content   string     `json:"content"`
-	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
-	Usage     Usage      `json:"usage"`
-	Metrics   Metrics    `json:"metrics"`
-	Error     error      `json:"-"`
-}
-
-// ErrorCode 返回结构化错误码，若无错误返回空字符串
-// 使用 pkg.GetErrorCode 的映射规则，支持 sentinel 错误和 CodeError 接口
-func (r *Response) ErrorCode() string {
-	if r.Error == nil {
-		return ""
-	}
-	type coded interface{ Code() string }
-	var c coded
-	if errors.As(r.Error, &c) {
-		return c.Code()
-	}
-	return "UNKNOWN"
-}
+// 类型别名保持向后兼容
+type Response = core.Response
 
 // Usage tracks token usage
-type Usage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
-}
+// 类型别名保持向后兼容
+type Usage = core.Usage
 
 // Metrics tracks performance metrics
-type Metrics struct {
-	TotalTurns  int           `json:"total_turns"`
-	TotalTools  int           `json:"total_tools_called"`
-	Duration    time.Duration `json:"duration"`
-	LLMLatency  time.Duration `json:"llm_latency_ms"`
-	ToolLatency time.Duration `json:"tool_latency_ms"`
-}
+// 类型别名保持向后兼容
+type Metrics = core.Metrics
 
 // AgentStats provides runtime statistics about an agent
-type AgentStats struct {
-	Status        AgentStatus    `json:"status"`
-	RequestID     string         `json:"request_id,omitempty"`
-	CurrentTurn   int            `json:"current_turn"`
-	TotalMessages int            `json:"total_messages"`
-	ToolsCalled   map[string]int `json:"tools_called"`
-	StartTime     time.Time      `json:"start_time"`
-}
+// 类型别名保持向后兼容
+type AgentStats = core.AgentStats
+
+// ===== 流式事件 =====
 
 // StreamEventType 标识流式事件的类型
-type StreamEventType string
+// 类型别名保持向后兼容
+type StreamEventType = core.StreamEventType
 
+// 流式事件类型常量
 const (
-	StreamEventToken      StreamEventType = "token"       // 逐 token 输出
-	StreamEventThought    StreamEventType = "thought"     // 思考/推理
-	StreamEventToolCall   StreamEventType = "tool_call"   // 工具调用开始
-	StreamEventToolResult StreamEventType = "tool_result" // 工具执行结果
-	StreamEventComplete   StreamEventType = "complete"    // 运行完成
-	StreamEventError      StreamEventType = "error"       // 错误
+	StreamEventToken      = core.StreamEventToken
+	StreamEventThought    = core.StreamEventThought
+	StreamEventToolCall   = core.StreamEventToolCall
+	StreamEventToolResult = core.StreamEventToolResult
+	StreamEventComplete   = core.StreamEventComplete
+	StreamEventError      = core.StreamEventError
 )
 
 // StreamEvent 是流式输出的事件
-type StreamEvent struct {
-	Type      StreamEventType `json:"type"`
-	RequestID string          `json:"request_id,omitempty"`
-	Content   string          `json:"content,omitempty"`
-	Data      any             `json:"data,omitempty"`
-}
+// 类型别名保持向后兼容
+type StreamEvent = core.StreamEvent

@@ -48,8 +48,8 @@ type systemTimer struct {
 	t *time.Timer
 }
 
-func (s *systemTimer) C() <-chan time.Time   { return s.t.C }
-func (s *systemTimer) Stop() bool            { return s.t.Stop() }
+func (s *systemTimer) C() <-chan time.Time        { return s.t.C }
+func (s *systemTimer) Stop() bool                 { return s.t.Stop() }
 func (s *systemTimer) Reset(d time.Duration) bool { return s.t.Reset(d) }
 
 // ===========================================================================
@@ -59,9 +59,10 @@ func (s *systemTimer) Reset(d time.Duration) bool { return s.t.Reset(d) }
 // FakeClock 允许测试时手动推进时间。
 //
 // 使用方式：
-//   fc := edgeruntime.NewFakeClock()
-//   fc.Advance(time.Second)
-//   fc.Now() // 比构造时晚 1 秒
+//
+//	fc := edgeruntime.NewFakeClock()
+//	fc.Advance(time.Second)
+//	fc.Now() // 比构造时晚 1 秒
 type FakeClock struct {
 	mu      sync.Mutex
 	now     time.Time
@@ -132,12 +133,12 @@ func (f *FakeClock) Sleep(d time.Duration) {
 }
 
 type fakeTimer struct {
-	c      chan time.Time
-	dueAt  time.Time
-	clock  *FakeClock
-	mu     sync.Mutex
-	active bool
-	fired  bool
+	c       chan time.Time
+	dueAt   time.Time
+	clock   *FakeClock
+	mu      sync.Mutex
+	active  bool
+	fired   bool
 	stopped bool
 }
 

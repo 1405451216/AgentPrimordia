@@ -2,7 +2,8 @@
 //
 // 文件：pdb.go
 // 作用：为 AgentDeployment 创建/删除 PodDisruptionBudget，确保驱逐/滚动升级时
-//      至少有部分 Pod 可用，避免完全不可用。
+//
+//	至少有部分 Pod 可用，避免完全不可用。
 //
 // 设计原则：
 //   - 默认自动启用：当 replicas >= 2 时自动创建 minAvailable=1 的 PDB

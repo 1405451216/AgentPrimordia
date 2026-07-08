@@ -167,7 +167,7 @@ func TestScalingRulesEqual_DifferentLen(t *testing.T) {
 	a := defaultHPABehavior().ScaleDown
 	b := &autoscalingv2.HPAScalingRules{
 		StabilizationWindowSeconds: a.StabilizationWindowSeconds,
-		Policies: append([]autoscalingv2.HPAScalingPolicy{}, a.Policies...),
+		Policies:                   append([]autoscalingv2.HPAScalingPolicy{}, a.Policies...),
 		SelectPolicy:               a.SelectPolicy,
 	}
 	b.Policies = append(b.Policies, autoscalingv2.HPAScalingPolicy{Type: autoscalingv2.PodsScalingPolicy, Value: 1, PeriodSeconds: 30})
@@ -185,10 +185,10 @@ func makeAgentForHPA(name string, min, max, target int32, behavior *agentv1.HPAB
 			Replicas: 2,
 			Template: agentv1.AgentTemplateSpec{Provider: "openai", Model: "gpt-4o"},
 			Autoscaling: &agentv1.AutoscalingSpec{
-				MinReplicas:             min,
-				MaxReplicas:             max,
-				TargetConcurrentTasks:   target,
-				Behavior:                behavior,
+				MinReplicas:           min,
+				MaxReplicas:           max,
+				TargetConcurrentTasks: target,
+				Behavior:              behavior,
 			},
 		},
 	}

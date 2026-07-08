@@ -1,171 +1,25 @@
+// context_compress.go — context 子包的类型别名，保持向后兼容
 package agent
 
 import (
-	"agentprimordia/internal/llm"
-	"context"
-	"fmt"
-	"log/slog"
-	"strings"
-	"time"
+	"agentprimordia/internal/agent/context"
 )
 
 // CompressConfig 压缩配置
-type CompressConfig struct {
-	// MaxTokens 压缩后最大 Token 数（估算）
-	MaxTokens int
-	// SummaryModel 用于摘要的 LLM Provider
-	SummaryModel llm.Provider
-	// KeepSystemMessages 是否保留所有系统消息
-	KeepSystemMessages bool
-	// KeepRecentN 保留最近 N 条消息不压缩
-	KeepRecentN int
-	// CompressRatio 压缩比例（0.3 = 保留 30% 的 Token）
-	CompressRatio float64
-}
+// 类型别名保持向后兼容
+type CompressConfig = context.CompressConfig
 
 // CompressStrategy 智能压缩策略
-type CompressStrategy struct {
-	config CompressConfig
-	logger *slog.Logger
-}
+// 类型别名保持向后兼容
+type CompressStrategy = context.CompressStrategy
 
 // NewCompressStrategy 创建压缩策略
+// 委托到 context 子包，保持向后兼容
 func NewCompressStrategy(config CompressConfig) *CompressStrategy {
-	if config.KeepRecentN <= 0 {
-		config.KeepRecentN = 2
-	}
-	if config.CompressRatio <= 0 {
-		config.CompressRatio = 0.3
-	}
-	return &CompressStrategy{
-		config: config,
-		logger: slog.Default(),
-	}
+	return context.NewCompressStrategy(config)
 }
 
-// Trim 实现 ContextWindowStrategy 接口
-func (s *CompressStrategy) Trim(messages []Message, maxMessages int) []Message {
-	if len(messages) == 0 {
-		return messages
-	}
-
-	effectiveMax := maxMessages
-	if effectiveMax <= 0 {
-		effectiveMax = 20
-	}
-
-	if len(messages) <= effectiveMax {
-		return messages
-	}
-
-	var systemMsgs []Message
-	var recentMsgs []Message
-	var oldMsgs []Message
-
-	for _, m := range messages {
-		if m.Role == RoleSystem {
-			if s.config.KeepSystemMessages {
-				systemMsgs = append(systemMsgs, m)
-			}
-		}
-	}
-
-	nonSystem := make([]Message, 0)
-	for _, m := range messages {
-		if m.Role != RoleSystem {
-			nonSystem = append(nonSystem, m)
-		}
-	}
-
-	keepN := s.config.KeepRecentN
-	if keepN > len(nonSystem) {
-		keepN = len(nonSystem)
-	}
-
-	recentMsgs = nonSystem[len(nonSystem)-keepN:]
-	oldMsgs = nonSystem[:len(nonSystem)-keepN]
-
-	if len(oldMsgs) == 0 {
-		result := make([]Message, 0, len(systemMsgs)+len(recentMsgs))
-		result = append(result, systemMsgs...)
-		result = append(result, recentMsgs...)
-		return result
-	}
-
-	var summary string
-	if s.config.SummaryModel != nil {
-		var err error
-		// 使用带超时的 context 防止 LLM 调用无限阻塞
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		summary, err = s.compressOldMessages(ctx, oldMsgs)
-		if err != nil {
-			s.logger.Warn("摘要压缩失败，降级为简单截断", "error", err)
-			summary = s.fallbackSummary(oldMsgs)
-		}
-	} else {
-		summary = s.fallbackSummary(oldMsgs)
-	}
-
-	result := make([]Message, 0, len(systemMsgs)+1+len(recentMsgs))
-	result = append(result, systemMsgs...)
-	result = append(result, SystemMessage("[对话摘要]\n"+summary))
-	result = append(result, recentMsgs...)
-
-	return result
-}
-
-// compressOldMessages 压缩旧消息为摘要
-func (s *CompressStrategy) compressOldMessages(ctx context.Context, old []Message) (string, error) {
-	var sb strings.Builder
-	for _, m := range old {
-		role := string(m.Role)
-		content := m.TextContent()
-		if content == "" {
-			continue
-		}
-		sb.WriteString(fmt.Sprintf("%s: %s\n", role, content))
-	}
-
-	prompt := "请将以下对话历史压缩为简洁摘要，保留关键信息、决策和结论：\n\n" + sb.String()
-
-	resp, err := s.config.SummaryModel.Complete(ctx, &llm.CompletionRequest{
-		Messages: []llm.ChatMessage{
-			{Role: "system", Content: "你是一个对话摘要助手，擅长提取关键信息。"},
-			{Role: "user", Content: prompt},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return resp.Content, nil
-}
-
-// fallbackSummary 无 LLM 时的降级摘要（取首尾各一条）
-func (s *CompressStrategy) fallbackSummary(old []Message) string {
-	if len(old) == 0 {
-		return ""
-	}
-	if len(old) == 1 {
-		return fmt.Sprintf("%s: %s", old[0].Role, old[0].TextContent())
-	}
-
-	first := old[0]
-	last := old[len(old)-1]
-	return fmt.Sprintf("%s: %s\n...\n%s: %s",
-		first.Role, first.TextContent(),
-		last.Role, last.TextContent())
-}
-
-// estimateTokens 估算消息的 Token 数（简单启发式：1 Token ≈ 4 字符）
-// 注意：未使用缓存。理由：len() 调用本身仅需 ~0.4ns，比 sync.Map 查找（~55ns）
-// 快 100+ 倍。仅在文本极长（>10KB）且重复出现时缓存才有收益，当前热点调用
-// 频率不足以抵消缓存开销。预留 estimateTokensCached 函数供未来调用方按需启用。
+// estimateTokens 估算消息的 Token 数（委托到 context 子包）
 func estimateTokens(messages []Message) int {
-	total := 0
-	for _, m := range messages {
-		total += len(m.TextContent())
-	}
-	return total / 4
+	return context.EstimateTokens(messages)
 }

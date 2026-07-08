@@ -920,10 +920,11 @@ func (p *Pool) SubmitBackground(ctx context.Context, task concurrency.Task) erro
 // 如果 PoolConfig.GoroutinePool 未配置，返回 zero value + ok=false。
 //
 // 调用方通常将其映射为 Prometheus 指标：
-//   pool_workers{pool="..."}        = stats.Workers
-//   pool_active_workers{pool="..."} = stats.ActiveWorkers
-//   pool_queue_depth{pool="..."}    = stats.QueueDepth
-//   pool_queue_capacity{pool="..."} = stats.QueueCapacity
+//
+//	pool_workers{pool="..."}        = stats.Workers
+//	pool_active_workers{pool="..."} = stats.ActiveWorkers
+//	pool_queue_depth{pool="..."}    = stats.QueueDepth
+//	pool_queue_capacity{pool="..."} = stats.QueueCapacity
 func (p *Pool) GoroutinePoolStats() (concurrency.PoolStats, bool) {
 	p.mu.RLock()
 	gp := p.goroutinePool
@@ -944,10 +945,10 @@ func (p *Pool) HasGoroutinePool() bool {
 // SetLLMBatchProcessor 把 BatchProcessor 接入 Pool（Phase 3 Task 6）。
 //
 // 集成方式：
-//   1. 把 Pool 的模型替换为 BatchProcessor（其实现了 llm.Provider）
-//   2. 如果 Pool 启用了 GoroutinePool（cfg.GoroutinePool != nil），
-//      则把 BatchProcessor.Close() / flush 交给 GoroutinePool 在后台执行，
-//      避免阻塞 Pool 主调度循环。
+//  1. 把 Pool 的模型替换为 BatchProcessor（其实现了 llm.Provider）
+//  2. 如果 Pool 启用了 GoroutinePool（cfg.GoroutinePool != nil），
+//     则把 BatchProcessor.Close() / flush 交给 GoroutinePool 在后台执行，
+//     避免阻塞 Pool 主调度循环。
 //
 // 注意：必须在 SetModel 之前或之后调用均可，SetLLMBatchProcessor 内部
 // 会用 BatchProcessor 覆盖原 model。Pool.Close() 时会自动调用 bp.Close()。

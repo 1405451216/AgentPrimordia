@@ -7,7 +7,7 @@ import (
 
 // FuzzContainsShellMetacharacter 模糊测试 shell 元字符检测。
 // 确保 ContainsShellMetacharacter 对任意输入不 panic 且结果一致。
-// 性质：如果输入包含 dangerousChars 中的任一字符，应返回 true。
+// 性质：如果输入包含危险元字符中的任一字符，应返回 true。
 func FuzzContainsShellMetacharacter(f *testing.F) {
 	// 种子语料
 	seedCmds := []string{
@@ -33,10 +33,12 @@ func FuzzContainsShellMetacharacter(f *testing.F) {
 	f.Fuzz(func(t *testing.T, cmd string) {
 		detected, char := ContainsShellMetacharacter(cmd)
 
-		// 验证一致性：手动检查是否包含任何 dangerousChars
+		// 验证一致性：手动检查是否包含任一预期危险元字符
+		// 内联的字符列表与 internal/tools 包中定义的元字符集保持一致
+		expectedChars := []string{";", "|", "&", "$", "`", ">", "<", "\n", "\r", "(", ")"}
 		manualDetect := false
 		var manualChar string
-		for _, dc := range dangerousChars {
+		for _, dc := range expectedChars {
 			if strings.Contains(cmd, dc) {
 				manualDetect = true
 				manualChar = dc

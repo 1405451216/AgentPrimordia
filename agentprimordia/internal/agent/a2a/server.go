@@ -41,6 +41,7 @@ type TaskHandler interface {
 //
 // Deprecated: 自 v1.x 起 gRPC 成为 A2A 的默认传输（性能更优、二进制更小、内建拦截器链）。
 // 仍保留 JSON-RPC 服务端用于兼容老客户端；新代码请使用 A2AGRPCServer（见 grpc_server.go）。
+// Removed in v2.0.
 type A2AServer struct {
 	mux         *http.ServeMux
 	service     *A2AService
@@ -53,6 +54,7 @@ type A2AServer struct {
 // NewA2AServer 创建基于 JSON-RPC over HTTP 的 A2A 协议服务器（兼容旧 API）。
 //
 // Deprecated: 新代码请使用 NewA2AGRPCServer；本函数保留到 v2.0 移除。
+// Removed in v2.0.
 func NewA2AServer(tm TaskManager, opts ...ServerOption) *A2AServer {
 	s := &A2AServer{
 		mux:    http.NewServeMux(),
@@ -70,6 +72,7 @@ func NewA2AServer(tm TaskManager, opts ...ServerOption) *A2AServer {
 // NewA2AServerWithService 使用已有的 A2AService 创建 A2A 协议服务器（JSON-RPC）。
 //
 // Deprecated: 新代码请使用 NewA2AGRPCServerWithService；本函数保留到 v2.0 移除。
+// Removed in v2.0.
 func NewA2AServerWithService(service *A2AService, opts ...ServerOption) *A2AServer {
 	s := &A2AServer{
 		mux:     http.NewServeMux(),

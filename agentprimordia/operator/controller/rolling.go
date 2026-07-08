@@ -2,8 +2,9 @@
 //
 // 文件：rolling.go
 // 作用：在 ensureDeployment 中组装 Deployment.Spec.Strategy 与 Pod 级别的
-//      TerminationGracePeriodSeconds / Lifecycle.PreStop，使滚动升级过程中
-//      新 Pod 先启动并通过健康检查后才终止旧 Pod，避免服务中断。
+//
+//	TerminationGracePeriodSeconds / Lifecycle.PreStop，使滚动升级过程中
+//	新 Pod 先启动并通过健康检查后才终止旧 Pod，避免服务中断。
 //
 // 设计：
 //   - 默认 Strategy：RollingUpdate，MaxUnavailable=1, MaxSurge=1

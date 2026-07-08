@@ -2,7 +2,8 @@
 //
 // 文件：hpa.go
 // 作用：将 CRD 中的 HPABehaviorSpec 转换为 autoscalingv2.HorizontalPodAutoscalerBehavior，
-//      并提供默认值兜底，确保即使用户不显式配置也能获得合理的扩缩容策略。
+//
+//	并提供默认值兜底，确保即使用户不显式配置也能获得合理的扩缩容策略。
 //
 // 设计：
 //   - 默认 ScaleDown：5 分钟稳定窗口 + 每 60s 最多缩容 25%

@@ -281,12 +281,13 @@ func (s *PluginSandbox) Stats() SandboxStats {
 // PluginSandboxManager 管理多个插件沙箱实例。
 //
 // 典型用法：
-//   mgr := NewPluginSandboxManager()
-//   mgr.Register("github-tool", NewDefaultSandboxPolicy())
-//   sb, _ := mgr.Get("github-tool")
-//   release, err := sb.Acquire()
+//
+//	mgr := NewPluginSandboxManager()
+//	mgr.Register("github-tool", NewDefaultSandboxPolicy())
+//	sb, _ := mgr.Get("github-tool")
+//	release, err := sb.Acquire()
 type PluginSandboxManager struct {
-	mu       sync.RWMutex
+	mu        sync.RWMutex
 	sandboxes map[string]*PluginSandbox
 }
 

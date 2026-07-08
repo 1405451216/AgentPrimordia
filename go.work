@@ -10,7 +10,11 @@
 //
 // 注意：ecosystem/plugins 与 ecosystem/templates 仍为 monorepo
 // 内部子包（共享 go.mod），不独立拆分。Phase 7.3 范围内我们
-// 只确保 examples 的可发现性 + 跑法清晰，不强拆独立 go.mod。
-go 1.26
+// 只确保 examples 的可发现性 + 跑法清晰，不强拆独立拆分。
+go 1.26.3
 
 use ./agentprimordia
+use ./pgvector
+use ./agentprimordia/operator
+use ./gateway
+use ./wasm

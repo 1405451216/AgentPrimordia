@@ -157,13 +157,13 @@ func (p *GoroutinePool) Capacity() int {
 //   - Prometheus /metrics 端点导出（pool_workers / pool_queue_depth）
 //   - 调试与自适应调度决策
 type PoolStats struct {
-	Workers       int   // 当前 worker 数
-	ActiveWorkers int   // 正在执行任务的 worker 数
-	QueueDepth    int   // 队列中待处理任务数
-	QueueCapacity int   // 队列容量
-	MinWorkers    int   // 配置最小值
-	MaxWorkers    int   // 配置最大值
-	IsStopped     bool  // 是否已停止
+	Workers       int  // 当前 worker 数
+	ActiveWorkers int  // 正在执行任务的 worker 数
+	QueueDepth    int  // 队列中待处理任务数
+	QueueCapacity int  // 队列容量
+	MinWorkers    int  // 配置最小值
+	MaxWorkers    int  // 配置最大值
+	IsStopped     bool // 是否已停止
 }
 
 // Stats 返回当前协程池统计快照（Phase 3 Task 5）。

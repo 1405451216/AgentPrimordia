@@ -36,7 +36,7 @@
 **Files:**
 - Modify: `internal/llm/openai_provider.go`（及 `anthropic_provider.go`、`azure_provider.go`、`gemini_provider.go`、`glm_provider.go`、`qwen_provider.go`、`cohere_provider.go`、`mistral_provider.go`、`ollama_provider.go`、`deepseek_provider.go` 等全部 `*_provider.go`）
 
-- [ ] **Step 1: 审计全部 Provider 的 Stream 函数**
+- [x] **Step 1: 审计全部 Provider 的 Stream 函数**
 
 ```bash
 # 搜索所有 Stream 函数中的 body.Close 模式
@@ -44,7 +44,7 @@ grep -rn "resp.Body.Close" internal/llm/*_provider.go
 grep -rn "defer.*Body.Close" internal/llm/*_provider.go
 ```
 
-- [ ] **Step 2: 统一关闭模式**
+- [x] **Step 2: 统一关闭模式**
 
 在每个 Provider 的 `Stream` 函数入口添加：
 ```go
@@ -57,7 +57,7 @@ defer func() {
 ```
 error path 只读 `resp.StatusCode`，不重复 Close。
 
-- [ ] **Step 3: 编写一致性测试**
+- [x] **Step 3: 编写一致性测试**
 
 ```go
 // internal/llm/stream_body_test.go
@@ -67,7 +67,7 @@ func TestStream_BodyClosedOnError(t *testing.T) {
 }
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 go test -race -count=1 ./internal/llm/ -run TestStream_BodyClosed
@@ -85,7 +85,7 @@ go test -race -count=1 ./internal/llm/ -run TestStream_BodyClosed
 - Modify: `internal/orchestration/orchestrator.go:301-311`
 - Modify: `internal/orchestration/collaboration.go:609-619`
 
-- [ ] **Step 1: 逐文件修改**
+- [x] **Step 1: 逐文件修改**
 
 模式：
 ```go
@@ -101,7 +101,7 @@ mu.Unlock()
 data, _ := json.MarshalIndent(snapshot, "", "  ")
 ```
 
-- [ ] **Step 2: 验证编排功能不受影响**
+- [x] **Step 2: 验证编排功能不受影响**
 
 ```bash
 go test -race -count=1 ./internal/orchestration/ -v
@@ -119,7 +119,7 @@ go test -race -count=1 ./internal/orchestration/ -v
 - Create: `internal/llm/request_types.go`（集中定义所有 typed request struct）
 - Modify: 全部 `*_provider.go`（11+ 个 Provider）
 
-- [ ] **Step 1: 定义 typed request struct**
+- [x] **Step 1: 定义 typed request struct**
 
 ```go
 // internal/llm/request_types.go
@@ -153,7 +153,7 @@ type AnthropicRequest struct {
 // ... 其他 Provider
 ```
 
-- [ ] **Step 2: 逐个 Provider 替换 map → struct**
+- [x] **Step 2: 逐个 Provider 替换 map → struct**
 
 优先级：OpenAI → Anthropic → Azure → Gemini → GLM → Qwen → 其余
 
@@ -162,7 +162,7 @@ type AnthropicRequest struct {
 go test -count=1 ./internal/llm/ -run TestOpenAIProvider
 ```
 
-- [ ] **Step 3: Benchmark 对比**
+- [x] **Step 3: Benchmark 对比**
 
 ```go
 // internal/llm/bench_test.go
@@ -185,7 +185,7 @@ func BenchmarkRequestMarshal_Struct(b *testing.B) {
 
 预期：Struct 比 Map 快 2-5×。
 
-- [ ] **Step 4: 全量验证**
+- [x] **Step 4: 全量验证**
 
 ```bash
 go build ./... && go vet ./... && go test -race -count=1 ./internal/llm/
@@ -201,7 +201,7 @@ go build ./... && go vet ./... && go test -race -count=1 ./internal/llm/
 - Modify: `internal/llm/cache.go`
 - Modify: `internal/llm/cache_enhanced.go`
 
-- [ ] **Step 1: 引入 container/list 实现 O(1) LRU**
+- [x] **Step 1: 引入 container/list 实现 O(1) LRU**
 
 ```go
 import "container/list"
@@ -223,11 +223,11 @@ func (c *lruCache) Set(key string, val *CacheEntry) { /* O(1) */ }
 func (c *lruCache) RemoveOldest() { /* O(1) */ }
 ```
 
-- [ ] **Step 2: 替换现有 InMemoryCache 内部实现**
+- [x] **Step 2: 替换现有 InMemoryCache 内部实现**
 
 保持外部 API 不变，仅替换内部数据结构。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 ```bash
 go test -race -count=1 ./internal/llm/ -run TestCache
@@ -243,7 +243,7 @@ go test -bench=BenchmarkCache -benchmem ./internal/llm/
 **Files:**
 - Modify: `internal/orchestration/collaboration.go:1004-1090`
 
-- [ ] **Step 1: 逐个函数替换**
+- [x] **Step 1: 逐个函数替换**
 
 ```go
 // Before
@@ -271,7 +271,7 @@ func buildDebatePrompt(topic string, rounds []DebateRound) string {
 
 涉及函数：`buildDebatePrompt`、`buildReviewPrompt`、`buildConsensusPrompt`、`buildVotingPrompt`、`buildDiscussionPrompt`、`buildBrainstormPrompt`
 
-- [ ] **Step 2: 验证**
+- [x] **Step 2: 验证**
 
 ```bash
 go test -count=1 ./internal/orchestration/ -run TestCollaboration
@@ -287,7 +287,7 @@ go test -count=1 ./internal/orchestration/ -run TestCollaboration
 - Modify: `internal/llm/cache.go:108-119, 151-161`
 - Modify: `internal/llm/cache_enhanced.go:73, 98, 261`
 
-- [ ] **Step 1: fingerprint 结果缓存**
+- [x] **Step 1: fingerprint 结果缓存**
 
 ```go
 var fingerprintCache sync.Map // query string → string
@@ -302,11 +302,11 @@ func PromptFingerprint(query string) string {
 }
 ```
 
-- [ ] **Step 2: fast-path miss 计入 misses**
+- [x] **Step 2: fast-path miss 计入 misses**
 
 在 `Get` 方法的 fast-path miss 分支增加 `atomic.AddInt64(&c.misses, 1)`。
 
-- [ ] **Step 3: HitCount 改 atomic.Int64**
+- [x] **Step 3: HitCount 改 atomic.Int64**
 
 ```go
 type CacheEntry struct {
@@ -315,7 +315,7 @@ type CacheEntry struct {
 }
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 go test -race -count=1 ./internal/llm/ -run TestCache
@@ -330,7 +330,7 @@ go test -race -count=1 ./internal/llm/ -run TestCache
 **Files:**
 - Modify: `internal/memory/memory.go`
 
-- [ ] **Step 1: 锁外预处理 query**
+- [x] **Step 1: 锁外预处理 query**
 
 ```go
 func (s *InMemoryStore) Search(ctx context.Context, query string, opts *SearchOptions) ([]*Episode, error) {
@@ -342,7 +342,7 @@ func (s *InMemoryStore) Search(ctx context.Context, query string, opts *SearchOp
 }
 ```
 
-- [ ] **Step 2: 验证**
+- [x] **Step 2: 验证**
 
 ```bash
 go test -count=1 ./internal/memory/ -run TestSearch
@@ -357,7 +357,7 @@ go test -count=1 ./internal/memory/ -run TestSearch
 **Files:**
 - Modify: `internal/pool/dispatcher.go`
 
-- [ ] **Step 1: status 改 atomic.Int32**
+- [x] **Step 1: status 改 atomic.Int32**
 
 ```go
 type pendingTask struct {
@@ -374,11 +374,11 @@ func (pt *pendingTask) SetStatus(s TaskStatus) {
 }
 ```
 
-- [ ] **Step 2: 删除仅用于状态更新的 Lock/Unlock 块**
+- [x] **Step 2: 删除仅用于状态更新的 Lock/Unlock 块**
 
 逐个检查 `p.mu.Lock` 块，如果块内只有 `pt.status = ...` 则改为 `pt.SetStatus(...)` 无锁操作。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 ```bash
 go test -race -count=1 ./internal/pool/
@@ -396,9 +396,9 @@ go test -race -count=1 ./internal/pool/
 
 模式：锁内 `copy listeners`，锁外调用。
 
-- [ ] 审计所有锁内回调点
-- [ ] 逐个移出锁外
-- [ ] `go test -race ./internal/agent/ ./internal/orchestration/`
+- [x] 审计所有锁内回调点
+- [x] 逐个移出锁外
+- [x] `go test -race ./internal/agent/ ./internal/orchestration/`
 
 ---
 
@@ -471,8 +471,8 @@ var eventPayloadPool = sync.Pool{
 | memory | `BenchmarkHNSW_Search_1K`、`BenchmarkMemory_Search_FTS` |
 | pool | `BenchmarkPool_Dispatch_100Agents` |
 
-- [ ] 编写全部 Benchmark
-- [ ] 运行并记录基线
+- [x] 编写全部 Benchmark
+- [x] 运行并记录基线
 
 ```bash
 go test -bench=. -benchmem -benchtime=10s \

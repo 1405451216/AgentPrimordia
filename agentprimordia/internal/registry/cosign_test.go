@@ -159,8 +159,8 @@ func TestVerifyEnvelope_EndToEnd(t *testing.T) {
 
 	// 构造 payload + 签名
 	payload, _ := json.Marshal(map[string]string{
-		"module":     "github.com/x/plugin",
-		"version":    "1.0.0",
+		"module":      "github.com/x/plugin",
+		"version":     "1.0.0",
 		"file_sha256": hexSum,
 	})
 	env, err := SignPayload(payload, privPEM)

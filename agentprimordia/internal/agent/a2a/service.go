@@ -82,7 +82,14 @@ func (s *A2AService) CreateTask(ctx context.Context, req *CreateTaskRequest) (*T
 	}
 
 	if s.taskHandler != nil {
-		go func() { _ = s.taskHandler.HandleTask(taskID, req.Message) }()
+		go func() {
+			if err := s.taskHandler.HandleTask(taskID, req.Message); err != nil {
+				s.logger.Error("A2A 异步任务处理失败",
+					"task_id", taskID,
+					"error", err,
+				)
+			}
+		}()
 	}
 
 	return created, nil

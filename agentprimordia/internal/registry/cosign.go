@@ -9,9 +9,9 @@
 // 为避免引入第三方依赖（cosign-go 体积大），采用标准库
 // crypto/sha256 + crypto/ecdsa + crypto/elliptic 实现核心验签逻辑。
 // 真实生产环境可替换为 sigstore-go，但本实现满足：
-//   1. 验证插件 hash 与签名一致
-//   2. 验证 base64 编码格式正确
-//   3. 支持公钥指纹（SHA-256(pubkey) hex）匹配白名单
+//  1. 验证插件 hash 与签名一致
+//  2. 验证 base64 编码格式正确
+//  3. 支持公钥指纹（SHA-256(pubkey) hex）匹配白名单
 //
 // 注意：本实现仅覆盖"载荷已落地"场景，不包含证书透明日志（Rekor）校验。
 // 推荐用法：
@@ -41,8 +41,8 @@ import (
 //   - Signature：base64 编码的 DER 签名
 //   - PublicKey：PEM 编码的公钥
 type SignatureEnvelope struct {
-	Payload   string `json:"payload"`   // base64
-	Signature string `json:"signature"` // base64(DER signature)
+	Payload   string `json:"payload"`    // base64
+	Signature string `json:"signature"`  // base64(DER signature)
 	PublicKey string `json:"public_key"` // PEM ECDSA 公钥
 }
 

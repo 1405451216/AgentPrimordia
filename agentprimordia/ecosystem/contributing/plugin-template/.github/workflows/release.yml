@@ -1,0 +1,69 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Run tests
+        run: go test -race -coverprofile=coverage.out ./...
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build plugin binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o plugin-linux-amd64 .
+          GOOS=darwin GOARCH=amd64 go build -o plugin-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -o plugin-darwin-arm64 .
+          GOOS=windows GOARCH=amd64 go build -o plugin-windows-amd64.exe .
+
+      - name: Upload release assets
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: plugin-*
+          tag: ${{ github.ref }}
+          file_glob: true
+          overwrite: true
+          body: |
+            自动发布 - ${{ github.ref }}
+            
+            ## 校验和
+            ```
+            sha256sum plugin-*
+            ```
+
+      - name: Generate checksum
+        run: sha256sum plugin-* > checksums.txt
+
+      - name: Upload checksum
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: checksums.txt
+          tag: ${{ github.ref }}
+          overwrite: true

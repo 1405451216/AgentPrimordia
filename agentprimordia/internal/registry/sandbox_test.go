@@ -125,8 +125,8 @@ func TestPluginSandbox_Acquire_DoubleReleaseSafe(t *testing.T) {
 func TestPluginSandbox_Acquire_GoroutineLimit(t *testing.T) {
 	// 设一个肯定小于当前 runtime.NumGoroutine 的上限
 	sb, _ := NewPluginSandbox("p", SandboxPolicy{
-		MaxConcurrent:  10,
-		MaxGoroutines:  1, // 当前 goroutine 数远超 1
+		MaxConcurrent: 10,
+		MaxGoroutines: 1, // 当前 goroutine 数远超 1
 	})
 	_, err := sb.Acquire()
 	if err == nil {

@@ -63,7 +63,7 @@ func (q TenantQuota) Validate() error {
 
 // tenantBucket 是单个 tenant 的令牌桶状态。
 type tenantBucket struct {
-	tokens    float64
+	tokens     float64
 	lastRefill time.Time
 }
 
@@ -105,7 +105,7 @@ func NewTenantEntry(quota TenantQuota) *TenantEntry {
 	return &TenantEntry{
 		quota: quota,
 		bucket: tenantBucket{
-			tokens:    float64(quota.Burst),
+			tokens:     float64(quota.Burst),
 			lastRefill: time.Now(),
 		},
 	}

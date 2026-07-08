@@ -1,147 +1,47 @@
+// hitl.go — hitl 子包的类型别名，保持向后兼容
 package agent
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"sync"
+	"agentprimordia/internal/agent/hitl"
 )
 
-// perf-v6 round 4 Task 2：HITL 静态错误
-var ErrHumanChannelClosed = errors.New("人类输入通道已关闭")
+// ErrHumanChannelClosed 人类输入通道已关闭错误
+var ErrHumanChannelClosed = hitl.ErrHumanChannelClosed
 
 // InterruptReason 中断原因
-type InterruptReason string
+// 类型别名保持向后兼容
+type InterruptReason = hitl.InterruptReason
 
+// 中断原因常量
 const (
-	InterruptToolConfirm   InterruptReason = "tool_confirm"
-	InterruptDecisionPoint InterruptReason = "decision_point"
-	InterruptBudgetExceed  InterruptReason = "budget_exceed"
-	InterruptCustom        InterruptReason = "custom"
+	InterruptToolConfirm   = hitl.InterruptToolConfirm
+	InterruptDecisionPoint = hitl.InterruptDecisionPoint
+	InterruptBudgetExceed  = hitl.InterruptBudgetExceed
+	InterruptCustom        = hitl.InterruptCustom
 )
 
 // InterruptPoint 中断点配置
-type InterruptPoint struct {
-	Type     InterruptReason
-	ToolName string
-	Message  string
-}
+// 类型别名保持向后兼容
+type InterruptPoint = hitl.InterruptPoint
 
 // InterruptRequest 中断请求（Agent 发出）
-type InterruptRequest struct {
-	Reason  InterruptReason `json:"reason"`
-	Message string          `json:"message"`
-	Data    map[string]any  `json:"data,omitempty"`
-	Turn    int             `json:"turn"`
-}
+// 类型别名保持向后兼容
+type InterruptRequest = hitl.InterruptRequest
 
 // HumanResponse 人类响应
-type HumanResponse struct {
-	Approved bool           `json:"approved"`
-	Input    string         `json:"input,omitempty"`
-	Modified map[string]any `json:"modified,omitempty"`
-}
+// 类型别名保持向后兼容
+type HumanResponse = hitl.HumanResponse
 
 // HITLConfig 人机协作配置
-type HITLConfig struct {
-	InterruptPoints  []InterruptPoint
-	HumanInputChan   <-chan *HumanResponse
-	OnInterrupt      func(req *InterruptRequest)
-	AutoApproveTools []string
-}
+// 类型别名保持向后兼容
+type HITLConfig = hitl.HITLConfig
 
 // HITLManager 人机协作管理器
-type HITLManager struct {
-	config     HITLConfig
-	pending    *InterruptRequest
-	responseCh chan *HumanResponse
-	mu         sync.RWMutex
-}
+// 类型别名保持向后兼容
+type HITLManager = hitl.HITLManager
 
 // NewHITLManager 创建人机协作管理器
+// 委托到 hitl 子包，保持向后兼容
 func NewHITLManager(config HITLConfig) *HITLManager {
-	responseCh := make(chan *HumanResponse, 8)
-
-	mgr := &HITLManager{
-		config:     config,
-		responseCh: responseCh,
-	}
-
-	return mgr
-}
-
-// ShouldInterrupt 判断当前操作是否需要中断
-func (m *HITLManager) ShouldInterrupt(toolName string, reason InterruptReason) bool {
-	if m.isAutoApproved(toolName) {
-		return false
-	}
-
-	for _, ip := range m.config.InterruptPoints {
-		if ip.Type != reason {
-			continue
-		}
-		if ip.ToolName == "" || ip.ToolName == toolName {
-			return true
-		}
-	}
-	return false
-}
-
-// isAutoApproved 检查工具是否在自动批准列表中
-func (m *HITLManager) isAutoApproved(toolName string) bool {
-	for _, name := range m.config.AutoApproveTools {
-		if name == toolName {
-			return true
-		}
-	}
-	return false
-}
-
-// RequestInterrupt 发起中断请求，阻塞等待人类响应
-func (m *HITLManager) RequestInterrupt(ctx context.Context, req *InterruptRequest) (*HumanResponse, error) {
-	m.mu.Lock()
-	m.pending = req
-	m.mu.Unlock()
-
-	if m.config.OnInterrupt != nil {
-		m.config.OnInterrupt(req)
-	}
-
-	var resp *HumanResponse
-
-	select {
-	case r, ok := <-m.config.HumanInputChan:
-		if !ok {
-			return nil, ErrHumanChannelClosed // perf-v6 round 4 Task 2
-		}
-		resp = r
-	case r, ok := <-m.responseCh:
-		if !ok {
-			return nil, fmt.Errorf("响应通道已关闭")
-		}
-		resp = r
-	case <-ctx.Done():
-		m.mu.Lock()
-		m.pending = nil
-		m.mu.Unlock()
-		return nil, fmt.Errorf("等待人类响应超时: %w", ctx.Err())
-	}
-
-	m.mu.Lock()
-	m.pending = nil
-	m.mu.Unlock()
-
-	return resp, nil
-}
-
-// Resume 恢复 Agent 执行（外部调用）
-func (m *HITLManager) Resume(response *HumanResponse) {
-	m.responseCh <- response
-}
-
-// Pending 返回当前挂起的中断请求
-func (m *HITLManager) Pending() *InterruptRequest {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.pending
+	return hitl.NewHITLManager(config)
 }

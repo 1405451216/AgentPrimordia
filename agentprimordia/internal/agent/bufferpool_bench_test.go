@@ -27,26 +27,6 @@ func BenchmarkHookContext_Pool(b *testing.B) {
 	}
 }
 
-// BenchmarkBuffer_Direct 对比直接分配 bytes.Buffer。
-func BenchmarkBuffer_Direct(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		buf := bytes.NewBuffer(make([]byte, 0, 1024))
-		buf.WriteString("hello")
-		_ = buf
-	}
-}
-
-// BenchmarkBuffer_Pool 对比池化分配 bytes.Buffer。
-func BenchmarkBuffer_Pool(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		buf := AcquireBuffer()
-		buf.WriteString("hello")
-		ReleaseBuffer(buf)
-	}
-}
-
 // BenchmarkHookContext_Direct_Escaped 修正 BenchmarkHookContext_Direct 的假象：
 // `_ = hctx` 让编译器完全消除字面量分配。
 // 真实场景下 hctx 通过 Fire(ctx, hctx) 逃逸到堆，这里用 sink slice 模拟。

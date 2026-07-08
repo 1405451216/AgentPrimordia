@@ -2,7 +2,36 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [v0.8.0] - 2026-07-07
+
+### Added
+
+- **MCP Go Server** (`internal/mcp/http_server.go`): 标准 MCP over HTTP 协议（tools/list, tools/call, initialize）
+- **MCP TypeScript Client** (`sdk/typescript/src/mcp/client.ts`): 零依赖双传输（HTTP/SSE + stdio）JSON-RPC 客户端，7 tests
+- **A2A 工具租赁** (`internal/agent/a2a/tool_lease.go`): 配额管理 + 过期回收，优先级抢占，15 tests
+- **Lessee 客户端** (`internal/agent/a2a/lessee.go`): 本地租约全生命周期管理
+- **零依赖可视化编辑器** (`sdk/typescript/src/react/visual-editor.tsx`): Pipeline/Handoff/DAG/GroupChat/Debate 五种模式
+- **pgvector 独立模块** (`pgvector/store.go`): 向量 CRUD + KNN + HNSW/IVFFlat + JSONB，5 tests
+- **K8s LLM 智能扩缩容** (`operator/autoscaler/llm_autoscaler.go`): 队列深度/延迟/Token 速率三维度调度，9 tests
+- **Go WASM Edge Gateway** (`gateway/gateway.go`): KV 会话亲和，零 CGO，Cloudflare Workers/Vercel Edge 部署就绪，9 tests
+- **WASM 运行时** (`wasm/runtime.go`): wazero 沙箱，模块编译缓存 + 资源限制，5 tests
+
+### 依赖变更
+
+- `github.com/jackc/pgx/v5` — pgvector 模块（无法用 stdlib 复现）
+- `github.com/tetratelabs/wazero` — wasm 模块（纯 Go WASM 运行时）
+
 ## [Unreleased]
+
+### Added
+
+- **子包测试迁移**：将 `workflow_test.go` 和 `hooks_test.go` 从父包迁移到各自子包，新增 `core_test.go`、`tokencache_edge_test.go`、`gateway_test.go`，共 98 个新测试
+- **子包覆盖率提升**：workflow/ 0%→73.9%，hooks/ 0%→82.1%，core/ 0%→100%，tokencache/ 55%→96.6%，gateway/ 0%→60.9%
+
+### Changed
+
+- **Phase 3 包拆分**：提取 workflow/、hooks/、core/、dag/、cost/、bufferpool/、tokencache/、zerocopy/、hitl/、context/ 子包，父包通过类型别名保持向后兼容
+- **Deprecated 标注完善**：所有 `// Deprecated:` 注释补充 `// Removed in v2.0.` 标记
 
 ## [1.0.0] - 2026-06-30
 

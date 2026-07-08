@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"agentprimordia/internal/security"
 	"agentprimordia/internal/tools"
 )
 
@@ -37,9 +36,9 @@ var defaultWhitelist = []string{
 }
 
 // containsShellMetacharacters 检查命令是否包含危险的 shell 元字符。
-// 复用 security 包的统一规则，确保 Shell 工具与 Sandbox 校验一致。
+// 复用 tools 包的统一规则，确保 Shell 工具与 Sandbox 校验一致。
 func containsShellMetacharacters(cmd string) (bool, string) {
-	return security.ContainsShellMetacharacter(cmd)
+	return tools.ContainsShellMetacharacter(cmd)
 }
 
 type Shell struct {

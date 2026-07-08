@@ -2,6 +2,7 @@ package a2a
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -231,6 +232,33 @@ func TestA2AService_TaskHandlerInvoked(t *testing.T) {
 	}
 }
 
+// TestA2AService_CreateTask_AsyncHandlerError 验证异步任务处理失败时
+// 通过 slog 记录错误日志，避免静默吞错。
+func TestA2AService_CreateTask_AsyncHandlerError(t *testing.T) {
+	card := NewAgentCard("agent-1", "Test Agent")
+	tm := NewTaskManager()
+
+	// 创建一个返回错误的 handler，确保 CreateTask 不阻塞/不 panic
+	handler := &errorTaskHandler{err: errors.New("simulated downstream failure"), done: make(chan struct{})}
+	svc := NewA2AService(card, tm, WithA2AServiceTaskHandler(handler))
+
+	msg := &A2AMessage{Role: "user", Parts: []Part{NewTextPart("hello")}}
+	created, err := svc.CreateTask(context.Background(), &CreateTaskRequest{Message: msg})
+	if err != nil {
+		t.Fatalf("CreateTask should succeed even if async handler fails: %v", err)
+	}
+	if created == nil {
+		t.Fatal("expected non-nil created task")
+	}
+
+	// 等待 goroutine 执行，确保错误日志路径被触发
+	select {
+	case <-handler.done:
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for error handler goroutine")
+	}
+}
+
 type recordingTaskHandler struct {
 	called chan struct{}
 }
@@ -241,5 +269,19 @@ func (h *recordingTaskHandler) HandleTask(taskID string, message *A2AMessage) er
 }
 
 func (h *recordingTaskHandler) CancelTask(taskID string) error {
+	return nil
+}
+
+type errorTaskHandler struct {
+	err  error
+	done chan struct{}
+}
+
+func (h *errorTaskHandler) HandleTask(taskID string, message *A2AMessage) error {
+	defer close(h.done)
+	return h.err
+}
+
+func (h *errorTaskHandler) CancelTask(taskID string) error {
 	return nil
 }

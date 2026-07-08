@@ -37,7 +37,7 @@
 - Modify: `internal/agent/a2a/grpc_server.go`（从 gRPC metadata 提取 trace context）
 - Create: `internal/agent/a2a/trace_propagation_test.go`
 
-- [ ] **Step 1: 客户端注入 W3C Trace Context**
+- [x] **Step 1: 客户端注入 W3C Trace Context**
 
 ```go
 // internal/agent/a2a/grpc_client.go
@@ -61,7 +61,7 @@ func injectTraceContext(ctx context.Context) context.Context {
 }
 ```
 
-- [ ] **Step 2: 服务端提取 Trace Context**
+- [x] **Step 2: 服务端提取 Trace Context**
 
 ```go
 // internal/agent/a2a/grpc_server.go
@@ -77,7 +77,7 @@ func (s *A2AGRPCServer) SendTask(ctx context.Context, req *a2av1.SendTaskRequest
 }
 ```
 
-- [ ] **Step 3: 编写测试**
+- [x] **Step 3: 编写测试**
 
 ```go
 func TestTracePropagation_A2ACall(t *testing.T) {
@@ -86,7 +86,7 @@ func TestTracePropagation_A2ACall(t *testing.T) {
 }
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 go test -race -count=1 ./internal/agent/a2a/ -run TestTrace
@@ -104,7 +104,7 @@ go test -race -count=1 ./internal/agent/a2a/ -run TestTrace
 - Modify: `internal/orchestration/handoff.go`
 - Modify: `internal/agent/dag.go`（或拆分后的 `internal/agent/dag/`）
 
-- [ ] **Step 1: 在编排引擎中注入 tracer**
+- [x] **Step 1: 在编排引擎中注入 tracer**
 
 ```go
 type Orchestrator struct {
@@ -131,7 +131,7 @@ func (o *Orchestrator) executeSequential(ctx context.Context, steps []Step) erro
 }
 ```
 
-- [ ] **Step 2: DAG 每个节点自动追踪**
+- [x] **Step 2: DAG 每个节点自动追踪**
 
 ```go
 func (d *DAGWorkflow) executeNode(ctx context.Context, nodeID string) error {
@@ -144,7 +144,7 @@ func (d *DAGWorkflow) executeNode(ctx context.Context, nodeID string) error {
 }
 ```
 
-- [ ] **Step 3: LLM 调用追踪增强**
+- [x] **Step 3: LLM 调用追踪增强**
 
 ```go
 // 在 LLM 调用处增加 span attribute
@@ -155,7 +155,7 @@ span.SetAttribute("llm.completion_tokens", resp.Usage.CompletionTokens)
 span.SetAttribute("llm.cost_usd", cost)
 ```
 
-- [ ] **Step 4: 验证**
+- [x] **Step 4: 验证**
 
 ```bash
 go test -race -count=1 ./internal/orchestration/ ./internal/agent/
@@ -174,7 +174,7 @@ go test -race -count=1 ./internal/orchestration/ ./internal/agent/
 - Create: `deploy/grafana/dashboard-memory.json`
 - Create: `deploy/grafana/dashboard-orchestration.json`
 
-- [ ] **Step 1: Pool Dashboard**
+- [x] **Step 1: Pool Dashboard**
 
 面板包含：
 - Active Workers 时序图
@@ -184,7 +184,7 @@ go test -race -count=1 ./internal/orchestration/ ./internal/agent/
 - Task Error Rate
 - Worker Scaling Events
 
-- [ ] **Step 2: Memory Dashboard**
+- [x] **Step 2: Memory Dashboard**
 
 面板包含：
 - Memory Size (bytes) 时序图
@@ -194,7 +194,7 @@ go test -race -count=1 ./internal/orchestration/ ./internal/agent/
 - RAG Retrieval Count
 - Memory Compression Events
 
-- [ ] **Step 3: Orchestration Dashboard**
+- [x] **Step 3: Orchestration Dashboard**
 
 面板包含：
 - Workflow Execution Rate
@@ -211,7 +211,7 @@ go test -race -count=1 ./internal/orchestration/ ./internal/agent/
 **Files:**
 - Create: `deploy/grafana/alerting_rules.yml`
 
-- [ ] **Step 1: 定义 SLO 告警规则**
+- [x] **Step 1: 定义 SLO 告警规则**
 
 ```yaml
 # deploy/grafana/alerting_rules.yml
@@ -269,11 +269,11 @@ groups:
           severity: warning
 ```
 
-- [ ] **Step 2: 更新 Grafana datasource.yml**
+- [x] **Step 2: 更新 Grafana datasource.yml**
 
 确保 Prometheus datasource 配置指向正确的 alertmanager。
 
-- [ ] **Step 3: 创建 Alerting Contact Points 文档**
+- [x] **Step 3: 创建 Alerting Contact Points 文档**
 
 ```yaml
 # deploy/grafana/contact_points.yml
@@ -287,7 +287,7 @@ groups:
 **Files:**
 - Modify: `deploy/grafana/dashboard-cost.json`
 
-- [ ] **Step 1: 添加实时成本面板**
+- [x] **Step 1: 添加实时成本面板**
 
 面板包含：
 - 每日 LLM Token 消耗（按 provider/model 分组）
@@ -309,7 +309,7 @@ groups:
 - Modify: `operator/controller/agent_controller.go`
 - Modify: `operator/api/v1/types.go`（增加 HPA 自定义指标配置）
 
-- [ ] **Step 1: 实现 Pod 指标采集器**
+- [x] **Step 1: 实现 Pod 指标采集器**
 
 ```go
 // operator/controller/metrics_adapter.go
@@ -337,7 +337,7 @@ func (c *PodMetricsCollector) Collect(ctx context.Context, deploy *agentv1.Agent
 }
 ```
 
-- [ ] **Step 2: HPA v2 配置自定义指标**
+- [x] **Step 2: HPA v2 配置自定义指标**
 
 ```go
 func (r *AgentDeploymentReconciler) ensureHPA(ctx context.Context, deploy *agentv1.AgentDeployment) error {
@@ -374,7 +374,7 @@ func (r *AgentDeploymentReconciler) ensureHPA(ctx context.Context, deploy *agent
 }
 ```
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 ```bash
 # 在 envtest 环境中验证 HPA 创建
@@ -389,7 +389,7 @@ go test -tags=envtest -v -timeout=120s ./operator/controller/...
 - Create: `operator/controller/pdb.go`
 - Modify: `operator/controller/agent_controller.go`
 
-- [ ] **Step 1: 创建 PDB**
+- [x] **Step 1: 创建 PDB**
 
 ```go
 func (r *AgentDeploymentReconciler) ensurePDB(ctx context.Context, deploy *agentv1.AgentDeployment) error {
@@ -409,7 +409,7 @@ func (r *AgentDeploymentReconciler) ensurePDB(ctx context.Context, deploy *agent
 }
 ```
 
-- [ ] **Step 2: 验证**
+- [x] **Step 2: 验证**
 
 ```bash
 go test -tags=envtest -v ./operator/controller/ -run TestPDB
@@ -422,7 +422,7 @@ go test -tags=envtest -v ./operator/controller/ -run TestPDB
 **Files:**
 - Modify: `operator/controller/agent_controller.go`
 
-- [ ] **Step 1: 配置 HPA 行为**
+- [x] **Step 1: 配置 HPA 行为**
 
 ```go
 hpa.Spec.Behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{
@@ -456,7 +456,7 @@ hpa.Spec.Behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{
 **Files:**
 - Modify: `operator/controller/agent_controller.go`
 
-- [ ] **Step 1: 支持滚动升级策略**
+- [x] **Step 1: 支持滚动升级策略**
 
 ```go
 // Deployment 更新策略
@@ -471,7 +471,7 @@ deployment.Spec.Strategy = appsv1.DeploymentStrategy{
 // 升级时先启动新 Pod，健康检查通过后再终止旧 Pod
 ```
 
-- [ ] **Step 2: 优雅关闭集成**
+- [x] **Step 2: 优雅关闭集成**
 
 确保 Agent Pod 在收到 SIGTERM 时：
 1. 停止接受新任务
@@ -491,7 +491,7 @@ deployment.Spec.Strategy = appsv1.DeploymentStrategy{
 - Modify: `internal/llm/*_provider.go`
 - Modify: `internal/pool/dispatcher.go`
 
-- [ ] **Step 1: 统一日志字段**
+- [x] **Step 1: 统一日志字段**
 
 所有日志使用统一的字段名：
 
@@ -511,7 +511,7 @@ const (
 )
 ```
 
-- [ ] **Step 2: 将 log.Default() 替换为 slog**
+- [x] **Step 2: 将 log.Default() 替换为 slog**
 
 搜索所有 `log.Printf` / `log.Default()` 调用，替换为结构化 `slog`：
 
@@ -527,7 +527,7 @@ slogger.Info("tool executed",
 )
 ```
 
-- [ ] **Step 3: 日志关联 Trace ID**
+- [x] **Step 3: 日志关联 Trace ID**
 
 ```go
 // 从 context 中提取 trace ID，写入日志

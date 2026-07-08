@@ -72,10 +72,10 @@ type TenantScoped struct {
 
 // tenantStats 跟踪该 TenantScoped 实例的调用计数。
 type tenantStats struct {
-	adds    atomic.Int64
-	gets    atomic.Int64
+	adds     atomic.Int64
+	gets     atomic.Int64
 	searches atomic.Int64
-	denied  atomic.Int64
+	denied   atomic.Int64
 }
 
 // TenantStats 暴露 TenantScoped 实例的运行时统计。
