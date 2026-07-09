@@ -22,6 +22,9 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 - `modernc.org/sqlite` — 纯 Go SQLite 驱动（无 CGO），用于 `internal/memory` 与 `ecosystem/plugins/kv` 等需要持久化的场景
 - `gopkg.in/yaml.v3` — 仅用于 `cmd/ap` 脚手架子命令的 YAML 模板渲染（agent.yaml 等），不作为通用配置库
 - `google.golang.org/grpc` + `google.golang.org/protobuf` + 间接依赖 `google.golang.org/genproto/googleapis/rpc` — **仅限 `internal/agent/a2a/` 及其子包** 使用，用于实现 Agent2Agent 协议（gRPC + protobuf 是该协议的事实标准）
+- `go.etcd.io/etcd/client/v3` — etcd 客户端（G2-3 分布式检查点后端）。**仅限 `internal/persist/` 下带 `etcd` build tag 的文件** 使用。etcd 是分布式强一致协调的行业标准协议，其客户端无 Go 标准库等价实现，符合 §2.2 硬性需求豁免。
+- `github.com/redis/go-redis/v9` — Redis 客户端（G2-3 分布式检查点后端）。**仅限 `internal/persist/` 下带 `redis` build tag 的文件** 使用。Redis 线协议客户端属行业标准实现，无法用标准库合理复现，符合 §2.2 硬性需求豁免。
+- `github.com/tetratelabs/wazero` — 纯 Go（CGO-free）WebAssembly 运行时（G3-3 WASM 执行）。**仅限 `wasm/` 模块** 使用。WASM 运行时无标准库等价实现，wazero 为 CGO-free 纯 Go 实现，符合 §2.2 硬性需求豁免。
 
 ### 2.2 依赖扩展的审批流程
 
@@ -32,6 +35,8 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 - 任何其他场景需先在 PR 中说明理由并征得维护者同意
 
 依赖的真实使用边界以 `go mod why -m <package>` 输出为准；如发现某依赖被白名单外的包引用，应立即调整或回滚。
+
+> **审批记录（2026-07-09）**：经维护者确认，新增 `go.etcd.io/etcd/client/v3`、`github.com/redis/go-redis/v9`、`github.com/tetratelabs/wazero` 三项白名单外依赖（分别对应 G2-3 分布式检查点、G3-3 WASM 执行所需）。三项均属「行业标准协议/运行时、无法用 Go 标准库复现」的硬性需求豁免，使用边界见上 §2.1。对应的 `etcd_checkpoint.go` / `redis_checkpoint.go` 经 build tag 门控，`wazero` 仅限 `wasm/` 模块，不污染默认构建。
 
 ## 3. 代码规范
 

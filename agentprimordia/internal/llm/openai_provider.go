@@ -124,7 +124,7 @@ func (p *OpenAIProvider) Complete(ctx context.Context, req *CompletionRequest) (
 
 	var resp openaiChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 	if resp.Error != nil {
 		return nil, resp.Error
@@ -335,7 +335,7 @@ func (p *OpenAIProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 
 	var resp openaiChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 	if resp.Error != nil {
 		return nil, resp.Error
@@ -387,7 +387,7 @@ func (p *OpenAIProvider) Embeddings(ctx context.Context, texts []string) ([][]fl
 
 	var resp openaiEmbedResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	result := make([][]float32, len(resp.Data))

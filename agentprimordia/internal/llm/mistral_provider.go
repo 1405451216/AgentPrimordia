@@ -74,7 +74,7 @@ func (p *MistralProvider) Complete(ctx context.Context, req *CompletionRequest) 
 
 	var resp openaiChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 	if resp.Error != nil {
 		return nil, resp.Error
@@ -252,7 +252,7 @@ func (p *MistralProvider) CallTools(ctx context.Context, req *ToolCallRequest) (
 
 	var resp openaiChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 	if resp.Error != nil {
 		return nil, resp.Error
@@ -303,7 +303,7 @@ func (p *MistralProvider) Embeddings(ctx context.Context, texts []string) ([][]f
 
 	var resp openaiEmbedResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	result := make([][]float32, len(resp.Data))

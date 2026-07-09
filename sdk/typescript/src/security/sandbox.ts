@@ -119,7 +119,7 @@ parentPort.on('message', (data) => {
     }
 
     // 包装代码到函数中执行
-    const wrappedCode = '(function() { "use strict";\\n' + code + '\\n})()';
+    const wrappedCode = 'return (function() { "use strict";\\n' + code + '\\n})()';
     const fn = new Function(...Object.keys(sandbox), wrappedCode);
     const result = fn(...Object.values(sandbox));
 
@@ -127,12 +127,16 @@ parentPort.on('message', (data) => {
     const memUsage = process.memoryUsage();
 
     parentPort.postMessage({
-      success: true,
-      result: result,
-      stdout: stdout,
-      stderr: stderr,
+      output: {
+        success: true,
+        result: result,
+        stdout: stdout,
+        stderr: stderr,
+        duration: duration,
+        memoryUsed: memUsage.heapUsed,
+      },
+      error: null,
       duration: duration,
-      memoryUsed: memUsage.heapUsed,
     });
   } catch (err) {
     const duration = Date.now() - startTime;
@@ -143,13 +147,17 @@ parentPort.on('message', (data) => {
     if (err.name === 'EvalError') errorType = 'security';
 
     parentPort.postMessage({
-      success: false,
-      stdout: stdout,
-      stderr: stderr,
+      output: {
+        success: false,
+        stdout: stdout,
+        stderr: stderr,
+        duration: duration,
+        memoryUsed: memUsage.heapUsed,
+        error: err.message || String(err),
+        errorType: errorType,
+      },
+      error: null,
       duration: duration,
-      memoryUsed: memUsage.heapUsed,
-      error: err.message || String(err),
-      errorType: errorType,
     });
   }
 });

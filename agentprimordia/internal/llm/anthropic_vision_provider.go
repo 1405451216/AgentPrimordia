@@ -68,7 +68,7 @@ func (p *AnthropicVisionProvider) CompleteMultimodal(ctx context.Context, req *C
 
 	var resp anthropicMessagesResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	content := ""

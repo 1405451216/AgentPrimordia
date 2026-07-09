@@ -15,6 +15,10 @@ interface GeminiPart {
     name: string;
     args?: Record<string, unknown>;
   };
+  functionResponse?: {
+    name: string;
+    response: { content: string };
+  };
 }
 
 interface GeminiContent {
@@ -214,10 +218,25 @@ export class GeminiProvider implements Provider {
         continue;
       }
       if (msg.role === 'tool') {
+        // Convert tool results to Gemini's functionResponse format
         contents.push({
           role: 'user',
-          parts: [{ text: `[Tool Result: ${msg.name}]\n${msg.content}` }],
+          parts: [{ functionResponse: { name: msg.name ?? 'tool', response: { content: msg.content } } }],
         });
+        continue;
+      }
+      if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+        // Convert assistant tool_calls to Gemini's functionCall parts
+        const parts: GeminiPart[] = [];
+        if (msg.content) {
+          parts.push({ text: msg.content });
+        }
+        for (const tc of msg.toolCalls) {
+          let args: Record<string, unknown> = {};
+          try { args = JSON.parse(tc.arguments); } catch {}
+          parts.push({ functionCall: { name: tc.name, args } });
+        }
+        contents.push({ role: 'model', parts });
         continue;
       }
       contents.push({

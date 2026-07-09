@@ -78,7 +78,7 @@ func (s *A2AService) CreateTask(ctx context.Context, req *CreateTaskRequest) (*T
 
 	created, err := s.taskManager.Create(task)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrTaskConflict, err)
+		return nil, fmt.Errorf("%w: %w", ErrTaskConflict, err)
 	}
 
 	if s.taskHandler != nil {
@@ -102,7 +102,7 @@ func (s *A2AService) GetTask(ctx context.Context, taskID string) (*Task, error) 
 	}
 	task, err := s.taskManager.Get(taskID)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrTaskNotFound, err)
+		return nil, fmt.Errorf("%w: %w", ErrTaskNotFound, err)
 	}
 	return task, nil
 }
@@ -117,7 +117,7 @@ func (s *A2AService) CancelTask(ctx context.Context, taskID string) (*Task, erro
 		if strings.Contains(err.Error(), "非法状态转换") {
 			codeErr = ErrTaskConflict
 		}
-		return nil, fmt.Errorf("%w: %v", codeErr, err)
+		return nil, fmt.Errorf("%w: %w", codeErr, err)
 	}
 	return s.taskManager.Get(taskID)
 }
@@ -129,7 +129,7 @@ func (s *A2AService) SubscribeTaskEvents(ctx context.Context, taskID string) (<-
 	}
 	// 验证任务存在
 	if _, err := s.taskManager.Get(taskID); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrTaskNotFound, err)
+		return nil, fmt.Errorf("%w: %w", ErrTaskNotFound, err)
 	}
 	return s.taskManager.Subscribe(taskID), nil
 }

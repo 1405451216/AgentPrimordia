@@ -133,7 +133,19 @@ export abstract class OpenAICompatibleProvider implements Provider {
   protected buildBody(req: CompletionRequest): Record<string, unknown> {
     const body: Record<string, unknown> = {
       model: req.model ?? this.config.model,
-      messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: req.messages.map((m) => {
+        const msg: Record<string, unknown> = { role: m.role, content: m.content };
+        if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+          msg.tool_calls = m.toolCalls.map((tc) => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }));
+        }
+        if (m.role === 'tool' && m.toolCallId) {
+          msg.tool_call_id = m.toolCallId;
+        }
+        if (m.name) {
+          msg.name = m.name;
+        }
+        return msg;
+      }),
     };
     if (req.temperature ?? this.config.temperature) {
       body.temperature = req.temperature ?? this.config.temperature;
@@ -353,7 +365,19 @@ export class CohereProvider implements Provider {
   }
 
   private buildBody(req: CompletionRequest): Record<string, unknown> {
-    const messages = req.messages.map((m) => ({ role: m.role, content: m.content }));
+    const messages = req.messages.map((m) => {
+      const msg: Record<string, unknown> = { role: m.role, content: m.content };
+      if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+        msg.tool_calls = m.toolCalls.map((tc) => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }));
+      }
+      if (m.role === 'tool' && m.toolCallId) {
+        msg.tool_call_id = m.toolCallId;
+      }
+      if (m.name) {
+        msg.name = m.name;
+      }
+      return msg;
+    });
     const body: Record<string, unknown> = { model: req.model ?? this.config.model, messages };
     if (req.temperature ?? this.config.temperature) body.temperature = req.temperature ?? this.config.temperature;
     if (req.maxTokens ?? this.config.maxTokens) body.max_tokens = req.maxTokens ?? this.config.maxTokens;
@@ -492,7 +516,19 @@ export class AzureOpenAIProvider implements Provider {
 
   private buildBody(req: CompletionRequest): Record<string, unknown> {
     const body: Record<string, unknown> = {
-      messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+      messages: req.messages.map((m) => {
+        const msg: Record<string, unknown> = { role: m.role, content: m.content };
+        if (m.role === 'assistant' && m.toolCalls && m.toolCalls.length > 0) {
+          msg.tool_calls = m.toolCalls.map((tc) => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }));
+        }
+        if (m.role === 'tool' && m.toolCallId) {
+          msg.tool_call_id = m.toolCallId;
+        }
+        if (m.name) {
+          msg.name = m.name;
+        }
+        return msg;
+      }),
     };
     if (req.temperature ?? this.config.temperature) body.temperature = req.temperature ?? this.config.temperature;
     if (req.maxTokens ?? this.config.maxTokens) body.max_tokens = req.maxTokens ?? this.config.maxTokens;

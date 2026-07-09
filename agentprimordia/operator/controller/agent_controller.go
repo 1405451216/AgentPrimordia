@@ -40,6 +40,9 @@ type AgentDeploymentReconciler struct {
 	// nil 时跳过 Pod 指标采集；不为 nil 时会在 updateStatus 之后抓取 Pod /metrics 并把
 	// 关键值（concurrent_tasks/cost/tokens）回写到 AgentDeployment.Status
 	MetricsAdapter *ReconcileMetricsAdapter
+	// CanaryRollout 可选：灰度发布控制器（G2-4）。
+	// nil 时跳过灰度发布逻辑；不为 nil 时在 updateStatus 之后执行灰度调谐。
+	CanaryRollout *CanaryRolloutReconciler
 }
 
 // +kubebuilder:rbac:groups=agent.primordia.dev,resources=agentdeployments,verbs=get;list;watch;create;update;patch;delete
@@ -116,6 +119,21 @@ func (r *AgentDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	// 6. 自定义 Metrics Adapter 采集（best-effort，不阻塞 Reconcile）
 	if r.MetricsAdapter != nil {
 		r.collectCustomMetrics(ctx, &agentDeploy, logger)
+	}
+
+	// 7. 灰度发布调谐（G2-4，best-effort，不阻塞 Reconcile）
+	if r.CanaryRollout != nil {
+		// 确保 stable Deployment 有 role label（首次调谐）
+		if err := r.CanaryRollout.EnsureCanaryStableLabel(ctx, &agentDeploy); err != nil {
+			logger.Info("确保 stable label 失败（非致命）", "error", err.Error())
+		}
+		// 执行灰度状态机调谐
+		result, err := r.CanaryRollout.CanaryRolloutReconcile(ctx, &agentDeploy)
+		if err != nil {
+			logger.Info("灰度发布调谐失败（非致命）", "error", err.Error())
+		} else if result.RequeueAfter > 0 {
+			return result, nil
+		}
 	}
 
 	return ctrl.Result{}, nil

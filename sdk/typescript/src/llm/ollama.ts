@@ -12,6 +12,9 @@ const USER_AGENT = 'AgentPrimordia-TS/1.0';
 interface OllamaMessage {
   role: string;
   content: string;
+  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
+  tool_call_id?: string;
+  name?: string;
 }
 
 interface OllamaTool {
@@ -199,10 +202,19 @@ export class OllamaProvider implements Provider {
   // ===== Internal helpers =====
 
   private buildMessages(messages: Message[]): OllamaMessage[] {
-    return messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-    }));
+    return messages.map((msg) => {
+      const m: OllamaMessage = { role: msg.role, content: msg.content };
+      if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+        m.tool_calls = msg.toolCalls.map((tc) => ({ id: tc.id, type: 'function', function: { name: tc.name, arguments: tc.arguments } }));
+      }
+      if (msg.role === 'tool' && msg.toolCallId) {
+        m.tool_call_id = msg.toolCallId;
+      }
+      if (msg.name) {
+        m.name = msg.name;
+      }
+      return m;
+    });
   }
 
   private async doRequest(path: string, body: Record<string, unknown>): Promise<string> {

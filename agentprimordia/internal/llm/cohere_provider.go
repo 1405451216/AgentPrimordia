@@ -70,7 +70,7 @@ func (p *CohereProvider) Complete(ctx context.Context, req *CompletionRequest) (
 
 	var resp cohereChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	content := ""
@@ -238,7 +238,7 @@ func (p *CohereProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 
 	var resp cohereChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	content := ""

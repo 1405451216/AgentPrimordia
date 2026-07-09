@@ -11,11 +11,12 @@ const API_VERSION = '2023-06-01';
 const USER_AGENT = 'AgentPrimordia-TS/1.0';
 
 interface AnthropicContentBlock {
-  type: 'text' | 'tool_use';
+  type: 'text' | 'tool_use' | 'tool_result';
   text?: string;
   id?: string;
   name?: string;
   input?: unknown;
+  tool_use_id?: string;
 }
 
 interface AnthropicMessage {
@@ -216,14 +217,31 @@ export class AnthropicProvider implements Provider {
         continue;
       }
       if (msg.role === 'tool') {
-        // Convert tool results to user messages with tool_result content
+        // Convert tool results to user messages with tool_result content block
+        // (Anthropic API requires tool_result blocks in user messages)
         converted.push({
           role: 'user',
           content: [{
-            type: 'text',
+            type: 'tool_result' as 'tool_use',
+            // Anthropic tool_result uses tool_use_id, not id
+            ...(msg.toolCallId ? { id: msg.toolCallId } : {}),
             text: `[Tool Result: ${msg.name}]\n${msg.content}`,
-          }],
+          } as unknown as AnthropicContentBlock],
         });
+        continue;
+      }
+      if (msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0) {
+        // Convert assistant messages with tool_calls to Anthropic's tool_use format
+        const blocks: AnthropicContentBlock[] = [];
+        if (msg.content) {
+          blocks.push({ type: 'text', text: msg.content });
+        }
+        for (const tc of msg.toolCalls) {
+          let input: unknown = {};
+          try { input = JSON.parse(tc.arguments); } catch { input = {}; }
+          blocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input });
+        }
+        converted.push({ role: 'assistant', content: blocks });
         continue;
       }
       converted.push({

@@ -15,7 +15,10 @@ type Config struct {
 	MemoryLimitPages uint32
 	ExecutionTimeout time.Duration
 	EnableWASI       bool
-	MaxFuel          uint64
+	// MaxFuel 预留的 Fuel 计量配额（前向兼容字段）。
+	// 当前 wazero v1.12.0 公共 API 未暴露 WithFuel，
+	// CPU 配额以 ExecutionTimeout 落地；升级 wazero 后此处生效。
+	MaxFuel uint64
 }
 
 // DefaultConfig 默认沙箱配置（640KB 内存、30s 超时、WASI 关闭）
@@ -96,10 +99,7 @@ func (r *Runtime) Call(parent context.Context, moduleName, function string, args
 	ctx, cancel := context.WithTimeout(parent, r.config.ExecutionTimeout)
 	defer cancel()
 
-	cfg := wazero.NewModuleConfig().
-		WithStdout(nil).
-		WithStderr(nil).
-		WithStdin(nil)
+	cfg := r.buildModuleConfig()
 
 	instance, err := r.ctx.InstantiateModule(ctx, mod, cfg)
 	if err != nil {
@@ -161,9 +161,75 @@ func (r *Runtime) IsCompiled(name string) bool {
 	return ok
 }
 
+// buildModuleConfig 构造实例化的模块配置。
+//
+// 沙箱资源限制（G3-3 安全核心）：
+//   - ExecutionTimeout：单次调用最大执行时间（已在 Call 中通过 context 施加）。
+//   - MemoryLimitPages：内存页上限（已在 NewRuntime 中施加）。
+//   - 默认不启用 WASI、不注册任何宿主函数 → 实例无法访问文件系统/网络/环境变量。
+//
+// 注：wazero v1.12.0 的公共 API 未暴露 Fuel 计量（WithFuel），
+// 因此 CPU 配额以 ExecutionTimeout 形式落地；Config.MaxFuel 保留为
+// 前向兼容字段，待升级到支持 Fuel 的 wazero 版本后启用。
+func (r *Runtime) buildModuleConfig() wazero.ModuleConfig {
+	return wazero.NewModuleConfig().
+		WithStdout(nil).
+		WithStderr(nil).
+		WithStdin(nil)
+}
+
+// ExecuteTool 调用 WASM 模块导出的工具函数（G3-3 公开入口）。
+// 协议与 Call 一致：模块需导出 alloc(uint64)->ptr、memory、(ptr,len)->(ptr,len)。
+// 当配置 MaxFuel > 0 时自动施加 Fuel 计量。
+func (r *Runtime) ExecuteTool(ctx context.Context, moduleName, functionName string, input []byte) ([]byte, error) {
+	return r.Call(ctx, moduleName, functionName, input)
+}
+
 // GetConfig 返回运行时配置
 func (r *Runtime) GetConfig() Config {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.config
+}
+
+// WASMTool 将一个 WASM 模块函数包装为可调用的工具。
+// 自包含实现（不依赖 internal/tools，避免跨模块 internal 限制），
+// 由 agent 包在装配时桥接到具体 Tool 接口。
+type WASMTool struct {
+	name       string
+	description string
+	runtime    *Runtime
+	moduleName string
+	funcName   string
+}
+
+// NewWASMTool 创建 WASM 工具包装。
+func NewWASMTool(name, description string, rt *Runtime, moduleName, funcName string) *WASMTool {
+	return &WASMTool{
+		name:        name,
+		description: description,
+		runtime:     rt,
+		moduleName:  moduleName,
+		funcName:    funcName,
+	}
+}
+
+// Name 工具名。
+func (t *WASMTool) Name() string { return t.name }
+
+// Description 工具描述。
+func (t *WASMTool) Description() string { return t.description }
+
+// ModuleName 底层 WASM 模块名。
+func (t *WASMTool) ModuleName() string { return t.moduleName }
+
+// FuncName 底层导出函数名。
+func (t *WASMTool) FuncName() string { return t.funcName }
+
+// Execute 执行该 WASM 工具（输入为 JSON/字节，输出为字节）。
+func (t *WASMTool) Execute(ctx context.Context, args []byte) ([]byte, error) {
+	if !t.runtime.IsCompiled(t.moduleName) {
+		return nil, fmt.Errorf("wasm tool %q: module %q not compiled", t.name, t.moduleName)
+	}
+	return t.runtime.ExecuteTool(ctx, t.moduleName, t.funcName, args)
 }

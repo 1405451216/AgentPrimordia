@@ -89,9 +89,9 @@ export class ComputeWorkerPool {
       : cpuCount;
 
     for (let i = 0; i < maxWorkers; i++) {
-      // 创建 worker（如果没有脚本，使用内联 worker）
+      // 创建 worker（内联脚本需要 eval: true）
       const script = this.config.workerScript ?? this.getDefaultWorkerScript();
-      const worker = new Worker(script, { eval: !this.config.workerScript });
+      const worker = new Worker(script, { eval: true });
       this.workers.push({ worker: worker as unknown as { terminate(): void }, busy: false, id: i });
     }
 

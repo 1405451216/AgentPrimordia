@@ -68,7 +68,7 @@ func (p *OpenAIMultimodalProvider) CompleteMultimodal(ctx context.Context, req *
 
 	var resp openaiChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 	if resp.Error != nil {
 		return nil, resp.Error

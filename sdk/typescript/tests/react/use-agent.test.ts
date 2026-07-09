@@ -42,7 +42,7 @@ function createMockAgent(name: string) {
   return {
     name,
     run: vi.fn().mockResolvedValue({ content: `response from ${name}` }),
-    streamRun: vi.fn().mockImplementation(async function* () {
+    stream: vi.fn().mockImplementation(async function* () {
       yield `chunk1 from ${name}`;
       yield `chunk2 from ${name}`;
     }),
@@ -173,7 +173,7 @@ describe('useAgentImpl', () => {
     const mockAgent = {
       name: 'test',
       run: vi.fn(),
-      streamRun: vi.fn().mockImplementation(async function* () {
+      stream: vi.fn().mockImplementation(async function* () {
         yield 'chunk1';
         yield 'chunk2';
         yield 'chunk3';

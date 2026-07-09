@@ -101,7 +101,19 @@ export class FingerprintCache implements LLMCache {
   }
 
   static fingerprint(messages: Message[], model?: string): string {
-    const parts = messages.map((m) => `${m.role}:${m.content}`).join('|');
+    const parts = messages.map((m) => {
+      let part = `${m.role}:${m.content}`;
+      if (m.toolCalls && m.toolCalls.length > 0) {
+        part += `:tc[${m.toolCalls.map((tc) => `${tc.id}/${tc.name}`).join(',')}]`;
+      }
+      if (m.toolCallId) {
+        part += `:tid[${m.toolCallId}]`;
+      }
+      if (m.name) {
+        part += `:n[${m.name}]`;
+      }
+      return part;
+    }).join('|');
     return `${model ?? ''}::${parts}`;
   }
 

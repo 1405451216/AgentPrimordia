@@ -1,0 +1,75 @@
+name: Agent Eval
+
+# 触发条件：每次 push / PR 触发 eval 套件
+# 目的：检测 Agent 行为退化（输出质量、响应延迟、工具调用准确性）
+#
+# 与 CI workflow 的区别：
+#   - ci.yml：编译 + 单元测试（每 PR 必须通过）
+#   - eval.yml：行为评估（每 PR 通过但可标记为 soft-fail，便于追踪趋势）
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval:
+    name: Eval Suite (threshold ${{ inputs.threshold || '0.8' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.4'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-1.26.4-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-1.26.4-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build (sanity)
+        env:
+          CGO_ENABLED: 0
+        run: go build ./...
+
+      - name: Run Eval Suite
+        id: eval
+        env:
+          CGO_ENABLED: 0
+        run: |
+          cd agentprimordia
+          chmod +x bench/eval-ci/run_eval.sh
+          # 捕获 JSON 输出用于后续步骤
+          ./bench/eval-ci/run_eval.sh --threshold 0.8 --json > eval-result.json
+          cat eval-result.json
+          # 检查是否通过：退出码非 0 即 fail
+          if [ $? -ne 0 ]; then
+            echo "::warning::Eval suite did not meet threshold (soft-fail, see logs)"
+          fi
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-result-${{ github.run_id }}
+          path: agentprimordia/eval-result.json
+          if-no-files-found: ignore
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: agent-eval
+          message: |
+            ## Eval Suite Results
+            $(cat agentprimordia/eval-result.json 2>/dev/null || echo '{}')
+
+            See artifact `eval-result-${{ github.run_id }}` for full output.

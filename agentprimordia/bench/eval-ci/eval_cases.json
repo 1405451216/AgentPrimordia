@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "description": "AgentPrimordia Eval CI 评估用例集",
+  "thresholds": {
+    "pass_rate": 0.8,
+    "min_cases": 5
+  },
+  "evaluator": {
+    "type": "exact_match",
+    "options": {
+      "case_insensitive": true,
+      "normalize_whitespace": true
+    }
+  },
+  "cases": [
+    {
+      "id": "smoke-1",
+      "task": "echo-back",
+      "input": "hello",
+      "expected": "hello",
+      "metadata": {
+        "category": "smoke",
+        "expected_turns": 1
+      }
+    },
+    {
+      "id": "smoke-2",
+      "task": "echo-back",
+      "input": "world",
+      "expected": "world",
+      "metadata": {
+        "category": "smoke"
+      }
+    },
+    {
+      "id": "smoke-3",
+      "task": "greeting",
+      "input": "你好",
+      "expected": "你好",
+      "metadata": {
+        "category": "smoke",
+        "language": "zh"
+      }
+    },
+    {
+      "id": "tool-1",
+      "task": "tool-call",
+      "input": "list",
+      "expected": "[tool:list]",
+      "metadata": {
+        "category": "tool",
+        "expected_tool": "list"
+      }
+    },
+    {
+      "id": "context-1",
+      "task": "context-aware",
+      "input": "1+1",
+      "expected": "2",
+      "metadata": {
+        "category": "context"
+      }
+    }
+  ]
+}

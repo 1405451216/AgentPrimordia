@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  esbuild: {
+    jsx: 'automatic',
+  },
   resolve: {
     alias: {
       'better-sqlite3': fileURLToPath(new URL('./tests/mocks/better-sqlite3.js', import.meta.url)),

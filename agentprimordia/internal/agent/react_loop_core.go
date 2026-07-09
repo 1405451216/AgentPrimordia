@@ -34,6 +34,27 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		tracer = a.capCache.tracer
 		costTracker = a.capCache.costTracker
 	}
+
+	// R1.3 G1-1：Planning 接入（仅在第一轮且 planner 已配置时尝试）
+	// 用户输入可分解为多子任务时，走 DAG 执行；否则降级为正常 runLoop
+	if startTurn == 0 {
+		if planner := a.getPlannerOrNil(); planner != nil {
+			userInput := extractUserInput(history)
+			if userInput != "" {
+				plan, planErr := planner.GeneratePlan(ctx, userInput)
+				if planErr != nil {
+					a.logger.Warn("Planning 失败，降级到正常 runLoop", "error", planErr)
+				} else if plan != nil && len(plan.SubTasks) > 1 {
+					a.logger.Info("使用 Plan 执行",
+						"subtasks", len(plan.SubTasks),
+						"goal", plan.Goal,
+					)
+					return a.executePlan(ctx, history, plan, cfg, a.startTime, 0, 0, 0)
+				}
+			}
+		}
+	}
+
 	for turn := startTurn; turn < a.config.MaxTurns; turn++ {
 		turnStart := time.Now()
 
@@ -215,10 +236,16 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		// 无工具调用 → Agent 完成
 		if len(thought.ToolCalls) == 0 {
+			// R1.4 G1-2：Reflection 接入完成路径
+			// 对最终输出进行反思，必要时用 reflector 改进版本替换
+			finalContent := thought.Content
+			if improved, reflectErr := a.reflectAndImprove(ctx, finalContent); reflectErr == nil && improved != "" {
+				finalContent = improved
+			}
 			duration := time.Since(a.startTime)
 			response := &Response{
 				RequestID: cfg.requestID,
-				Content:   thought.Content,
+				Content:   finalContent,
 				Metrics: Metrics{
 					TotalTurns:  turn + 1,
 					TotalTools:  toolCount,

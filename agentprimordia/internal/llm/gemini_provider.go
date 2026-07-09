@@ -81,7 +81,7 @@ func (p *GeminiProvider) Complete(ctx context.Context, req *CompletionRequest) (
 
 	var resp geminiResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	content := ""
@@ -246,7 +246,7 @@ func (p *GeminiProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 
 	var resp geminiResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	result := &ToolCallResponse{

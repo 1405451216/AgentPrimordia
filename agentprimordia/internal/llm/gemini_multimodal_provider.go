@@ -70,7 +70,7 @@ func (p *GeminiMultimodalProvider) CompleteMultimodal(ctx context.Context, req *
 
 	var resp geminiResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	content := ""
@@ -535,7 +535,7 @@ func (p *GeminiMultimodalProvider) CallTools(ctx context.Context, req *ToolCallR
 
 	var resp geminiResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	result := &ToolCallResponse{

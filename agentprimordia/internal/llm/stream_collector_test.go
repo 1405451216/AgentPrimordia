@@ -139,11 +139,12 @@ func TestStreamCollector_MultipleCollectCalls(t *testing.T) {
 
 func TestStreamCollector_ConcurrentAccess(t *testing.T) {
 	// 并发安全测试：多个 goroutine 同时收集
-	var results []*CollectedResult
-	done := make(chan struct{})
+	// 使用 channel 收集结果，消除共享 slice 上的数据竞争
+	const goroutines = 5
+	resultCh := make(chan *CollectedResult, goroutines)
 
-	for i := 0; i < 5; i++ {
-		go func(i int) {
+	for i := 0; i < goroutines; i++ {
+		go func() {
 			ch := make(chan Chunk, 5)
 			go func() {
 				ch <- Chunk{Content: "concurrent"}
@@ -155,18 +156,23 @@ func TestStreamCollector_ConcurrentAccess(t *testing.T) {
 			result, err := collector.Collect(ch)
 			if err != nil {
 				t.Errorf("Collect() error = %v", err)
+				resultCh <- nil
+				return
 			}
-			results = append(results, result)
-			done <- struct{}{}
-		}(i)
+			resultCh <- result
+		}()
 	}
 
-	for i := 0; i < 5; i++ {
-		<-done
+	results := make([]*CollectedResult, 0, goroutines)
+	for i := 0; i < goroutines; i++ {
+		r := <-resultCh
+		if r != nil {
+			results = append(results, r)
+		}
 	}
 
-	if len(results) != 5 {
-		t.Errorf("expected 5 results, got %d", len(results))
+	if len(results) != goroutines {
+		t.Errorf("expected %d results, got %d", goroutines, len(results))
 	}
 }
 

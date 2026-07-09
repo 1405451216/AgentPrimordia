@@ -75,7 +75,7 @@ func (p *OllamaProvider) Complete(ctx context.Context, req *CompletionRequest) (
 
 	var resp ollamaChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	return &CompletionResponse{
@@ -214,7 +214,7 @@ func (p *OllamaProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*
 
 	var resp ollamaChatResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	result := &ToolCallResponse{
@@ -262,7 +262,7 @@ func (p *OllamaProvider) Embeddings(ctx context.Context, texts []string) ([][]fl
 
 		var resp ollamaEmbedResponse
 		if err := json.Unmarshal(raw, &resp); err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+			return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 		}
 		results[i] = resp.Embedding
 	}
@@ -430,7 +430,7 @@ func (p *OllamaProvider) ListModels(ctx context.Context) ([]OllamaModelInfo, err
 		Models []OllamaModelInfo `json:"models"`
 	}
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 	return resp.Models, nil
 }

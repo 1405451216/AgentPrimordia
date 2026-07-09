@@ -286,7 +286,7 @@ export async function AgentStream(props: AgentStreamProps): Promise<React.ReactE
             return onToolResult ? (
               <div key={key}>{onToolResult(event as ToolResultEvent)}</div>
             ) : (
-              <DefaultThought key={key} event={event as ThoughtEvent} />
+              <DefaultThought key={key} event={event as unknown as ThoughtEvent} />
             )
           case 'response':
             return onResponse ? (

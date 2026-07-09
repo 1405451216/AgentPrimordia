@@ -23,16 +23,19 @@
 type DependencyList = readonly unknown[];
 type StateHook<T> = [T, (next: T | ((prev: T) => T)) => void];
 
-interface UseAgentDeps {
+export interface UseAgentDeps {
   useState: <T>(initial: T) => StateHook<T>;
   useCallback: <T extends (...args: never[]) => unknown>(fn: T, deps: DependencyList) => T;
   useRef: <T>(initial: T) => { current: T };
   useEffect: (fn: () => void | (() => void), deps?: DependencyList) => void;
 }
 
-import type { Agent } from '../agent/builder.js';
-import type { AgentConfig } from '../agent/builder.js';
+import type { ReActAgent, ReActConfig } from '../agent/react-loop.js';
 import type { Response } from '../types.js';
+
+/** 与 builder 导出的具体类型对齐的便捷别名 */
+export type Agent = ReActAgent;
+export type AgentConfig = ReActConfig;
 
 /** useAgent 的可选项，继承 AgentConfig 但所有字段可选 */
 export interface UseAgentOptions extends Partial<AgentConfig> {
@@ -148,8 +151,8 @@ export function useAgentImpl(
     if (mountedRef.current) agentRef.set(a);
 
     try {
-      // streamRun 期望返回 AsyncIterable<string>
-      const iterable = await a.streamRun(prompt);
+      // ReActAgent.stream 返回 AsyncIterable<string>
+      const iterable = await a.stream(prompt);
       for await (const chunk of iterable) {
         if (abortRef.current?.signal.aborted) return;
         yield chunk;

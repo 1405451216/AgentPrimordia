@@ -4,6 +4,7 @@
 package llm
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
@@ -70,11 +71,14 @@ func (c *StreamCollector) Collect(ch <-chan Chunk) (*CollectedResult, error) {
 
 	duration := time.Since(start)
 
-	// 拼接所有 token
-	content := ""
+	// 使用 strings.Builder 避免 O(n²) 字符串拼接
+	// 预分配容量：每个 token 预估 16 字节
+	var contentBuilder strings.Builder
+	contentBuilder.Grow(len(tokens) * 16)
 	for _, t := range tokens {
-		content += t
+		contentBuilder.WriteString(t)
 	}
+	content := contentBuilder.String()
 
 	result := &CollectedResult{
 		Content:   content,

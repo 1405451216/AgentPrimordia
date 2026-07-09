@@ -6,6 +6,9 @@ import (
 	"context"
 	"time"
 
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
@@ -180,6 +183,33 @@ func (a *ReActAgent) getOutputGuard() OutputGuard {
 func (a *ReActAgent) getAuditLogger() AuditLogger {
 	if c, ok := a.self.(AuditLoggerCapable); ok {
 		return c.GetAuditLogger()
+	}
+	return nil
+}
+
+// getPlanner 获取任务规划器，通过 PlanningCapable 接口发现
+// R1.2：G1-1 Planning 接入的发现入口
+func (a *ReActAgent) getPlanner() planning.Planner {
+	if c, ok := a.self.(PlanningCapable); ok {
+		return c.GetPlanner()
+	}
+	return nil
+}
+
+// getReflector 获取反思器，通过 ReflectionCapable 接口发现
+// R1.2：G1-2 Reflection 接入的发现入口
+func (a *ReActAgent) getReflector() reflection.Reflector {
+	if c, ok := a.self.(ReflectionCapable); ok {
+		return c.GetReflector()
+	}
+	return nil
+}
+
+// getToolLearner 获取工具学习器，通过 ToolLearningCapable 接口发现
+// R1.2：G1-3 ToolLearning 接入的发现入口
+func (a *ReActAgent) getToolLearner() tool_learning.ToolLearner {
+	if c, ok := a.self.(ToolLearningCapable); ok {
+		return c.GetToolLearner()
 	}
 	return nil
 }

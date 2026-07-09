@@ -344,3 +344,74 @@ type AgentDeploymentList struct {
 
 	Items []AgentDeployment `json:"items"`
 }
+
+// ============================================================================
+// G2-4 扩展：多 Agent 流水线（Pipeline）与集群（Swarm）CRD 类型
+// ============================================================================
+
+// 步骤间数据传递模式
+const (
+	// DataTransferInline 内联：直接把上游输出作为下游输入参数。
+	DataTransferInline = "inline"
+	// DataTransferSharedVolume 共享卷：通过挂载卷传递大文件。
+	DataTransferSharedVolume = "sharedVolume"
+	// DataTransferMessageQueue 消息队列：通过 MQ 异步传递。
+	DataTransferMessageQueue = "messageQueue"
+)
+
+// PipelineStepSpec 流水线的一个步骤。
+// +kubebuilder:object:generate=true
+type PipelineStepSpec struct {
+	// Name 步骤名（用于步骤间引用）
+	Name string `json:"name"`
+	// Agent 该步骤使用的 AgentDeployment 模板名
+	Agent string `json:"agent"`
+	// DependsOn 依赖的前置步骤名（空表示无依赖，可并行）
+	// +optional
+	DependsOn []string `json:"dependsOn,omitempty"`
+	// InputFrom 从哪个步骤的输出取数据（结合 DataTransferMode）
+	// +optional
+	InputFrom string `json:"inputFrom,omitempty"`
+}
+
+// AgentPipelineSpec 多 Agent 流水线规格。
+// +kubebuilder:object:generate=true
+type AgentPipelineSpec struct {
+	// Steps 有序步骤列表
+	Steps []PipelineStepSpec `json:"steps"`
+	// DataTransferMode 步骤间默认数据传递模式
+	DataTransferMode string `json:"dataTransferMode"`
+}
+
+// 集群任务分配策略
+const (
+	// SchedulerRoundRobin 轮询分配。
+	SchedulerRoundRobin = "roundRobin"
+	// SchedulerLeastLoaded 最少负载优先。
+	SchedulerLeastLoaded = "leastLoaded"
+	// SchedulerAffinity 亲和性分配。
+	SchedulerAffinity = "affinity"
+)
+
+// 集群通信方式
+const (
+	// CommunicationGRPC 使用 gRPC 通信。
+	CommunicationGRPC = "grpc"
+	// CommunicationRedis 使用 Redis 通信。
+	CommunicationRedis = "redis"
+	// CommunicationNone 无跨节点通信。
+	CommunicationNone = "none"
+)
+
+// AgentSwarmSpec Agent 集群规格。
+// +kubebuilder:object:generate=true
+type AgentSwarmSpec struct {
+	// Workers 工作节点数
+	Workers int32 `json:"workers"`
+	// Template 工作节点模板
+	Template AgentTemplateSpec `json:"template"`
+	// Scheduler 任务分配策略
+	Scheduler string `json:"scheduler"`
+	// Communication Agent 间通信方式
+	Communication string `json:"communication"`
+}

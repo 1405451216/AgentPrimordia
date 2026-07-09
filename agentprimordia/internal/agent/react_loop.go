@@ -11,6 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -80,6 +83,25 @@ type ReActConfig struct {
 
 	// Logger 结构化日志，默认使用 logger.Default()
 	Logger *slog.Logger
+
+	// ===== Phase 1 G1 闭环配置 =====
+
+	// ParallelToolExecution 启用同轮工具并行执行（G1-4）
+	// 默认 false 保持向后兼容
+	ParallelToolExecution bool
+
+	// MaxParallelTools 单批并行工具数上限（G1-4）
+	// 0 表示无限制（一次并行所有同轮工具）；建议生产设为 8-16 避免资源争用
+	MaxParallelTools int
+
+	// ReflectionSeverityThreshold 触发 Reflection 改进的最低严重度（G1-2）
+	// 取值 "low" / "medium" / "high" / "critical"，默认 "high"
+	// 低于阈值的 Critique 不触发 Improve，直接返回原始输出
+	ReflectionSeverityThreshold string
+
+	// ToolLearningConfidenceThreshold 触发工具参数建议的最低置信度（G1-3）
+	// 范围 [0, 1]，默认 0.7
+	ToolLearningConfidenceThreshold float64
 }
 
 // ReActAgent implements the ReAct (Reasoning + Acting) pattern
@@ -164,6 +186,7 @@ type loopConfig struct {
 // 优化（Task 2）：ReAct 循环中每轮调用的 getTracer/getCostTracker/getMemoryStore 等
 // 在 Run() 入口一次性查找并缓存到此处，避免每轮重复类型断言。
 // 优化（perf-v2）：新增 toolDefinitions 缓存，避免每轮重复转换工具定义。
+// R1.2：新增 planner/reflector/toolLearner 字段，连接 G1-1/G1-2/G1-3 闭环。
 type capabilityCache struct {
 	requestID        string
 	tracer           Tracer
@@ -183,6 +206,11 @@ type capabilityCache struct {
 	model            string
 	outputGuard      OutputGuard // p2t1：输出端 Guardrail 检查函数（PII 自动脱敏）
 	auditLogger      AuditLogger // p2t4：审计日志器（合规事件记录）
+
+	// R1.2：闭环构建期新能力
+	planner     planning.Planner          // G1-1 Planning 接入
+	reflector   reflection.Reflector      // G1-2 Reflection 接入
+	toolLearner tool_learning.ToolLearner // G1-3 ToolLearning 接入
 }
 
 // resolveCapabilities 一次性查找所有能力并填充到 capabilityCache。
@@ -202,6 +230,10 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		toolkit:         a.getToolkit(),
 		outputGuard:     a.getOutputGuard(),
 		auditLogger:     a.getAuditLogger(),
+		// R1.2：闭环构建期新能力查找
+		planner:     a.getPlanner(),
+		reflector:   a.getReflector(),
+		toolLearner: a.getToolLearner(),
 	}
 	// 缓存 labeled 记录器
 	if c.metricsRecorder != nil {

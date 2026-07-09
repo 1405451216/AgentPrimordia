@@ -37,7 +37,9 @@ import {
   type UseAgentResult,
   type UseAgentDeps,
 } from './use-agent.js';
-import type { Agent, AgentConfig } from '../agent/builder.js';
+import type { Agent, AgentConfig } from './use-agent.js';
+import { useReActLoopImpl } from './use-react-loop.js';
+import { useStreamRunImpl } from './use-stream-run.js';
 
 /**
  * useAgentWithReact：构造绑定到具体 React 实例的 useAgent Hook。
@@ -97,3 +99,82 @@ export function useStreamRunWithReact(
 }
 
 export type { Agent, AgentConfig };
+
+// ===== T2-4: React 19 深度集成 =====
+
+import { useAgentStreamImpl, type UseAgentStreamOptions, type UseAgentStreamResult } from './hooks/useAgentStream.js';
+import { useAgentSuspenseImpl, type UseAgentSuspenseDeps } from './hooks/useAgentSuspense.js';
+import type { ReActAgent } from '../agent/react-loop.js';
+
+/**
+ * useAgentStreamWithReact：构造绑定到具体 React 实例的 useAgentStream Hook。
+ *
+ * 用法：
+ *   const useAgentStream = useAgentStreamWithReact(React, agent, { prompt: '你好' });
+ *   const { content, isStreaming } = useAgentStream();
+ */
+export function useAgentStreamWithReact(
+  React: {
+    useState: UseAgentDeps['useState'];
+    useCallback: UseAgentDeps['useCallback'];
+    useRef: UseAgentDeps['useRef'];
+    useEffect: UseAgentDeps['useEffect'];
+  },
+  agent: ReActAgent,
+  options?: UseAgentStreamOptions,
+) {
+  return function useAgentStream(opts?: UseAgentStreamOptions): UseAgentStreamResult {
+    return useAgentStreamImpl(React, agent, opts ?? options);
+  };
+}
+
+/**
+ * useAgentSuspenseWithReact：构造绑定到具体 React 19 实例的 useAgentSuspense Hook。
+ *
+ * 用法：
+ *   const useAgentSuspense = useAgentSuspenseWithReact(React, agent);
+ *   function View() { const content = useAgentSuspense('介绍一下你自己'); return <p>{content}</p>; }
+ */
+export function useAgentSuspenseWithReact(
+  React: {
+    useState: UseAgentDeps['useState'];
+    useCallback: UseAgentDeps['useCallback'];
+    useRef: UseAgentDeps['useRef'];
+    useEffect: UseAgentDeps['useEffect'];
+    use: <T>(promise: Promise<T>) => T;
+  },
+  agent: ReActAgent,
+) {
+  return function useAgentSuspense(input: string): string {
+    return useAgentSuspenseImpl(React as UseAgentSuspenseDeps, agent, input);
+  };
+}
+
+export { useAgentStreamImpl, useAgentSuspenseImpl };
+
+export type {
+  UseAgentStreamOptions,
+  UseAgentStreamResult,
+} from './hooks/useAgentStream.js';
+export type { UseAgentSuspenseDeps } from './hooks/useAgentSuspense.js';
+// AgentServerComponent 为 RSC（依赖 react 运行时），仅导出类型以避免破坏 react 子包的懒加载约定
+export type { AgentServerComponentProps } from './server-components/AgentServerComponent.js';
+
+// ===== T3-4: 实时多 Agent 协作 UI =====
+
+export { CollaborationView } from './collaboration/CollaborationView.js';
+export { AgentNode as CollaborationAgentNode, STATUS_LABEL } from './collaboration/AgentNode.js';
+export { MessageFlow } from './collaboration/MessageFlow.js';
+export { HITLPanel } from './collaboration/HITLPanel.js';
+export { CollaborationReplay } from './collaboration/CollaborationReplay.js';
+export type {
+  CollabAgentStatus,
+  CollaborationAgent,
+  CollaborationMessage,
+  ApprovalRequest,
+  CollaborationSession,
+} from './collaboration/CollaborationView.js';
+export type { AgentNodeProps } from './collaboration/AgentNode.js';
+export type { MessageFlowProps } from './collaboration/MessageFlow.js';
+export type { HITLPanelProps } from './collaboration/HITLPanel.js';
+export type { CollaborationReplayProps } from './collaboration/CollaborationReplay.js';

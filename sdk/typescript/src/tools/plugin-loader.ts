@@ -17,6 +17,8 @@
  *   const tools = loader.getTools();
  */
 
+import { readdir } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
 import type { ToolDefinition, Tool } from '../types.js';
 import type { ToolRegistry } from '../tools/registry.js';
 
@@ -102,6 +104,9 @@ export class AgentPluginLoader {
       if (!plugin.name || !plugin.version) {
         throw new Error(`Plugin "${pluginName}" must export an object with name and version`);
       }
+
+      // 沙箱验证：检查插件是否声明了受限 API（默认仅警告，严格模式抛错）
+      this.validatePlugin(plugin);
 
       // 初始化插件
       if (plugin.init) {
@@ -240,6 +245,96 @@ export class AgentPluginLoader {
       total: this.loaded.size,
       loaded: Array.from(this.loaded.keys()),
     };
+  }
+
+  /**
+   * 插件沙箱校验：检测插件是否越权声明受限 API。
+   *
+   * 默认仅警告；strict 模式下对不合规的插件抛错，防止混入危险依赖。
+   * 校验维度：
+   *  - name / version 必填且格式合法
+   *  - 若存在 allowedMethods，则插件只能声明白名单内的方法（strict 模式）
+   *
+   * @param plugin 已动态 import 的插件实例
+   * @param options 校验选项（strict 默认 false）
+   */
+  validatePlugin(plugin: AgentPlugin, options?: { strict?: boolean }): void {
+    const strict = options?.strict ?? false;
+
+    if (!plugin.name || typeof plugin.name !== 'string' || plugin.name.length === 0) {
+      throw new Error('Plugin validation failed: missing or invalid "name"');
+    }
+    if (!plugin.version || typeof plugin.version !== 'string') {
+      throw new Error(`Plugin "${plugin.name}" validation failed: missing or invalid "version"`);
+    }
+    // semver 宽松校验：主.次.修 或带前缀
+    if (!/^v?\d+\.\d+\.\d+/.test(plugin.version)) {
+      const msg = `Plugin "${plugin.name}" version "${plugin.version}" is not semver-compliant`;
+      if (strict) throw new Error(msg);
+      // 非严格模式仅警告（生产环境建议启用 strict）
+      console.warn(`[plugin-loader] ${msg}`);
+    }
+
+    // strict 模式下检查白名单方法
+    const allowedMethods = (plugin as AgentPlugin & { allowedMethods?: string[] }).allowedMethods;
+    if (strict && Array.isArray(allowedMethods)) {
+      const validMethods = ['registerTools', 'getTools', 'init', 'destroy'];
+      const illegal = allowedMethods.filter((m) => !validMethods.includes(m));
+      if (illegal.length > 0) {
+        throw new Error(
+          `Plugin "${plugin.name}" declares restricted methods: ${illegal.join(', ')}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * 扫描搜索路径下的 node_modules，发现所有 @agentprimordia/plugin-* 包。
+   *
+   * 处理 scoped 包目录（@scope/name）与普通包目录（name）。
+   * 仅返回候选包名，不直接加载（加载请使用 load/loadAll）。
+   *
+   * @param searchPath 指定搜索路径；默认使用 config.searchPaths
+   * @returns 发现的插件包名列表（已去重）
+   */
+  async scanNodeModules(searchPath?: string): Promise<string[]> {
+    const roots = searchPath ? [searchPath] : this.config.searchPaths;
+    const found = new Set<string>();
+    const prefix = this.config.pluginPrefix;
+
+    for (const root of roots) {
+      let entries: Dirent[];
+      try {
+        entries = await readdir(root, { withFileTypes: true });
+      } catch {
+        // 路径不存在或无权限则跳过
+        continue;
+      }
+
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+
+        if (entry.name.startsWith('@')) {
+          // scoped 包：root/@scope/* 下继续扫描
+          const scopePath = `${root}/${entry.name}`;
+          let scoped: Dirent[];
+          try {
+            scoped = await readdir(scopePath, { withFileTypes: true });
+          } catch {
+            continue;
+          }
+          for (const sub of scoped) {
+            if (sub.isDirectory() && sub.name.startsWith(prefix.replace(/^@[^/]+\//, ''))) {
+              found.add(`${entry.name}/${sub.name}`);
+            }
+          }
+        } else if (entry.name.startsWith(prefix.replace(/^@[^/]+\//, ''))) {
+          found.add(entry.name);
+        }
+      }
+    }
+
+    return Array.from(found);
   }
 }
 

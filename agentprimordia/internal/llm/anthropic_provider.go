@@ -80,7 +80,7 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *CompletionRequest
 
 	var resp anthropicMessagesResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	content := ""
@@ -242,7 +242,7 @@ func (p *AnthropicProvider) CallTools(ctx context.Context, req *ToolCallRequest)
 
 	var resp anthropicMessagesResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrResponseParseFailed, err)
+		return nil, fmt.Errorf("%w: %w", ErrResponseParseFailed, err)
 	}
 
 	result := &ToolCallResponse{

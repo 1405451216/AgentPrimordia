@@ -141,6 +141,19 @@ export type { EventType, Event } from './events/bus.js';
 export { ACL, Sandbox, CommandSandbox, CodeSandbox, CodeSecurityChecker, newArgPattern } from './security/sandbox.js';
 export type { AccessLevel, SandboxConfig, SandboxResult, ArgPattern } from './security/sandbox.js';
 
+// CodeSandbox v2: WASM Runtime + VirtualFS + 多语言执行
+export { VirtualFS, WasiShim, WasmRuntime, CodeSandboxV2 } from './security/sandbox-v2.js';
+export type {
+  VfsNodeType,
+  VfsOpenFlags,
+  WasmExecConfig,
+  WasmExecResult,
+  SandboxV2Config,
+  ExecRequest,
+  ExecResult,
+  CodeLanguage,
+} from './security/sandbox-v2.js';
+
 // ===== Phase 6: Guardrails =====
 export { PIIDetector, InjectionDetector, TopicFilter, OutputGuardrail, GuardrailEngine, Trie, Sanitizer, GuardrailHook, PromptInjectionRule, OutputSafetyRule, TopicConstraintRule, RuleEngine, normalizeForCheck } from './security/guardrails.js';
 export type { PIIPattern, PIIDetectorConfig, PIIDetectionResult, InjectionDetectionResult, TopicFilterConfig, OutputRule, GuardrailConfig, GuardrailResult, SanitizeStrategy, SanitizerConfig, Position, GuardrailHookConfig, GuardrailHookContext, CheckPoint, GuardrailAction, GuardrailSeverity, GuardrailRuleResult, GuardrailReport, GuardrailRule, PromptInjectionRuleConfig, OutputSafetyRuleConfig, TopicMode, TopicConstraintRuleConfig } from './security/guardrails.js';
@@ -345,6 +358,14 @@ export type { WorkerPoolConfig as ComputeWorkerPoolConfig, WorkerTask as Compute
 // 动态插件热加载
 export { AgentPluginLoader, definePlugin } from './tools/plugin-loader.js';
 export type { AgentPlugin, PluginManifest, PluginLoaderConfig, PluginAPI } from './tools/plugin-loader.js';
+
+// 插件沙箱（Worker Thread 隔离执行）
+export { PluginSandbox } from './tools/plugin-sandbox.js';
+export type { PluginSandboxOptions } from './tools/plugin-sandbox.js';
+
+// 插件注册中心（本地市场元数据 + 生命周期管理）
+export { PluginRegistry } from './tools/plugin-registry.js';
+export type { PluginMetadata, PluginRegistryOptions } from './tools/plugin-registry.js';
 
 // ===== Phase 4: 性能优化与进化成长 =====
 

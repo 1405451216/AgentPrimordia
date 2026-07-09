@@ -46,42 +46,139 @@ export class HNSW {
       node.neighbors.set(l, []);
     }
 
+    // 第一个节点：直接作为 entry point
     if (!this.entryPoint) {
       this.entryPoint = id;
       this.maxLevel = level;
-    } else {
-      if (level > this.maxLevel) {
-        this.maxLevel = level;
-        this.entryPoint = id;
+      this.nodes.set(id, node);
+      return;
+    }
+
+    // Phase 1：从顶层向 node.level+1 层做贪心搜索（greedy descend）
+    // 目的：在 node.level 之上的层只追踪最近节点，O(log n)
+    let currentEntry = this.entryPoint;
+    for (let l = this.maxLevel; l > level; l--) {
+      currentEntry = this.greedyDescend(vector, currentEntry, l);
+    }
+
+    // Phase 2：在 node.level 之下的每一层做 ef-search，建立双向连接
+    // 每层 O(efConstruction * log n)，总复杂度 O(log n)
+    const insertLevels: number[] = [];
+    for (let l = Math.min(level, this.maxLevel); l >= 0; l--) {
+      insertLevels.push(l);
+    }
+
+    let entryAtLevel = currentEntry;
+    for (const l of insertLevels) {
+      const candidates = this.searchLayer(vector, entryAtLevel, this.config.efConstruction, l);
+      // 选择最近的 maxConnections 个
+      const selected = candidates
+        .slice() // 复制避免破坏 searchLayer 的内部状态
+        .sort((a, b) => a.dist - b.dist)
+        .slice(0, this.config.maxConnections);
+
+      // 建立 node → selected 的连接
+      node.neighbors.set(l, selected.map(c => c.id));
+
+      // 反向：每个 selected 节点也加上 node，并按距离裁剪
+      for (const c of selected) {
+        const peer = this.nodes.get(c.id)!;
+        const peerNeighbors = peer.neighbors.get(l) ?? [];
+        peerNeighbors.push(id);
+        // 裁剪到 maxConnections（layer 0 用更宽松的上限）
+        const maxConn = l === 0 ? this.config.maxConnectionsLayer0 : this.config.maxConnections;
+        if (peerNeighbors.length > maxConn) {
+          // 按距 peer 的距离升序裁剪。
+          // 注意：新节点 id 此时尚未写入 this.nodes，需要跳过
+          const peerVec = peer.vector;
+          peerNeighbors.sort((a, b) => {
+            const va = a === id ? vector : this.nodes.get(a)!.vector;
+            const vb = b === id ? vector : this.nodes.get(b)!.vector;
+            return this.distance(peerVec, va) - this.distance(peerVec, vb);
+          });
+          peer.neighbors.set(l, peerNeighbors.slice(0, maxConn));
+        }
       }
+
+      // 进入下一层时，把入口收敛到当前层最近的节点
+      if (selected.length > 0) {
+        entryAtLevel = selected[0]!.id;
+      }
+    }
+
+    // 更新 entry point：如果新节点层级更高
+    if (level > this.maxLevel) {
+      this.maxLevel = level;
+      this.entryPoint = id;
     }
 
     this.nodes.set(id, node);
+  }
 
-    // Connect to neighbors (simplified: connect to nearest nodes at each level)
-    for (let l = 0; l <= Math.min(level, this.maxLevel); l++) {
-      const candidates = Array.from(this.nodes.values())
-        .filter(n => n.id !== id && n.level >= l)
-        .sort((a, b) => this.distance(vector, a.vector) - this.distance(vector, b.vector))
-        .slice(0, this.config.maxConnections);
-
-      for (const candidate of candidates) {
-        node.neighbors.get(l)!.push(candidate.id);
-        candidate.neighbors.get(l)?.push(id);
-
-        // Trim connections if exceeding max
-        const maxConn = l === 0 ? this.config.maxConnectionsLayer0 : this.config.maxConnections;
-        const candidateNeighbors = candidate.neighbors.get(l)!;
-        if (candidateNeighbors.length > maxConn) {
-          candidateNeighbors.sort((a, b) => {
-            const distA = this.distance(vector, this.nodes.get(a)!.vector);
-            const distB = this.distance(vector, this.nodes.get(b)!.vector);
-            return distA - distB;
-          });
-          candidate.neighbors.set(l, candidateNeighbors.slice(0, maxConn));
+  /**
+   * greedyDescend 在单层内做贪心下降：从 entry 开始，沿当前层邻居中最近的节点前进，直到不再改善。
+   * 用于在 node.level 之上的"高层导航"，每层只访问 O(1) 个节点。
+   */
+  private greedyDescend(query: number[], entryPoint: string, level: number): string {
+    let current = entryPoint;
+    let currentDist = this.distance(query, this.nodes.get(current)!.vector);
+    let improved = true;
+    while (improved) {
+      improved = false;
+      const neighbors = this.nodes.get(current)?.neighbors.get(level) ?? [];
+      for (const nid of neighbors) {
+        const d = this.distance(query, this.nodes.get(nid)!.vector);
+        if (d < currentDist) {
+          current = nid;
+          currentDist = d;
+          improved = true;
         }
       }
     }
+    return current;
+  }
+
+  /**
+   * searchLayer 在单层做 ef-搜索：返回距离 query 最近的最多 ef 个候选。
+   * 实现细节：用动态数组 + sort 充当简化版最小堆；当前规模下足够快。
+   * 真正生产场景应替换为 MinHeap（BinaryHeap）以获得稳定 O(log n) 插入。
+   */
+  private searchLayer(query: number[], entryPoint: string, ef: number, level: number): Array<{ id: string; dist: number }> {
+    const visited = new Set<string>([entryPoint]);
+    const startNode = this.nodes.get(entryPoint)!;
+    const startDist = this.distance(query, startNode.vector);
+
+    // candidates：待扩展（用 sort+shift 简化；TODO: 替换为 MinHeap）
+    const candidates: Array<{ id: string; dist: number }> = [{ id: entryPoint, dist: startDist }];
+    // results：当前最好的 ef 个
+    const results: Array<{ id: string; dist: number }> = [{ id: entryPoint, dist: startDist }];
+
+    while (candidates.length > 0) {
+      // 取最近候选
+      candidates.sort((a, b) => a.dist - b.dist);
+      const current = candidates.shift()!;
+      // 如果当前候选比 results 最远还差，则提前退出
+      const furthestResultDist = results[results.length - 1]!.dist;
+      if (current.dist > furthestResultDist && results.length >= ef) {
+        break;
+      }
+
+      // 扩展邻居
+      const neighbors = this.nodes.get(current.id)?.neighbors.get(level) ?? [];
+      for (const nid of neighbors) {
+        if (visited.has(nid)) continue;
+        visited.add(nid);
+        const d = this.distance(query, this.nodes.get(nid)!.vector);
+        const furthestResultDist2 = results[results.length - 1]!.dist;
+        if (results.length < ef || d < furthestResultDist2) {
+          candidates.push({ id: nid, dist: d });
+          results.push({ id: nid, dist: d });
+          results.sort((a, b) => a.dist - b.dist);
+          if (results.length > ef) results.pop();
+        }
+      }
+    }
+    return results;
   }
 
   search(query: number[], k: number): VectorSearchResult[] {

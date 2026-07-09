@@ -31,7 +31,7 @@ export interface KVStore {
 
 // ===== 运行时环境 =====
 
-export type RuntimeEnv = 'cloudflare-workers' | 'vercel-edge' | 'deno' | 'bun' | 'node' | 'browser';
+export type RuntimeEnv = 'cloudflare-workers' | 'vercel-edge' | 'deno' | 'bun' | 'node' | 'browser' | 'unknown';
 
 /** 检测当前运行时环境（简化版，用于业务层） */
 export function detectEnv(): RuntimeEnv {
@@ -195,13 +195,13 @@ export function createKVStore(): KVStore {
         get: (key: string) => kv.get([key]).then((r: unknown) => (r as { value?: string })?.value ?? null),
         put: (key: string, value: string) => kv.set([key], value).then(() => {}),
         delete: (key: string) => kv.delete([key]).then(() => {}),
-        list: (options?: { prefix?: string }) => {
+        list: async (options?: { prefix?: string }) => {
           const entries = kv.list({ prefix: options?.prefix ? [options.prefix] : [] });
           const keys: string[] = [];
           for await (const entry of entries) {
             keys.push((entry.key as string[])[0]);
           }
-          return Promise.resolve(keys);
+          return keys;
         },
       };
     } catch {

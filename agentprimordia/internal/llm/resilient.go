@@ -275,7 +275,7 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 
 	fallbacks := r.getFallbacks()
 	if len(fallbacks) == 0 {
-		return zero, fmt.Errorf("%w: %v", ErrRetriesExhausted, lastErr)
+		return zero, fmt.Errorf("%w: %w", ErrRetriesExhausted, lastErr)
 	}
 
 	for _, fallback := range fallbacks {
@@ -305,7 +305,7 @@ func executeWithRetry[T any](ctx context.Context, r *ResilientProvider, fn func(
 		}
 	}
 
-	return zero, fmt.Errorf("%w: %v", ErrFallbackFailed, lastErr)
+	return zero, fmt.Errorf("%w: %w", ErrFallbackFailed, lastErr)
 }
 
 // computeRetryBackoff 计算重试退避时间（perf-v6 round 8 Task 3）
