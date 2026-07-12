@@ -578,12 +578,12 @@ golangci-lint run
 
 ## 文档
 
-- [CHANGELOG](CHANGELOG.md)
-- [v1.0.0 发布说明](RELEASE-NOTES-v1.0.0.md)
-- [v0.8.0 发布说明](RELEASE-NOTES-v0.8.0.md)
-- [v0.7.0 发布说明](RELEASE-NOTES-v0.7.0.md)
-- [架构图](architecture-mermaid.md)
-- [API 完整参考](api-reference.md)
+- [CHANGELOG](docs/CHANGELOG.md)
+- [v1.0.0 发布说明](docs/RELEASE-NOTES-v1.0.0.md)
+- [v0.8.0 发布说明](docs/RELEASE-NOTES-v0.8.0.md)
+- [v0.7.0 发布说明](docs/RELEASE-NOTES-v0.7.0.md)
+- [架构图](docs/architecture-mermaid.md)
+- [API 完整参考](docs/api-reference.md)
 - [TypeScript SDK 文档](sdk/typescript/README.md)
 - [TypeScript API 参考](sdk/typescript/docs/api/index.md)
 - [开发文档](agentprimordia/DEVELOPMENT.md)
