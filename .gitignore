@@ -133,3 +133,6 @@ count_lines.ps1
 # ---------- PGO ----------
 .pgo/
 default.pgo
+
+# ---------- Go Build Cache ----------
+.gocache/
