@@ -1,0 +1,54 @@
+# Dockerfile.sbomlabel
+#
+# 带 SBOM label 的 Dockerfile 模板
+# 遵循 OCI 镜像规范，嵌入 SBOM 引用标签
+#
+# 用法：在构建时传入 SBOM_PATH 参数
+#   docker build -f Dockerfile.sbomlabel --build-arg SBOM_PATH=sbom.json -t myapp:latest .
+
+FROM golang:1.26-alpine AS builder
+
+ARG SBOM_PATH=""
+ARG VERSION=dev
+ARG REVISION=unknown
+
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+ENV CGO_ENABLED=0
+RUN go build -ldflags="-s -w -X main.version=${VERSION} -X main.revision=${REVISION}" -o /bin/app .
+
+# SBOM 和 provenance labels (OCI image spec)
+LABEL org.opencontainers.image.title="AgentPrimordia"
+LABEL org.opencontainers.image.description="General-purpose Go Agent Framework"
+LABEL org.opencontainers.image.vendor="AgentPrimordia"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${REVISION}"
+LABEL org.opencontainers.image.source="https://github.com/agentprimordia/agentprimordia"
+
+# SBOM 引用标签（在 CI 中生成后注入）
+LABEL org.opencontainers.image.base.digest=""
+LABEL com.agentprimordia.sbom="${SBOM_PATH}"
+LABEL com.agentprimordia.sbom.format="cyclonedx-json"
+LABEL com.agentprimordia.build.timestamp=""
+
+# 安全加固
+RUN addgroup -S app && adduser -S app -G app
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY --from=builder /bin/app /usr/local/bin/app
+
+# 嵌入 SBOM 文件到镜像文件系统
+ARG SBOM_PATH=""
+COPY ${SBOM_PATH:-/dev/null} /opt/sbom.json
+
+USER app
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --retries 3 CMD pgrep -f app > /dev/null || exit 1
+
+ENTRYPOINT ["/usr/local/bin/app"]

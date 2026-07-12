@@ -35,7 +35,7 @@ func (c Config) Validate() error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("config validation failed: %s", strings.Join(errs, "; "))
+		return fmt.Errorf("config validation failed: %s: %w", strings.Join(errs, "; "), ErrInvalidConfig)
 	}
 	return nil
 }

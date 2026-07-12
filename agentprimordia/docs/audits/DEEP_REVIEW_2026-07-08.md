@@ -242,7 +242,7 @@ pkg.WorkflowExecution → agent.WorkflowExecution → workflow.WorkflowExecution
 
 | # | 问题 | 影响 | 修复方案 |
 |---|------|------|---------|
-| M1 | `provider_template.go` 有 TODO 注释 | 模板文件，预期行为 | 无需修复 |
+| M1 | `provider_template.go` 有 `//go:build ignore` 标签 | 原为模板文件，防止误用 | 已移除 build tag，现有测试 `TestNewTemplateProvider_Refused` 验证其返回 error | ✅ 已修复 |
 | M2 | `dag/builder.go MustBuild()` panic | 标准模式，已标注 | 可考虑返回 error 版本 |
 | M3 | 临时脚本文件残留 | `scripts/fix_*.ps1` 迁移辅助脚本 | 可清理或移至 `.scripts/` |
 

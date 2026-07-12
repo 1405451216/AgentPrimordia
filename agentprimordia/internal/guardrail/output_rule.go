@@ -11,6 +11,7 @@ import (
 type OutputSafetyRule struct {
 	action   Action
 	severity Severity
+	priority int
 	patterns []*regexp.Regexp
 }
 
@@ -18,6 +19,7 @@ type OutputSafetyRule struct {
 type OutputSafetyConfig struct {
 	Action              Action
 	Severity            Severity
+	Priority            int // 规则优先级，默认 PriorityHigh
 	DetectCodeExecution bool
 	DetectURLs          bool
 	DetectFilePaths     bool
@@ -26,9 +28,14 @@ type OutputSafetyConfig struct {
 
 // NewOutputSafetyRule 创建输出安全检查规则
 func NewOutputSafetyRule(config OutputSafetyConfig) *OutputSafetyRule {
+	priority := config.Priority
+	if priority == 0 {
+		priority = PriorityHigh
+	}
 	r := &OutputSafetyRule{
 		action:   config.Action,
 		severity: config.Severity,
+		priority: priority,
 	}
 	if config.DetectCodeExecution {
 		r.patterns = append(r.patterns,
@@ -65,6 +72,9 @@ func NewOutputSafetyRule(config OutputSafetyConfig) *OutputSafetyRule {
 
 // Name 返回规则名
 func (r *OutputSafetyRule) Name() string { return "output_safety" }
+
+// Priority 返回规则优先级
+func (r *OutputSafetyRule) Priority() int { return r.priority }
 
 // Check 检查输出中的不安全内容
 func (r *OutputSafetyRule) Check(output string, point CheckPoint) (*Result, error) {

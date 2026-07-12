@@ -113,14 +113,21 @@ export class SQLiteCheckpointStore implements CheckpointStore {
 
     if (!row) return null;
 
-    return {
-      id: row.agent_id,
-      sessionID: row.session_id,
-      turn: row.turn_count,
-      messages: JSON.parse(row.messages) as Message[],
-      metrics: JSON.parse(row.metrics) as AgentMetrics,
-      createdAt: row.saved_at,
-    };
+    try {
+      const messages = JSON.parse(row.messages) as Message[];
+      const metrics = JSON.parse(row.metrics) as AgentMetrics;
+      return {
+        id: row.agent_id,
+        sessionID: row.session_id,
+        turn: row.turn_count,
+        messages,
+        metrics,
+        createdAt: row.saved_at,
+      };
+    } catch (err) {
+      console.error(`Failed to parse checkpoint ${id}:`, err);
+      throw new Error(`Invalid checkpoint data for ${id}`);
+    }
   }
 
   async list(sessionID: string): Promise<Checkpoint[]> {
@@ -128,14 +135,21 @@ export class SQLiteCheckpointStore implements CheckpointStore {
       'SELECT * FROM checkpoints WHERE session_id = ? ORDER BY saved_at DESC'
     ).all(sessionID) as CheckpointRow[];
 
-    return rows.map((row) => ({
-      id: row.agent_id,
-      sessionID: row.session_id,
-      turn: row.turn_count,
-      messages: JSON.parse(row.messages) as Message[],
-      metrics: JSON.parse(row.metrics) as AgentMetrics,
-      createdAt: row.saved_at,
-    }));
+    return rows.map((row) => {
+      try {
+        return {
+          id: row.agent_id,
+          sessionID: row.session_id,
+          turn: row.turn_count,
+          messages: JSON.parse(row.messages) as Message[],
+          metrics: JSON.parse(row.metrics) as AgentMetrics,
+          createdAt: row.saved_at,
+        };
+      } catch (err) {
+        console.error(`Failed to parse checkpoint ${row.agent_id}:`, err);
+        return null;
+      }
+    }).filter((cp): cp is Checkpoint => cp !== null);
   }
 
   async delete(id: string): Promise<void> {
@@ -175,15 +189,22 @@ export class SQLiteCheckpointStore implements CheckpointStore {
 
     if (!row) return null;
 
-    return {
-      agentID: row.agent_id,
-      sessionID: row.session_id,
-      status: row.status,
-      messages: JSON.parse(row.messages),
-      turnCount: row.turn_count,
-      metrics: JSON.parse(row.metrics),
-      savedAt: row.saved_at,
-    };
+    try {
+      const messages = JSON.parse(row.messages);
+      const metrics = JSON.parse(row.metrics);
+      return {
+        agentID: row.agent_id,
+        sessionID: row.session_id,
+        status: row.status,
+        messages,
+        turnCount: row.turn_count,
+        metrics,
+        savedAt: row.saved_at,
+      };
+    } catch (err) {
+      console.error(`Failed to parse agent state ${agentID}:`, err);
+      throw new Error(`Invalid agent state data for ${agentID}`);
+    }
   }
 
   /** List all checkpoints for a session (AgentState format). */
@@ -192,15 +213,24 @@ export class SQLiteCheckpointStore implements CheckpointStore {
       'SELECT * FROM checkpoints WHERE session_id = ? ORDER BY saved_at DESC'
     ).all(sessionID) as CheckpointRow[];
 
-    return rows.map((row) => ({
-      agentID: row.agent_id,
-      sessionID: row.session_id,
-      status: row.status,
-      messages: JSON.parse(row.messages),
-      turnCount: row.turn_count,
-      metrics: JSON.parse(row.metrics),
-      savedAt: row.saved_at,
-    }));
+    return rows.map((row) => {
+      try {
+        const messages = JSON.parse(row.messages);
+        const metrics = JSON.parse(row.metrics);
+        return {
+          agentID: row.agent_id,
+          sessionID: row.session_id,
+          status: row.status,
+          messages,
+          turnCount: row.turn_count,
+          metrics,
+          savedAt: row.saved_at,
+        };
+      } catch (err) {
+        console.error(`Failed to parse agent state ${row.agent_id}:`, err);
+        return null;
+      }
+    }).filter((state): state is AgentState => state !== null);
   }
 
   /** Delete a checkpoint by agent ID. */

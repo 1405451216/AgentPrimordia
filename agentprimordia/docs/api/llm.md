@@ -314,6 +314,22 @@ type StructuredExtractor interface {
 
 支持从 Go struct 生成 JSON Schema，预定义模板：情感分析、NER、分类、摘要。
 
+## 错误定义
+
+```go
+var (
+    ErrHTTPError              = errors.New("llm: HTTP 请求错误")
+    ErrInvalidConfig          = errors.New("llm: 配置验证失败")
+    ErrInvalidJSON            = errors.New("llm: LLM 返回内容不是有效 JSON")
+    ErrSchemaValidationFailed = errors.New("llm: 结构化输出验证失败")
+)
+```
+
+- `ErrHTTPError` — HTTP 请求返回非 2xx 状态码时包装此错误，可通过 `errors.Is(err, llm.ErrHTTPError)` 判断
+- `ErrInvalidConfig` — `Config.Validate` 失败时包装此错误
+- `ErrInvalidJSON` — 结构化输出提取时 LLM 返回内容不是有效 JSON
+- `ErrSchemaValidationFailed` — 结构化输出提取时 JSON Schema 验证失败
+
 ## 完整示例
 
 === "Go"

@@ -1,0 +1,5 @@
+./filelock.go
+./pool.go
+./filelock_test.go
+./pool_test.go
+./synctest_test.go

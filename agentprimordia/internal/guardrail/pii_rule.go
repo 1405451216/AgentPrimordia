@@ -11,6 +11,7 @@ import (
 type PIIRule struct {
 	action   Action
 	severity Severity
+	priority int
 	patterns []piiPattern
 }
 
@@ -24,6 +25,7 @@ type piiPattern struct {
 type PIIRuleConfig struct {
 	Action         Action
 	Severity       Severity
+	Priority       int // 规则优先级，默认 PriorityHigh
 	DetectPhone    bool
 	DetectIDCard   bool
 	DetectEmail    bool
@@ -57,9 +59,14 @@ func DefaultPIIRuleConfig() PIIRuleConfig {
 
 // NewPIIRule 创建 PII 检测规则
 func NewPIIRule(config PIIRuleConfig) *PIIRule {
+	priority := config.Priority
+	if priority == 0 {
+		priority = PriorityHigh
+	}
 	r := &PIIRule{
 		action:   config.Action,
 		severity: config.Severity,
+		priority: priority,
 	}
 	if config.DetectPhone {
 		r.patterns = append(r.patterns, piiPattern{
@@ -137,6 +144,9 @@ func NewPIIRule(config PIIRuleConfig) *PIIRule {
 
 // Name 返回规则名
 func (r *PIIRule) Name() string { return "pii_detection" }
+
+// Priority 返回规则优先级
+func (r *PIIRule) Priority() int { return r.priority }
 
 // Check 检测输入中的 PII
 func (r *PIIRule) Check(input string, _ CheckPoint) (*Result, error) {

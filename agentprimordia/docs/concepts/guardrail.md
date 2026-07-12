@@ -26,20 +26,35 @@ const (
 
 | 规则 | 检测内容 | 典型动作 |
 |------|----------|----------|
-| `InjectionRule` | 提示注入、越狱指令 | Reject |
-| `PIIRule` | 身份证号、手机号、邮箱等 | Sanitize / Flag |
-| `TopicRule` | 主题白名单/黑名单 | Reject |
-| `TrieRule` | 敏感词 Trie 树 | Reject / Sanitize |
+| `PromptInjectionRule` | 提示注入、越狱指令 | Reject |
+| `PIIRule` | 手机号、邮箱、身份证、银行卡等 | Sanitize / Flag |
+| `TopicConstraintRule` | 主题白名单/黑名单 | Reject |
+| `SensitiveWordRule` | 敏感词 Trie 树 | Reject / Sanitize |
+| `OutputSafetyRule` | 输出安全检查 | Reject / Flag |
 
 ## 快速开始
 
 ```go
 engine := guardrail.NewEngine()
-engine.AddRule(guardrail.NewInjectionRule())
-engine.AddRule(guardrail.NewPIIRule(guardrail.PIIMask))
-engine.AddRule(guardrail.NewTopicRule([]string{"技术", "产品"}, nil))
+engine.AddRule(guardrail.NewPromptInjectionRule(guardrail.PromptInjectionConfig{
+    Action:   guardrail.ActionReject,
+    Severity: guardrail.SeverityCritical,
+}))
+engine.AddRule(guardrail.NewPIIRule(guardrail.PIIRuleConfig{
+    Action:       guardrail.ActionSanitize,
+    Severity:     guardrail.SeverityHigh,
+    DetectPhone:  true,
+    DetectEmail:  true,
+    DetectIDCard: true,
+}))
+engine.AddRule(guardrail.NewTopicConstraintRule(guardrail.TopicConstraintConfig{
+    Allow:    []string{"技术", "产品"},
+    Action:   guardrail.ActionReject,
+    Severity: guardrail.SeverityHigh,
+}))
 
-report, err := engine.Check(ctx, "用户输入内容", guardrail.CheckInput)
+// Check 方法签名：Check(input string, point CheckPoint) — 不接受 context
+report, err := engine.CheckInput("用户输入内容")
 if err != nil {
     panic(err)
 }
@@ -47,6 +62,33 @@ if err != nil {
 if !report.Passed {
     fmt.Println("拒绝原因:", report.Results[0].Message)
 }
+```
+
+## PII 规则配置
+
+`PIIRule` 支持检测多种 PII 类型：
+
+```go
+rule := guardrail.NewPIIRule(guardrail.PIIRuleConfig{
+    Action:            guardrail.ActionSanitize,
+    Severity:          guardrail.SeverityHigh,
+    DetectPhone:       true,       // 手机号
+    DetectEmail:       true,       // 邮箱
+    DetectIDCard:      true,       // 身份证
+    DetectBankCard:    true,       // 银行卡号
+    DetectIPv4:        false,      // IPv4 地址
+    DetectPassport:    false,      // 护照号
+    DetectBankAccount: false,      // 银行账号
+    DetectSSN:         false,      // 社会安全号
+    DetectAPIKey:      true,       // API Key
+    DetectJWT:         false,      // JWT
+})
+```
+
+也可使用默认配置（检测所有类型，脱敏处理）：
+
+```go
+rule := guardrail.NewPIIRule(guardrail.DefaultPIIRuleConfig())
 ```
 
 ## 自定义规则
@@ -76,17 +118,27 @@ func (r *MyRule) Check(input string, point guardrail.CheckPoint) (*guardrail.Res
 通过 Hook 在输入/输出点检查：
 
 ```go
-hooks := agent.Hooks{
-    agent.HookBeforeThink: func(ctx context.Context, hctx *agent.HookContext) error {
-        report, _ := engine.Check(ctx, hctx.Input.Content, guardrail.CheckInput)
-        if !report.Passed {
-            return fmt.Errorf("输入被护栏拦截: %s", report.Results[0].Message)
-        }
-        return nil
-    },
-}
+hooks := agent.NewHookManager()
+hooks.Register(agent.HookBeforeTurn, func(ctx *agent.HookContext) error {
+    report, _ := engine.CheckInput(ctx.Message.TextContent())
+    if !report.Passed {
+        return fmt.Errorf("输入被护栏拦截: %s", report.Results[0].Message)
+    }
+    return nil
+})
 
-agent := NewReActAgent(cfg).WithHooks(hooks)
+agent, _ := ap.NewAgent("my-agent", "你是助手", provider,
+    ap.WithHooks(hooks),
+)
+```
+
+或使用内置 `GuardrailHook`：
+
+```go
+gh := guardrail.NewGuardrailHook(engine)
+agent, _ := ap.NewAgent("my-agent", "你是助手", provider,
+    ap.WithHooks(gh.Hooks()),
+)
 ```
 
 ## 性能优化

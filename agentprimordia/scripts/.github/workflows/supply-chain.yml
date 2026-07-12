@@ -1,0 +1,89 @@
+name: Supply Chain Security
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 2 * * 1"
+
+env:
+  GO_VERSION: "1.26"
+
+jobs:
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Generate SBOM
+        run: |
+          chmod +x scripts/generate-sbom.sh
+          ./scripts/generate-sbom.sh sbom.json cyclonedx-json
+        continue-on-error: true
+
+      - name: Fallback SBOM (go list)
+        if: failure()
+        run: |
+          echo "syft not available, using go list fallback"
+          go list -m -json all | jq -s '{"components": map({name: .Path, version: (.Version // "unknown"), type: "library"})}' > sbom.json
+
+      - name: Upload SBOM artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+  sign:
+    name: Sign Container Image
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == "push" && (github.ref == "refs/heads/main" || github.ref == "refs/heads/master")
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign container image
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        run: |
+          chmod +x scripts/cosign-sign.sh
+          ./scripts/cosign-sign.sh ${{ needs.build.outputs.image_ref }}
+
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.image.outputs.ref }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build binary
+        run: |
+          CGO_ENABLED=0 go build -ldflags="-s -w" -o bin/ap ./cmd/ap
+
+      - name: Set image ref
+        id: image
+        run: echo "ref=" >> $GITHUB_OUTPUT

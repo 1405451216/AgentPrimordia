@@ -71,7 +71,7 @@ type EmbeddingProvider interface {
 // RAGStore 封装了 Memory + VectorStore + EmbeddingProvider，提供 RAG 检索能力
 type RAGStore struct {
 	memory   Memory
-	vectors  *VectorStore
+	vectors  *SimpleVectorStore
 	embedder EmbeddingProvider
 	logger   *slog.Logger
 	config   RAGFusionConfig // perf-v11 stage-4：支持运行时调整融合策略
@@ -360,7 +360,7 @@ func (r *RAGStore) GetMemory() Memory {
 }
 
 // GetVectors 返回底层 VectorStore
-func (r *RAGStore) GetVectors() *VectorStore {
+func (r *RAGStore) GetVectors() *SimpleVectorStore {
 	return r.vectors
 }
 

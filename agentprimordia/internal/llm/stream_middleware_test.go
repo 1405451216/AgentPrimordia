@@ -1,4 +1,4 @@
-package llm
+﻿package llm
 
 import (
 	"strings"
@@ -17,7 +17,7 @@ func TestStreamPipeline_Process_NoMiddleware(t *testing.T) {
 		return nil
 	}
 
-	p := &StreamPipeline{handler: handler}
+	p := NewStreamPipeline(handler)
 
 	c1 := Chunk{Content: "hello"}
 	c2 := Chunk{Content: " world", Done: true}
@@ -394,3 +394,4 @@ func TestNewStreamPipeline(t *testing.T) {
 		t.Errorf("new pipeline should have no middlewares, got %d", len(p.middlewares))
 	}
 }
+

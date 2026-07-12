@@ -122,6 +122,7 @@ type SensitiveWordRule struct {
 	trie     *Trie
 	action   Action
 	severity Severity
+	priority int
 	replChar rune
 }
 
@@ -130,6 +131,7 @@ type SensitiveWordConfig struct {
 	Words    []string
 	Action   Action
 	Severity Severity
+	Priority int // 规则优先级，默认 PriorityNormal
 	ReplChar rune
 }
 
@@ -141,16 +143,24 @@ func NewSensitiveWordRule(config SensitiveWordConfig) *SensitiveWordRule {
 	if replChar == 0 {
 		replChar = '*'
 	}
+	priority := config.Priority
+	if priority == 0 {
+		priority = PriorityNormal
+	}
 	return &SensitiveWordRule{
 		trie:     trie,
 		action:   config.Action,
 		severity: config.Severity,
+		priority: priority,
 		replChar: replChar,
 	}
 }
 
 // Name 返回规则名
 func (r *SensitiveWordRule) Name() string { return "sensitive_word" }
+
+// Priority 返回规则优先级
+func (r *SensitiveWordRule) Priority() int { return r.priority }
 
 // Check 检查输入中的敏感词
 func (r *SensitiveWordRule) Check(input string, _ CheckPoint) (*Result, error) {

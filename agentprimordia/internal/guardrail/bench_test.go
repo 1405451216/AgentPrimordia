@@ -7,10 +7,12 @@ import (
 
 // benchRule 用于基准测试的轻量级规则
 type benchRule struct {
-	name string
+	name     string
+	priority int
 }
 
 func (r *benchRule) Name() string { return r.name }
+func (r *benchRule) Priority() int { return r.priority }
 func (r *benchRule) Check(input string, point CheckPoint) (*Result, error) {
 	// 极简实现：直接返回 pass
 	return &Result{RuleName: r.name, Action: ActionPass}, nil

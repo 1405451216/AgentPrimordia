@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&style=for-the-badge" alt="TypeScript">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Zero_CGO-✓-brightgreen?style=for-the-badge" alt="Zero CGO">
-  <img src="https://img.shields.io/badge/version-v1.0.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-v2.0.0-blue?style=for-the-badge" alt="Version">
 </p>
 
 <h1 align="center">⚡ AgentPrimordia</h1>
@@ -619,6 +619,23 @@ agentprimordia/
 
 ## 🗺️ 优化路线图
 
+## ✅ 已完成 (v2.0)
+
+- [x] **多租户 SaaS 隔离**: `TenantManager` + `QuotaManager` + 令牌桶限流 + context 级数据隔离
+- [x] **密钥管理系统**: `SecretsManager` + AES-GCM 加密 + 环境/Vault 多后端
+- [x] **gRPC 传输层**: Agent-to-Agent gRPC + 连接池复用
+- [x] **语义缓存**: 基于语义相似度的 LLM 响应缓存 + L1/L2 多级缓存
+- [x] **MapReduce 编排**: 大规模任务的 MapReduce 模式
+- [x] **SLO/SLI 指标**: 服务质量目标监控 + 增强 pprof
+- [x] **结构化日志**: `StandardLogger` + `LogShipper` 远程传输
+- [x] **调试器增强**: 条件断点 + 时间旅行回放 + 变量监视
+- [x] **记忆生命周期**: 重要性评分 + 自动归档/压缩 + 记忆聚类
+- [x] **插件市场**: 动态注册 + 版本管理 + 安装器 + 资源限制
+- [x] **MCP Server**: MCP Server 端实现
+- [x] **合规审计**: 合规报告生成器
+- [x] **WASM 增强沙箱**: 资源限制 + WASM 模块安全执行
+- [x] **PII Trie 优化**: Trie 树匹配，大词汇表场景比正则快 10x+
+
 ## ✅ 已完成 (v1.0)
 
 - [x] **代码审查**: 全量审查 Go 47 包 + TypeScript 6 文件，修复 24 个问题
@@ -642,12 +659,12 @@ agentprimordia/
 - [ ] **分布式追踪**: 完善 OpenTelemetry Span 链路
 - [ ] **eBPF 可观测性**: 内核级 Agent 行为监控
 
-### 长期 (v2.0)
+### 长期 (v3.0)
 
-- [ ] **WASM 沙箱**: 基于 WasmEdge 的代码执行隔离
-- [ ] **多租户隔离**: 命名空间级别的资源隔离
 - [ ] **Agent 市场**: 可插拔 Agent 模板生态
 - [ ] **生产就绪**: SLA 保障、混沌工程验证
+- [ ] **分布式集群**: 跨节点 Agent 协作
+- [ ] **自适应学习**: Agent 自主进化与知识蒸馏
 
 ---
 
@@ -694,3 +711,37 @@ make run-production
   <strong>万物之源，智能之始</strong><br>
   用 AgentPrimordia 构建你自己的 AI Agent
 </p>
+
+---
+
+## 🔒 供应链安全 (Supply Chain Security)
+
+### SBOM 生成
+
+```bash
+# 生成 CycloneDX 格式 SBOM（推荐，需安装 syft）
+./scripts/generate-sbom.sh sbom.json cyclonedx-json
+
+# 或使用 SPDX 格式
+./scripts/generate-sbom.sh sbom.spdx spdx-json
+
+# 无 syft 时自动降级为 go list 输出
+./scripts/generate-sbom.sh
+```
+
+### 容器镜像签名
+
+```bash
+# 基于密钥签名
+COSIGN_PRIVATE_KEY=$(cat cosign.key) ./scripts/cosign-sign.sh ghcr.io/example/app:latest
+
+# Keyless 签名（Fulcio + Rekor）
+./scripts/cosign-sign.sh ghcr.io/example/app:latest
+```
+
+### CI/CD 集成
+
+GitHub Actions 工作流 `scripts/.github/workflows/supply-chain.yml` 提供：
+- **SBOM 自动生成**：每次 push/PR 自动生成并上传 SBOM artifact
+- **镜像签名**：main 分支自动触发 Cosign 签名
+- **定期扫描**：每周一自动执行供应链安全检查

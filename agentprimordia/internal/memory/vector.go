@@ -31,54 +31,64 @@ type VectorSearchResult struct {
 	Metadata map[string]string
 }
 
-type VectorStore struct {
+type SimpleVectorStore struct {
 	mu      sync.RWMutex
 	entries map[string]*VectorEntry
 	dim     int
 	hnsw    *HNSWIndex
 }
 
-func NewVectorStore(dimensions int) *VectorStore {
+func NewVectorStore(dimensions int) *SimpleVectorStore {
 	if dimensions <= 0 {
 		dimensions = defaultVectorDim
 	}
-	return &VectorStore{
+	return &SimpleVectorStore{
 		entries: make(map[string]*VectorEntry),
 		dim:     dimensions,
 	}
 }
 
 // NewVectorStoreWithHNSW 创建带 HNSW 索引的向量存储
-func NewVectorStoreWithHNSW(dimensions int, cfg HNSWConfig) *VectorStore {
+func NewVectorStoreWithHNSW(dimensions int, cfg HNSWConfig) *SimpleVectorStore {
 	cfg.Dimensions = dimensions
 	vs := NewVectorStore(dimensions)
 	vs.hnsw = NewHNSWIndex(cfg)
 	return vs
 }
 
-func (s *VectorStore) Add(ctx context.Context, id string, vector []float32, metadata map[string]string) error {
+func (s *SimpleVectorStore) Add(ctx context.Context, id string, vector []float32, metadata map[string]string) error {
 	if len(vector) != s.dim {
 		return fmt.Errorf("%w: expected %d, got %d", ErrDimensionMismatch, s.dim, len(vector))
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// 拷贝 vector 防止调用方突变
+	vectorCopy := make([]float32, len(vector))
+	copy(vectorCopy, vector)
 
-	s.entries[id] = &VectorEntry{
-		ID:       id,
-		Vector:   vector,
-		Metadata: metadata,
+	// 拷贝 metadata
+	metadataCopy := make(map[string]string, len(metadata))
+	for k, v := range metadata {
+		metadataCopy[k] = v
 	}
 
-	// 同步到 HNSW 索引
+	// 先在锁内完成 map 写入
+	s.mu.Lock()
+	s.entries[id] = &VectorEntry{
+		ID:       id,
+		Vector:   vectorCopy,
+		Metadata: metadataCopy,
+	}
+	s.mu.Unlock()
+
+	// 解锁后同步到 HNSW 索引（避免持锁期间执行耗时操作）
 	if s.hnsw != nil {
-		s.hnsw.Insert(ctx, id, vector, metadata)
+		s.hnsw.Insert(ctx, id, vectorCopy, metadataCopy)
 	}
 
 	return nil
 }
 
-func (s *VectorStore) Search(ctx context.Context, query []float32, topK int) ([]*VectorSearchResult, error) {
+func (s *SimpleVectorStore) Search(ctx context.Context, query []float32, topK int) ([]*VectorSearchResult, error) {
 	if len(query) != s.dim {
 		return nil, fmt.Errorf("%w: expected %d, got %d", ErrDimensionMismatch, s.dim, len(query))
 	}
@@ -136,16 +146,16 @@ func (s *VectorStore) Search(ctx context.Context, query []float32, topK int) ([]
 	return results[:topK], nil
 }
 
-func (s *VectorStore) Delete(ctx context.Context, id string) error {
+func (s *SimpleVectorStore) Delete(ctx context.Context, id string) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if _, exists := s.entries[id]; !exists {
+		s.mu.Unlock()
 		return fmt.Errorf("%w: %s", ErrVectorNotFound, id)
 	}
 	delete(s.entries, id)
+	s.mu.Unlock()
 
-	// 同步到 HNSW 索引
+	// 解锁后同步到 HNSW（避免持锁期间执行耗时操作）
 	if s.hnsw != nil {
 		s.hnsw.Delete(id)
 	}
@@ -153,7 +163,7 @@ func (s *VectorStore) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *VectorStore) Get(ctx context.Context, id string) (*VectorEntry, error) {
+func (s *SimpleVectorStore) Get(ctx context.Context, id string) (*VectorEntry, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -164,13 +174,13 @@ func (s *VectorStore) Get(ctx context.Context, id string) (*VectorEntry, error) 
 	return entry, nil
 }
 
-func (s *VectorStore) Count() int {
+func (s *SimpleVectorStore) Count() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.entries)
 }
 
-func (s *VectorStore) Dimensions() int {
+func (s *SimpleVectorStore) Dimensions() int {
 	return s.dim
 }
 

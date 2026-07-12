@@ -1,6 +1,7 @@
 package guardrail
 
 import (
+	"sort"
 	"sync"
 	"sync/atomic"
 )
@@ -45,8 +46,19 @@ type Report struct {
 	Action  Action
 }
 
+// 默认优先级常量。数值越大，优先级越高，越先执行。
+const (
+	PriorityCritical = 1000 // 安全关键（如 Prompt 注入检测）
+	PriorityHigh     = 500  // 高优先级（如 PII 脱敏、输出安全）
+	PriorityNormal   = 100  // 常规（如敏感词、话题约束）
+	PriorityLow      = 0    // 最低优先级（默认）
+)
+
 type Rule interface {
 	Name() string
+	// Priority 返回规则优先级，数值越大越先执行。
+	// 未显式设置时返回 PriorityNormal(100)。
+	Priority() int
 	Check(input string, point CheckPoint) (*Result, error)
 }
 
@@ -64,9 +76,13 @@ func NewEngine() *Engine {
 }
 
 // refreshSnapshot 在 mu 保护下重建原子快照（写路径调用）
+// 快照按 Priority 降序排列，保证高优先级规则先执行。
 func (e *Engine) refreshSnapshot() {
 	snap := make([]Rule, len(e.rules))
 	copy(snap, e.rules)
+	sort.SliceStable(snap, func(i, j int) bool {
+		return snap[i].Priority() > snap[j].Priority()
+	})
 	e.rulesSnapshot.Store(&snap)
 }
 

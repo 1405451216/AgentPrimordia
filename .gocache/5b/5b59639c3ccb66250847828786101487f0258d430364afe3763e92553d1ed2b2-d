@@ -1,0 +1,12 @@
+./byteorder.go
+./cpu.go
+./cpu_gc_x86.go
+./cpu_other_x86.go
+./cpu_windows.go
+./cpu_x86.go
+./endian_little.go
+./parse.go
+./runtime_auxv.go
+./runtime_auxv_go121.go
+./zcpu_windows.go
+./cpu_gc_x86.s

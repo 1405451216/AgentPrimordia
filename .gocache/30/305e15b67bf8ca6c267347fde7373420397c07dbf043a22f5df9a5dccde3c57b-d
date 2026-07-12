@@ -1,0 +1,12 @@
+./checkpoint.go
+./coordinator.go
+./distributed.go
+./fs_coordinator.go
+./leader_election.go
+./leader_election_metrics.go
+./sqlite_checkpoint.go
+./checkpoint_test.go
+./distributed_test.go
+./leader_election_bench_test.go
+./leader_election_test.go
+./sqlite_checkpoint_test.go

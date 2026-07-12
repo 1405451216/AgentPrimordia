@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @agentprimordia/sdk — AgentPrimordia TypeScript SDK
  *
  * Build cross-platform AI Agent applications with ReAct loop,
@@ -414,3 +414,34 @@ export type { AgentState as DashboardAgentState, TokenUsage, ToolCallStat, RunRe
 // Phase 6: 多模态深度融合
 export { MultimodalFusion, createMultimodalAgent } from './llm/multimodal-fusion.js';
 export type { MultimodalInput, ModalityResult, FusionResult, MultimodalFusionConfig } from './llm/multimodal-fusion.js';
+
+// ===== Phase C: 代码生成 + 包优化 + i18n + WebSocket =====
+
+// 代码生成器
+export { CodeGenerator } from './codegen/generator.js';
+export type { ToolTemplate, ToolParameter } from './codegen/templates/tool.js';
+export type { AgentTemplateConfig } from './codegen/templates/agent.js';
+export type { ProviderTemplateConfig } from './codegen/templates/provider.js';
+
+// i18n 国际化
+export { setLocale, getLocale, t, interpolate, hasKey, getSupportedLocales, mergeMessages } from './i18n/index.js';
+export type { Locale, LocaleKey } from './i18n/index.js';
+
+// CRDT 协作编辑
+export {
+  LamportClock,
+  LWWRegister,
+  LWWElementSet,
+  CRDTDocumentImpl,
+  LCROperations,
+  compareOperations,
+  generateOperationID,
+} from './collaboration/crdt.js';
+export type { Operation, OperationType, CRDTDocument } from './collaboration/crdt.js';
+
+// 增强型 WebSocket 传输
+export { EnhancedWSTransport } from './a2a/enhanced-websocket-transport.js';
+export type { EnhancedWSOptions, ConnectionStatus } from './a2a/enhanced-websocket-transport.js';
+
+// Tree-shakeable 标记
+export { __treeShakeable, __bundlerMarker } from './internal/tree-shakeable.js';

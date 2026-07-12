@@ -23,6 +23,7 @@ func normalizeForCheck(s string) string {
 type PromptInjectionRule struct {
 	action   Action
 	severity Severity
+	priority int
 	patterns []*regexp.Regexp
 	keywords []string
 }
@@ -31,13 +32,19 @@ type PromptInjectionRule struct {
 type PromptInjectionConfig struct {
 	Action   Action
 	Severity Severity
+	Priority int // 规则优先级，默认 PriorityCritical
 }
 
 // NewPromptInjectionRule 创建 Prompt 注入检测规则
 func NewPromptInjectionRule(config PromptInjectionConfig) *PromptInjectionRule {
+	priority := config.Priority
+	if priority == 0 {
+		priority = PriorityCritical
+	}
 	r := &PromptInjectionRule{
 		action:   config.Action,
 		severity: config.Severity,
+		priority: priority,
 		patterns: []*regexp.Regexp{
 			regexp.MustCompile(`(?i)ignore\s+(previous|above|all)\s+instructions`),
 			regexp.MustCompile(`(?i)forget\s+(everything|all|previous)`),
@@ -64,6 +71,9 @@ func NewPromptInjectionRule(config PromptInjectionConfig) *PromptInjectionRule {
 
 // Name 返回规则名
 func (r *PromptInjectionRule) Name() string { return "prompt_injection" }
+
+// Priority 返回规则优先级
+func (r *PromptInjectionRule) Priority() int { return r.priority }
 
 // Check 检测输入中的 Prompt 注入
 func (r *PromptInjectionRule) Check(input string, point CheckPoint) (*Result, error) {

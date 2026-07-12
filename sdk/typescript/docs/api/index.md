@@ -210,17 +210,20 @@ External vector database providers.
 
 RAG retrieval-augmented generation pipeline with hybrid search (FTS + Vector).
 
-**RAGStore** supports two fusion modes (v1.0.0+):
+**RAGStore** supports two fusion modes:
 
-- `LinearFusion` — Weighted score fusion (default)
-- `RFFFusion` — Reciprocal Rank Fusion, robust to score scale differences
+- `'linear'` — Weighted score fusion (default)
+- `'rrf'` — Reciprocal Rank Fusion, robust to score scale differences
 
 ```typescript
 const store = new RAGStore(memory, embedder, {
   fusionMode: 'rrf',
   rrfK: 60,
-  topK: 10,
+  overFetchSize: 5,
 });
+
+// 运行时切换融合模式
+store.setFusionConfig({ fusionMode: 'linear', ftsWeight: 0.4, vectorWeight: 0.6 });
 ```
 
 **Retrieval flow:** Query → Embedding → Vector Search → FTS Search → RRF Fusion → Rerank → TopK → Context injection

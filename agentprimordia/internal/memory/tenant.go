@@ -524,15 +524,17 @@ func (r *TenantRegistry) Get(tenantID string) (*TenantScoped, error) {
 		return sc, nil
 	}
 
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	// 二次检查
-	if sc, ok := r.scoped[tenantID]; ok {
-		return sc, nil
-	}
+	// 在锁外调用 factory（避免持锁期间执行耗时操作）
 	inner, err := r.factory(tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("memory: 创建 tenant %s 存储失败：%w", tenantID, err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	// 二次检查（可能已被其他 goroutine 创建）
+	if sc, ok := r.scoped[tenantID]; ok {
+		return sc, nil
 	}
 	sc, err = NewTenantScoped(inner, tenantID)
 	if err != nil {

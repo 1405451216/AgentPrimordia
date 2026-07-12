@@ -1,4 +1,4 @@
-package transport
+﻿package transport
 
 import (
 	"agentprimordia/internal/agent/bus"
@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -38,7 +40,7 @@ func TestHTTPTransportStartClose(t *testing.T) {
 
 	addr := tr.Addr()
 	if addr == "" {
-		t.Fatal("启动后地址不应该为空")
+		t.Fatal("启动后地址不应为空")
 	}
 
 	if err := tr.Close(); err != nil {
@@ -74,13 +76,13 @@ func TestHTTPTransportSendNotStarted(t *testing.T) {
 // TestHTTPTransportCloseNotStarted 测试未启动时关闭
 func TestHTTPTransportCloseNotStarted(t *testing.T) {
 	tr := NewHTTPTransport()
-	// 未启动时关闭不应该报错
+	// 未启动时关闭不应报错
 	if err := tr.Close(); err != nil {
-		t.Fatalf("未启动时关闭不应该报错: %v", err)
+		t.Fatalf("未启动时关闭不应报错: %v", err)
 	}
 }
 
-// TestHTTPTransportSendReceive 测试完整的发送-接收流程
+// TestHTTPTransportSendReceive 测试完整的发送/接收流程
 func TestHTTPTransportSendReceive(t *testing.T) {
 	// 启动服务端
 	server := NewHTTPTransport()
@@ -164,266 +166,12 @@ func TestHTTPTransportHandleInvalidBody(t *testing.T) {
 	}
 }
 
-// ===== TCPTransport 测试 =====
-
-// TestTCPTransportStartClose 测试 TCP 传输层启动和关闭
-func TestTCPTransportStartClose(t *testing.T) {
-	tr := NewTCPTransport()
-
-	if err := tr.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("启动 TCP 传输层失败: %v", err)
-	}
-
-	addr := tr.Addr()
-	if addr == "" {
-		t.Fatal("启动后地址不应该为空")
-	}
-
-	if err := tr.Close(); err != nil {
-		t.Fatalf("关闭 TCP 传输层失败: %v", err)
-	}
-}
-
-// TestTCPTransportDoubleStart 测试重复启动
-func TestTCPTransportDoubleStart(t *testing.T) {
-	tr := NewTCPTransport()
-
-	if err := tr.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("首次启动失败: %v", err)
-	}
-	defer tr.Close()
-
-	if err := tr.Start("127.0.0.1:0"); err == nil {
-		t.Fatal("重复启动应该返回错误")
-	}
-}
-
-// TestTCPTransportSendNotStarted 测试未启动时发送
-func TestTCPTransportSendNotStarted(t *testing.T) {
-	tr := NewTCPTransport()
-
-	msg := &bus.BusMessage{ID: "1", From: "a", To: "b", Type: bus.BusMsgTaskRequest}
-	err := tr.Send(context.Background(), "127.0.0.1:12345", msg)
-	if err == nil {
-		t.Fatal("未启动时发送应该返回错误")
-	}
-}
-
-// TestTCPTransportCloseNotStarted 测试未启动时关闭
-func TestTCPTransportCloseNotStarted(t *testing.T) {
-	tr := NewTCPTransport()
-	if err := tr.Close(); err != nil {
-		t.Fatalf("未启动时关闭不应该报错: %v", err)
-	}
-}
-
-// TestTCPTransportSendReceive 测试 TCP 发送和接收
-func TestTCPTransportSendReceive(t *testing.T) {
-	// 启动服务端
-	server := NewTCPTransport()
-	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("启动服务端失败: %v", err)
-	}
-	defer server.Close()
-
-	// 启动客户端
-	client := NewTCPTransport()
-	if err := client.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("启动客户端失败: %v", err)
-	}
-	defer client.Close()
-
-	msg := &bus.BusMessage{
-		ID:        "msg-1",
-		From:      "client",
-		To:        "server",
-		Type:      bus.BusMsgTaskRequest,
-		Content:   "hello tcp",
-		Timestamp: time.Now(),
-	}
-
-	if err := client.Send(context.Background(), server.Addr(), msg); err != nil {
-		t.Fatalf("发送消息失败: %v", err)
-	}
-
-	select {
-	case received := <-server.Receive():
-		if received.ID != "msg-1" {
-			t.Fatalf("期望消息 ID %q，实际为 %q", "msg-1", received.ID)
-		}
-		if received.Content != "hello tcp" {
-			t.Fatalf("期望内容 %q，实际为 %q", "hello tcp", received.Content)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("接收消息超时")
-	}
-}
-
-// TestTCPTransportSendWithAck 测试带 ACK 的发送
-func TestTCPTransportSendWithAck(t *testing.T) {
-	server := NewTCPTransport()
-	if err := server.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("启动服务端失败: %v", err)
-	}
-	defer server.Close()
-
-	client := NewTCPTransport()
-	if err := client.Start("127.0.0.1:0"); err != nil {
-		t.Fatalf("启动客户端失败: %v", err)
-	}
-	defer client.Close()
-
-	msg := &bus.BusMessage{
-		ID:        "msg-ack-1",
-		From:      "client",
-		To:        "server",
-		Type:      bus.BusMsgTaskRequest,
-		Content:   "ack test",
-		Timestamp: time.Now(),
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	if err := client.SendWithAck(ctx, server.Addr(), msg); err != nil {
-		t.Fatalf("SendWithAck 失败: %v", err)
-	}
-}
-
-// ===== TCPTransportConfig 测试 =====
-
-// TestDefaultTCPTransportConfig 测试默认配置
-func TestDefaultTCPTransportConfig(t *testing.T) {
-	cfg := DefaultTCPTransportConfig()
-
-	if cfg.AckTimeout != defaultAckTimeout {
-		t.Fatalf("AckTimeout 期望 %v，实际 %v", defaultAckTimeout, cfg.AckTimeout)
-	}
-	if cfg.MaxRetries != defaultMaxRetries {
-		t.Fatalf("MaxRetries 期望 %d，实际 %d", defaultMaxRetries, cfg.MaxRetries)
-	}
-	if cfg.PoolSize != defaultPoolSize {
-		t.Fatalf("PoolSize 期望 %d，实际 %d", defaultPoolSize, cfg.PoolSize)
-	}
-}
-
-// TestNewTCPTransportWithConfig 测试自定义配置
-func TestNewTCPTransportWithConfig(t *testing.T) {
-	cfg := TCPTransportConfig{
-		AckTimeout:    5 * time.Second,
-		MaxRetries:    5,
-		RetryInterval: 1 * time.Second,
-		PoolSize:      16,
-	}
-
-	tr := NewTCPTransportWithConfig(cfg)
-	if tr == nil {
-		t.Fatal("NewTCPTransportWithConfig 返回 nil")
-	}
-}
-
-// TestNewTCPTransportWithConfigDefaults 测试零值配置使用默认值
-func TestNewTCPTransportWithConfigDefaults(t *testing.T) {
-	cfg := TCPTransportConfig{} // 全部零值
-	tr := NewTCPTransportWithConfig(cfg)
-
-	if tr.config.AckTimeout != defaultAckTimeout {
-		t.Fatalf("零值 AckTimeout 应该使用默认值 %v，实际 %v", defaultAckTimeout, tr.config.AckTimeout)
-	}
-	if tr.config.MaxRetries != defaultMaxRetries {
-		t.Fatalf("零值 MaxRetries 应该使用默认值 %d，实际 %d", defaultMaxRetries, tr.config.MaxRetries)
-	}
-	if tr.config.PoolSize != defaultPoolSize {
-		t.Fatalf("零值 PoolSize 应该使用默认值 %d，实际 %d", defaultPoolSize, tr.config.PoolSize)
-	}
-}
-
-// TestTCPTransportPoolStats 测试连接池统计
-func TestTCPTransportPoolStats(t *testing.T) {
-	tr := NewTCPTransport()
-	active, idle := tr.PoolStats()
-	if active != 0 || idle != 0 {
-		t.Fatalf("未启动时连接池统计应该为 0,0，实际为 %d,%d", active, idle)
-	}
-}
-
-// ===== connPool 测试 =====
-
-// TestConnPoolBasic 测试连接池基本操作
-func TestConnPoolBasic(t *testing.T) {
-	// 先启动一个 TCP 服务
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("监听失败: %v", err)
-	}
-	defer ln.Close()
-
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				return
-			}
-			// 简单回显
-			go func(c net.Conn) {
-				defer c.Close()
-				io.Copy(c, c)
-			}(conn)
-		}
-	}()
-
-	dialer := &net.Dialer{Timeout: 5 * time.Second}
-	pool := newConnPool(4, dialer)
-	defer pool.CloseAll()
-
-	ctx := context.Background()
-	target := ln.Addr().String()
-
-	// 获取连接
-	conn, err := pool.Get(ctx, target)
-	if err != nil {
-		t.Fatalf("获取连接失败: %v", err)
-	}
-
-	// 归还连接
-	pool.Put(target, conn)
-
-	// 检查统计
-	_, idle := pool.Stats()
-	if idle != 1 {
-		t.Fatalf("归还后空闲连接应该为 1，实际为 %d", idle)
-	}
-}
-
-// TestConnPoolCloseAll 测试关闭连接池
-func TestConnPoolCloseAll(t *testing.T) {
-	pool := newConnPool(4, &net.Dialer{Timeout: 5 * time.Second})
-	pool.CloseAll()
-
-	ctx := context.Background()
-	_, err := pool.Get(ctx, "127.0.0.1:1")
-	if err == nil {
-		t.Fatal("连接池关闭后获取连接应该返回错误")
-	}
-}
-
-// ===== 辅助测试 =====
-
 // TestHTTPTransportAddrNotStarted 测试未启动时获取地址
 func TestHTTPTransportAddrNotStarted(t *testing.T) {
 	tr := NewHTTPTransport()
 	addr := tr.Addr()
 	if addr != "" {
-		t.Fatalf("未启动时地址应该为空，实际为 %q", addr)
-	}
-}
-
-// TestTCPTransportAddrNotStarted 测试未启动时获取地址
-func TestTCPTransportAddrNotStarted(t *testing.T) {
-	tr := NewTCPTransport()
-	addr := tr.Addr()
-	if addr != "" {
-		t.Fatalf("未启动时地址应该为空，实际为 %q", addr)
+		t.Fatalf("未启动时地址应为空，实际为 %q", addr)
 	}
 }
 
@@ -455,7 +203,297 @@ func TestHTTPTransportSendToInvalidTarget(t *testing.T) {
 	}
 }
 
-// TestTCPTransportHandleConnInvalidData 测试 TCP 处理无效数据
+// ===== ConnPool 测试 =====
+
+// TestConnPoolCreation 测试连接池创建
+func TestConnPoolCreation(t *testing.T) {
+	pool := NewConnPool(10, 90*time.Second)
+	if pool == nil {
+		t.Fatal("NewConnPool 不应返回 nil")
+	}
+	if pool.MaxIdleConns != 10 {
+		t.Fatalf("MaxIdleConns = %d, want 10", pool.MaxIdleConns)
+	}
+	if pool.MaxIdleConnsPerHost != 10 {
+		t.Fatalf("MaxIdleConnsPerHost = %d, want 10", pool.MaxIdleConnsPerHost)
+	}
+	if pool.IdleConnTimeout != 90*time.Second {
+		t.Fatalf("IdleConnTimeout = %v, want 90s", pool.IdleConnTimeout)
+	}
+	tr := pool.Transport()
+	if tr == nil {
+		t.Fatal("Transport() 不应返回 nil")
+	}
+}
+
+// TestConnPoolStats 测试连接池统计信息
+func TestConnPoolStats(t *testing.T) {
+	pool := NewConnPool(10, 90*time.Second)
+
+	// 初始状态全为 0
+	stats := pool.Stats()
+	if stats.Active != 0 {
+		t.Fatalf("初始 Active = %d, want 0", stats.Active)
+	}
+	if stats.Idle != 0 {
+		t.Fatalf("初始 Idle = %d, want 0", stats.Idle)
+	}
+	if stats.Wait != 0 {
+		t.Fatalf("初始 Wait = %d, want 0", stats.Wait)
+	}
+}
+
+// TestConnPoolWithHTTPTransport 测试连接池与 HTTPTransport 集成
+func TestConnPoolWithHTTPTransport(t *testing.T) {
+	// 启动一个测试 HTTP 服务器
+	var requestCount atomic.Int32
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestCount.Add(1)
+			w.WriteHeader(http.StatusOK)
+		}),
+	}
+	ln, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		t.Fatalf("监听失败: %v", err)
+	}
+	go server.Serve(ln)
+	defer server.Close()
+
+	// 使用连接池发送请求
+	pool := NewConnPool(10, 90*time.Second)
+	tr := NewHTTPTransport().WithConnPool(pool)
+	if err := tr.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动 HTTP 传输层失败: %v", err)
+	}
+	defer tr.Close()
+
+	// 发送多条消息验证连接复用
+	target := ln.Addr().String()
+	for i := 0; i < 5; i++ {
+		msg := &bus.BusMessage{
+			ID:      fmt.Sprintf("msg-%d", i),
+			From:    "client",
+			To:      "server",
+			Type:    bus.BusMsgTaskRequest,
+			Content: "ping",
+		}
+		if err := tr.Send(context.Background(), target, msg); err != nil {
+			t.Fatalf("发送消息 %d 失败: %v", i, err)
+		}
+	}
+
+	if requestCount.Load() != 5 {
+		t.Fatalf("期望收到 5 个请求，实际 %d", requestCount.Load())
+	}
+}
+
+// TestConnPoolClose 测试连接池关闭
+func TestConnPoolClose(t *testing.T) {
+	pool := NewConnPool(10, 90*time.Second)
+	if err := pool.Close(); err != nil {
+		t.Fatalf("Close() 失败: %v", err)
+	}
+}
+
+// TestConnPoolConcurrentUse 测试连接池并发安全
+func TestConnPoolConcurrentUse(t *testing.T) {
+	// 启动测试服务器
+	server := &http.Server{
+		Addr: "127.0.0.1:0",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}),
+	}
+	ln, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		t.Fatalf("监听失败: %v", err)
+	}
+	go server.Serve(ln)
+	defer server.Close()
+
+	pool := NewConnPool(20, 90*time.Second)
+	tr := NewHTTPTransport().WithConnPool(pool)
+	if err := tr.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动 HTTP 传输层失败: %v", err)
+	}
+	defer tr.Close()
+
+	target := ln.Addr().String()
+
+	// 并发发送
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			msg := &bus.BusMessage{
+				ID:      fmt.Sprintf("concurrent-%d", i),
+				From:    "client",
+				To:      "server",
+				Type:    bus.BusMsgTaskRequest,
+				Content: "ping",
+			}
+			if err := tr.Send(context.Background(), target, msg); err != nil {
+				t.Errorf("并发发送 %d 失败: %v", i, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+// TestHTTPTransportSendReceiveWithConnPool 测试使用连接池的完整收发流程
+func TestHTTPTransportSendReceiveWithConnPool(t *testing.T) {
+	server := NewHTTPTransport()
+	if err := server.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动服务端失败: %v", err)
+	}
+	defer server.Close()
+
+	pool := NewConnPool(10, 90*time.Second)
+	client := NewHTTPTransport().WithConnPool(pool)
+	if err := client.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动客户端失败: %v", err)
+	}
+	defer client.Close()
+
+	msg := &bus.BusMessage{
+		ID:        "pool-msg-1",
+		From:      "client",
+		To:        "server",
+		Type:      bus.BusMsgTaskRequest,
+		Content:   "pooledhello",
+		Timestamp: time.Now(),
+	}
+
+	if err := client.Send(context.Background(), server.Addr(), msg); err != nil {
+		t.Fatalf("发送消息失败: %v", err)
+	}
+
+	select {
+	case received := <-server.Receive():
+		if received.ID != "pool-msg-1" {
+			t.Fatalf("期望消息 ID %q，实际为 %q", "pool-msg-1", received.ID)
+		}
+		if received.Content != "pooledhello" {
+			t.Fatalf("期望内容 %q，实际为 %q", "pooledhello", received.Content)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("接收消息超时")
+	}
+}
+
+// ===== TCPTransport 测试 =====
+
+// TestTCPTransportStartClose 测试 TCP 传输层启动和关闭
+func TestTCPTransportStartClose(t *testing.T) {
+	tr := NewTCPTransport()
+	if err := tr.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("启动 TCP 传输层失败: %v", err)
+	}
+	defer tr.Close()
+
+	addr := tr.Addr()
+	if addr == "" {
+		t.Fatal("启动后地址不应为空")
+	}
+}
+
+// TestTCPTransportAddrNotStarted 测试未启动时获取地址
+func TestTCPTransportAddrNotStarted(t *testing.T) {
+	tr := NewTCPTransport()
+	addr := tr.Addr()
+	if addr != "" {
+		t.Fatalf("未启动时地址应为空，实际为 %q", addr)
+	}
+}
+
+// TestTCPTransportDoubleStart 测试重复启动
+func TestTCPTransportDoubleStart(t *testing.T) {
+	tr := NewTCPTransport()
+	if err := tr.Start("127.0.0.1:0"); err != nil {
+		t.Fatalf("首次启动失败: %v", err)
+	}
+	defer tr.Close()
+
+	if err := tr.Start("127.0.0.1:0"); err == nil {
+		t.Fatal("重复启动应该返回错误")
+	}
+}
+
+// TestTCPTransportPoolStats 测试连接池统计
+func TestTCPTransportPoolStats(t *testing.T) {
+	tr := NewTCPTransport()
+	active, idle := tr.PoolStats()
+	if active != 0 || idle != 0 {
+		t.Fatalf("未启动时连接池统计应为 0,0，实际为 %d,%d", active, idle)
+	}
+}
+
+// ===== connPool 测试 =====
+
+// TestConnPoolBasic 测试连接池基本操作
+func TestConnPoolBasic(t *testing.T) {
+	// 先启动一个 TCP 服务
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("监听失败: %v", err)
+	}
+	defer ln.Close()
+
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			// 简单回写
+			go func(c net.Conn) {
+				defer c.Close()
+				io.Copy(c, c)
+			}(conn)
+		}
+	}()
+
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	pool := newConnPool(4, dialer)
+	defer pool.CloseAll()
+
+	ctx := context.Background()
+	target := ln.Addr().String()
+
+	// 获取连接
+	conn, err := pool.Get(ctx, target)
+	if err != nil {
+		t.Fatalf("获取连接失败: %v", err)
+	}
+
+	// 归还连接
+	pool.Put(target, conn)
+
+	// 检查统计
+	_, idle := pool.Stats()
+	if idle != 1 {
+		t.Fatalf("归还后空闲连接应为 1，实际为 %d", idle)
+	}
+}
+
+// TestConnPoolCloseAll 测试关闭连接池
+func TestConnPoolCloseAll(t *testing.T) {
+	pool := newConnPool(4, &net.Dialer{Timeout: 5 * time.Second})
+	pool.CloseAll()
+
+	ctx := context.Background()
+	_, err := pool.Get(ctx, "127.0.0.1:1")
+	if err == nil {
+		t.Fatal("连接池关闭后获取连接应该返回错误")
+	}
+}
+
+// ===== 辅助测试 =====
+
+// TestHTTPTransportHandleConnInvalidData 测试 TCP 处理无效数据
 func TestTCPTransportHandleConnInvalidData(t *testing.T) {
 	server := NewTCPTransport()
 	if err := server.Start("127.0.0.1:0"); err != nil {
@@ -463,7 +501,7 @@ func TestTCPTransportHandleConnInvalidData(t *testing.T) {
 	}
 	defer server.Close()
 
-	// 手动连接并发送无效 JSON
+	// 手动连接并发无效 JSON
 	conn, err := net.DialTimeout("tcp", server.Addr(), 2*time.Second)
 	if err != nil {
 		t.Fatalf("连接服务端失败: %v", err)

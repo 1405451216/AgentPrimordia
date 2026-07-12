@@ -1,4 +1,4 @@
-package transport
+﻿package transport
 
 import (
 	"agentprimordia/internal/agent/bus"
@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// HTTPTransport 基于 HTTP 的跨进程 Agent 通信传输层
+// HTTPTransport 基于 HTTP 的跨进程 Agent 传输层实现
 // 安全警告：未配置 TLS 时以明文传输消息，不适合在生产环境中传输敏感数据
 // 生产环境请使用 WithTLS() 配置 TLS 加密
 type HTTPTransport struct {
@@ -27,6 +27,7 @@ type HTTPTransport struct {
 	started   bool
 	logger    *slog.Logger
 	tlsConfig *tls.Config
+	pool      *ConnPool
 }
 
 const (
@@ -49,11 +50,25 @@ func NewHTTPTransport() *HTTPTransport {
 	}
 }
 
+// WithConnPool 配置连接池，启用 Transport 级别连接复用
+func (t *HTTPTransport) WithConnPool(pool *ConnPool) *HTTPTransport {
+	t.pool = pool
+	t.client.Transport = pool.Transport()
+	return t
+}
+
 // WithTLS 配置 TLS 加密，启用后传输层使用 HTTPS
 func (t *HTTPTransport) WithTLS(cfg *tls.Config) *HTTPTransport {
 	t.tlsConfig = cfg
-	t.client.Transport = &http.Transport{
+	transport := &http.Transport{
 		TLSClientConfig: cfg,
+	}
+	if t.pool != nil {
+		poolTransport := t.pool.Transport()
+		poolTransport.TLSClientConfig = cfg
+		t.client.Transport = poolTransport
+	} else {
+		t.client.Transport = transport
 	}
 	return t
 }
@@ -204,3 +219,4 @@ func (t *HTTPTransport) handleMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "inbound channel full", http.StatusServiceUnavailable)
 	}
 }
+

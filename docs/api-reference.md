@@ -424,20 +424,26 @@ embedder := ap.NewEmbeddingAdapter(llmProvider, 1536)
 ragStore := ap.NewRAGStore(store, embedder)
 results, err := ragStore.HybridSearch(ctx, "查询内容", 5)
 
-// v1.0.0: RRF 融合模式（运行时切换）
-ragStore = ap.NewRAGStoreWithFusionConfig(store, embedder, ap.LinearFusion)
+// RRF 融合模式（运行时切换）
+ragStore = ap.NewRAGStoreWithFusionConfig(store, embedder, ap.RAGFusionConfig{
+    FusionMode:    ap.FusionRRF,  // Reciprocal Rank Fusion
+    RRFK:          60,
+    OverFetchSize: 5,
+})
+
+// 运行时切换回 Linear 模式
 ragStore.SetFusionConfig(ap.RAGFusionConfig{
-    Mode: ap.RFFFusion,  // Reciprocal Rank Fusion
-    RRFK: 60,
-    TopK: 10,
+    FusionMode:   ap.FusionLinear,
+    FTSWeight:    0.4,
+    VectorWeight: 0.6,
 })
 ```
 
 融合模式：
 | 模式 | 说明 |
 |------|------|
-| `LinearFusion` | 基于原始分数加权融合（默认） |
-| `RFFFusion` | 基于排名融合，对量纲差异鲁棒 |
+| `FusionLinear` | 基于原始分数加权融合（默认） |
+| `FusionRRF` | 基于排名融合，对量纲差异鲁棒 |
 
 检索流程：`查询 → Embedding → Vector Search → FTS Search → RRF 融合 → Rerank → TopK → 上下文注入`
 

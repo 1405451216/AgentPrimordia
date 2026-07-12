@@ -296,7 +296,7 @@ func (p *Pool) AcquireForTenant(tenantID string) (release func(), err error) {
 // 注意：当前实现仅做准入校验（配额通过后立即释放并发槽）。
 // 真正的并发执行仍由 Pool 调度器统一控制；调用方可在拿到 *TaskResult
 // 后通过其他机制做租户维度的限流。
-func (p *Pool) SubmitForTenant(tenantID string, task TaskConfig) (*TaskResult, error) {
+func (p *Pool) SubmitForTenant(ctx context.Context, tenantID string, task TaskConfig) (*TaskResult, error) {
 	release, err := p.AcquireForTenant(tenantID)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ func (p *Pool) SubmitForTenant(tenantID string, task TaskConfig) (*TaskResult, e
 	// 立即释放并发槽——只做准入校验
 	release()
 
-	results, err := p.Dispatch(context.Background(), []TaskConfig{task})
+	results, err := p.Dispatch(ctx, []TaskConfig{task})
 	if err != nil {
 		return nil, err
 	}

@@ -41,6 +41,27 @@ type RAGStore = memory.RAGStore
 // RAGResult 是 RAG 查询的结果，包含匹配的记忆片段、相关度分数和来源（fts / vector）
 type RAGResult = memory.RAGResult
 
+// Reranker 是 RAG 搜索结果重排序接口
+type Reranker = memory.Reranker
+
+// MMRReranker 使用最大边际相关性算法进行重排序
+type MMRReranker = memory.MMRReranker
+
+// MMRConfig 是 MMR 重排序配置
+type MMRConfig = memory.MMRConfig
+
+// Compressor 是记忆压缩器接口
+type Compressor = memory.Compressor
+
+// CompressorConfig 是压缩器配置
+type CompressorConfig = memory.CompressorConfig
+
+// CompressSummarizer 是压缩摘要接口
+type CompressSummarizer = memory.CompressSummarizer
+
+// CompressorSummary 是压缩摘要结果
+type CompressorSummary = memory.CompressorSummary
+
 // CleanupConfig 是记忆自动清理配置，包含过期天数、清理间隔和保留角色
 type CleanupConfig = memory.CleanupConfig
 
@@ -106,4 +127,6 @@ type QueryResult = memory.QueryResult
 
 var (
 	NewRetrievalAugmentedGenerator = memory.NewRetrievalAugmentedGenerator
+	NewMMRReranker                  = memory.NewMMRReranker
+	NewCompressor                   = memory.NewCompressor
 )

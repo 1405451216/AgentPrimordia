@@ -48,7 +48,7 @@ export interface WorkerResult<O> {
  * 在浏览器中使用 Web Workers API（不在本类范围内）。
  * 在 Edge Runtime 中不可用（Cloudflare Workers 不支持 worker_threads）。
  */
-export class ComputeWorkerPool {
+export class ComputeWorkerPool implements Disposable {
   private config: Required<Omit<WorkerPoolConfig, 'workerScript'>> & Pick<WorkerPoolConfig, 'workerScript'>;
   private workers: { worker: { terminate(): void }; busy: boolean; id: number }[] = [];
   private taskQueue: Array<{ task: WorkerTask<unknown, unknown>; resolve: (v: unknown) => void; reject: (e: Error) => void }> = [];
@@ -141,6 +141,11 @@ export class ComputeWorkerPool {
     }
     this.workers = [];
     this.initialized = false;
+  }
+
+  /** 显式资源清理（TS 5.2+ Explicit Resource Management） */
+  [Symbol.dispose](): void {
+    this.terminate();
   }
 
   /** 获取统计信息 */

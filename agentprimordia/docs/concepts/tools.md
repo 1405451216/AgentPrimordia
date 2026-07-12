@@ -17,60 +17,73 @@ type Tool interface {
     Description() string
     
     // Parameters 返回工具参数定义（JSON Schema）
-    Parameters() map[string]interface{}
+    Parameters() json.RawMessage
     
     // Execute 执行工具逻辑
-    Execute(ctx context.Context, params map[string]interface{}) (string, error)
+    Execute(ctx context.Context, args json.RawMessage) (*Result, error)
+}
+```
+
+### Result 结构
+
+```go
+type Result struct {
+    Content  string         `json:"content"`
+    IsError  bool           `json:"is_error"`
+    Metadata map[string]any `json:"metadata,omitempty"`
 }
 ```
 
 ### 工具注册
 
-通过 `ToolManager` 管理工具：
+通过 `Registry` 管理工具：
 
 ```go
-manager := NewToolManager()
+registry := tools.NewRegistry()
 
 // 注册单个工具
-manager.Register(myTool)
+registry.Register(myTool)
 
 // 批量注册
-manager.RegisterAll(tool1, tool2, tool3)
+registry.RegisterMultiple(tool1, tool2, tool3)
 
 // 注册插件工具
-manager.RegisterPlugin(httpPlugin)
+registry.RegisterPlugin(httpPlugin)
 ```
 
-### 工具调用
+### 工具执行
 
-Agent 通过 LLM 输出调用工具：
+通过 `Executor` 执行工具调用：
 
 ```go
-// LLM 输出工具调用指令
-action := `{
-    "tool": "http_request",
-    "params": {
-        "url": "https://api.example.com/data",
-        "method": "GET"
-    }
-}`
+executor := tools.NewExecutor(registry)
 
-// Agent 自动解析并执行
-result, err := agent.Act(ctx, action)
+// 执行单个工具
+result, err := executor.Execute(ctx, &tools.FunctionCall{
+    Name:      "http_request",
+    Arguments: `{"url": "https://api.example.com/data", "method": "GET"}`,
+})
+
+// 批量执行
+results, err := executor.ExecuteBatch(ctx, []*tools.FunctionCall{
+    {Name: "tool1", Arguments: `{}`},
+    {Name: "tool2", Arguments: `{}`},
+})
 ```
 
 ## 内置工具
 
-### HTTP 工具
+### FileSystem 工具
 
-发送 HTTP 请求：
+文件操作：
 
 ```go
-httpTool := tools.NewHTTPTool()
-manager.Register(httpTool)
-
-// LLM 调用示例
-// {"tool": "http_request", "params": {"url": "...", "method": "GET"}}
+fileTool := tools.NewFileSystemTool(tools.FSToolConfig{
+    RootDir:      "/workspace",
+    AllowedPaths: []string{"/tmp", "/home/user"},  // 限制访问路径
+    ReadOnly:     false,
+})
+registry.Register(fileTool)
 ```
 
 ### Shell 工具
@@ -82,57 +95,59 @@ shellTool := tools.NewShellTool(tools.ShellConfig{
     AllowedCommands: []string{"ls", "cat", "echo"},  // 白名单
     Timeout:         30 * time.Second,
 })
-manager.Register(shellTool)
+registry.Register(shellTool)
 ```
 
-### File 工具
+### Web 工具
 
-文件操作：
+发送 HTTP 请求：
 
 ```go
-fileTool := tools.NewFileTool(tools.FileConfig{
-    AllowedPaths: []string{"/tmp", "/home/user"},  // 限制访问路径
-    ReadOnly:     false,
+webTool := tools.NewWebTool()
+registry.Register(webTool)
+```
+
+### API 工具
+
+REST API 调用（带白名单、超时、重试）：
+
+```go
+apiTool := tools.NewAPIClient(tools.APIClientConfig{
+    BaseURL:    "https://api.example.com",
+    Timeout:    30 * time.Second,
+    MaxRetries: 3,
 })
-manager.Register(fileTool)
+registry.Register(apiTool)
 ```
 
 ## 工具权限控制
 
-### 白名单模式
-
-只允许执行白名单中的工具：
+### 权限配置
 
 ```go
-manager := NewToolManager().
-    WithAllowedTools([]string{"http_request", "file_read"})
+type Permission struct {
+    AllowedRoles        []string         // 允许的角色
+    BlockedPaths        []string         // 禁止访问的路径
+    RequireConfirmation bool             // 是否需要确认
+    ConfirmFunc         ConfirmationFunc // 确认回调
+}
+
+type ConfirmationFunc func(toolName string, args json.RawMessage) bool
 ```
 
-### 黑名单模式
+### 确认机制
 
-禁止执行黑名单中的工具：
-
-```go
-manager := NewToolManager().
-    WithBlockedTools([]string{"shell_exec", "file_delete"})
-```
-
-### 参数验证
-
-在工具执行前验证参数：
+在工具执行前要求人工确认：
 
 ```go
-tool := NewHTTPTool().
-    WithValidator(func(params map[string]interface{}) error {
-        url, ok := params["url"].(string)
-        if !ok {
-            return errors.New("url is required")
-        }
-        if !strings.HasPrefix(url, "https://") {
-            return errors.New("only HTTPS is allowed")
-        }
-        return nil
-    })
+registry.Register(&MyTool{}, tools.Permission{
+    RequireConfirmation: true,
+    ConfirmFunc: func(toolName string, args json.RawMessage) bool {
+        // 检查参数，返回 true 允许执行，false 拒绝
+        fmt.Println("确认执行工具:", toolName, "参数:", string(args))
+        return true
+    },
+})
 ```
 
 ## 工具插件
@@ -143,19 +158,10 @@ tool := NewHTTPTool().
 
 ```go
 type ToolPlugin interface {
-    // Name 返回插件名称
     Name() string
-    
-    // Version 返回插件版本
     Version() string
-    
-    // Tools 返回插件提供的工具列表
     Tools() []Tool
-    
-    // Init 初始化插件
-    Init(config map[string]interface{}) error
-    
-    // Close 关闭插件
+    Init(config map[string]any) error
     Close() error
 }
 ```
@@ -164,27 +170,27 @@ type ToolPlugin interface {
 
 AgentPrimordia 提供 6 个官方插件：
 
-| 插件 | 功能 | 安装 |
+| 插件 | 功能 | 工具 |
 |------|------|------|
-| `http` | HTTP 请求 | `go get agentprimordia/plugins/http` |
-| `sql` | SQL 查询 | `go get agentprimordia/plugins/sql` |
-| `git` | Git 操作 | `go get agentprimordia/plugins/git` |
-| `json` | JSON 处理 | `go get agentprimordia/plugins/json` |
-| `email` | 邮件发送 | `go get agentprimordia/plugins/email` |
-| `kv` | 键值存储 | `go get agentprimordia/plugins/kv` |
+| `http` | HTTP 请求 | `http_client` |
+| `sql` | SQL 查询 | `sqlite_processor` |
+| `git` | Git 操作 | `git_tool` |
+| `json` | JSON/CSV 处理 | `json_processor` + `csv_processor` |
+| `email` | 邮件发送 | `email_sender` |
+| `kv` | 键值存储 | `kv_store` |
 
 ### 使用插件
 
 ```go
 // 加载 HTTP 插件
 httpPlugin := http.NewPlugin()
-httpPlugin.Init(map[string]interface{}{
+httpPlugin.Init(map[string]any{
     "timeout": 30,
     "retry":   3,
 })
 
-// 注册到工具管理器
-manager.RegisterPlugin(httpPlugin)
+// 注册到工具注册表
+registry.RegisterPlugin(httpPlugin)
 ```
 
 ## MCP 协议支持
@@ -193,33 +199,34 @@ AgentPrimordia 原生支持 Model Context Protocol (MCP)：
 
 ```go
 // 连接 MCP 服务器
-mcpClient := mcp.NewClient("http://localhost:3000")
-tools, err := mcpClient.ListTools()
+mcpRegistry := mcp.NewRegistry()
+mcpRegistry.Register(mcp.MCPClientConfig{
+    Name: "my-mcp-server",
+    URL:  "http://localhost:3000",
+})
 
-// 注册 MCP 工具
-for _, tool := range tools {
-    manager.Register(tool)
-}
+// 启动并注册 MCP 工具
+mcpRegistry.StartAll(ctx)
+mcpRegistry.RegisterIntoRegistry(registry)
 ```
 
 ## 工具结果处理
 
 ### 结果格式化
 
-工具返回的结果可以是字符串或结构化数据：
+工具返回的结果是 `*Result` 结构：
 
 ```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
-    // 简单字符串
-    return "Success", nil
+func (t *MyTool) Execute(ctx context.Context, args json.RawMessage) (*Result, error) {
+    // 成功结果
+    return tools.NewResult("操作成功"), nil
     
-    // JSON 格式
-    result := map[string]interface{}{
-        "status": "success",
-        "data":   someData,
-    }
-    jsonBytes, _ := json.Marshal(result)
-    return string(jsonBytes), nil
+    // 或带元数据的结果
+    return &tools.Result{
+        Content:  "查询完成",
+        IsError:  false,
+        Metadata: map[string]any{"count": 42},
+    }, nil
 }
 ```
 
@@ -228,12 +235,23 @@ func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (st
 工具执行失败时返回错误：
 
 ```go
-func (t *MyTool) Execute(ctx context.Context, params map[string]interface{}) (string, error) {
+func (t *MyTool) Execute(ctx context.Context, args json.RawMessage) (*Result, error) {
     if err := doSomething(); err != nil {
-        return "", fmt.Errorf("tool execution failed: %w", err)
+        return nil, fmt.Errorf("tool execution failed: %w", err)
     }
-    return "Success", nil
+    return tools.NewResult("Success"), nil
 }
+```
+
+预定义错误变量：
+
+```go
+var (
+    ErrInvalidConfig = errors.New("invalid configuration")
+    ErrToolNotFound  = errors.New("tool not found")
+    ErrToolExecution = errors.New("tool execution failed")
+    ErrConfirmDenied = errors.New("tool confirmation denied")
+)
 ```
 
 ## 工具发现

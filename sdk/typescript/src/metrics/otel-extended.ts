@@ -191,7 +191,9 @@ export class OTLPExporter {
   addSpan(span: OTelSpan): void {
     this.batch.push(span);
     if (this.batch.length >= this.batchSize) {
-      this.flush().catch(() => {});
+      this.flush().catch((err) => {
+        console.error('OTLPExporter addSpan flush failed:', err);
+      });
     }
   }
 

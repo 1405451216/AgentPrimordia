@@ -23,6 +23,10 @@ type HTMLDocument struct {
 	Headings []HTMLHeading     `json:"headings"`
 }
 
+const (
+	maxHTMLResponseSize = 10 * 1024 * 1024 // 10MB：HTML 响应体上限，防止 OOM
+)
+
 // HTMLLink 表示 HTML 中的超链接
 type HTMLLink struct {
 	Text string `json:"text"`
@@ -155,7 +159,7 @@ func (h *HTMLLoader) fetchURL(url string, timeout int) ([]byte, error) {
 		return nil, fmt.Errorf("HTTP status %d: %s", resp.StatusCode, resp.Status)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxHTMLResponseSize))
 	if err != nil {
 		return nil, fmt.Errorf("read response body failed: %w", err)
 	}

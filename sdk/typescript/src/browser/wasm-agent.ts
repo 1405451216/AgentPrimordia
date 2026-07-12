@@ -538,7 +538,9 @@ export class BrowserAgent {
 
     // 处理离线队列中的积压请求
     if (!this.offlineQueue.isEmpty) {
-      this.offlineQueue.processAll().catch(() => {});
+      this.offlineQueue.processAll().catch((err) => {
+        console.error('OfflineQueue processAll failed:', err);
+      });
     }
 
     return {
@@ -609,7 +611,9 @@ export class BrowserAgent {
       this.onlineStatus = 'online';
       // 自动重放离线队列
       if (!this.offlineQueue.isEmpty) {
-        this.offlineQueue.processAll().catch(() => {});
+        this.offlineQueue.processAll().catch((err) => {
+          console.error('OfflineQueue processAll on online event failed:', err);
+        });
       }
     });
 

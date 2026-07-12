@@ -9,6 +9,7 @@ import (
 type TopicConstraintRule struct {
 	action   Action
 	severity Severity
+	priority int
 	allowed  []string
 	denied   []string
 	mode     TopicMode
@@ -26,15 +27,21 @@ const (
 type TopicConstraintConfig struct {
 	Action   Action
 	Severity Severity
+	Priority int // 规则优先级，默认 PriorityNormal
 	Mode     TopicMode
 	Topics   []string
 }
 
 // NewTopicConstraintRule 创建话题约束规则
 func NewTopicConstraintRule(config TopicConstraintConfig) *TopicConstraintRule {
+	priority := config.Priority
+	if priority == 0 {
+		priority = PriorityNormal
+	}
 	r := &TopicConstraintRule{
 		action:   config.Action,
 		severity: config.Severity,
+		priority: priority,
 		mode:     config.Mode,
 	}
 	if config.Mode == TopicModeAllowlist {
@@ -48,6 +55,9 @@ func NewTopicConstraintRule(config TopicConstraintConfig) *TopicConstraintRule {
 
 // Name 返回规则名
 func (r *TopicConstraintRule) Name() string { return "topic_constraint" }
+
+// Priority 返回规则优先级
+func (r *TopicConstraintRule) Priority() int { return r.priority }
 
 // Check 检查输入是否在话题约束范围内
 func (r *TopicConstraintRule) Check(input string, _ CheckPoint) (*Result, error) {

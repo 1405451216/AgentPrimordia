@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os/exec"
 	"strconv"
@@ -14,8 +15,11 @@ import (
 )
 
 const (
-	defaultHTTPTimeout = 30 * time.Second
-	defaultGitLogCount = "-20"
+	defaultHTTPTimeout  = 30 * time.Second
+	defaultGitLogCount  = "-20"
+	maxHTTPResponseSize = 50 * 1024 * 1024 // 50MB：HTTP 工具响应体上限，防止 OOM
+	baseRetryDelay      = 500 * time.Millisecond
+	maxRetryDelay       = 30 * time.Second
 )
 
 // ===== HTTP 增强客户端 =====
@@ -153,14 +157,32 @@ func (t *HTTPClientTool) Execute(ctx context.Context, input json.RawMessage) (*R
 		if err != nil {
 			lastErr = err
 			if attempt < maxRetries {
-				time.Sleep(time.Duration(attempt+1) * time.Second)
+				// 指数退避 + 抖动
+				delay := baseRetryDelay * time.Duration(1<<uint(attempt))
+				if delay > maxRetryDelay {
+					delay = maxRetryDelay
+				}
+				jitter := time.Duration(rand.Int63n(int64(delay) / 5))
+				select {
+				case <-time.After(delay + jitter):
+				case <-ctx.Done():
+					return nil, fmt.Errorf("request cancelled: %w", ctx.Err())
+				}
 				continue
 			}
 			return nil, fmt.Errorf("request failed after %d attempts: %w", attempt+1, err)
 		}
-		defer resp.Body.Close()
 
-		respBody, _ := io.ReadAll(resp.Body)
+		// 每次迭代立即关闭 body（不在 defer 中累积）
+		respBody, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPResponseSize))
+		resp.Body.Close()
+		if err != nil {
+			lastErr = err
+			if attempt < maxRetries {
+				continue
+			}
+			return nil, fmt.Errorf("read response failed after %d attempts: %w", attempt+1, err)
+		}
 
 		result := map[string]any{
 			"status_code": resp.StatusCode,

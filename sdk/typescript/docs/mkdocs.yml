@@ -1,0 +1,30 @@
+site_name: AgentPrimordia SDK
+site_description: Universal AI Agent Development Framework
+site_url: https://agentprimordia.dev
+
+theme:
+  name: material
+  palette:
+    primary: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Quick Start: getting-started/quickstart.md
+    - Installation: getting-started/installation.md
+  - API Reference:
+    - Overview: api-reference/README.md
+    - Go: api-reference/go.md
+    - TypeScript: api-reference/typescript.md
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - admonition

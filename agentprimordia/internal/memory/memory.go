@@ -302,25 +302,6 @@ func intersectPostings(idx map[string]map[string]struct{}, tokens []string) []st
 	return out
 }
 
-// substringMatch 兜底：检查 query 是否作为子串出现在 episode 的 content/summary
-// 行为与原 InMemoryStore.Search phase 1 一致（大小写敏感快速检查）
-func substringMatch(ep *Episode, query string) bool {
-	if query == "" {
-		return true
-	}
-	return strings.Contains(ep.Content, query) || strings.Contains(ep.Summary, query)
-}
-
-// substringMatchCI 兜底：case-insensitive substring 校验（用于倒排索引后）
-// query 必须是已经 ToLower 过的
-func substringMatchCI(ep *Episode, lowerQuery string) bool {
-	if lowerQuery == "" {
-		return true
-	}
-	return strings.Contains(strings.ToLower(ep.Content), lowerQuery) ||
-		strings.Contains(strings.ToLower(ep.Summary), lowerQuery)
-}
-
 func (s *InMemoryStore) SearchAdvanced(ctx context.Context, opts SearchOptions) ([]*SearchResult, error) {
 	episodes, err := s.Search(ctx, opts.Query, &opts)
 	if err != nil {
@@ -516,14 +497,56 @@ func (s *InMemoryStore) CleanupExpired(ctx context.Context, maxAgeDays int) (int
 func (s *InMemoryStore) Stats(ctx context.Context) (*MemoryStats, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	totalEpisodes := int64(len(s.episodes))
+	var totalSessions int64
+	var oldest, newest string
+	sessionSet := make(map[string]struct{}, 16)
+
+	for _, ep := range s.episodes {
+		sessionSet[ep.SessionID] = struct{}{}
+		ts := ep.CreatedAt
+		if ts != "" {
+			if oldest == "" || ts < oldest {
+				oldest = ts
+			}
+			if newest == "" || ts > newest {
+				newest = ts
+			}
+		}
+	}
+	totalSessions = int64(len(sessionSet))
+
+	var avg float64
+	if totalSessions > 0 {
+		avg = float64(totalEpisodes) / float64(totalSessions)
+	}
+
 	return &MemoryStats{
-		TotalEpisodes: int64(len(s.episodes)),
-		TotalSessions: 1,
+		TotalEpisodes:         totalEpisodes,
+		TotalSessions:         totalSessions,
+		OldestEpisode:         oldest,
+		NewestEpisode:         newest,
+		AvgEpisodesPerSession: avg,
 	}, nil
 }
 
+// RecordToolUse 将工具调用记录为一条 Episode 存储，便于后续检索。
+// role 使用 "tool_use"，topics 存工具名，content 包含完整调用信息。
 func (s *InMemoryStore) RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error {
-	return nil
+	content := fmt.Sprintf("[ToolUse] agent=%s tool=%s args=%s result=%s", agentName, toolName, args, result)
+	ep, err := NewEpisode(sessionID, "tool_use", content)
+	if err != nil {
+		return err
+	}
+	ep.Topics = toolName
+	if ep.Metadata == nil {
+		ep.Metadata = make(map[string]string, 3)
+	}
+	ep.Metadata["agent"] = agentName
+	ep.Metadata["tool"] = toolName
+	ep.Metadata["type"] = "tool_use"
+	return s.Add(ctx, ep)
 }
 
 // ClearAll 清空记忆（同时清空倒排索引，perf-v6 round 8 Task 2）

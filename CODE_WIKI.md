@@ -2,7 +2,7 @@
 
 > 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v1.0.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
+**版本**: v2.0.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
 
 ---
 
@@ -29,6 +29,19 @@
   - [4.15 prompt — Prompt 工程](#415-prompt--prompt-工程)
   - [4.16 debugger — 调试器](#416-debugger--调试器)
   - [4.17 admin — 管理 API](#417-admin--管理-api)
+- [4.18 governance — 多租户与治理](#418-governance--多租户与治理)
+- [4.19 security — 密钥管理与加密](#419-security--密钥管理与加密)
+- [4.20 health — SLO/SLI 与增强诊断](#420-health--slosli-与增强诊断)
+- [4.21 logger — 结构化日志与 shipped](#421-logger--结构化日志与-shipped)
+- [4.22 eval — 评估框架](#422-eval--评估框架)
+- [4.23 orchestration — MapReduce](#423-orchestration--mapreduce)
+- [4.24 transport — gRPC 与连接池](#424-transport--grpc-与连接池)
+- [4.25 tokencache — 语义缓存](#425-tokencache--语义缓存)
+- [4.26 memory — 分层记忆与生命周期](#426-memory--分层记忆与生命周期)
+- [4.27 tools — 动态注册与插件市场](#427-tools--动态注册与插件市场)
+- [4.28 debugger — 断点与时间旅行](#428-debugger--断点与时间旅行)
+- [4.29 audit — 合规报告](#429-audit--合规报告)
+- [4.30 wasm — 增强沙箱](#430-wasm--增强沙箱)
 - [5. 协议式微内核架构](#5-协议式微内核架构)
 - [6. 插件生态](#6-插件生态)
 - [7. 公共 API 层 (pkg)](#7-公共-api-层-pkg)
@@ -291,8 +304,20 @@ agentprimordia/
 │   │   ├── orchestrator.go       # 编排器
 │   │   ├── collaboration.go      # 协作模式
 │   │   └── handoff.go            # 交接
-│   └── admin/                    # 管理 API
-│       └── handler.go            # HTTP Handler
+│   ├── admin/                    # 管理 API
+│   │   └── handler.go            # HTTP Handler
+│   ├── governance/                # 多租户与治理 (v2.0)
+│   │   ├── tenant.go              # 租户模型
+│   │   ├── tenant_manager.go      # 租户管理器
+│   │   ├── quota.go              # 配额管理 (令牌桶)
+│   │   ├── isolation.go          # 数据隔离 (context 注入)
+│   │   ├── resource_mgr.go       # 资源管理器
+│   │   ├── policy.go             # 策略类型
+│   │   ├── policy_enforcer.go    # 策略执行器
+│   │   ├── policy_loader.go      # YAML 策略加载
+│   │   └── policy_watcher.go     # 策略热监听
+│   ├── audit/                    # 合规审计 (v2.0)
+│   │   └── compliance.go         # 合规报告
 ├── operator/                     # K8s Operator (独立 go.mod)
 │   ├── api/v1/                   # AgentDeployment CRD
 │   ├── controller/               # Reconciler
@@ -616,17 +641,24 @@ type Memory interface {
 
 #### RRF 融合模式
 
-v0.8.0 新增 Reciprocal Rank Fusion（RRF）混合检索算法，支持运行时切换：
+Reciprocal Rank Fusion（RRF）混合检索算法，支持运行时切换：
 
 ```go
-// Linear 模式（默认）— 基于原始分数加权融合
-store, _ := memory.NewRAGStoreWithFusionConfig(mem, emb, memory.LinearFusion)
+// 默认 Linear 模式 — 基于原始分数加权融合
+store := memory.NewRAGStore(mem, emb)
 
-// RRF 模式 — 基于排名融合，对量纲差异鲁棒
+// 创建时指定 RRF 模式 — 基于排名融合，对量纲差异鲁棒
+store = memory.NewRAGStoreWithFusionConfig(mem, emb, memory.RAGFusionConfig{
+    FusionMode:    memory.FusionRRF,
+    RRFK:          60,  // RRF 平滑常数，默认 60
+    OverFetchSize: 5,   // 预取数量，增加融合召回率
+})
+
+// 运行时切换融合模式
 store.SetFusionConfig(memory.RAGFusionConfig{
-    Mode:    memory.RFFFusion,
-    RRFK:    60,  // RRF 常数，默认 60
-    TopK:    10,
+    FusionMode:    memory.FusionLinear,
+    FTSWeight:     0.4,
+    VectorWeight:  0.6,
 })
 ```
 
@@ -1019,6 +1051,276 @@ go admin.Start()
 | `/api/agents/:id/stop` | POST | 停止 Agent |
 | `/api/metrics` | GET | 获取指标 |
 | `/api/health` | GET | 健康检查 |
+
+---
+
+### 4.18 governance — 多租户与治理
+
+**位置：** `internal/governance/`
+
+**核心职责：** 多租户管理、配额限流、数据隔离、策略执行
+
+#### 租户模型
+
+```go
+type Tenant struct {
+    ID        string
+    Name      string
+    Plan      TenantPlan      // free / pro / enterprise
+    Quotas    TenantQuota
+    CreatedAt time.Time
+    Status    TenantStatus    // active / disabled / archived
+    Metadata  map[string]string
+}
+
+type TenantQuota struct {
+    MaxAgents       int
+    MaxSessions     int
+    MaxTokensPerDay int64
+    MaxStorageGB    int64
+    MaxQPS          int
+}
+```
+
+#### 核心组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `TenantManager` | `tenant_manager.go` | 租户 CRUD、API Key 绑定与验证 |
+| `QuotaManager` | `quota.go` | 令牌桶限流、Token 用量追踪 |
+| `ResourceManager` | `resource_mgr.go` | 多租户资源配额统一管理 |
+| `PolicyEnforcer` | `policy_enforcer.go` | YAML 策略加载与运行时执行 |
+| `PolicyWatcher` | `policy_watcher.go` | 策略文件热监听 |
+| `TenantContext` | `isolation.go` | context 注入租户 ID，实现数据隔离 |
+
+#### 数据隔离
+
+```go
+// 在请求入口注入租户
+ctx := governance.WithTenant(context.Background(), "t_abc123")
+
+// 后续读取
+tenantID, err := governance.RequireTenant(ctx)
+
+// 带租户作用域的查询
+query := governance.NewScopedQuery("t_abc123")
+query.Set("limit", 10)
+```
+
+#### 配额检查
+
+```go
+mgr := governance.NewTenantManager()
+tenant, _, _ := mgr.CreateTenant(ctx, "MyCorp", governance.PlanPro, governance.TenantQuota{}, true)
+
+rm := governance.NewResourceManager()
+rm.Register(tenant.ID, tenant.Quotas)
+
+// QPS 检查
+err := rm.CheckRequest(ctx, tenant.ID, 100) // 100 tokens
+```
+
+---
+
+### 4.19 security — 密钥管理与加密
+
+**位置：** `internal/security/`
+
+**核心职责：** 密钥管理、AES-GCM 加密、多后端密钥存储
+
+#### SecretsManager 接口
+
+```go
+type SecretsManager interface {
+    GetSecret(ctx context.Context, key string) (string, error)
+    SetSecret(ctx context.Context, key, value string) error
+    RotateSecret(ctx context.Context, key string) error
+    ListSecrets(ctx context.Context) ([]string, error)
+    DeleteSecret(ctx context.Context, key string) error
+}
+```
+
+#### 后端实现
+
+| 后端 | 文件 | 说明 |
+|------|------|------|
+| `MemoryBackend` | `memory_backend.go` | 内存存储（测试用），含审计日志 |
+| `EnvBackend` | `env_backend.go` | 环境变量后端（兼容现有用法） |
+| `VaultBackend` | `vault_backend.go` | HashiCorp Vault 后端（预留） |
+| `CachedSecretsManager` | `secrets.go` | 带缓存的装饰器（TTL 过期） |
+| `AuditLog` | `secrets.go` | 密钥操作审计记录 |
+
+#### AES-GCM 加密
+
+```go
+// AES-GCM 对称加密
+encryptor, _ := security.NewAESGCMEncryption(key32Bytes)
+ciphertext, _ := encryptor.Encrypt(plaintext)
+decrypted, _ := encryptor.Decrypt(ciphertext)
+```
+
+---
+
+### 4.20 health — SLO/SLI 与增强诊断
+
+**位置：** `internal/health/`
+
+**核心职责：** SLO/SLI 指标、增强 pprof、性能分析配置
+
+#### SLO/SLI
+
+```go
+sli := health.NewSLIRegistry()
+sli.Record("llm_latency", 150*time.Millisecond)
+
+slo := health.NewSLOConfig()
+slo.SetTarget("llm_latency_p99", 500*time.Millisecond)
+report := slo.Check(sli)
+```
+
+#### 增强 pprof
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `pprof_enhanced.go` | 增强 pprof 端点 | heap/goroutine/cpu/block/mutex 全 profile |
+| `profiling_config.go` | 性能分析配置 | 持续采样、自动 dump |
+
+---
+
+### 4.21 logger — 结构化日志与 Shipper
+
+**位置：** `internal/logger/`
+
+**核心职责：** 结构化日志、日志聚合与远程传输
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `StandardLogger` | `standard.go` | 基于 `log/slog` 的结构化日志器 |
+| `LogShipper` | `shipper.go` | 日志远程传输（HTTP/gRPC batch） |
+
+---
+
+### 4.22 eval — 评估框架
+
+**位置：** `internal/eval/`
+
+**核心职责：** Agent 质量评估、自动化测试套件
+
+评估维度包括：准确性、工具调用正确性、响应延迟、Token 效率。
+
+---
+
+### 4.23 orchestration — MapReduce
+
+**位置：** `internal/orchestration/mapreduce.go`
+
+**核心职责：** 大规模任务的 MapReduce 编排模式
+
+```go
+mr := orchestration.NewMapReduce(mapper, reducer)
+result, err := mr.Run(ctx, inputs)
+```
+
+---
+
+### 4.24 transport — gRPC 与连接池
+
+**位置：** `internal/agent/transport/`
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `gRPCTransport` | `grpc.go` | gRPC 传输层（Agent-to-Agent） |
+| `ConnPool` | `conn_pool.go` | 连接池管理（复用 gRPC/HTTP 连接） |
+
+---
+
+### 4.25 tokencache — 语义缓存
+
+**位置：** `internal/agent/tokencache/`
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `SemanticCache` | `semantic_cache.go` | 基于语义相似度的 LLM 响应缓存 |
+| `MultiLevelCache` | `multilevel.go` | L1 内存 + L2 持久化多级缓存 |
+
+---
+
+### 4.26 memory — 分层记忆与生命周期
+
+**位置：** `internal/memory/`
+
+v2.0 新增组件：
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `ImportanceScorer` | `importance.go` | 记忆重要性评分（衰减、访问频率） |
+| `MemoryLifecycle` | `lifecycle.go` | 记忆自动归档/删除/压缩 |
+| `Clusterer` | `clusterer.go` | 记忆聚类（相似记忆合并） |
+| `SimpleVectorStore` | `vector_store.go` | HNSW 向量存储（替代旧 VectorStore） |
+
+---
+
+### 4.27 tools — 动态注册与插件市场
+
+**位置：** `internal/tools/`
+
+v2.0 新增组件：
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `DynamicRegistry` | `dynamic_registry.go` | 运行时动态工具注册/注销 |
+| `PluginMarket` | `plugin_market.go` | 插件市场元数据管理 |
+| `PluginVersion` | `plugin_version.go` | 插件版本管理（SemVer） |
+| `PluginInstaller` | `plugin_installer.go` | 插件安装/卸载 |
+| `ResourceLimiter` | `resource_limiter.go` | 工具资源限制（内存/CPU/FD） |
+| `ToolTrace` | `trace.go` | 工具调用追踪与审计 |
+| `MCPServer` | `mcp/server.go` | MCP Server 端实现 |
+
+---
+
+### 4.28 debugger — 断点与时间旅行
+
+**位置：** `internal/debugger/`
+
+v2.0 新增组件：
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `Breakpoint` | `breakpoint.go` | 条件断点（工具名/轮次/状态） |
+| `TimeTravel` | `time_travel.go` | 状态回放（从检查点恢复历史状态） |
+| `Watch` | `watch.go` | 变量监视（内存/上下文/工具结果） |
+
+---
+
+### 4.29 audit — 合规报告
+
+**位置：** `internal/audit/`
+
+**核心职责：** 合规审计报告生成
+
+```go
+report := audit.NewComplianceReport()
+report.AddFinding("PII", "检测到邮箱地址未脱敏", audit.SeverityMedium)
+report.Generate() // 输出 JSON/CSV 合规报告
+```
+
+---
+
+### 4.30 wasm — 增强沙箱
+
+**位置：** `wasm/sandbox_enhanced.go`
+
+**核心职责：** WASM 模块安全执行（资源限制 + 文件系统隔离）
+
+```go
+sandbox, _ := wasm.NewEnhancedSandbox(wasm.Config{
+    MaxMemory:   64 * 1024 * 1024, // 64MB
+    MaxCPU:      5 * time.Second,
+    FSPolicy:    wasm.FSWhitelist{"/tmp/wasm"},
+    NetPolicy:   wasm.NetDenyAll,
+})
+result, err := sandbox.Execute(ctx, wasmModule, "func_name", args)
+```
 
 ---
 
@@ -1957,5 +2259,5 @@ agent := ap.NewReActAgent(config).
 
 ---
 
-*文档更新时间：2026-06-30*
-*版本：v1.0.0 (Go + TypeScript 100% Parity)*
+*文档更新时间：2026-07-12*
+*版本：v2.0.0 (Go + TypeScript 100% Parity)*

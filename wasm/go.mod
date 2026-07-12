@@ -1,4 +1,4 @@
-module agentprimordia/wasm
+module agentprimordia-wasm-sandbox
 
 go 1.26.3
 

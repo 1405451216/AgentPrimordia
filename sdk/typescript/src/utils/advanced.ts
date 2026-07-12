@@ -30,7 +30,9 @@ export class ConfigWatcher {
 
     // Start watching
     this.interval = setInterval(() => {
-      this.checkAndReload().catch(() => {});
+      this.checkAndReload().catch((err) => {
+        console.error('Config checkAndReload failed:', err);
+      });
     }, this.intervalMs);
   }
 
@@ -275,7 +277,9 @@ export class AsyncMemoryWriter {
   private scheduleFlush(): void {
     if (this.flushTimer) return;
     this.flushTimer = setInterval(() => {
-      this.flush().catch(() => {});
+      this.flush().catch((err) => {
+        console.error('AsyncMemoryWriter flush failed:', err);
+      });
     }, this.config.flushIntervalMs);
   }
 }

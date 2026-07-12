@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+var (
+	ErrHTTPError     = errors.New("llm: HTTP 请求错误")
+	ErrInvalidConfig = errors.New("llm: 配置验证失败")
+)
+
 // ErrorKind 错误类别
 // 用于 retry 决策（重试 vs 立即失败 vs 走 fallback）
 type ErrorKind int
@@ -193,9 +198,9 @@ func NewHTTPError(provider string, statusCode int, body []byte, header http.Head
 	// 构造内部错误
 	var inner error
 	if len(body) > 0 {
-		inner = fmt.Errorf("HTTP %d: %s", statusCode, truncateBody(body, 512))
+		inner = fmt.Errorf("HTTP %d: %s: %w", statusCode, truncateBody(body, 512), ErrHTTPError)
 	} else {
-		inner = fmt.Errorf("HTTP %d", statusCode)
+		inner = fmt.Errorf("HTTP %d: %w", statusCode, ErrHTTPError)
 	}
 
 	return &RetryableError{

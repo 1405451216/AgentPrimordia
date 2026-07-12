@@ -1,121 +1,424 @@
 package health
 
 import (
-	"io"
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"runtime"
 	"testing"
+	"time"
 )
 
-// TestRegisterPProf_AllEndpoints 验证所有 pprof 端点已注册且可访问。
-func TestRegisterPProf_AllEndpoints(t *testing.T) {
-	mux := http.NewServeMux()
-	RegisterPProf(mux)
+// ========== ProfilingConfig 测试 ==========
 
-	endpoints := []struct {
-		path         string
-		method       string
-		expectCode   int
-		expectInBody string
-	}{
-		{"/debug/pprof/", "GET", http.StatusOK, "pprof"},
-		{"/debug/pprof/cmdline", "GET", http.StatusOK, ""},
-		{"/debug/pprof/symbol", "GET", http.StatusOK, ""},
-		{"/debug/pprof/heap", "GET", http.StatusOK, ""},
-		{"/debug/pprof/goroutine", "GET", http.StatusOK, ""},
-		{"/debug/pprof/threadcreate", "GET", http.StatusOK, ""},
-		{"/debug/pprof/block", "GET", http.StatusOK, ""},
-		{"/debug/pprof/mutex", "GET", http.StatusOK, ""},
+func TestDefaultProfilingConfig(t *testing.T) {
+	cfg := DefaultProfilingConfig()
+	if cfg.CPUProfileRate != 100 {
+		t.Errorf("CPUProfileRate = %d, want 100", cfg.CPUProfileRate)
 	}
-
-	for _, ep := range endpoints {
-		t.Run(ep.method+" "+ep.path, func(t *testing.T) {
-			req := httptest.NewRequest(ep.method, ep.path, nil)
-			w := httptest.NewRecorder()
-			mux.ServeHTTP(w, req)
-
-			if w.Code != ep.expectCode {
-				t.Errorf("状态码 = %d, 期望 %d", w.Code, ep.expectCode)
-			}
-			if ep.expectInBody != "" {
-				body := w.Body.String()
-				if !strings.Contains(body, ep.expectInBody) {
-					t.Errorf("响应体不包含 %q", ep.expectInBody)
-				}
-			}
-		})
+	if cfg.MemProfileRate != 512*1024 {
+		t.Errorf("MemProfileRate = %d, want %d", cfg.MemProfileRate, 512*1024)
+	}
+	if cfg.BlockProfileRate != 0 {
+		t.Errorf("BlockProfileRate = %d, want 0", cfg.BlockProfileRate)
+	}
+	if cfg.MutexProfileFraction != 0 {
+		t.Errorf("MutexProfileFraction = %d, want 0", cfg.MutexProfileFraction)
 	}
 }
 
-// TestPProfHandler_ReturnsHandler 验证 PProfHandler 返回可用的 http.Handler。
-func TestPProfHandler_ReturnsHandler(t *testing.T) {
-	handler := PProfHandler()
-	if handler == nil {
-		t.Fatal("PProfHandler 返回 nil")
+func TestProfilingConfig_Apply(t *testing.T) {
+	origRate := runtime.MemProfileRate
+	defer func() { runtime.MemProfileRate = origRate }()
+
+	cfg := ProfilingConfig{
+		MemProfileRate:       1024 * 1024,
+		BlockProfileRate:     1000,
+		MutexProfileFraction: 1,
 	}
+	cfg.Apply()
+
+	if runtime.MemProfileRate != 1024*1024 {
+		t.Errorf("MemProfileRate = %d, want %d", runtime.MemProfileRate, 1024*1024)
+	}
+}
+
+func TestProfilingConfig_EnsureDataDir(t *testing.T) {
+	cfg := ProfilingConfig{DataDir: ""}
+	if err := cfg.EnsureDataDir(); err != nil {
+		t.Errorf("空 DataDir 不应报错: %v", err)
+	}
+
+	tmp := t.TempDir()
+	cfg = ProfilingConfig{DataDir: tmp + "/profiles"}
+	if err := cfg.EnsureDataDir(); err != nil {
+		t.Errorf("EnsureDataDir 失败: %v", err)
+	}
+}
+
+// ========== PprofEnhancer 基础测试 ==========
+
+func TestNewPprofEnhancer(t *testing.T) {
+	e := NewPprofEnhancer("")
+	if e == nil {
+		t.Fatal("NewPprofEnhancer 返回 nil")
+	}
+	if e.cpuRunning {
+		t.Error("新实例不应在采集状态")
+	}
+	if e.cpuBuf != nil {
+		t.Error("新实例 cpuBuf 应为 nil")
+	}
+}
+
+func TestPprofEnhancer_ApplyDefaults(t *testing.T) {
+	origRate := runtime.MemProfileRate
+	defer func() { runtime.MemProfileRate = origRate }()
+
+	tmp := t.TempDir()
+	e := NewPprofEnhancer(tmp)
+	if err := e.ApplyDefaults(); err != nil {
+		t.Fatalf("ApplyDefaults 失败: %v", err)
+	}
+	if runtime.MemProfileRate != 512*1024 {
+		t.Errorf("MemProfileRate = %d, want %d", runtime.MemProfileRate, 512*1024)
+	}
+}
+
+func TestPprofEnhancer_Config(t *testing.T) {
+	e := NewPprofEnhancer("")
+	cfg := e.Config()
+	if cfg.CPUProfileRate != 100 {
+		t.Errorf("Config CPUProfileRate = %d, want 100", cfg.CPUProfileRate)
+	}
+}
+
+func TestPprofEnhancer_UpdateConfig(t *testing.T) {
+	origRate := runtime.MemProfileRate
+	defer func() { runtime.MemProfileRate = origRate }()
+
+	e := NewPprofEnhancer("")
+	newCfg := ProfilingConfig{
+		MemProfileRate: 256 * 1024,
+	}
+	if err := e.UpdateConfig(newCfg); err != nil {
+		t.Fatalf("UpdateConfig 失败: %v", err)
+	}
+	cfg := e.Config()
+	if cfg.MemProfileRate != 256*1024 {
+		t.Errorf("MemProfileRate = %d, want %d", cfg.MemProfileRate, 256*1024)
+	}
+}
+
+// ========== CPU Profile 测试 ==========
+
+func TestPprofEnhancer_StartStopCPUProfile(t *testing.T) {
+	e := NewPprofEnhancer("")
+
+	if err := e.StartCPUProfile(); err != nil {
+		t.Fatalf("StartCPUProfile 失败: %v", err)
+	}
+
+	if err := e.StartCPUProfile(); err == nil {
+		t.Error("重复启动应返回错误")
+	}
+
+	data, err := e.StopCPUProfile()
+	if err != nil {
+		t.Fatalf("StopCPUProfile 失败: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("CPU profile 数据为空")
+	}
+
+	if _, err := e.StopCPUProfile(); err == nil {
+		t.Error("重复停止应返回错误")
+	}
+}
+
+func TestPprofEnhancer_CPUProfileFor(t *testing.T) {
+	e := NewPprofEnhancer("")
+	data, err := e.CPUProfileFor(50 * time.Millisecond)
+	if err != nil {
+		t.Fatalf("CPUProfileFor 失败: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("CPU profile 数据为空")
+	}
+}
+
+// ========== Heap / Goroutine Profile 测试 ==========
+
+func TestPprofEnhancer_HeapProfile(t *testing.T) {
+	e := NewPprofEnhancer("")
+	data, err := e.HeapProfile()
+	if err != nil {
+		t.Fatalf("HeapProfile 失败: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("Heap profile 数据为空")
+	}
+}
+
+func TestPprofEnhancer_GoroutineProfile(t *testing.T) {
+	e := NewPprofEnhancer("")
+	data, err := e.GoroutineProfile()
+	if err != nil {
+		t.Fatalf("GoroutineProfile 失败: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("Goroutine profile 数据为空")
+	}
+}
+
+func TestPprofEnhancer_BlockProfile_NotEnabled(t *testing.T) {
+	e := NewPprofEnhancer("")
+	// block profile 始终可通过 pprof.Lookup 获取，不启用时返回空数据但不报错
+	data, err := e.BlockProfile()
+	if err != nil {
+		t.Logf("BlockProfile 返回错误（可能未启用）: %v", err)
+	}
+	_ = data
+}
+
+func TestPprofEnhancer_MutexProfile_NotEnabled(t *testing.T) {
+	e := NewPprofEnhancer("")
+	// mutex profile 始终可通过 pprof.Lookup 获取，不启用时返回空数据但不报错
+	data, err := e.MutexProfile()
+	if err != nil {
+		t.Logf("MutexProfile 返回错误（可能未启用）: %v", err)
+	}
+	_ = data
+}
+
+func TestPprofEnhancer_BlockProfile_Enabled(t *testing.T) {
+	origRate := runtime.MemProfileRate
+	defer func() {
+		runtime.MemProfileRate = origRate
+		runtime.SetBlockProfileRate(0)
+	}()
+
+	cfg := DefaultProfilingConfig()
+	cfg.BlockProfileRate = 1000
+	e := NewPprofEnhancerWithConfig(cfg)
+	_ = e.ApplyDefaults()
+
+	_, _ = e.BlockProfile()
+}
+
+// ========== SaveProfile 测试 ==========
+
+func TestPprofEnhancer_SaveProfile(t *testing.T) {
+	tmp := t.TempDir()
+	e := NewPprofEnhancer(tmp)
+
+	dummy := []byte("test profile data")
+	fp, err := e.SaveProfile("heap", dummy)
+	if err != nil {
+		t.Fatalf("SaveProfile 失败: %v", err)
+	}
+	if !strings.Contains(fp, "heap") {
+		t.Errorf("路径中应包含 'heap': %s", fp)
+	}
+}
+
+func TestPprofEnhancer_SaveProfile_NoDataDir(t *testing.T) {
+	e := NewPprofEnhancer("")
+	_, err := e.SaveProfile("heap", []byte("data"))
+	if err == nil {
+		t.Error("无 DataDir 时应返回错误")
+	}
+}
+
+// ========== 火焰图 SVG 测试 ==========
+
+func TestGenerateFlamegraphSVG_Empty(t *testing.T) {
+	e := NewPprofEnhancer("")
+	svg, err := e.GenerateFlamegraphSVG([]byte(""))
+	if err != nil {
+		t.Fatalf("GenerateFlamegraphSVG 失败: %v", err)
+	}
+	if !strings.Contains(string(svg), "svg") {
+		t.Error("输出应包含 svg 标签")
+	}
+	if !strings.Contains(string(svg), "No profile data") {
+		t.Error("空数据时应返回提示信息")
+	}
+}
+
+func TestGenerateFlamegraphSVG_WithData(t *testing.T) {
+	e := NewPprofEnhancer("")
+	sample := "1 runtime.gopark\n\t2 runtime.chansend1\n\t\t3 runtime.selectgo\n4 main.worker\n\t5 main.process\n"
+	svg, err := e.GenerateFlamegraphSVG([]byte(sample))
+	if err != nil {
+		t.Fatalf("GenerateFlamegraphSVG 失败: %v", err)
+	}
+	result := string(svg)
+	if !strings.Contains(result, "svg") {
+		t.Error("输出应包含 svg 标签")
+	}
+	if !strings.Contains(result, "Flamegraph") {
+		t.Error("输出应包含 Flamegraph 标题")
+	}
+}
+
+func TestGenerateFlamegraphSVG_Top30(t *testing.T) {
+	e := NewPprofEnhancer("")
+	var sb strings.Builder
+	for i := 0; i < 50; i++ {
+		sb.WriteString("func")
+		sb.WriteString(fmt.Sprintf("%d func", i))
+		sb.WriteString("\n")
+	}
+	svg, err := e.GenerateFlamegraphSVG([]byte(sb.String()))
+	if err != nil {
+		t.Fatalf("GenerateFlamegraphSVG 失败: %v", err)
+	}
+	if !strings.Contains(string(svg), "top 30") {
+		t.Error("应限制为 top 30 帧")
+	}
+}
+
+// ========== HTTP Handler 测试 ==========
+
+func TestPprofEnhancedHandler_StartStopCPU(t *testing.T) {
+	e := NewPprofEnhancer("")
+	handler := e.PprofEnhancedHandler()
+
+	req := httptest.NewRequest("GET", "/debug/pprof/start-cpu", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("start-cpu 状态码 = %d, want %d", w.Code, http.StatusOK)
+	}
+
+	req2 := httptest.NewRequest("GET", "/debug/pprof/stop-cpu", nil)
+	w2 := httptest.NewRecorder()
+	handler.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Errorf("stop-cpu 状态码 = %d, want %d", w2.Code, http.StatusOK)
+	}
+	if w2.Header().Get("Content-Type") != "application/octet-stream" {
+		t.Errorf("stop-cpu Content-Type = %s, want application/octet-stream", w2.Header().Get("Content-Type"))
+	}
+}
+
+func TestPprofEnhancedHandler_Heap(t *testing.T) {
+	e := NewPprofEnhancer("")
+	handler := e.PprofEnhancedHandler()
+
+	req := httptest.NewRequest("GET", "/debug/pprof/heap", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("heap 状态码 = %d, want %d", w.Code, http.StatusOK)
+	}
+	if w.Body.Len() == 0 {
+		t.Error("heap 响应体为空")
+	}
+}
+
+func TestPprofEnhancedHandler_Goroutine(t *testing.T) {
+	e := NewPprofEnhancer("")
+	handler := e.PprofEnhancedHandler()
+
+	req := httptest.NewRequest("GET", "/debug/pprof/goroutine", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("goroutine 状态码 = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestPprofEnhancedHandler_Flamegraph(t *testing.T) {
+	e := NewPprofEnhancer("")
+	handler := e.PprofEnhancedHandler()
+
+	req := httptest.NewRequest("GET", "/debug/pprof/flamegraph", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("flamegraph 状态码 = %d, want %d", w.Code, http.StatusOK)
+	}
+	ct := w.Header().Get("Content-Type")
+	if ct != "image/svg+xml" {
+		t.Errorf("flamegraph Content-Type = %s, want image/svg+xml", ct)
+	}
+	if !strings.Contains(w.Body.String(), "svg") {
+		t.Error("flamegraph 输出应包含 svg")
+	}
+}
+
+func TestPprofEnhancedHandler_MethodNotAllowed(t *testing.T) {
+	e := NewPprofEnhancer("")
+	handler := e.PprofEnhancedHandler()
+
+	req := httptest.NewRequest("DELETE", "/debug/pprof/start-cpu", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("状态码 = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func TestPprofEnhancedHandler_StandardPprofStillWorks(t *testing.T) {
+	e := NewPprofEnhancer("")
+	handler := e.PprofEnhancedHandler()
 
 	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("状态码 = %d, 期望 %d", w.Code, http.StatusOK)
+		t.Errorf("标准 pprof 状态码 = %d, want %d", w.Code, http.StatusOK)
 	}
 }
 
-// TestPProfProfile_EndpointWithSeconds 验证 CPU profile 端点可以处理 seconds 参数。
-// 使用极短的 1 秒采样以避免测试过慢。
-func TestPProfProfile_EndpointWithSeconds(t *testing.T) {
-	mux := http.NewServeMux()
-	RegisterPProf(mux)
+// ========== Health Checker 集成测试 ==========
 
-	req := httptest.NewRequest("GET", "/debug/pprof/profile?seconds=1", nil)
+func TestPprofHealthChecker_Name(t *testing.T) {
+	e := NewPprofEnhancer("")
+	c := NewPprofHealthChecker(e)
+	if c.Name() != "pprof" {
+		t.Errorf("Name = %s, want pprof", c.Name())
+	}
+}
+
+func TestPprofHealthChecker_Check(t *testing.T) {
+	origRate := runtime.MemProfileRate
+	defer func() { runtime.MemProfileRate = origRate }()
+
+	e := NewPprofEnhancer("")
+	_ = e.ApplyDefaults()
+
+	c := NewPprofHealthChecker(e)
+	if err := c.Check(context.Background()); err != nil {
+		t.Errorf("Check 不应报错: %v", err)
+	}
+}
+
+func TestPprofHealthChecker_RegisteredInHealthChecker(t *testing.T) {
+	tmp := t.TempDir()
+	e := NewPprofEnhancer(tmp)
+	_ = e.ApplyDefaults()
+
+	hc := NewChecker()
+	hc.Register(NewPprofHealthChecker(e))
+
+	req := httptest.NewRequest("GET", "/healthz", nil)
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
+	hc.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("profile 状态码 = %d, 期望 %d", w.Code, http.StatusOK)
+		t.Errorf("healthz 状态码 = %d, want %d", w.Code, http.StatusOK)
 	}
-
-	// CPU profile 输出是二进制 gzip 数据，Content-Type 应为 application/octet-stream
-	ct := w.Header().Get("Content-Type")
-	if ct != "" && !strings.Contains(ct, "application/octet-stream") && !strings.Contains(ct, "text/plain") {
-		t.Logf("profile Content-Type = %q（部分 Go 版本可能不设置）", ct)
-	}
-
-	// 确保有响应体
-	body, _ := io.ReadAll(w.Body)
-	if len(body) == 0 {
-		t.Error("profile 响应体为空")
-	}
-}
-
-// TestRegisterPProf_OnExistingMux 验证 pprof 端点可以与已有路由共存。
-func TestRegisterPProf_OnExistingMux(t *testing.T) {
-	mux := http.NewServeMux()
-
-	// 先注册一个业务路由
-	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"status":"ok"}`))
-	})
-
-	// 再注册 pprof
-	RegisterPProf(mux)
-
-	// 验证业务路由仍正常
-	req1 := httptest.NewRequest("GET", "/api/data", nil)
-	w1 := httptest.NewRecorder()
-	mux.ServeHTTP(w1, req1)
-	if w1.Code != http.StatusOK {
-		t.Errorf("业务路由状态码 = %d, 期望 %d", w1.Code, http.StatusOK)
-	}
-
-	// 验证 pprof 路由也正常
-	req2 := httptest.NewRequest("GET", "/debug/pprof/", nil)
-	w2 := httptest.NewRecorder()
-	mux.ServeHTTP(w2, req2)
-	if w2.Code != http.StatusOK {
-		t.Errorf("pprof 路由状态码 = %d, 期望 %d", w2.Code, http.StatusOK)
+	if !strings.Contains(w.Body.String(), "pprof") {
+		t.Error("healthz 响应应包含 pprof 组件")
 	}
 }

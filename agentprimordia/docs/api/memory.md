@@ -217,27 +217,26 @@ v0.8.0 新增 Reciprocal Rank Fusion（RRF）混合检索算法：
 type HybridFusionMode int
 
 const (
-    LinearFusion HybridFusionMode = iota  // 基于原始分数加权融合（默认）
-    RFFFusion                             // 基于排名融合，对量纲差异鲁棒
+    FusionLinear HybridFusionMode = iota  // 基于原始分数加权融合（默认）
+    FusionRRF                             // Reciprocal Rank Fusion，基于排名融合，对量纲差异鲁棒
 )
 
 type RAGFusionConfig struct {
-    Mode    HybridFusionMode
-    RRFK    int  // RRF 常数，默认 60
-    TopK    int  // 返回结果数
+    FusionMode    HybridFusionMode
+    RRFK          int  // RRF 常数，默认 60
+    OverFetchSize int  // 预取额外候选数，提升融合质量
 }
 ```
 
 **运行时切换融合模式：**
 
 ```go
-store, _ := memory.NewRAGStoreWithFusionConfig(mem, embedder, memory.LinearFusion)
+store, _ := memory.NewRAGStoreWithFusionConfig(mem, embedder, memory.FusionLinear)
 
 // 切换为 RRF 模式
 store.SetFusionConfig(memory.RAGFusionConfig{
-    Mode: memory.RFFFusion,
-    RRFK: 60,
-    TopK: 10,
+    FusionMode: memory.FusionRRF,
+    RRFK:       60,
 })
 ```
 

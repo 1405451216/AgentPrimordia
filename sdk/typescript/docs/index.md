@@ -1,35 +1,31 @@
----
-layout: home
+# AgentPrimordia SDK Documentation
 
-hero:
-  name: "@agentprimordia/sdk"
-  text: TypeScript SDK
-  tagline: 100% Go parity — Build cross-platform AI Agent applications
-  actions:
-    - theme: brand
-      text: Get Started
-      link: /guide/getting-started
-    - theme: alt
-      text: API Reference
-      link: /api/
+欢迎使用 **AgentPrimordia** 全栈 AI Agent 框架的 SDK 文档中心。
 
-features:
-  - title: ReAct Agent
-    details: ReAct loop with hooks, lifecycle, HITL, cost tracking, and reflection
-  - title: Multi-Provider LLM
-    details: OpenAI, Anthropic, Gemini, Ollama, DeepSeek, Qwen, GLM, Mistral, Cohere, Azure + resilient wrapper
-  - title: Episodic Memory
-    details: In-memory, SQLite FTS5, HNSW vector, Milvus/Qdrant, RAG pipeline, conversational memory
-  - title: Tool System
-    details: Registry, 7 built-in tools, 6 document loaders, plugin loader, scoped permissions
-  - title: Multi-Agent Orchestration
-    details: Pipeline, DAG, GroupChat, Debate, Supervisor, DynamicOrchestrator, WorkerPool
-  - title: A2A + MCP
-    details: Agent-to-agent bus, HTTP/TCP transport, discovery, MCP registry/adapter/bridge
-  - title: Observability
-    details: Metrics, Prometheus export, OpenTelemetry tracing, Debugger, Inspector Web UI
-  - title: Security & Guardrails
-    details: ACL, Sandbox, PII detection, injection defense, topic filter, input sanitizer
-  - title: Infrastructure
-    details: Audit logger, Admin API, Inspector, SQLite checkpoints, /healthz /readyz endpoints
----
+## 导航
+
+- [快速开始](./getting-started/quickstart.md) — 5 分钟上手
+- [安装指南](./getting-started/installation.md) — 各语言安装说明
+- [TypeScript SDK](https://github.com/agentprimordia/ap/tree/main/sdk/typescript) — npm `@agentprimordia/sdk`
+- [Python SDK](https://github.com/agentprimordia/ap/tree/main/sdk/python) — pip `agentprimordia`
+- [Go 核心框架](https://github.com/agentprimordia/ap) — `github.com/agentprimordia/ap`
+
+## 多语言 API 参考
+
+- [TypeScript API Reference](./api-reference/typescript.md)
+- [Go API Reference](./api-reference/go.md)
+
+## 目录
+
+```
+docs/
+├── index.md                    # 本文档（入口）
+├── SUMMARY.md                  # 文档摘要/目录树
+├── getting-started/
+│   ├── quickstart.md           # 快速开始
+│   └── installation.md         # 安装指南
+└── api-reference/
+    ├── README.md               # API 参考入口
+    ├── go.md                   # Go API 参考
+    └── typescript.md           # TypeScript API 参考
+```

@@ -1,4 +1,4 @@
-package tools
+﻿package tools
 
 import (
 	"fmt"
@@ -19,9 +19,11 @@ type CategorizedTool interface {
 }
 
 type PluginInfo struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Count   int    `json:"tool_count"`
+	Name          string `json:"name"`
+	Version       string `json:"version"`
+	Count         int    `json:"tool_count"`
+	MinSDKVersion string `json:"min_sdk_version,omitempty"`
+	MaxSDKVersion string `json:"max_sdk_version,omitempty"`
 }
 
 type PluginLoader struct {

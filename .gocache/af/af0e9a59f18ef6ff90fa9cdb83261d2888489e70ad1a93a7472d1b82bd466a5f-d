@@ -1,0 +1,13 @@
+./aes_gcm.go
+./encryption.go
+./env_backend.go
+./memory_backend.go
+./permission.go
+./sandbox.go
+./secrets.go
+./vault_backend.go
+./encryption_test.go
+./permission_test.go
+./sandbox_fuzz_test.go
+./sandbox_test.go
+./secrets_test.go

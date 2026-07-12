@@ -1,0 +1,4 @@
+./compress.go
+./window.go
+./compress_test.go
+./window_test.go

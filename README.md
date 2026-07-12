@@ -12,18 +12,39 @@
 ## 特性
 
 - **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子
-- **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
-- **工具系统** — FileSystem / Shell / Web / Knowledge 内置，MCP 协议集成，插件扩展
-- **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索（支持 RRF 融合）
+- **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A / MapReduce
+- **工具系统** — FileSystem / Shell / Web / Knowledge 内置，MCP 协议集成（Client + Server），插件市场扩展
+- **三层记忆** — SQLite FTS5 + Vector Store (HNSW) + RAG Pipeline 混合检索（支持 RRF 融合）
+- **多租户治理** — 租户隔离 + 配额限流 + 策略执行
+- **密钥管理** — SecretsManager + AES-GCM 加密 + 多后端
 - **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / 弹性包装器
 - **Resilient Provider** — 自动重试 / 降级 / 熔断
 - **并发调度** — Pool 信号量调度，会话隔离，重试策略
-- **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
-- **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard
+- **安全防护** — ACL / Sandbox / Guardrails / PII 检测 (Trie 优化) / 路径遍历防护
+- **可观测性** — Prometheus Metrics / OpenTelemetry / SLO/SLI / Grafana Dashboard
+- **gRPC 传输** — Agent-to-Agent gRPC + 连接池
+- **语义缓存** — LLM 响应语义缓存 + 多级缓存
 - **K8s Operator** — AgentDeployment CRD 声明式部署
 - **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure）
 - **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
 - **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+
+## v2.0.0 Highlights
+
+- **多租户 SaaS 隔离** — `TenantManager` + `QuotaManager` + 令牌桶限流，context 级数据隔离
+- **密钥管理系统** — `SecretsManager` 接口 + AES-GCM 加密 + 环境/Vault 多后端 + 缓存装饰器
+- **gRPC 传输层** — Agent-to-Agent gRPC 传输 + 连接池复用
+- **语义缓存** — 基于语义相似度的 LLM 响应缓存 + L1/L2 多级缓存
+- **MapReduce 编排** — 大规模任务的 MapReduce 模式
+- **SLO/SLI 指标** — 服务质量目标监控 + 增强 pprof（全 profile 类型）
+- **结构化日志** — 基于 `log/slog` 的 `StandardLogger` + `LogShipper` 远程传输
+- **调试器增强** — 条件断点 + 时间旅行回放 + 变量监视
+- **记忆生命周期** — 重要性评分 + 自动归档/压缩 + 记忆聚类
+- **插件市场** — 动态注册 + 版本管理（SemVer）+ 安装器 + 资源限制
+- **MCP Server** — MCP Server 端实现（不仅是 Client）
+- **合规审计** — 合规报告生成器
+- **WASM 增强沙箱** — 资源限制（CPU/内存/FS/网络）+ WASM 模块安全执行
+- **PII Trie 优化** — Trie 树匹配，大词汇表场景比正则快 10x+
 
 ## v1.0.0 Highlights
 
@@ -417,14 +438,18 @@ agentprimordia/
 │   ├── tools/                # 工具系统 (Registry/MCP/Plugin/Builtin)
 │   ├── memory/               # 记忆存储 (SQLite/Vector/RAG)
 │   ├── llm/                  # LLM 抽象层 (10+ Provider + Resilient)
-│   ├── guardrail/            # 输入输出护栏 (PII/Topic/Injection)
-│   ├── debugger/             # Inspector / Visualizer
+│   ├── guardrail/            # 输入输出护栏 (PII/Topic/Injection/Trie)
+│   ├── governance/           # 多租户与治理 (v2.0)
+│   ├── audit/               # 合规审计报告 (v2.0)
+│   ├── debugger/             # Inspector / Visualizer / 断点 / 时间旅行
 │   ├── prompt/               # 提示词模板
 │   ├── config/               # 配置热加载
 │   ├── metrics/              # Prometheus 指标
 │   ├── otel/                 # OpenTelemetry 桥接
-│   ├── events/               # 事件总线
-│   ├── security/             # ACL + Sandbox
+│   ├── events/               # 事件总线 + 事件流
+│   ├── security/             # ACL + Sandbox + 密钥管理 + AES-GCM
+│   ├── logger/               # 结构化日志 + Shipper (v2.0)
+│   ├── eval/                # Agent 评估框架 (v2.0)
 │   ├── persist/              # 状态持久化
 │   └── concurrency/          # 文件锁等并发原语
 ├── operator/                  # K8s Operator (独立 go.mod)

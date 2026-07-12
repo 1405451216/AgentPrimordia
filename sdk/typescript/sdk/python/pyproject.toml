@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentprimordia"
+version = "1.0.0"
+description = "AgentPrimordia Universal AI Agent Development Framework"
+requires-python = ">=3.8"
+
+[tool.black]
+line-length = 100
+
+[tool.mypy]
+strict = true

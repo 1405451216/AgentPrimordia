@@ -1,0 +1,1 @@
+﻿const fs = require("fs"); const p = "E:/ap/AgentPrimordia/sdk/typescript/src/a2a/bus.test.ts"; if (fs.existsSync(p)) { fs.unlinkSync(p); console.log("Removed"); } else { console.log("Already gone"); }

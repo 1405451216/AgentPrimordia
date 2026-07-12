@@ -1,5 +1,9 @@
-// stream_middleware.go — 流式输出中间件管道
+﻿// stream_middleware.go — 流式输出中间件管道
 // 提供可组合的中间件链，用于对流式 Chunk 进行过滤、变换、缓冲、限流等操作
+//
+// 性能优化（perf-v2 #2）：
+//   Use() 时预编译中间件链，Process() 直接执行预编译链，
+//   避免每次 Process() 都从最后一个中间件到第一个逐层包装闭包。
 package llm
 
 import (
@@ -22,39 +26,48 @@ type StreamMiddleware func(chunk Chunk, next StreamHandler) error
 type StreamPipeline struct {
 	middlewares []StreamMiddleware
 	handler     StreamHandler
-	mu          sync.Mutex
+	mu          sync.RWMutex
+	compiled    StreamHandler // 预编译后的中间件链（热路径）
 }
 
 // NewStreamPipeline 创建流式输出管道
 func NewStreamPipeline(handler StreamHandler) *StreamPipeline {
-	return &StreamPipeline{
+	p := &StreamPipeline{
 		handler: handler,
 	}
+	p.rebuildChain()
+	return p
 }
 
-// Use 添加中间件，返回自身以支持链式调用
+// Use 添加中间件，返回自身以支持链式调用。
+// 添加后立即预编译中间件链，使 Process() 热路径无闭包分配。
 func (p *StreamPipeline) Use(mw StreamMiddleware) *StreamPipeline {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.middlewares = append(p.middlewares, mw)
+	p.rebuildChain()
 	return p
 }
 
-// Process 处理一个 chunk
-// 按中间件添加顺序依次执行，最终调用 handler
-func (p *StreamPipeline) Process(chunk Chunk) error {
-	p.mu.Lock()
-	// 构建中间件链：从最后一个中间件到第一个，逐层包装
+// rebuildChain 预编译中间件链。
+// 调用方必须持有写锁（mu.Lock）。
+func (p *StreamPipeline) rebuildChain() {
 	handler := p.handler
 	for i := len(p.middlewares) - 1; i >= 0; i-- {
 		mw := p.middlewares[i]
 		current := handler
-		handler = func(c Chunk) error {
-			return mw(c, current)
-		}
+		handler = func(c Chunk) error { return mw(c, current) }
 	}
-	p.mu.Unlock()
-	return handler(chunk)
+	p.compiled = handler
+}
+
+// Process 处理一个 chunk。
+// 直接执行预编译后的中间件链，无闭包分配开销。
+func (p *StreamPipeline) Process(chunk Chunk) error {
+	p.mu.RLock()
+	compiled := p.compiled
+	p.mu.RUnlock()
+	return compiled(chunk)
 }
 
 // ===== 内置中间件 =====

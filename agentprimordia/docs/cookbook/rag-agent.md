@@ -30,45 +30,98 @@ import (
     "context"
     "fmt"
     "log"
+    "os"
+    "path/filepath"
 
     ap "agentprimordia/pkg"
 )
 
 func main() {
-    // 1. 创建向量记忆后端
-    mem, err := ap.NewVectorMemory(ap.VectorConfig{
-        DBPath:   "./data/vectors.db",
-        Embedder: ap.NewOpenAIEmbedder(), // 或本地 ONNX 嵌入
+    ctx := context.Background()
+
+    // 1. 创建 LLM Provider
+    provider, err := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o",
     })
-    if err != nil { log.Fatal(err) }
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // 2. 创建 SQLite 记忆存储
+    mem, err := ap.NewSQLiteStore("./data/memory.db")
+    if err != nil {
+        log.Fatal(err)
+    }
     defer mem.Close()
 
-    // 2. 加载文档到向量库
-    docs, _ := ap.LoadDocuments("./knowledge")
-    for _, d := range docs {
-        _ = mem.Add(context.Background(), &ap.Episode{
-            Content:  d.Content,
-            Metadata: map[string]any{"source": d.Path},
+    // 3. 创建 Embedding 适配器（将 LLM Provider 适配为 EmbeddingProvider）
+    embedder := ap.NewEmbeddingAdapter(provider, 1536)
+
+    // 4. 创建 RAG Store（FTS5 + 向量混合检索）
+    ragStore := ap.NewRAGStore(mem, embedder)
+
+    // 5. 加载文档到记忆库
+    files, _ := filepath.Glob("./knowledge/*.md")
+    for _, f := range files {
+        content, _ := os.ReadFile(f)
+        _ = mem.Add(ctx, &ap.Episode{
+            SessionID: "knowledge",
+            Role:      "system",
+            Content:   string(content),
+            Metadata:  map[string]string{"source": f},
         })
     }
 
-    // 3. 创建 Agent
-    agent := ap.NewAgent(ap.AgentConfig{
-        Name:         "rag-agent",
-        SystemPrompt: "你是知识助手。回答前先用 memory_search 检索相关文档。",
-        MaxTurns:     10,
-        Memory:       mem,
-        Tools: []ap.Tool{
-            ap.NewWebSearchTool(),
-            ap.NewMemorySearchTool(mem),
-        },
-    })
+    // 6. 创建 Agent
+    agent, err := ap.NewAgent("rag-agent", "你是知识助手。回答时引用文档来源。",
+        provider,
+        ap.WithMaxTurns(10),
+        ap.WithMemory(mem),
+        ap.WithRAG(ap.RAGConfig{
+            Provider: ragStore,
+            Mode:     ap.RAGModeAuto, // 每轮自动注入检索上下文
+            TopK:     5,
+        }),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    // 4. 运行
-    resp, err := agent.Run(context.Background(), "AgentPrimordia 的插件系统如何工作？")
-    if err != nil { log.Fatal(err) }
+    // 7. 运行
+    resp, err := agent.Run(ctx, ap.UserMessage("AgentPrimordia 的插件系统如何工作？"))
+    if err != nil {
+        log.Fatal(err)
+    }
     fmt.Println(resp.Content)
 }
+```
+
+## 使用 WithRAGMemory 一步组装（推荐）
+
+```go
+// WithRAGMemory 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
+agent, err := ap.NewAgent("rag-agent", "你是知识助手", provider,
+    ap.WithMaxTurns(15),
+    ap.WithMemory(mem),
+    ap.WithRAGMemory(mem, embedder),
+)
+```
+
+## 使用 RRF 融合模式（生产推荐）
+
+```go
+// 创建带 RRF 融合的 RAG Store
+ragStore := memory.NewRAGStoreWithFusionConfig(mem, embedder, memory.RAGFusionConfig{
+    FusionMode:    memory.FusionRRF,
+    RRFK:          60,
+    OverFetchSize: 5,
+})
+
+// 运行时切换融合模式
+ragStore.SetFusionConfig(memory.RAGFusionConfig{
+    FusionMode: memory.FusionLinear,
+})
 ```
 
 ## 配置
@@ -80,19 +133,12 @@ llm:
   provider: openai
   model: gpt-4o
 memory:
-  backend: vector
-  path: ./data/vectors.db
-  embedder:
-    type: openai
-    model: text-embedding-3-small
+  backend: sqlite
+  path: ./data/memory.db
 agent:
-  max_turns: 10
+  max_turns: 15
   system_prompt: |
-    你是知识助手。回答前先用 memory_search 检索相关文档。
-    引用文档时标注来源。
-tools:
-  - web_search
-  - memory_search
+    你是知识助手。回答时引用文档来源。
 ```
 
 ## 运行
@@ -103,13 +149,13 @@ mkdir -p knowledge
 echo "AgentPrimordia 插件系统基于 Go plugin 模式..." > knowledge/plugins.md
 
 # 启动
-export AP_LLM_API_KEY=sk-xxx
-ap run
+export OPENAI_API_KEY=sk-xxx
+go run .
 ```
 
 ## 扩展
 
-- **混合检索**：结合关键词（BM25）与向量检索，提升召回率
+- **混合检索**：FTS + Vector 双通道，默认使用 Linear 加权融合，生产环境推荐 RRF
 - **重排序**：使用 cross-encoder 对 top-K 结果二次排序
-- **引用生成**：在答案中插入 `[source:plugins.md#L12]` 格式引用
+- **引用生成**：在答案中插入 `[source:plugins.md]` 格式引用
 - **增量更新**：监听文件变更事件，自动重建向量索引

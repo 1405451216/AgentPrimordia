@@ -137,6 +137,7 @@ func (d *PIIDetector) Sanitize(text string, cfg SanitizeConfig) string {
 type SanitizeRule struct {
 	detector *PIIDetector
 	config   SanitizeConfig
+	priority int
 }
 
 // NewSanitizeRule 创建 PII 脱敏规则
@@ -144,11 +145,15 @@ func NewSanitizeRule(cfg SanitizeConfig) *SanitizeRule {
 	return &SanitizeRule{
 		detector: NewPIIDetector(),
 		config:   cfg,
+		priority: PriorityHigh,
 	}
 }
 
 // Name 返回规则名
 func (r *SanitizeRule) Name() string { return "pii-sanitize" }
+
+// Priority 返回规则优先级
+func (r *SanitizeRule) Priority() int { return r.priority }
 
 // Check 检测输入中的 PII 并返回脱敏结果
 func (r *SanitizeRule) Check(input string, _ CheckPoint) (*Result, error) {

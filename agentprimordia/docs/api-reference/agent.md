@@ -1,81 +1,117 @@
 # Agent API 参考
 
-> `package ap` — Agent 类型与构造函数。
+> `package agent` — Agent 类型与构造函数。
 
 ## 类型定义
 
+### CapabilityAgent
+
 ```go
-type Agent struct {
+type CapabilityAgent struct {
     // 私有字段
 }
+```
 
+`CapabilityAgent` 是 Agent 的推荐实现（v0.7.0 起），通过 Functional Options 注入能力。
+
+### AgentConfig
+
+```go
 type AgentConfig struct {
-    Name         string         // Agent 名称
-    SystemPrompt string         // 系统提示
-    MaxTurns     int            // 最大 ReAct 轮次
-    Memory       memory.Memory  // 后端记忆
-    Tools        []Tool         // 工具列表
-    LLM          LLM            // LLM Provider
-    Guardrail    Guardrail      // 可选护栏
-    TraceEnabled bool           // 是否开启 Trace
-    Timeout      time.Duration  // 单次运行超时
+    Name           string           // Agent 名称
+    SystemPrompt   string           // 系统提示
+    Model          llm.Provider     // LLM Provider
+    MaxTurns       int              // 最大 ReAct 轮次
+    Temperature    float64          // 温度参数
+    Memory         memory.Memory    // 后端记忆（可选）
+    Toolkit        *tools.Registry  // 工具注册表（可选）
+    PromptTemplate PromptTemplate   // 自定义提示模板（可选）
+    // ... 更多选项通过 Option 函数注入
 }
+```
 
+### Message
+
+```go
+type Message struct {
+    Role         Role                     `json:"role"`           // system / user / assistant / tool
+    Content      string                   `json:"content"`
+    ContentParts []multimodal.ContentPart `json:"content_parts,omitempty"`  // 多模态内容
+    ToolCalls    []ToolCall               `json:"tool_calls,omitempty"`
+    Metadata     Metadata                 `json:"metadata,omitempty"`
+}
+```
+
+### Response
+
+```go
 type Response struct {
-    Content  string         // 最终输出内容
-    Turn     int            // 实际使用的轮次
-    History  []Turn         // 完整 ReAct 历史
-    Duration time.Duration  // 运行耗时
-    Usage    TokenUsage     // Token 用量
+    RequestID string     `json:"request_id"`
+    Content   string     `json:"content"`
+    ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+    Usage     Usage      `json:"usage"`
+    Metrics   Metrics    `json:"metrics"`
+    Error     error      `json:"-"`
 }
+```
 
-type Turn struct {
-    Thought     string
-    Action      *Action
-    Observation string
-}
+### Usage
 
-type Action struct {
-    Tool string
-    Args json.RawMessage
+```go
+type Usage struct {
+    PromptTokens     int `json:"prompt_tokens"`
+    CompletionTokens int `json:"completion_tokens"`
+    TotalTokens      int `json:"total_tokens"`
 }
 ```
 
 ## 构造函数
 
 ```go
-func NewAgent(cfg AgentConfig) *Agent
-func NewAgentFromYAML(path string) (*Agent, error)
+// NewAgent 是创建 Agent 的推荐入口（v0.7.0 起）
+// 只暴露核心字段，能力通过 Functional Options 注入
+func NewAgent(name, systemPrompt string, model llm.Provider, opts ...Option) (*CapabilityAgent, error)
 ```
+
+**常用 Option 函数：**
+
+| Option | 说明 |
+|--------|------|
+| `WithMaxTurns(n int)` | 设置最大 ReAct 轮次 |
+| `WithTemperature(t float64)` | 设置温度参数 |
+| `WithMemory(mem memory.Memory)` | 注入记忆后端 |
+| `WithToolkit(registry *tools.Registry)` | 注入工具注册表 |
+| `WithPromptTemplate(tmpl PromptTemplate)` | 自定义提示模板 |
+| `WithCache(cache llm.LLMCache)` | 注入 LLM 缓存 |
+| `WithHooks(hooks *HookManager)` | 注入 Hook 管理器 |
+| `WithGuardrail(engine *guardrail.Engine)` | 注入护栏引擎 |
 
 ## 方法
 
 ```go
-// Run 同步执行 Agent，返回 Response
-func (a *Agent) Run(ctx context.Context, prompt string) (*Response, error)
+// Run 同步执行 Agent，接收 Message 输入并返回 Response
+func (c *CapabilityAgent) Run(ctx context.Context, input core.Message) (*core.Response, error)
 
-// StreamRun 流式执行，通过 channel 逐步返回 token
-func (a *Agent) StreamRun(ctx context.Context, prompt string) (<-chan StreamChunk, error)
+// StreamRun 流式执行，返回 StreamEvent 通道
+func (c *CapabilityAgent) StreamRun(ctx context.Context, input core.Message) (<-chan core.StreamEvent, error)
 
 // Stop 停止当前运行
-func (a *Agent) Stop()
-
-// Reset 重置 Agent 状态（清空历史轮次，保留 Memory）
-func (a *Agent) Reset()
+func (c *CapabilityAgent) Stop()
 ```
 
 ## 示例
 
 ```go
-agent := ap.NewAgent(ap.AgentConfig{
-    Name:         "my-agent",
-    SystemPrompt: "你是助手",
-    MaxTurns:     10,
-    Memory:       mem,
-    Tools:        []ap.Tool{webSearchTool, fileTool},
-})
+agent, err := ap.NewAgent("my-agent", "你是助手", provider,
+    ap.WithMaxTurns(10),
+    ap.WithMemory(mem),
+    ap.WithToolkit(registry),
+)
+if err != nil {
+    log.Fatal(err)
+}
 
-resp, err := agent.Run(ctx, "今天北京天气？")
+resp, err := agent.Run(ctx, ap.UserMessage("今天北京天气？"))
 fmt.Println(resp.Content)
 ```
 
@@ -84,6 +120,10 @@ fmt.Println(resp.Content)
 | 错误类型 | 说明 |
 |----------|------|
 | `ErrMaxTurnsExceeded` | 超过最大轮次 |
-| `ErrTimeout` | 运行超时 |
-| `ErrToolExecution` | 工具执行失败 |
-| `ErrGuardrailBlocked` | 护栏拦截 |
+
+```go
+resp, err := agent.Run(ctx, ap.UserMessage("..."))
+if errors.Is(err, agent.ErrMaxTurnsExceeded) {
+    fmt.Println("Agent 达到最大轮次限制")
+}
+```

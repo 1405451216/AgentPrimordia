@@ -3,10 +3,16 @@ package llm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"agentprimordia/internal/jsonutil" // perf-v6 round 8 Task 1：统一 JSON 序列化
+)
+
+var (
+	ErrInvalidJSON             = errors.New("llm: LLM 返回内容不是有效 JSON")
+	ErrSchemaValidationFailed = errors.New("llm: 结构化输出验证失败")
 )
 
 // ResponseFormatType LLM 响应格式类型
@@ -97,10 +103,10 @@ func (e *StructuredExtractor) Extract(ctx context.Context, prompt string, schema
 
 		raw := json.RawMessage(resp.Content)
 		if !json.Valid(raw) {
-			lastErr = fmt.Errorf("LLM 返回内容不是有效 JSON: %s", resp.Content)
+			lastErr = fmt.Errorf("LLM 返回内容不是有效 JSON: %w", ErrInvalidJSON)
 			messages = append(messages,
 				ChatMessage{Role: "assistant", Content: resp.Content},
-				ChatMessage{Role: "user", Content: fmt.Sprintf("你输出的内容不是有效的 JSON，请修正。错误: %s\n请严格按照 Schema 重新输出。", lastErr)},
+				ChatMessage{Role: "user", Content: fmt.Sprintf("你输出的内容不是有效的 JSON，请修正。错误: %s\n请严格按照 Schema 重新输出。", resp.Content)},
 			)
 			continue
 		}
@@ -111,7 +117,7 @@ func (e *StructuredExtractor) Extract(ctx context.Context, prompt string, schema
 				for _, ve := range errs {
 					errStrs = append(errStrs, ve.Error())
 				}
-				lastErr = fmt.Errorf("结构化输出验证失败: %s", strings.Join(errStrs, "; "))
+				lastErr = fmt.Errorf("结构化输出验证失败: %w", ErrSchemaValidationFailed)
 				messages = append(messages,
 					ChatMessage{Role: "assistant", Content: resp.Content},
 					ChatMessage{Role: "user", Content: fmt.Sprintf("你的输出不符合 Schema 约束，请修正以下错误:\n%s\n请严格按照 Schema 重新输出。", strings.Join(errStrs, "\n"))},

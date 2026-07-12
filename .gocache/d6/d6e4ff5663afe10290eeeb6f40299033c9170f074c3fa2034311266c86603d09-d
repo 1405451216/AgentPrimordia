@@ -1,0 +1,7 @@
+./auth.go
+./handler.go
+./admin_api_full_test.go
+./admin_coverage_test.go
+./auth_test.go
+./handler_gaps_test.go
+./handler_test.go

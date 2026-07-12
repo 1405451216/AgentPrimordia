@@ -1,0 +1,8 @@
+./fields.go
+./logger.go
+./shipper.go
+./standard.go
+./fields_test.go
+./logger_test.go
+./shipper_test.go
+./standard_test.go
