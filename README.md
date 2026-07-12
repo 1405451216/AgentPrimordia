@@ -57,7 +57,7 @@
 - **PGO 性能调优** — Profile-Guided Optimization 指南
 - **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试
 - **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
-- **向后兼容** — 旧 `ap.NewReActAgent()` API 仍然可用
+- **向后兼容** — Stable API 向后兼容，链式 API 仍可用
 - **版本统一** — Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0，API 稳定性承诺锁定
 
 ## TypeScript SDK — 100% Go Parity

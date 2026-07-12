@@ -1,4 +1,4 @@
-# Agent 架构
+﻿# Agent 架构
 
 AgentPrimordia 的核心是 **协议式微内核架构**，通过 14 个 Capable 接口实现能力发现与组合。
 
@@ -121,10 +121,10 @@ agent := ap.NewAgent("assistant", "你是助手", provider,
         WithRAG(ragProvider)
     ```
 
-    **传统方式：`ap.NewReActAgent()` （向后兼容）**
+    **传统方式：`ap.NewAgent()` （向后兼容）**
 
     ```go
-    agent := ap.NewReActAgent(ap.ReActConfig{
+    agent := ap.NewAgent(ap.ReActConfig{
         Name:         "assistant",
         SystemPrompt: "你是助手",
         Model:        provider,

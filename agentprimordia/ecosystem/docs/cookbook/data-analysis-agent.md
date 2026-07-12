@@ -78,26 +78,19 @@ func main() {
 	defer memory.Close()
 
 	// 4. Pipeline 编排：收集 → 清洗 → 分析 → 生成
-	collector := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "DataCollector",
-		SystemPrompt: "你是数据收集专家，负责从文件和网页获取原始数据。",
-		MaxTurns:     10,
-		Model:        resilient,
-	}).WithToolkit(registry)
+	collector, _ := ap.NewAgent("DataCollector", "你是数据收集专家，负责从文件和网页获取原始数据。", resilient,
+		ap.WithMaxTurns(10),
+		ap.WithToolkit(registry),
+	)
 
-	analyzer := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "DataAnalyzer",
-		SystemPrompt: "你是数据分析专家，负责统计分析和趋势发现。",
-		MaxTurns:     15,
-		Model:        resilient,
-	}).WithToolkit(registry)
+	analyzer, _ := ap.NewAgent("DataAnalyzer", "你是数据分析专家，负责统计分析和趋势发现。", resilient,
+		ap.WithMaxTurns(15),
+		ap.WithToolkit(registry),
+	)
 
-	reporter := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "ReportGenerator",
-		SystemPrompt: "你是报告生成专家，负责将分析结果整理成清晰的报告。",
-		MaxTurns:     10,
-		Model:        resilient,
-	})
+	reporter, _ := ap.NewAgent("ReportGenerator", "你是报告生成专家，负责将分析结果整理成清晰的报告。", resilient,
+		ap.WithMaxTurns(10),
+	)
 
 	pipeline := ap.NewPipeline(collector, analyzer, reporter)
 

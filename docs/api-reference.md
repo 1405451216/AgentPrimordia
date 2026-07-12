@@ -37,8 +37,7 @@ if err != nil {
     log.Fatal(err)
 }
 
-// 传统入口（仍可用）
-// agent := ap.NewReActAgent(ap.ReActConfig{...}).WithToolkit(registry)
+// ReActAgent 类型仍可用，但请通过 NewAgent 创建实例
 
 resp, err := agent.Run(ctx, ap.UserMessage("你好"))
 ```
@@ -277,7 +276,7 @@ result, err := dag.Run(ctx, "分析销售数据")
 chat := ap.NewGroupChat(ap.GroupChatConfig{
     Agents:    []ap.Agent{agent1, agent2, agent3},
     MaxRounds: 10,
-    Selector:  ap.NewRoundRobinSelector(),
+    // SelectSpeaker 可选，默认为轮询（RoundRobin）
 })
 result, err := chat.Run(ctx, "讨论 Go 1.26 的新特性")
 ```
@@ -300,16 +299,14 @@ result, err := chat.Run(ctx, "讨论 Go 1.26 的新特性")
 ragStore := ap.NewRAGStore(memStore, embedder)
 ragProvider := ap.NewRAGProviderAdapter(ragStore)
 
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:  "rag-agent",
-    Model: provider,
-    RAG: &ap.RAGConfig{
+agent, err := ap.NewAgent("rag-agent", "你是一个 RAG 助手", provider,
+    ap.WithRAG(ap.RAGConfig{
         Provider: ragProvider,
         Mode:     ap.RAGModeAuto,
         TopK:     5,
         MinScore: 0.3,
-    },
-})
+    }),
+)
 ```
 
 ### RAGDocument
@@ -672,9 +669,9 @@ hooks.RegisterWithPriority(ap.HookOnError, myErrorHandler, 10)
 
 | 适配器 | 函数 | 说明 |
 |--------|------|------|
-| Memory → Agent | `NewMemoryAdapter(store)` | 将 `Memory` 适配为 `MemoryStore` |
+| Memory → Agent | `SQLiteStore` / `InMemoryStore` 直接实现 `MemoryStore` 接口，无需适配器 |
 | EventBus → Agent | `NewEventBusAdapter(bus)` | 将 `Bus` 适配为 `EventPublisher` |
-| Metrics → Agent | `NewMetricsAdapter(m)` | 将 `AgentMetricsCollector` 适配为 `MetricsRecorder` |
+| Metrics → Agent | `AgentMetrics` 直接实现 `MetricsRecorder` 接口，无需适配器 |
 | LLM → Memory | `NewEmbeddingAdapter(provider, dim)` | 将 `Provider` 适配为 `EmbeddingProvider` |
 | RAGStore → Agent | `NewRAGProviderAdapter(store)` | 将 `RAGStore` 适配为 `RAGProvider` |
 | RAGStore → Tool | `NewKnowledgeSearcherAdapter(store)` | 将 `RAGStore` 适配为 `KnowledgeSearcher` |
@@ -689,14 +686,14 @@ ragStore := ap.NewRAGStore(store, embedder)
 agent, err := ap.NewAgent("full-agent", "你是一个助手", llmProvider,
     ap.WithMaxTurns(50),
     ap.WithToolkit(registry),
-    ap.WithMemory(ap.NewMemoryAdapter(store)),
+    ap.WithMemory(store),
     ap.WithRAG(ap.RAGConfig{
         Provider: ap.NewRAGProviderAdapter(ragStore),
         Mode:     ap.RAGModeAuto,
         TopK:     5,
     }),
     ap.WithEvents(ap.NewEventBusAdapter(ap.NewBus())),
-    ap.WithMetrics(ap.NewMetricsAdapter(ap.NewMetrics())),
+    ap.WithMetrics(ap.NewMetrics()),
 )
 ```
 
@@ -882,7 +879,6 @@ npm install better-sqlite3  # 可选：SQLite 持久化
 | Go (`ap.`) | TypeScript (`@agentprimordia/sdk`) | 说明 |
 |---|---|---|
 | `NewAgent()` | `new ReActAgent()` / `newAgent()` | 创建 Agent |
-| `NewReActAgent()` | `new ReActAgent()` | 旧入口（仍可用） |
 | `NewOpenAIProvider()` | `new OpenAIProvider()` | OpenAI |
 | `NewAnthropicProvider()` | `new AnthropicProvider()` | Anthropic Claude |
 | `NewGeminiProvider()` | `new GeminiProvider()` | Google Gemini |

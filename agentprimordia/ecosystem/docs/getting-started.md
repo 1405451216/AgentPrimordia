@@ -1,4 +1,4 @@
-# 快速入门指南
+﻿# 快速入门指南
 
 欢迎来到 AgentPrimordia！本指南将在 5 分钟内带你从零到运行第一个 AI Agent。
 
@@ -182,7 +182,7 @@ defer memoryStore.Close()
 agent := ap.NewAgent("MemoryBot", "你拥有长期记忆，可以记住对话内容",
     provider,
     ap.WithMaxTurns(20),
-).WithMemory(ap.NewMemoryAdapter(memoryStore))
+).WithMemory(memoryStore)
 ```
 
 ## 多 Agent 调度
@@ -256,5 +256,5 @@ provider := ap.NewGeminiProvider(ap.Config{...})  // 替换 ap.NewOpenAIProvider
 ### Q: 性能如何？
 单 Agent 响应 <100ms（不含 LLM 调用时间），支持并发 1000+ Agents。
 
-### Q: NewAgent 和 NewReActAgent 有什么区别？
-`ap.NewAgent` 是推荐入口，使用链式 API 注入能力；`ap.NewReActAgent` 是旧入口，通过 `ReActConfig` 结构体配置。两者创建的 Agent 功能完全相同，推荐使用 `NewAgent`。
+### Q: NewAgent 怎么用？
+`ap.NewAgent` 是推荐入口，使用 Functional Options 注入能力。返回 `(*CapabilityAgent, error)`，可通过链式 API 进一步注入能力。

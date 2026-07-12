@@ -1,6 +1,0 @@
-./bus.go
-./stream.go
-./bench_test.go
-./bus_test.go
-./events_coverage_test.go
-./stream_test.go

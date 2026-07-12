@@ -1,9 +1,0 @@
-./builder.go
-./dag.go
-./delegate.go
-./serializer.go
-./builder_test.go
-./dag_test.go
-./delegate_test.go
-./serializer_test.go
-./testhelpers_test.go

@@ -1,4 +1,4 @@
-# Cookbook: 客服机器人
+﻿# Cookbook: 客服机器人
 
 用 AgentPrimordia 构建一个具备知识库检索、对话记忆和人机协作的客服机器人。
 
@@ -62,7 +62,7 @@ func main() {
 - 用中文回复，态度友好专业`, newProvider(),
 		ap.WithMaxTurns(15),
 		ap.WithToolkit(registry),
-		ap.WithMemory(ap.NewMemoryAdapter(memory)),
+		ap.WithMemory(memory),
 		ap.WithHooks(hooks),
 	)
 	if err != nil {
@@ -93,7 +93,7 @@ func newProvider() *ap.OpenAIProvider {
 
 - `ap.NewSQLiteStore(path)` — 持久化记忆，重启后对话历史不丢失
 - `ap.DefaultToolkit(ToolkitConfig{EnableFS: true})` — 启用文件系统工具让 Agent 可读取知识文档
-- `ap.NewMemoryAdapter(memory)` — 将 Memory 接口适配为 Agent 所需的 MemoryStore
+- `memory` — 将 Memory 接口适配为 Agent 所需的 MemoryStore
 - `HookBeforeTool` — 工具调用前审计，可拦截敏感操作
 
 ## 扩展方向

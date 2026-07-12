@@ -58,27 +58,17 @@ go get agentprimordia
 
 ## API 使用
 
-### Q: NewAgent 和 NewReActAgent 有什么区别？
+### Q: NewAgent 怎么用？
 
-| | `NewAgent` | `NewReActAgent` |
-|---|-----------|-----------------|
-| 状态 | **推荐入口** | 旧入口（Deprecated） |
-| 配置方式 | 链式 `AgentOption`（`WithMaxTurns()`、`WithProvider()` 等） | `ReActConfig` 结构体（14 个字段） |
-| 扩展性 | 选项可按需组合，新增选项不影响已有调用 | 新增字段需修改结构体，破坏向后兼容 |
-
-迁移示例：
+`ap.NewAgent` 是创建 Agent 的推荐入口，使用 Functional Options 注入能力：
 
 ```go
-// 旧写法（Deprecated）
-agent, _ := ap.NewReActAgent(ap.ReActConfig{
-    MaxTurns:    10,
-    SystemPrompt: "你是一个助手",
-})
-
-// 新写法（推荐）
-agent, _ := ap.NewAgent(
+// 推荐写法
+agent, err := ap.NewAgent(
+    "my-agent",
+    "你是一个助手",
+    provider,
     ap.WithMaxTurns(10),
-    ap.WithSystemPrompt("你是一个助手"),
 )
 ```
 

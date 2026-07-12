@@ -1,8 +1,0 @@
-./healthcheck.go
-./inmemory_registry.go
-./loadbalancer.go
-./mesh.go
-./registry.go
-./router.go
-./mesh_test.go
-./router_test.go

@@ -131,14 +131,18 @@ golangci-lint run
 - 函数注释应说明功能、参数和返回值
 
 ```go
-// NewReActAgent 创建一个新的 ReAct Agent 实例
+// NewAgent 创建一个新的 Agent 实例（推荐入口）
 // 
 // 参数:
-//   - config: Agent 配置，包含名称、系统提示词、模型等
+//   - name: Agent 名称
+//   - systemPrompt: 系统提示词
+//   - model: LLM Provider
+//   - opts: Functional Options（WithMaxTurns、WithToolkit 等）
 //
 // 返回:
-//   - *ReActAgent: 配置好的 Agent 实例
-func NewReActAgent(config ReActConfig) *ReActAgent {
+//   - *CapabilityAgent: 配置好的 Agent 实例
+//   - error: 配置错误
+func NewAgent(name, systemPrompt string, model llm.Provider, opts ...AgentOption) (*CapabilityAgent, error) {
     // ...
 }
 ```
@@ -150,26 +154,25 @@ func NewReActAgent(config ReActConfig) *ReActAgent {
 - 使用表驱动测试（table-driven tests）
 
 ```go
-func TestNewReActAgent(t *testing.T) {
+func TestNewAgent(t *testing.T) {
     tests := []struct {
         name    string
-        config  ReActConfig
+        agentName string
+        system   string
         wantErr bool
     }{
         {
-            name: "valid config",
-            config: ReActConfig{
-                Name: "test-agent",
-                Model: mockLLM,
-            },
-            wantErr: false,
+            name:      "valid config",
+            agentName: "test-agent",
+            system:    "you are helpful",
+            wantErr:   false,
         },
         // 更多测试用例...
     }
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            agent := NewReActAgent(tt.config)
+            agent, err := NewAgent(tt.agentName, tt.system, mockLLM)
             // 断言...
         })
     }

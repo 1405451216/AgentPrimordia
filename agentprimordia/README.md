@@ -248,7 +248,7 @@ if err != nil {
 - 🔀 **RRF 融合算法**: Reciprocal Rank Fusion 混合检索，支持运行时切换 Linear / RRF 模式
 - 🧪 **`testutil` 测试包**: `MockProvider` + `NewTestAgent()`，无需手写 Mock
 - ⚡ **性能优化**: BufferPool、TokenCache、JSON Pool、pprof 端点、SSE 背压
-- ✅ **向后兼容**: 旧 `ap.NewReActAgent()` API 仍然可用
+- ✅ **向后兼容**: Stable API 向后兼容，链式 API 仍可用
 - 🔒 **API 稳定性承诺**: Stable API 向后兼容，破坏性变更需大版本（v2.0）
 
 ## v0.7.0 亮点

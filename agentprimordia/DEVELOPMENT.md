@@ -142,7 +142,7 @@ type ReActAgent struct { ... }
 
 | 方法 | 签名 | 说明 |
 |------|------|------|
-| `NewReActAgent` | `(cfg ReActConfig) *ReActAgent` | 创建 Agent |
+| `NewAgent` | `(name, system, model, opts ...) (*CapabilityAgent, error)` | 创建 Agent（推荐） |
 | `Run` | `(ctx, msg) (*Response, error)` | 同步运行，阻塞直到完成 |
 | `StreamRun` | `(ctx, msg) (<-chan StreamEvent, error)` | 流式运行，通过 channel 逐步返回事件 |
 | `ResumeFromCheckpoint` | `(ctx) (*Response, error)` | 从检查点恢复执行 |
@@ -761,7 +761,7 @@ import ap "agentprimordia/pkg"
 | `ap.RAGProvider` | `agent.RAGProvider` |
 | `ap.RAGConfig` | `agent.RAGConfig` |
 | `ap.UserMessage()` | `agent.UserMessage()` |
-| `ap.NewReActAgent()` | `agent.NewReActAgent()` |
+| `ap.NewAgent()` | `agent.NewAgent()` |
 | ... | ... |
 
 ---
@@ -906,9 +906,9 @@ func (m *MyMemoryStore) Search(ctx context.Context, query string, opts *memory.S
 集成到 Agent：
 
 ```go
-agent := agent.NewReActAgent(agent.ReActConfig{
-    // ...
-}).WithMemory(&MyMemoryStore{})
+agent, _ := agent.NewAgent("my-agent", "...", provider,
+    agent.WithMemory(&MyMemoryStore{}),
+)
 ```
 
 ### 实现自定义 CheckpointStore
@@ -1037,15 +1037,15 @@ type HookContext struct {
 ```go
 ragStore := memory.NewRAGStore(memStore, myEmbedder)
 
-agent := agent.NewReActAgent(agent.ReActConfig{
-    // ...
-}).WithRAG(agent.RAGConfig{
-    Provider:         ragAdapter,  // 实现 RAGProvider 接口
-    Mode:             agent.RAGModeAuto,
-    TopK:             5,           // 返回最多 5 条
-    MinScore:         0.3,         // 最低相关度阈值
-    // ContextTemplate: "...",     // TODO: 自定义模板
-})
+agent, _ := agent.NewAgent("my-agent", "...", provider,
+    agent.WithRAG(agent.RAGConfig{
+        Provider:         ragAdapter,  // 实现 RAGProvider 接口
+        Mode:             agent.RAGModeAuto,
+        TopK:             5,           // 返回最多 5 条
+        MinScore:         0.3,         // 最低相关度阈值
+        // ContextTemplate: "...",     // TODO: 自定义模板
+    }),
+)
 ```
 
 ### RAG 上下文注入
@@ -1186,11 +1186,10 @@ func TestAgentIntegration(t *testing.T) {
     registry := tools.NewRegistry()
     registry.Register(&WeatherTool{})
 
-    agent := agent.NewReActAgent(agent.ReActConfig{
-        Name:    "integration-test-agent",
-        Model:   provider,
-        MaxTurns: 3,
-    }).WithToolkit(registry)
+    agent, _ := agent.NewAgent("integration-test-agent", "", provider,
+        agent.WithMaxTurns(3),
+        agent.WithToolkit(registry),
+    )
 
     resp, err := agent.Run(context.Background(), agent.UserMessage("What's the weather?"))
     if err != nil {
@@ -1233,11 +1232,10 @@ func TestMyAgent(t *testing.T) {
     registry := tools.NewRegistry()
     registry.Register(&WeatherTool{})
     
-    agent := agent.NewReActAgent(agent.ReActConfig{
-        Name:     "test-agent",
-        Model:    mock,
-        MaxTurns: 3,
-    }).WithToolkit(registry)
+    agent, _ := agent.NewAgent("test-agent", "", provider,
+        agent.WithMaxTurns(3),
+        agent.WithToolkit(registry),
+    )
     
     resp, err := agent.Run(context.Background(), agent.UserMessage("What's the weather?"))
     if err != nil {
@@ -1311,10 +1309,10 @@ Operator 会自动创建 ConfigMap、Deployment、Service 和 HPA 资源，详�
 
 ### 新特性（向后兼容）
 
-1. **简化 Agent 入口** — 推荐直接使用 `ap.NewAgent()`，旧 `ap.NewReActAgent()` 仍可用
+1. **简化 Agent 入口** — 推荐使用 `ap.NewAgent()`，返回 `(*CapabilityAgent, error)`
    ```go
    // v0.8.0 推荐写法
-   agent := ap.NewAgent("hello", "你是一个助手", provider, ap.WithMaxTurns(10))
+   agent, err := ap.NewAgent("hello", "你是一个助手", provider, ap.WithMaxTurns(10))
    ```
 
 2. **协议式微内核** — 通过 17 个 Capable 接口实现能力自动发现与组合

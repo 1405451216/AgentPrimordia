@@ -1,4 +1,4 @@
-# AgentPrimordia 性能基准对比报告
+﻿﻿# AgentPrimordia 性能基准对比报告
 
 > 生成时间: 2026-06-16  
 > 测试环境: Windows 11, AMD Ryzen 7 5800H, 16GB RAM, Go 1.22
@@ -44,11 +44,9 @@
 // 单Agent延迟测试
 func BenchmarkReActAgent_SimpleCompletion(b *testing.B) {
     mockLLM := llm.NewMockLLM(nil).WithResponse("done")
-    agent := NewReActAgent(ReActConfig{
-        Name:     "bench-simple",
-        Model:    mockLLM,
-        MaxTurns: 10,
-    })
+    agent, _ := NewAgent("bench-simple", "", mockLLM,
+        WithMaxTurns(10),
+    )
     
     b.ResetTimer()
     for i := 0; i < b.N; i++ {

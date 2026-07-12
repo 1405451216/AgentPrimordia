@@ -1,4 +1,4 @@
-# 使用 Pool 调度多 Agent
+﻿﻿# 使用 Pool 调度多 Agent
 
 Pool 是 AgentPrimordia 的多 Agent 调度器，负责任务队列、并发控制、超时、重试和事件通知。
 
@@ -20,12 +20,10 @@ pool := NewPool(PoolConfig{
 ```go
 factory := NewDefaultAgentFactory()
 factory.Register("researcher", func(cfg AgentConfig) (Agent, error) {
-    return NewReActAgent(ReActConfig{
-        Name:         "researcher",
-        SystemPrompt: "你是研究专家",
-        Model:        cfg.Model,
-        MaxTurns:     cfg.MaxTurns,
-    }).WithToolkit(cfg.Toolkit), nil
+    return NewAgent("researcher", "你是研究专家", cfg.Model,
+        WithMaxTurns(cfg.MaxTurns),
+        WithToolkit(cfg.Toolkit),
+    )
 })
 
 pool.SetAgentFactory(factory)

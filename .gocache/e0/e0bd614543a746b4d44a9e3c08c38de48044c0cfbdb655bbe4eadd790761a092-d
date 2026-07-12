@@ -1,7 +1,0 @@
-./cosign.go
-./helpers.go
-./registry.go
-./sandbox.go
-./cosign_test.go
-./registry_test.go
-./sandbox_test.go

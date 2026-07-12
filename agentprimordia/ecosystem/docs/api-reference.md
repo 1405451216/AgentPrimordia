@@ -71,12 +71,11 @@ agent, err := ap.NewAgent("MyAgent", "你是一个专业的AI助手", llmProvide
     ap.WithMaxTurns(50),
 )
 
-// 传统入口（仍然兼容）
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "MyAgent",
-    SystemPrompt: "你是一个专业的AI助手",
-    Model:        llmProvider,
-}).WithToolkit(tools).WithMemory(mem)
+// 链式 API（CapabilityAgent）
+agent, err := ap.NewAgent("MyAgent", "你是一个专业的AI助手", llmProvider,
+    ap.WithMaxTurns(50),
+)
+agent.WithToolkit(tools).WithMemory(mem)
 ```
 
 #### ReActConfig 配置项

@@ -162,7 +162,7 @@ func main() {
 ```
 
 **要点：**
-- 使用 `ap.NewReActAgent` 创建 Agent
+- 使用 `ap.NewAgent` 创建 Agent
 - `ReActConfig` 配置名称、系统提示词和最大轮次
 - `Model` 字段需要替换为实际的 LLM Provider
 - `ap.UserMessage()` 创建用户消息
@@ -209,14 +209,11 @@ func main() {
 	}
 	defer memory.Close()
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "my-agent",
-		SystemPrompt: "你是一个可以读写文件、执行命令和访问网页的助手。",
-		MaxTurns:     20,
-		// 设置 Model 为你的 LLM Provider:
-		// Model: ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"}),
-	}).WithToolkit(registry).
-		WithMemory(ap.NewMemoryAdapter(memory))
+agent, err := ap.NewAgent("my-agent", "你是一个可以读写文件、执行命令和访问网页的助手。", provider,
+    ap.WithMaxTurns(20),
+    ap.WithToolkit(registry),
+    ap.WithMemory(memory),
+)
 
 	prompt := "列出当前目录的文件"
 	if envPrompt := os.Getenv("AP_PROMPT"); envPrompt != "" {
@@ -727,12 +724,9 @@ func EvalTestSuite(t *testing.T) {
 	// TODO: 替换为你的实际 LLM Provider
 	mockLLM := &testMockLLM{}
 
-	agent := ap.NewReActAgent(ap.ReActConfig{
-		Name:         "TestAgent",
-		SystemPrompt: "你是一个测试助手",
-		Model:        mockLLM,
-		MaxTurns:     5,
-	})
+agent, err := ap.NewAgent("TestAgent", "你是一个测试助手", mockLLM,
+    ap.WithMaxTurns(5),
+)
 
 	t.Run("基础回复", func(t *testing.T) {
 		resp, err := agent.Run(context.Background(), ap.UserMessage("你好"))
@@ -1266,7 +1260,7 @@ import ap "agentprimordia/pkg"
 **常用函数：**
 
 ```go
-ap.NewReActAgent(config)          // 创建 ReAct Agent
+ap.NewAgent(name, system, model, opts...)  // 创建 Agent（推荐）
 ap.UserMessage("内容")             // 创建用户消息
 ap.SystemMessage("内容")           // 创建系统消息
 ap.NewPromptTemplate("模板")       // 创建提示词模板

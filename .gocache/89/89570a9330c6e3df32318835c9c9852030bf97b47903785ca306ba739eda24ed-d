@@ -1,8 +1,0 @@
-./aes_gcm.go
-./encryption.go
-./permission.go
-./sandbox.go
-./encryption_test.go
-./permission_test.go
-./sandbox_fuzz_test.go
-./sandbox_test.go

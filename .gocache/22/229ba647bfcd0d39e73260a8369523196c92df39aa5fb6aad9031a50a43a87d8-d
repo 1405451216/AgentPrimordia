@@ -1,8 +1,0 @@
-./few_shot.go
-./parser.go
-./registry.go
-./template.go
-./few_shot_test.go
-./prompt_coverage_test.go
-./prompt_test.go
-./registry_test.go

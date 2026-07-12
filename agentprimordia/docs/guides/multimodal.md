@@ -1,4 +1,4 @@
-# 多模态输入
+﻿﻿# 多模态输入
 
 AgentPrimordia 支持图片、音频、视频等多模态输入，目前主要集成在 LLM Provider 层。
 
@@ -43,10 +43,7 @@ resp, err := adapter.Complete(ctx, "描述这张图片", imageData)
 ## 与 ReActAgent 集成
 
 ```go
-agent := NewReActAgent(ReActConfig{
-    Name:  "vision-agent",
-    Model: provider,
-})
+agent, _ := NewAgent("vision-agent", "", provider)
 
 msg := UserMessage("描述这张图片")
 msg.Images = []ImageContent{{Data: imageData, MIMEType: "image/png"}}

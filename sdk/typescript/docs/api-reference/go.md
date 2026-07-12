@@ -1,4 +1,4 @@
-# Go API Reference
+﻿# Go API Reference
 
 ## 核心包
 
@@ -53,7 +53,7 @@ import (
 )
 
 provider := llm.NewOpenAIProvider(apiKey)
-agent := agent.NewReActAgent("assistant", provider)
+agent := agent.NewAgent("assistant", provider)
 ```
 
 参见 GoDoc: https://pkg.go.dev/github.com/agentprimordia/ap

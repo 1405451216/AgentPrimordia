@@ -41,6 +41,28 @@ type RAGStore = memory.RAGStore
 // RAGResult 是 RAG 查询的结果，包含匹配的记忆片段、相关度分数和来源（fts / vector）
 type RAGResult = memory.RAGResult
 
+// ===== RAG 融合配置 =====
+
+// HybridFusionMode 是 RAG 混合检索的融合模式
+type HybridFusionMode = memory.HybridFusionMode
+
+// RAGFusionConfig 是 RAG 检索融合配置，支持运行时调参
+type RAGFusionConfig = memory.RAGFusionConfig
+
+const (
+	// FusionLinear 线性加权融合（默认）
+	FusionLinear = memory.FusionLinear
+	// FusionRRF Reciprocal Rank Fusion（推荐用于生产）
+	FusionRRF = memory.FusionRRF
+)
+
+var (
+	// NewRAGStoreWithFusionConfig 创建带融合配置的 RAG 存储实例
+	NewRAGStoreWithFusionConfig = memory.NewRAGStoreWithFusionConfig
+	// DefaultRAGFusionConfig 返回默认融合配置
+	DefaultRAGFusionConfig = memory.DefaultRAGFusionConfig
+)
+
 // Reranker 是 RAG 搜索结果重排序接口
 type Reranker = memory.Reranker
 

@@ -1,8 +1,0 @@
-./breakpoint.go
-./http.go
-./inspector.go
-./inspector_server.go
-./time_travel.go
-./visual_editor.go
-./visualizer.go
-./watch.go

@@ -1,4 +1,4 @@
-# 最佳实践指南
+﻿# 最佳实践指南
 
 本文档总结了在生产环境中使用 AgentPrimordia 的最佳实践和经验教训。
 
@@ -486,7 +486,7 @@ m := ap.NewMetrics()
 agent := ap.NewAgent("MonitoredBot", "你是一个助手",
     provider,
     ap.WithMaxTurns(10),
-).WithMetrics(ap.NewMetricsAdapter(m))
+).WithMetrics(m)
 ```
 
 ### 4. 日志规范

@@ -1356,11 +1356,10 @@ type ToolLearningCapable interface { GetToolLearningConfig() *toollearning.Confi
 `CapabilityAgent` 实现所有 Capable 接口，提供链式 API：
 
 ```go
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name: "my-agent",
-    Model: provider,
-    MaxTurns: 10,
-}).
+agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider,
+    ap.WithMaxTurns(10),
+)
+agent.
     WithMemory(mem).
     WithRAG(ragCfg).
     WithHooks(hooks).
@@ -1430,8 +1429,6 @@ type Agent = agent.Agent
 type ReActAgent = agent.ReActAgent
 type CapabilityAgent = agent.CapabilityAgent
 var NewAgent = agent.NewAgent
-var NewReActAgent = agent.NewReActAgent
-
 // pkg/llm.go
 type Provider = llm.Provider
 type OpenAIProvider = llm.OpenAIProvider
@@ -1608,25 +1605,21 @@ func main() {
 }
 ```
 
-### 传统入口（仍然兼容）
+### 链式 API（CapabilityAgent）
 
 ```go
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "my-first-agent",
-    SystemPrompt: "你是一个友好的助手",
-    Model:        provider,
-    MaxTurns:     10,
-})
+agent, _ := ap.NewAgent("my-first-agent", "你是一个友好的助手", provider,
+    ap.WithMaxTurns(10),
+)
 ```
 
 ### 渐进式添加能力
 
 ```go
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:     "capable-agent",
-    Model:    provider,
-    MaxTurns: 10,
-}).
+agent, _ := ap.NewAgent("capable-agent", "你是一个助手", provider,
+    ap.WithMaxTurns(10),
+)
+agent.
     WithMemory(mem).              // 添加记忆
     WithRAG(ragCfg).              // 添加 RAG
     WithToolkit(registry).        // 添加工具
@@ -2099,22 +2092,21 @@ await audit.log({ actor: 'user-1', action: 'agent.run', resource: 'my-agent' });
 
 **新特性（向后兼容）：**
 
-1. **简化 Agent 入口** — 推荐直接使用 `ap.NewAgent()`，旧 `ap.NewReActAgent()` 仍可用
+1. **简化 Agent 入口** — 推荐使用 `ap.NewAgent()`，返回 `(*CapabilityAgent, error)`
    ```go
    // v0.8.0 推荐写法
-   agent := ap.NewAgent("hello", "你是一个助手", provider, ap.WithMaxTurns(10))
+   agent, err := ap.NewAgent("hello", "你是一个助手", provider, ap.WithMaxTurns(10))
    ```
 
 2. **`WithRAGMemory()` 一步 RAG**
    ```go
-   // v0.7
-   agent := ap.NewReActAgent(config).
-       WithEmbedding(embedding).
+   // v0.7（链式 API）
+   agent, _ := ap.NewAgent(name, system, provider).
        WithRAG(ragCfg).
        WithMemory(store)
    
    // v0.8.0
-   agent := ap.NewAgent(name, system, provider,
+   agent, err := ap.NewAgent(name, system, provider,
        ap.WithRAGMemory(ragMemoryConfig),
    )
    ```
@@ -2139,7 +2131,7 @@ await audit.log({ actor: 'user-1', action: 'agent.run', resource: 'my-agent' });
    }
    
    // v0.7
-   agent := NewReActAgent(config).WithToolkit(registry)
+   agent, _ := ap.NewAgent(name, system, provider, ap.WithToolkit(registry))
    ```
 
 2. **Memory 接口组合**
@@ -2200,7 +2192,7 @@ if err != nil {
 defer store.Close()
 
 // 使用与 VectorStore 相同的接口
-agent := ap.NewReActAgent(config).
+agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
     WithMemory(store)
 ```
 

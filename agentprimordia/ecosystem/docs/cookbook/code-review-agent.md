@@ -1,4 +1,4 @@
-# Cookbook: 代码审查 Agent
+﻿# Cookbook: 代码审查 Agent
 
 用 AgentPrimordia 构建一个能读取代码、运行检查并给出审查意见的 Agent。
 
@@ -72,7 +72,7 @@ func main() {
 4. 用中文输出审查报告`, newProvider(),
 		ap.WithMaxTurns(25),
 		ap.WithToolkit(registry),
-		ap.WithMemory(ap.NewMemoryAdapter(memory)),
+		ap.WithMemory(memory),
 		ap.WithHooks(hooks),
 	)
 	if err != nil {
