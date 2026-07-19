@@ -1,4 +1,4 @@
-﻿package transport
+package transport
 
 import (
 	"agentprimordia/internal/agent/bus"
@@ -80,4 +80,3 @@ func TestGrpcTransport_StartAndStop(t *testing.T) {
 		t.Fatalf("Close error: %v", err)
 	}
 }
-

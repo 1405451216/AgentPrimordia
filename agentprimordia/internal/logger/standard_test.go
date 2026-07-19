@@ -2,8 +2,8 @@ package logger
 
 import (
 	"bytes"
-	"encoding/json"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"testing"

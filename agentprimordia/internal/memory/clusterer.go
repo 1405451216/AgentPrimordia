@@ -1,4 +1,4 @@
-﻿// clusterer.go — 语义聚类器（分层记忆深化的聚类层）。
+// clusterer.go — 语义聚类器（分层记忆深化的聚类层）。
 //
 // 对 Memory 条目列表执行聚类，输出 MemoryCluster 列表。
 // 支持两种算法：DBSCAN（基于密度）和 Agglomerative（层次聚合）。

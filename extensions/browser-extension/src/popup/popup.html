@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <title>AgentPrimordia DevTools</title>
+        <link rel="stylesheet" href="popup.css" />
+    </head>
+    <body>
+        <header>
+            <span class="logo">AP</span>
+            <span class="title">AgentPrimordia DevTools</span>
+        </header>
+
+        <div class="status-bar">
+            <span id="studio-status-dot" class="status-dot" title="Studio 连接状态"></span>
+            <span id="studio-status-text">正在检查 Studio 连接…</span>
+        </div>
+
+        <div class="section">
+            <h3>当前页面代理</h3>
+            <div class="status-bar" style="border-bottom: none; padding: 0 0 8px 0;">
+                <span id="agent-status-dot" class="status-dot"></span>
+                <span id="agent-status-text">检测中…</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>快速对话</h3>
+            <input id="chat-input" class="chat-input" type="text" placeholder="发送消息给当前代理…" />
+            <div class="btn-row">
+                <button id="btn-send" class="btn btn-primary" disabled>发送</button>
+                <span id="send-result" style="font-size: 11px; align-self: center; color: #636e72;"></span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>最近运行</h3>
+            <ul id="runs-list" class="runs-list">
+                <li class="empty">加载中…</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="btn-row">
+                <button id="btn-inspect" class="btn" disabled>检查代理</button>
+                <button id="btn-traces" class="btn" disabled>查看 Traces</button>
+                <button id="btn-open-studio" class="btn btn-primary">打开 Studio</button>
+            </div>
+        </div>
+
+        <footer>v0.1.0 · AgentPrimordia</footer>
+
+        <script type="module" src="popup.js"></script>
+    </body>
+</html>

@@ -1,4 +1,4 @@
-﻿package mesh
+package mesh
 
 import (
 	"log/slog"
@@ -73,7 +73,7 @@ func (h *HealthChecker) evictExpired() {
 	healthy, _ := h.registry.Discover("")
 	for _, a := range healthy {
 		if now.Sub(a.LastHeartbeat) > h.ttl && a.Status != AgentStatusUnhealthy {
-			h.registry.Deregister(a.ID)
+			_ = h.registry.Deregister(a.ID)
 			h.logger.Info("mesh: evicted unhealthy agent", "id", a.ID)
 		}
 	}

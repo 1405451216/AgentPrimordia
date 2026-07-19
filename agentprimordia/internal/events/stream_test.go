@@ -1,4 +1,4 @@
-﻿package events
+package events
 
 import (
 	"context"
@@ -124,4 +124,3 @@ func TestMemoryEventStream_Close(t *testing.T) {
 		t.Error("expected error after Close, got nil")
 	}
 }
-

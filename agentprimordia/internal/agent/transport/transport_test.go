@@ -1,4 +1,4 @@
-﻿package transport
+package transport
 
 import (
 	"agentprimordia/internal/agent/bus"

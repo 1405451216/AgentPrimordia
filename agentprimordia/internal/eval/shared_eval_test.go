@@ -1,10 +1,10 @@
-﻿package eval
+package eval
 
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -114,11 +114,11 @@ func TestSimpleEvaluator(t *testing.T) {
 func TestSharedEvalRunner(t *testing.T) {
 	agent := &mockEvalAgent{
 		responses: map[string]string{
-			"Hello":   "Hello there! Nice to meet you.",
-			"Search":  "web_search results for Go release",
-			"memory":  "memory_recall: your preference is saved",
-			"SSN":     "block: PII detected",
-			"Plan":    "decompose: step 1, step 2, step 3",
+			"Hello":  "Hello there! Nice to meet you.",
+			"Search": "web_search results for Go release",
+			"memory": "memory_recall: your preference is saved",
+			"SSN":    "block: PII detected",
+			"Plan":   "decompose: step 1, step 2, step 3",
 		},
 	}
 

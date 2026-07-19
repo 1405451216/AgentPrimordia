@@ -1,4 +1,4 @@
-﻿package ebpf
+package ebpf
 
 import (
 	"errors"
@@ -32,10 +32,10 @@ type SyscallEvent struct {
 
 // TracerConfig 配置 eBPF 追踪器。
 type TracerConfig struct {
-	TargetSyscalls []string      // 要追踪的系统调用列表
-	BufferSize     int           // ring buffer 大小
-	FilterPID      uint32        // 按 PID 过滤（0 = 全部）
-	SampleRate     uint64        // 采样率（每 N 次记录一次）
+	TargetSyscalls []string // 要追踪的系统调用列表
+	BufferSize     int      // ring buffer 大小
+	FilterPID      uint32   // 按 PID 过滤（0 = 全部）
+	SampleRate     uint64   // 采样率（每 N 次记录一次）
 }
 
 // NewTracer 创建 eBPF 追踪器。
@@ -50,10 +50,10 @@ func NewTracer(config TracerConfig) Tracer {
 // noopTracer 是非 Linux 平台的 no-op 实现。
 type noopTracer struct{}
 
-func (t *noopTracer) Attach() error                       { return ErrNotSupported }
-func (t *noopTracer) Detach() error                       { return nil }
-func (t *noopTracer) Events() <-chan SyscallEvent         { return nil }
-func (t *noopTracer) Close() error                        { return nil }
+func (t *noopTracer) Attach() error               { return ErrNotSupported }
+func (t *noopTracer) Detach() error               { return nil }
+func (t *noopTracer) Events() <-chan SyscallEvent { return nil }
+func (t *noopTracer) Close() error                { return nil }
 
 // newLinuxTracer Linux 平台真实实现（需要 cilium/ebpf 依赖）。
 // 当前为占位实现，恢复网络下载 github.com/cilium/ebpf 后替换。
@@ -65,8 +65,7 @@ type linuxTracerStub struct {
 	config TracerConfig
 }
 
-func (t *linuxTracerStub) Attach() error                       { return ErrNotSupported }
-func (t *linuxTracerStub) Detach() error                       { return nil }
-func (t *linuxTracerStub) Events() <-chan SyscallEvent         { return nil }
-func (t *linuxTracerStub) Close() error                        { return nil }
-
+func (t *linuxTracerStub) Attach() error               { return ErrNotSupported }
+func (t *linuxTracerStub) Detach() error               { return nil }
+func (t *linuxTracerStub) Events() <-chan SyscallEvent { return nil }
+func (t *linuxTracerStub) Close() error                { return nil }

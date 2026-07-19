@@ -1,0 +1,47 @@
+# ============================================================
+# AgentPrimordia 生产镜像（Admin HTTP 服务）
+#
+# 构建：docker build -f Dockerfile.prod -t agentprimordia:prod .
+# 运行：docker run -p 8080:8080 -e ADMIN_TOKEN=xxx agentprimordia:prod
+#
+# 健康端点：GET /api/health（无需 token）
+# 指标端点：由 internal/metrics + otel 暴露（见 deploy/prometheus）
+# ============================================================
+
+# ---- Stage 1: Go builder ----
+FROM golang:1.26-alpine AS go-builder
+
+WORKDIR /build
+
+# 先拷依赖以利用层缓存
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# 无 CGO（modernc.org/sqlite 为纯 Go 驱动）
+ENV CGO_ENABLED=0
+RUN go build -ldflags="-s -w -X main.Version=$(git describe --tags --always --dirty 2>/dev/null || echo dev)" \
+    -o /bin/ap-admin ./cmd/admin/
+
+# ---- Stage 2: Runtime ----
+FROM alpine:3.20
+
+# wget 用于 HEALTHCHECK 探针；ca-certificates 用于 HTTPS 出站（LLM API 等）
+RUN apk add --no-cache wget ca-certificates tzdata && \
+    addgroup -S ap && adduser -S ap -G ap
+
+COPY --from=go-builder /bin/ap-admin /usr/local/bin/ap-admin
+
+USER ap
+
+EXPOSE 8080
+
+# HTTP 就绪/存活探针（不是 pgrep 进程检查）
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:8080/api/health > /dev/null 2>&1 || exit 1
+
+# 配置通过环境变量注入：
+#   ADDR         监听地址（默认 :8080）
+#   ADMIN_TOKEN  Admin API 访问令牌（必填）
+CMD ["sh", "-c", "exec ap-admin -addr=${ADDR:-:8080} -token=${ADMIN_TOKEN}"]

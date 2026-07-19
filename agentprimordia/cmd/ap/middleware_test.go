@@ -199,7 +199,7 @@ func TestMiddlewareChain(t *testing.T) {
 	h = m1(h)
 	h = m2(h)
 	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/", nil))
-	expected := []string{"m1-before", "m2-before", "handler", "m2-after", "m1-after"}
+	expected := []string{"m2-before", "m1-before", "handler", "m1-after", "m2-after"}
 	if strings.Join(order, ",") != strings.Join(expected, ",") {
 		t.Errorf("expected order %v, got %v", expected, order)
 	}

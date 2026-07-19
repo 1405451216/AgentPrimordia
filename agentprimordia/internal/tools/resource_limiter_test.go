@@ -57,15 +57,15 @@ func TestResourceLimiter_ContextTimeout(t *testing.T) {
 
 func TestResourceLimiter_CheckLimit(t *testing.T) {
 	lim := NewResourceLimiter(ResourceLimits{
-		MaxMemoryMB:    100,
-		MaxFileOps:     5,
+		MaxMemoryMB:     100,
+		MaxFileOps:      5,
 		ConcurrentCalls: 3,
 	})
 
 	// 检查合法资源使用
 	err := lim.CheckLimit(ResourceLimits{
-		MaxMemoryMB:    90,
-		MaxFileOps:     4,
+		MaxMemoryMB:     90,
+		MaxFileOps:      4,
 		ConcurrentCalls: 2,
 	})
 	if err != nil {
@@ -92,7 +92,7 @@ func TestResourceLimiter_CheckLimit(t *testing.T) {
 func TestResourceLimiter_Usage(t *testing.T) {
 	lim := NewResourceLimiter(ResourceLimits{
 		ConcurrentCalls: 5,
-		MaxMemoryMB:  1024,
+		MaxMemoryMB:     1024,
 	})
 
 	lim.Acquire(ResourceConcurrent)
@@ -110,11 +110,11 @@ func TestResourceLimiter_Usage(t *testing.T) {
 func TestSessionLimiter(t *testing.T) {
 	global := NewResourceLimiter(ResourceLimits{
 		ConcurrentCalls: 10,
-		MaxMemoryMB: 1024,
+		MaxMemoryMB:     1024,
 	})
 	session := NewSessionLimiter(global, ResourceLimits{
 		ConcurrentCalls: 2,
-		MaxMemoryMB: 100,
+		MaxMemoryMB:     100,
 	})
 
 	// 在 session 限制内

@@ -71,11 +71,11 @@ func TestPIITrie_NoMatch(t *testing.T) {
 func TestPIITrie_LoadVocabulary(t *testing.T) {
 	trie := NewPIITrie()
 	vocab := map[string]string{
-		"北京市":  "address",
-		"上海市":  "address",
-		"广州市":  "address",
-		"张三":   "name",
-		"李四":   "name",
+		"北京市": "address",
+		"上海市": "address",
+		"广州市": "address",
+		"张三":  "name",
+		"李四":  "name",
 	}
 	trie.LoadVocabulary(vocab)
 

@@ -340,40 +340,6 @@ func TestExecutor_ConfirmationConditional(t *testing.T) {
 	}
 }
 
-// ===== validateGitURL 测试 =====
-
-func TestValidateGitURL_Valid(t *testing.T) {
-	t.Parallel()
-	validURLs := []string{
-		"https://github.com/user/repo.git",
-		"http://github.com/user/repo.git",
-		"git://github.com/user/repo.git",
-		"ssh://git@github.com/user/repo.git",
-		"git@github.com:user/repo.git",
-	}
-	for _, u := range validURLs {
-		if err := validateGitURL(u); err != nil {
-			t.Errorf("validateGitURL(%q) should be valid, got: %v", u, err)
-		}
-	}
-}
-
-func TestValidateGitURL_Invalid(t *testing.T) {
-	t.Parallel()
-	invalidURLs := []string{
-		"ftp://example.com/repo.git",
-		"file:///etc/passwd",
-		"javascript:alert(1)",
-		"",
-		"not-a-url",
-	}
-	for _, u := range invalidURLs {
-		if err := validateGitURL(u); err == nil {
-			t.Errorf("validateGitURL(%q) should be invalid", u)
-		}
-	}
-}
-
 // ===== getDataType 测试 =====
 
 func TestGetDataType(t *testing.T) {
@@ -415,28 +381,6 @@ func TestIsValidTableName(t *testing.T) {
 		if isValidTableName(name) {
 			t.Errorf("isValidTableName(%q) should be false", name)
 		}
-	}
-}
-
-// ===== toStringSlice 测试 =====
-
-func TestToStringSlice(t *testing.T) {
-	t.Parallel()
-	items := []any{"hello", 42, true, 3.14}
-	got := toStringSlice(items)
-	expected := []string{"hello", "42", "true", "3.14"}
-	if len(got) != len(expected) {
-		t.Fatalf("length mismatch: got %d, want %d", len(got), len(expected))
-	}
-	for i := range got {
-		if got[i] != expected[i] {
-			t.Errorf("toStringSlice[%d] = %q, want %q", i, got[i], expected[i])
-		}
-	}
-	// 空切片
-	empty := toStringSlice([]any{})
-	if len(empty) != 0 {
-		t.Errorf("empty slice should have length 0, got %d", len(empty))
 	}
 }
 
@@ -764,92 +708,7 @@ func TestJSONTool_UnknownAction(t *testing.T) {
 	}
 }
 
-// ===== 工具元数据测试 =====
-
-func TestHTTPClientTool_Metadata(t *testing.T) {
-	t.Parallel()
-	tool := NewHTTPClientTool()
-	if tool.Name() != "http_client" {
-		t.Errorf("expected name 'http_client', got '%s'", tool.Name())
-	}
-	if tool.Description() == "" {
-		t.Error("description should not be empty")
-	}
-	params := tool.Parameters()
-	if len(params) == 0 {
-		t.Error("parameters should not be empty")
-	}
-}
-
-func TestGitTool_Metadata(t *testing.T) {
-	t.Parallel()
-	tool := NewGitTool(t.TempDir())
-	if tool.Name() != "git_tool" {
-		t.Errorf("expected name 'git_tool', got '%s'", tool.Name())
-	}
-	if tool.Description() == "" {
-		t.Error("description should not be empty")
-	}
-	params := tool.Parameters()
-	if len(params) == 0 {
-		t.Error("parameters should not be empty")
-	}
-}
-
-func TestGitTool_Execute_InvalidParams(t *testing.T) {
-	t.Parallel()
-	tool := NewGitTool(t.TempDir())
-
-	// 测试无效 JSON
-	_, err := tool.Execute(context.Background(), json.RawMessage(`{invalid`))
-	if err == nil {
-		t.Error("invalid JSON should return error")
-	}
-
-	// 测试缺少 action
-	_, err = tool.Execute(context.Background(), json.RawMessage(`{}`))
-	if err == nil {
-		t.Error("missing action should return error")
-	}
-
-	// 测试未知 action
-	_, err = tool.Execute(context.Background(), json.RawMessage(`{"action":"unknown"}`))
-	if err == nil {
-		t.Error("unknown action should return error")
-	}
-}
-
-func TestGitTool_Execute_MissingParams(t *testing.T) {
-	t.Parallel()
-	tool := NewGitTool(t.TempDir())
-
-	// commit 缺少 message
-	_, err := tool.Execute(context.Background(), json.RawMessage(`{"action":"commit"}`))
-	if err == nil {
-		t.Error("commit without message should return error")
-	}
-
-	// checkout 缺少 branch
-	_, err = tool.Execute(context.Background(), json.RawMessage(`{"action":"checkout"}`))
-	if err == nil {
-		t.Error("checkout without branch should return error")
-	}
-}
-
-func TestSearchTool_Metadata(t *testing.T) {
-	t.Parallel()
-	tool := NewSearchTool()
-	if tool.Name() != "web_search" {
-		t.Errorf("expected name 'web_search', got '%s'", tool.Name())
-	}
-	if tool.Description() == "" {
-		t.Error("description should not be empty")
-	}
-	params := tool.Parameters()
-	if len(params) == 0 {
-		t.Error("parameters should not be empty")
-	}
-}
+// ===== 工具元数据测试（CSV/JSON/SQLite） =====
 
 func TestCSVTool_Metadata(t *testing.T) {
 	t.Parallel()

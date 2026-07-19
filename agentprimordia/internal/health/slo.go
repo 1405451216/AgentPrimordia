@@ -115,9 +115,9 @@ func checkSingleSLO(m SLIMetric) SLOStatus {
 // 注意：本实现不引入 prometheus 等第三方依赖。
 // 如需集成外部监控系统，使用 ExportSLOStatus 获取状态后自行推送。
 type SLORegistry struct {
-	mu       sync.RWMutex
-	metrics  map[string]SLIMetric
-	target   float64
+	mu      sync.RWMutex
+	metrics map[string]SLIMetric
+	target  float64
 }
 
 // NewSLORegistry 创建 SLO 注册表。

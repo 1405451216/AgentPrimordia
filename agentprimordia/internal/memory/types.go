@@ -93,9 +93,9 @@ type SearchOptions struct {
 	MaxResults     int // 最大结果数：限制搜索返回的总结果数（不受分页影响）
 	UseSemantic    bool
 	SemanticWeight float64
-	TopK          int
-	Threshold     float32
-	Filter        map[string]any
+	TopK           int
+	Threshold      float32
+	Filter         map[string]any
 }
 
 type SearchResult struct {

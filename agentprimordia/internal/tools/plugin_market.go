@@ -14,16 +14,16 @@ import (
 
 // PluginManifest 插件清单（市场元数据）
 type PluginManifest struct {
-	Name         string            `json:"name"`
-	Version      string            `json:"version"`
-	Description  string            `json:"description"`
-	Author       string            `json:"author"`
-	Category     string            `json:"category"` // "data"/"ai"/"devops"
-	Tags         []string          `json:"tags"`
-	Capabilities []string          `json:"capabilities"`
+	Name         string             `json:"name"`
+	Version      string             `json:"version"`
+	Description  string             `json:"description"`
+	Author       string             `json:"author"`
+	Category     string             `json:"category"` // "data"/"ai"/"devops"
+	Tags         []string           `json:"tags"`
+	Capabilities []string           `json:"capabilities"`
 	Dependencies []PluginDependency `json:"dependencies"`
-	MinVersion   string            `json:"min_version"` // 最低 SDK 版本
-	Checksum     string            `json:"checksum"`     // SHA256
+	MinVersion   string             `json:"min_version"` // 最低 SDK 版本
+	Checksum     string             `json:"checksum"`    // SHA256
 }
 
 // PluginDependency 插件依赖

@@ -1,4 +1,4 @@
-﻿package debugger
+package debugger
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ func (wv *WatchVar) Update(newValue any) {
 
 // WatchManager 管理一组监视变量，支持批量轮询
 type WatchManager struct {
-	mu     sync.RWMutex
+	mu      sync.RWMutex
 	watches []*WatchVar
 }
 

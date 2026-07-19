@@ -1,4 +1,4 @@
-﻿package llm
+package llm
 
 import (
 	"testing"
@@ -56,4 +56,3 @@ func BenchmarkStreamPipeline_RebuildChain(b *testing.B) {
 		_ = p
 	}
 }
-

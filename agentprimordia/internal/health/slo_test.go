@@ -8,10 +8,10 @@ import (
 
 func TestCalculateAvailability(t *testing.T) {
 	tests := []struct {
-		name      string
-		total     int
-		failures  int
-		expected  float64
+		name     string
+		total    int
+		failures int
+		expected float64
 	}{
 		{"all-success", 100, 0, 1.0},
 		{"some-failures", 100, 5, 0.95},

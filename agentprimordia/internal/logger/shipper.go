@@ -110,7 +110,7 @@ func NewFileShipper(path string, maxSizeMB int, maxFiles int) (*FileShipper, err
 
 	info, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("stat log file: %w", err)
 	}
 
@@ -153,19 +153,19 @@ func (s *FileShipper) Ship(entries []LogEntry) error {
 // rotate 执行日志文件滚动。
 func (s *FileShipper) rotate() error {
 	if s.file != nil {
-		s.file.Close()
+		_ = s.file.Close()
 	}
 
 	for i := s.maxFiles - 1; i >= 1; i-- {
 		old := fmt.Sprintf("%s.%d", s.path, i)
 		new := fmt.Sprintf("%s.%d", s.path, i+1)
 		if _, err := os.Stat(old); err == nil {
-			os.Rename(old, new)
+			_ = os.Rename(old, new)
 		}
 	}
 
 	if s.maxFiles > 0 {
-		os.Rename(s.path, s.path+".1")
+		_ = os.Rename(s.path, s.path+".1")
 	}
 
 	f, err := os.OpenFile(s.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)

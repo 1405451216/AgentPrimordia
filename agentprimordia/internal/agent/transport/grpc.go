@@ -1,4 +1,4 @@
-﻿package transport
+package transport
 
 import (
 	"agentprimordia/internal/agent/bus"
@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	)
+)
 
 // ===== #9 gRPC 双向流式通信 =====
 
@@ -135,5 +135,3 @@ func (t *GrpcTransport) Close() error {
 }
 
 var _ Transport = (*GrpcTransport)(nil)
-
-

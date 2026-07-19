@@ -14,7 +14,7 @@ type dynMockTool struct {
 }
 
 func (m *dynMockTool) Name() string        { return m.name }
-func (m *dynMockTool) Description() string  { return m.desc }
+func (m *dynMockTool) Description() string { return m.desc }
 func (m *dynMockTool) Parameters() json.RawMessage {
 	return json.RawMessage(`{}`)
 }

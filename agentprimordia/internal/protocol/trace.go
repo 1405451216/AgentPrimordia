@@ -1,9 +1,9 @@
-﻿package protocol
+package protocol
 
 import (
 	"context"
 	"encoding/hex"
-		"sync/atomic"
+	"sync/atomic"
 	"time"
 )
 
@@ -91,5 +91,3 @@ func splitTraceparent(s string) []string {
 	result = append(result, s[start:])
 	return result
 }
-
-

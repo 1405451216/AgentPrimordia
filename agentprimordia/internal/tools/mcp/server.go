@@ -1,4 +1,4 @@
-﻿package mcp
+package mcp
 
 import (
 	"context"
@@ -195,7 +195,6 @@ func (s *MCPServer) Start(ctx context.Context, addr string) error {
 		MaxHeaderBytes:    1 << 20,
 	}
 	s.mu.Unlock()
-
 
 	errCh := make(chan error, 1)
 	go func() { errCh <- s.server.ListenAndServe() }()
@@ -455,7 +454,9 @@ var _ = strings.HasPrefix
 // installBuiltinResources registers built-in session / status / memory resources.
 func (s *MCPServer) installBuiltinResources() {
 	s.resources.Register("agent://memory", "Agent Memory Snapshot", "application/json",
-		func(ctx context.Context, uri string) ([]byte, error) { return s.builtinResources.getMemorySnapshot(ctx) })
+		func(ctx context.Context, uri string) ([]byte, error) {
+			return s.builtinResources.getMemorySnapshot(ctx)
+		})
 	s.resources.Register("agent://status", "Agent Status", "application/json",
 		func(ctx context.Context, uri string) ([]byte, error) { return s.builtinResources.getStatus(ctx) })
 	s.resources.Register("agent://session/", "Agent Session State", "application/json",

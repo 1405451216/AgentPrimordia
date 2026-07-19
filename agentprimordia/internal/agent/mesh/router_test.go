@@ -1,9 +1,9 @@
-﻿package mesh
+package mesh
 
 import (
 	"context"
-	"time"
 	"testing"
+	"time"
 )
 
 func TestSmartRouter_ClusterFilter(t *testing.T) {

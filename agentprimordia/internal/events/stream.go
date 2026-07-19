@@ -1,4 +1,4 @@
-﻿package events
+package events
 
 import (
 	"container/ring"
@@ -18,11 +18,11 @@ type EventStream interface {
 
 // memoryEventStream 基于内存 ring buffer 的事件流实现。
 type memoryEventStream struct {
-	mu      sync.RWMutex
-	ring    *ring.Ring
-	size    int
-	count   int
-	closed  atomic.Bool
+	mu     sync.RWMutex
+	ring   *ring.Ring
+	size   int
+	count  int
+	closed atomic.Bool
 }
 
 func NewMemoryEventStream(bufferSize int) *memoryEventStream {
@@ -30,8 +30,8 @@ func NewMemoryEventStream(bufferSize int) *memoryEventStream {
 		bufferSize = 10000
 	}
 	return &memoryEventStream{
-		ring:   ring.New(bufferSize),
-		size:   bufferSize,
+		ring: ring.New(bufferSize),
+		size: bufferSize,
 	}
 }
 
@@ -122,4 +122,3 @@ func (sb *StreamBus) PublishStream(ctx context.Context, event Event) error {
 func (sb *StreamBus) Replay(from, to time.Time, eventType EventType) ([]Event, error) {
 	return sb.stream.Replay(from, to, eventType)
 }
-

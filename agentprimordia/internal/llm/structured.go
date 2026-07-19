@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrInvalidJSON             = errors.New("llm: LLM 返回内容不是有效 JSON")
+	ErrInvalidJSON            = errors.New("llm: LLM 返回内容不是有效 JSON")
 	ErrSchemaValidationFailed = errors.New("llm: 结构化输出验证失败")
 )
 

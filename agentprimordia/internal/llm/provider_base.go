@@ -1,4 +1,4 @@
-﻿package llm
+package llm
 
 import (
 	"bytes"
@@ -81,4 +81,3 @@ func (p *BaseProvider) DoRequest(ctx context.Context, baseURL, path, authHeader 
 func ResolveModelName(reqModel, defaultModel string) string {
 	return ResolveModel(reqModel, defaultModel)
 }
-

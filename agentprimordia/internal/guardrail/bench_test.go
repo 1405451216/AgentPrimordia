@@ -11,7 +11,7 @@ type benchRule struct {
 	priority int
 }
 
-func (r *benchRule) Name() string { return r.name }
+func (r *benchRule) Name() string  { return r.name }
 func (r *benchRule) Priority() int { return r.priority }
 func (r *benchRule) Check(input string, point CheckPoint) (*Result, error) {
 	// 极简实现：直接返回 pass

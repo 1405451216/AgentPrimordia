@@ -45,10 +45,10 @@ type DynamicRegistry interface {
 
 // DynamicRegistryImpl 动态注册实现
 type DynamicRegistryImpl struct {
-	mu        sync.RWMutex
-	registry  *Registry
-	dynamic   map[string]Tool
-	listeners []func(event ToolChangeEvent)
+	mu         sync.RWMutex
+	registry   *Registry
+	dynamic    map[string]Tool
+	listeners  []func(event ToolChangeEvent)
 	listenerMu sync.RWMutex
 }
 
@@ -69,7 +69,7 @@ func (r *DynamicRegistryImpl) Register(tool Tool) error {
 	r.mu.Lock()
 	r.dynamic[name] = tool
 	r.mu.Unlock()
-	
+
 	// 同步到底层 Registry
 	if err := r.registry.Register(tool); err != nil {
 		r.mu.Lock()
@@ -77,7 +77,7 @@ func (r *DynamicRegistryImpl) Register(tool Tool) error {
 		r.mu.Unlock()
 		return err
 	}
-	
+
 	r.notify(ToolChangeEvent{Action: ActionRegister, Tool: toolInfo(tool)})
 	return nil
 }
@@ -90,7 +90,7 @@ func (r *DynamicRegistryImpl) Unregister(name string) error {
 		delete(r.dynamic, name)
 	}
 	r.mu.Unlock()
-	
+
 	if exists {
 		r.registry.Unregister(name)
 		r.notify(ToolChangeEvent{Action: ActionUnregister, Tool: toolInfo(tool)})

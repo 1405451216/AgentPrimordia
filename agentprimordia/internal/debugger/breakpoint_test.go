@@ -1,4 +1,4 @@
-﻿package debugger
+package debugger
 
 import (
 	"testing"
@@ -30,9 +30,9 @@ func TestBreakpoint_MatchCondition(t *testing.T) {
 
 func TestBreakpoint_NilConditionAlwaysMatches(t *testing.T) {
 	bp := &Breakpoint{
-		StepName: "always-match",
+		StepName:  "always-match",
 		Condition: nil, // nil condition = 总是匹配
-		Action: ActionPause,
+		Action:    ActionPause,
 	}
 
 	state := &AgentState{Turn: 0}
@@ -43,9 +43,9 @@ func TestBreakpoint_NilConditionAlwaysMatches(t *testing.T) {
 
 func TestBreakpoint_LogAction(t *testing.T) {
 	bp := &Breakpoint{
-		StepName: "log-step",
+		StepName:  "log-step",
 		Condition: func(state *AgentState) bool { return true },
-		Action: ActionLog,
+		Action:    ActionLog,
 	}
 
 	state := &AgentState{Turn: 1}
@@ -88,9 +88,9 @@ func TestBreakpointManager_Remove(t *testing.T) {
 	mgr := NewBreakpointManager()
 
 	bp := &Breakpoint{
-		StepName: "temp-bp",
+		StepName:  "temp-bp",
 		Condition: func(state *AgentState) bool { return true },
-		Action: ActionPause,
+		Action:    ActionPause,
 	}
 	mgr.Add(bp)
 
@@ -109,14 +109,14 @@ func TestBreakpointManager_Clear(t *testing.T) {
 	mgr := NewBreakpointManager()
 
 	mgr.Add(&Breakpoint{
-		StepName: "bp1",
+		StepName:  "bp1",
 		Condition: func(state *AgentState) bool { return true },
-		Action: ActionPause,
+		Action:    ActionPause,
 	})
 	mgr.Add(&Breakpoint{
-		StepName: "bp2",
+		StepName:  "bp2",
 		Condition: func(state *AgentState) bool { return true },
-		Action: ActionLog,
+		Action:    ActionLog,
 	})
 
 	state := &AgentState{Turn: 1}
@@ -137,8 +137,8 @@ func TestWatchVar_DetectChange(t *testing.T) {
 	var oldVal, newVal any
 
 	wv := &WatchVar{
-		Name: "turn-counter",
-		Path: "state.Turn",
+		Name:      "turn-counter",
+		Path:      "state.Turn",
 		LastValue: 0,
 		OnChange: func(old, new any) {
 			changed = true
@@ -163,8 +163,8 @@ func TestWatchVar_DetectChange(t *testing.T) {
 func TestWatchVar_NoChange(t *testing.T) {
 	called := false
 	wv := &WatchVar{
-		Name: "stable-var",
-		Path: "state.Name",
+		Name:      "stable-var",
+		Path:      "state.Name",
 		LastValue: "hello",
 		OnChange: func(old, new any) {
 			called = true
@@ -183,8 +183,8 @@ func TestWatchManager_AddAndPoll(t *testing.T) {
 
 	turnVal := 0
 	mgr.Add(&WatchVar{
-		Name: "turn",
-		Path: "state.Turn",
+		Name:      "turn",
+		Path:      "state.Turn",
 		LastValue: &turnVal,
 		OnChange: func(old, new any) {
 			turnVal = new.(int)

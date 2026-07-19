@@ -342,6 +342,29 @@ jobs:
           test -f ${BINARY} && echo "OK: ${BINARY} built successfully"
           ls -lh ${BINARY}
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-1.26-${{ hashFiles('**/go.sum') }}
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.64.0
+          working-directory: agentprimordia
+          args: --timeout 5m
+
   operator-envtest:
     name: Operator EnvTest (E2E)
     runs-on: ubuntu-latest

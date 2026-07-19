@@ -69,7 +69,7 @@ func TestSemanticCache_Stats(t *testing.T) {
 	ctx := context.Background()
 
 	cache.Store(ctx, "test prompt", &ProviderResponse{Content: "test"}, time.Minute)
-	cache.Lookup(ctx, "test prompt", 0.95) // hit
+	cache.Lookup(ctx, "test prompt", 0.95)   // hit
 	cache.Lookup(ctx, "unrelated xyz", 0.95) // miss
 
 	stats := cache.Stats()

@@ -1,4 +1,4 @@
-﻿package debugger
+package debugger
 
 import (
 	"fmt"
@@ -35,9 +35,9 @@ type DebugMemorySnapshot struct {
 
 // Breakpoint 表示一个条件断点
 type Breakpoint struct {
-	StepName  string                      // 断点名称
+	StepName  string                       // 断点名称
 	Condition func(state *AgentState) bool // 条件断点函数，nil 表示总是匹配
-	Action    BreakpointAction            // 触发后的行为
+	Action    BreakpointAction             // 触发后的行为
 }
 
 // Match 检查断点是否匹配给定状态
@@ -54,7 +54,7 @@ func (bp *Breakpoint) Match(state *AgentState) bool {
 
 // BreakpointManager 管理一组断点，支持添加、移除、清空和检查
 type BreakpointManager struct {
-	mu         sync.RWMutex
+	mu          sync.RWMutex
 	breakpoints []*Breakpoint
 }
 

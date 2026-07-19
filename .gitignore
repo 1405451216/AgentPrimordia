@@ -136,3 +136,10 @@ default.pgo
 
 # ---------- Go Build Cache ----------
 .gocache/
+# 死代码测试文件，已从 index 移除
+agentprimordia/internal/prompt/prompt_test.go
+
+# 临时分析报告（不提交）
+deadcode-report.txt
+deadcode-final.txt
+lint-report.txt

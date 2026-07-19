@@ -1,4 +1,4 @@
-﻿package debugger
+package debugger
 
 import (
 	"fmt"

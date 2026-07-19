@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <title>AgentPrimordia Panel</title>
+        <link rel="stylesheet" href="panel.css" />
+    </head>
+    <body>
+        <div class="panel">
+            <div class="toolbar">
+                <h1>AgentPrimordia</h1>
+                <button id="btn-refresh" class="btn">刷新</button>
+                <button id="btn-export" class="btn">导出 JSON</button>
+                <button id="btn-reload" class="btn btn-primary">重新评估页面</button>
+            </div>
+
+            <div class="content">
+                <div class="card">
+                    <h2>代理状态</h2>
+                    <div class="kv">
+                        <span class="label">检测状态</span>
+                        <span id="agent-state" class="value status-idle">检测中…</span>
+                    </div>
+                    <div class="kv">
+                        <span class="label">代理 ID</span>
+                        <span id="agent-id" class="value">—</span>
+                    </div>
+                    <div class="kv">
+                        <span class="label">会话</span>
+                        <span id="session-id" class="value">—</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>最近 Traces</h2>
+                    <ul id="timeline" class="timeline">
+                        <li class="empty">暂无 trace 数据</li>
+                    </ul>
+                </div>
+
+                <div class="card">
+                    <h2>Memory</h2>
+                    <div class="kv">
+                        <span class="label">上下文条目</span>
+                        <span id="mem-items" class="value">—</span>
+                    </div>
+                    <div class="kv">
+                        <span class="label">存储后端</span>
+                        <span id="mem-backend" class="value">—</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Cost</h2>
+                    <div class="kv">
+                        <span class="label">总 Token</span>
+                        <span id="total-tokens" class="value">0</span>
+                    </div>
+                    <div class="cost-row">
+                        <span class="total" id="cost-summary">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="module" src="panel.js"></script>
+    </body>
+</html>

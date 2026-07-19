@@ -1,19 +1,20 @@
-﻿// Package eval 提供共享 Eval 框架（跨端）。
+// Package eval 提供共享 Eval 框架（跨端）。
 //
 // 本包定义了与 TS 端共享的 eval case 格式和执行器。
 // 共享 case 以纯 JSON 格式定义，两端使用同一份 case 数据。
 //
 // JSON 兼容格式：
-//   {
-//     "id": "greeting",
-//     "name": "Basic greeting",
-//     "category": "tool",
-//     "input": "Hello!",
-//     "expected": "Hi there!",
-//     "metrics": ["accuracy"],
-//     "threshold": 0.8,
-//     "metadata": {"difficulty": "easy"}
-//   }
+//
+//	{
+//	  "id": "greeting",
+//	  "name": "Basic greeting",
+//	  "category": "tool",
+//	  "input": "Hello!",
+//	  "expected": "Hi there!",
+//	  "metrics": ["accuracy"],
+//	  "threshold": 0.8,
+//	  "metadata": {"difficulty": "easy"}
+//	}
 package eval
 
 // EvalCase 为跨端共享的 eval 用例定义。
@@ -30,21 +31,21 @@ type EvalCase struct {
 
 // EvalResult 单条用例的执行结果。
 type EvalResult struct {
-	CaseID    string            `json:"case_id"`
-	Passed    bool              `json:"passed"`
-	Score     float64           `json:"score"`
-	Duration  int64             `json:"duration_ms"`
-	Error     string            `json:"error,omitempty"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
+	CaseID   string            `json:"case_id"`
+	Passed   bool              `json:"passed"`
+	Score    float64           `json:"score"`
+	Duration int64             `json:"duration_ms"`
+	Error    string            `json:"error,omitempty"`
+	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
 // EvalSuiteResult 整个 eval 套件的结果汇总。
 type EvalSuiteResult struct {
-	Total    int           `json:"total"`
-	Passed   int           `json:"passed"`
-	Failed   int           `json:"failed"`
-	PassRate float64       `json:"pass_rate"`
-	Results  []EvalResult  `json:"results"`
+	Total    int          `json:"total"`
+	Passed   int          `json:"passed"`
+	Failed   int          `json:"failed"`
+	PassRate float64      `json:"pass_rate"`
+	Results  []EvalResult `json:"results"`
 }
 
 // Category 分类常量。
@@ -58,9 +59,9 @@ const (
 
 // Metric 指标常量。
 const (
-	MetricAccuracy = "accuracy"
-	MetricLatency  = "latency"
-	MetricSafety   = "safety"
+	MetricAccuracy  = "accuracy"
+	MetricLatency   = "latency"
+	MetricSafety    = "safety"
 	MetricRelevance = "relevance"
 )
 

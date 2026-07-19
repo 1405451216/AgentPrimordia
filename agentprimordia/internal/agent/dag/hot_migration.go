@@ -1,4 +1,4 @@
-﻿package dag
+package dag
 
 import (
 	"context"
@@ -35,11 +35,11 @@ const (
 
 // NodeMigrationRecord 单个节点的迁移记录
 type NodeMigrationRecord struct {
-	NodeID      string
-	OldState    NodeMigrationState
-	NewState    NodeMigrationState
-	Result      *DAGNodeResult
-	Migrated    bool
+	NodeID   string
+	OldState NodeMigrationState
+	NewState NodeMigrationState
+	Result   *DAGNodeResult
+	Migrated bool
 }
 
 // MigrationPlan 迁移计划

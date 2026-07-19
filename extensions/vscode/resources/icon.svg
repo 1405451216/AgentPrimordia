@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <defs>
+    <linearGradient id="ap-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6ea8fe"/>
+      <stop offset="100%" stop-color="#9d6ef0"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="20" height="20" rx="4" fill="url(#ap-grad)"/>
+  <path d="M7 7h4v4H7zM13 7h4v4h-4zM7 13h4v4H7zM13 13h4v4h-4z" fill="white" fill-opacity="0.85"/>
+</svg>

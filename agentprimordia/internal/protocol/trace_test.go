@@ -1,4 +1,4 @@
-﻿package protocol
+package protocol
 
 import (
 	"context"
@@ -53,4 +53,3 @@ func TestFromContextNoTrace(t *testing.T) {
 		t.Error("expected no trace context")
 	}
 }
-

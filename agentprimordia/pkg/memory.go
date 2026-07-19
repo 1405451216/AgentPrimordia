@@ -149,6 +149,6 @@ type QueryResult = memory.QueryResult
 
 var (
 	NewRetrievalAugmentedGenerator = memory.NewRetrievalAugmentedGenerator
-	NewMMRReranker                  = memory.NewMMRReranker
-	NewCompressor                   = memory.NewCompressor
+	NewMMRReranker                 = memory.NewMMRReranker
+	NewCompressor                  = memory.NewCompressor
 )

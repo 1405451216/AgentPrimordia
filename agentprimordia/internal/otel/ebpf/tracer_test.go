@@ -1,4 +1,4 @@
-﻿package ebpf
+package ebpf
 
 import (
 	"runtime"
@@ -29,4 +29,3 @@ func TestTracerConfig_Defaults(t *testing.T) {
 		t.Errorf("expected 3 syscalls, got %d", len(cfg.TargetSyscalls))
 	}
 }
-

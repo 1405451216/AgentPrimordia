@@ -399,52 +399,6 @@ func contains(s, substr string) bool {
 	return false
 }
 
-// TestTracingHandoffRecorder 验证 handoff 追踪 span
-func TestTracingHandoffRecorder(t *testing.T) {
-	tr := &mockTracer{}
-	protocol := NewHandoffProtocol(HandoffConfig{MaxRetries: 1, Timeout: time.Second})
-	rec := NewTracingHandoffRecorder(protocol, WithTracer(tr))
-
-	_, err := rec.InitiateHandoff(
-		context.Background(),
-		"agent-a", "agent-b",
-		HandoffDirect,
-		&HandoffContext{Message: "test"},
-	)
-	if err != nil {
-		t.Fatalf("InitiateHandoff failed: %v", err)
-	}
-
-	span := tr.FindSpan("orchestration.handoff.agent-a_to_agent-b")
-	if span == nil {
-		t.Fatalf("expected handoff span")
-	}
-	if span.attributes["handoff.source"] != "agent-a" {
-		t.Errorf("handoff.source = %v", span.attributes["handoff.source"])
-	}
-	if span.attributes["handoff.target"] != "agent-b" {
-		t.Errorf("handoff.target = %v", span.attributes["handoff.target"])
-	}
-	if span.attributes["handoff.type"] != string(HandoffDirect) {
-		t.Errorf("handoff.type = %v", span.attributes["handoff.type"])
-	}
-}
-
-// TestTracingHandoffRecorder_Disabled 验证追踪关闭时不创建 span
-func TestTracingHandoffRecorder_Disabled(t *testing.T) {
-	tr := &mockTracer{}
-	protocol := NewHandoffProtocol(HandoffConfig{MaxRetries: 1, Timeout: time.Second})
-	rec := NewTracingHandoffRecorder(protocol, DefaultTracingConfig())
-
-	rec.InitiateHandoff(context.Background(), "a", "b", HandoffDirect, &HandoffContext{Message: "test"})
-
-	for _, s := range tr.Spans() {
-		if len(s.name) >= len("orchestration.handoff.") && s.name[:len("orchestration.handoff.")] == "orchestration.handoff." {
-			t.Errorf("disabled tracing should not create handoff spans, got %s", s.name)
-		}
-	}
-}
-
 // TestTracingStepExecutor_Attributes 验证完整属性被注入
 func TestTracingStepExecutor_Attributes(t *testing.T) {
 	tr := &mockTracer{}

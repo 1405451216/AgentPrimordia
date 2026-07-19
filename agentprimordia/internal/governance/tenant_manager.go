@@ -17,8 +17,8 @@ import (
 // 只需实现 TenantStore 接口即可。
 type TenantManager struct {
 	mu      sync.RWMutex
-	tenants map[string]*Tenant  // tenantID -> Tenant
-	apiKeys map[string]string   // hashed API Key -> tenantID
+	tenants map[string]*Tenant // tenantID -> Tenant
+	apiKeys map[string]string  // hashed API Key -> tenantID
 }
 
 // NewTenantManager 创建一个空的 TenantManager。

@@ -1,4 +1,4 @@
-﻿package llm
+package llm
 
 import (
 	"context"
@@ -101,4 +101,3 @@ func TestBaseProvider_DoRequest(t *testing.T) {
 func TestGenericProvider_InterfaceCompatibility(t *testing.T) {
 	var _ GenericProvider[any] = (Provider)(nil)
 }
-

@@ -1,4 +1,4 @@
-﻿package llm
+package llm
 
 import (
 	"bufio"

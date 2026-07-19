@@ -6,10 +6,10 @@ import (
 
 func TestParseSemVer_Valid(t *testing.T) {
 	cases := []struct {
-		input    string
-		major    int
-		minor    int
-		patch    int
+		input      string
+		major      int
+		minor      int
+		patch      int
 		prerelease string
 	}{
 		{"1.0.0", 1, 0, 0, ""},

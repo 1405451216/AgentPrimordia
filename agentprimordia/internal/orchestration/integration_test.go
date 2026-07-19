@@ -101,63 +101,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 	t.Logf("   Steps executed: %d", len(result.Steps))
 	t.Logf("   Final output keys: %v", getMapKeys(result.FinalOutput))
 
-	// 5. 测试Handoff Protocol
-	t.Log("\n🤝 2. Testing Handoff Protocol...")
-	handoffProtocol := NewHandoffProtocol(HandoffConfig{
-		RequireAck: true,
-		MaxRetries: 3,
-	})
-
-	handoffCtx := &HandoffContext{
-		Message:        "完成初步研究，需要分析师接手",
-		State:          result.FinalOutput,
-		TasksRemaining: []string{"深度分析", "报告生成"},
-		Priority:       1,
-		Urgency:        "normal",
-	}
-
-	record, err := handoffProtocol.InitiateHandoff(
-		context.Background(),
-		"Researcher",
-		"Analyst",
-		HandoffDirect,
-		handoffCtx,
-	)
-
-	if err != nil {
-		t.Fatalf("Handoff initiation failed: %v", err)
-	}
-
-	if record.Status != HandoffPending {
-		t.Errorf("Expected pending status, got %s", record.Status)
-	}
-
-	t.Logf("✅ Handoff initiated: %s → %s", record.SourceAgent, record.TargetAgent)
-	t.Logf("   Handoff ID: %s", record.ID[:8])
-
-	// 6. 接收交接
-	err = handoffProtocol.AcceptHandoff(record.ID, "Analyst")
-	if err != nil {
-		t.Fatalf("Handoff accept failed: %v", err)
-	}
-
-	err = handoffProtocol.CompleteHandoff(record.ID)
-	if err != nil {
-		t.Fatalf("Handoff complete failed: %v", err)
-	}
-
-	completedRecord, err := handoffProtocol.GetHandoff(record.ID)
-	if err != nil {
-		t.Fatalf("Get handoff failed: %v", err)
-	}
-
-	if completedRecord.Status != HandoffCompleted {
-		t.Errorf("Expected completed status, got %s", completedRecord.Status)
-	}
-
-	t.Logf("✅ Handoff received and completed")
-
-	// 7. 测试Collaboration (Debate模式)
+	// 5. 测试Collaboration (Debate模式)
 	t.Log("\n🎯 3. Testing Collaboration (Debate mode)...")
 	debateSession := NewCollaborationSession(CollaborationConfig{
 		Mode:           DebateMode,
@@ -302,13 +246,11 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 	t.Log(string(make([]byte, 40)))
 
 	totalDuration := result.Duration +
-		time.Since(record.CreatedAt) +
 		debateResult.Duration +
 		workflowResult.Duration
 
 	t.Logf("   Total System Duration: %v", totalDuration)
 	t.Logf("   Orchestrator Steps: %d", len(result.Steps))
-	t.Logf("   Handoffs Processed: %d", 1)
 	t.Logf("   Collaboration Rounds: %d", debateResult.Metrics.TotalRounds)
 	t.Logf("   Workflow Nodes: %d", len(workflowResult.Records))
 

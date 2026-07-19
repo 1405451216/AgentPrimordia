@@ -1,4 +1,4 @@
-﻿package transport
+package transport
 
 import (
 	"agentprimordia/internal/agent/bus"
@@ -219,4 +219,3 @@ func (t *HTTPTransport) handleMessage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "inbound channel full", http.StatusServiceUnavailable)
 	}
 }
-

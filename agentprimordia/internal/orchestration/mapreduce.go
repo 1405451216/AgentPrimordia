@@ -189,7 +189,7 @@ func (o *Orchestrator) ExecuteScatterGather(ctx context.Context, config ScatterG
 	}
 
 	o.emitEvent("execution_started", "", map[string]any{
-		"type": "scattergather",
+		"type":  "scattergather",
 		"tasks": len(tasks),
 	})
 

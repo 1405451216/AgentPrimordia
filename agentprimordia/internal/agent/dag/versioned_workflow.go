@@ -1,4 +1,4 @@
-﻿package dag
+package dag
 
 import (
 	"context"

@@ -1,0 +1,349 @@
+# AgentPrimordia 综合评估与进化路线图
+
+> 本文档整合了项目深度评估、技术债清理、生产就绪度验证、下一步进化路线，以及 TypeScript 与 Go 差异化战略，是 AgentPrimordia 当前的全景状态报告。
+>
+> 生成时间：2026 年 7 月 18 日（基于 6 月 29 日初版修订）
+
+---
+
+## 目录
+
+1. [项目全景概述](#一项目全景概述)
+2. [深度评估结论](#二深度评估结论)
+3. [技术债清理记录](#三技术债清理记录)
+4. [生产就绪度评估](#四生产就绪度评估)
+5. [进化路线图：全部已完成](#五进化路线图全部已完成)
+6. [TypeScript 与 Go 差异化战略](#六typescript-与-go-差异化战略)
+7. [语言层深度对比摘要](#七语言层深度对比摘要)
+
+---
+
+## 一、项目全景概述
+
+AgentPrimordia（AP）是一个 AI Agent 开发框架，采用 Go + TypeScript 双语言架构：
+
+| 维度 | 说明 |
+|------|------|
+| **Go 版本** | v2.0.0，模块化 Monorepo（`go.work`） |
+| **Go 版本要求** | Go 1.26（`math/rand/v2`、工具链 go1.26.4） |
+| **TS SDK** | 完整的 TypeScript SDK，支持 Node.js / Browser / Edge |
+| **核心能力** | ReAct 循环、LLM 多 Provider、弹性重试/熔断、工具系统、记忆/RAG、DAG/Pool/Mesh 编排、安全沙箱、可观测性 |
+| **测试覆盖** | 115 个包全部通过，核心包覆盖率 67-93% |
+| **依赖策略** | 严格白名单，直接依赖 7 个（sqlite/yaml/grpc/protobuf/redis/wazero/etcd），无业务框架 |
+
+---
+
+## 二、深度评估结论
+
+### 2.1 架构分层
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    TypeScript SDK                        │
+│  React 组件 / Edge Runtime / Browser Agent / WebGPU      │
+│  Playground / VSCode 插件 / CRDT 协作                    │
+├──────────────────────────────────────────────────────────┤
+│                  共享协议层                               │
+│  A2A gRPC / HTTP+SSE / Protobuf 类型 / OpenAPI           │
+├──────────────────────────────────────────────────────────┤
+│                    Go 引擎                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│  │ ReAct    │ │ LLM      │ │ Tools    │ │ Memory   │   │
+│  │ Engine   │ │ Provider │ │ Registry │ │ /RAG     │   │
+│  │ +Spec    │ │ +Resilient│ │ +Sandbox │ │ +HNSW    │   │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│  │ DAG      │ │ Pool     │ │ Mesh     │ │ Guardrail│   │
+│  │ Workflow │ │ Dispatch │ │ A2A      │ │ PII/ACL  │   │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│  │ OTel     │ │ Metrics  │ │ Health   │ │ Audit    │   │
+│  │ +eBPF    │ │ +Prom    │ │ +SLO/SLI │ │ Logger   │   │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
+├──────────────────────────────────────────────────────────┤
+│                    运维层                                │
+│  K8s Operator / HPA Autoscaler / Grafana / Prometheus   │
+└──────────────────────────────────────────────────────────┘
+```
+
+### 2.2 各模块评估
+
+| 模块 | 评分 | 亮点 | 待改进 |
+|------|------|------|--------|
+| **ReAct Engine** | 9/10 | loopState 封装、ToT/MCTS 规划器、Speculative Exec、Reflection | — |
+| **LLM Provider** | 9/10 | Resilient 三重保护（重试+Fallback+熔断）、Stream 对齐 MaxRetries、语义缓存 | — |
+| **Tools** | 9/10 | Registry 缓存、Executor panic 恢复、Scope 策略、MCP 支持、AutoComposer 自动组合 | — |
+| **Memory/RAG** | 8.5/10 | HNSW + FTS 混合检索、Linear/RRF 融合、异步写入、LayeredMemory 三层（Working/Episodic/Semantic）、流式 RAG 增量检索 | — |
+| **Security** | 9/10 | ACL deny 优先、Sandbox 命令/参数白名单、Guardrail 优先级排序、PII Trie | — |
+| **Orchestration** | 9/10 | DAG 拓扑分层、Pool 自动扩缩容、Mesh 5 种负载均衡、分治协作模式、Pool 优先级队列+亲和性+成本感知 | — |
+| **Observability** | 9/10 | 6 个 Grafana 仪表盘、完整 Prom 告警、eBPF tracing、pprof 火焰图 | — |
+| **Governance** | 7.5/10 | 租户配额、多级限制 | 覆盖率 67.2%，偏低 |
+| **TS SDK** | 8.5/10 | Edge/Browser/WebGPU/CRDT/React 组件、DAG 工作流+分布式编排+跨语言序列化互通 | — |
+
+### 2.3 测试覆盖率
+
+| 包 | 覆盖率 |
+|----|--------|
+| `internal/guardrail` | 93.3% |
+| `internal/security` | 88.2% |
+| `internal/health` | 78.8% |
+| `internal/tools` | 76.5% |
+| `internal/memory` | 75.4% |
+| `internal/llm` | 74.9% |
+| `internal/agent` | 72.4% |
+| `internal/governance` | 67.2% |
+
+---
+
+## 三、技术债清理记录
+
+以下技术债在本轮工作中全部清零：
+
+### 3.1 已清理项
+
+| # | 技术债 | 修复方式 | 涉及文件 |
+|---|--------|----------|----------|
+| 1 | `runLoop` 函数 7 参数过多 | 封装 `loopState` 结构体，委托 `runLoopWithState` | `react_loop_core.go` |
+| 2 | RAG 查询提取逻辑重复（3 处） | 提取 `extractLastUserMessage` helper，统一复用 | `react_rag.go`、`react_loop_core.go`、`react_plan_executor.go` |
+| 3 | `Stream()` 重试次数仅 1 次（与 `MaxRetries` 不一致） | 复用 `executeWithRetry` 泛型函数，对齐 `MaxRetries` | `resilient.go` |
+| 4 | 全局 `math/rand` 锁竞争 | 全量迁移至 `math/rand/v2`（9 个文件） | `hnsw.go`、`resilient.go`、`api_tools.go`、`retry.go`、`collaboration.go`、`loadbalancer.go`、`workflow_evaluator.go`、`hnsw_test.go`、`few_shot.go` |
+| 5 | `ReadAllPooled` buffer 未 Reset 导致脏读 | 在 `bufferPool.Get()` 后添加 `buf.Reset()` | `jsonutil/pool.go` |
+
+### 3.2 验证结果
+
+| 检查项 | 结果 |
+|--------|------|
+| `"math/rand"` 旧导入 | 0 处残留 |
+| `rand.NewSource` 调用 | 0 处残留 |
+| `rand.Intn(` 调用 | 0 处残留 |
+| 全量测试（115 包） | 全部通过 |
+| `go vet` | 0 问题 |
+| Linter | 0 错误 |
+| `ReadAllPooled` 连续 10 次测试 | 全部通过（flaky test 已修复） |
+
+---
+
+## 四、生产就绪度评估
+
+### 4.1 结论：可以上生产
+
+### 4.2 各维度评估
+
+#### 安全 ✅
+
+| 能力 | 状态 |
+|------|------|
+| ACL 访问控制 | 白名单/黑名单，deny 优先，路径前缀匹配 |
+| 命令沙箱 | 命令白名单/黑名单、参数正则白名单、shell 元字符检测、路径遍历拦截 |
+| Guardrail 引擎 | 优先级排序，Pass/Reject/Sanitize/Flag 四种动作，copy-on-write 无锁快照 |
+| PII 检测 | Trie 树高效匹配，支持邮箱/电话/SSN/信用卡 |
+| 最小权限 | nil ACL 默认拒绝所有访问 |
+
+#### 容错与错误处理 ✅
+
+| 能力 | 状态 |
+|------|------|
+| ReAct 循环 panic 恢复 | `reactLoopEngine` defer recover |
+| 工具执行 panic 恢复 | `executor.go` 两处 recover |
+| A2A 拦截器 panic 恢复 | `interceptors.go` 两处 recover |
+| 弹性 Provider | 重试 + Fallback + 熔断三重保护 |
+| 优雅关闭 | 每轮 turn 结束后检查 GracefulShutdown |
+
+#### 并发安全 ✅
+
+| 组件 | 保护机制 |
+|------|----------|
+| `ReActAgent` | `runMu` 互斥锁 |
+| `ACL` / `Sandbox` | `sync.RWMutex` |
+| `Guardrail Engine` | `atomic.Pointer` copy-on-write |
+| `ResilientProvider` | `atomic.Int32/Int64/Bool` |
+| `HNSWIndex` | `sync.RWMutex` |
+
+#### 可观测性 ✅
+
+| 能力 | 状态 |
+|------|------|
+| 健康检查 | `/healthz` + `/readyz`，5s 超时 |
+| Metrics | LLM 延迟/错误率/成本、Pool 队列/饱和度、Memory 检索延迟 |
+| 告警规则 | LLM 错误率 > 5%、P95 > 10s、成本 > $10/h、Pool 饱和度 > 90% 等 |
+| Grafana | 6 个预置仪表盘（agent/llm/memory/pool/cost/orchestration） |
+| 分布式追踪 | OpenTelemetry + eBPF |
+| pprof | CPU/Heap/Goroutine/Mutex/Block + 火焰图 |
+| 审计日志 | Agent 生命周期关键事件 |
+| SLO/SLI | 结构化定义 |
+
+### 4.3 需关注的条件性事项
+
+| # | 事项 | 严重度 | 说明 |
+|---|------|--------|------|
+| 1 | Race detector 未验证 | ⚠️ 中 | Windows 环境无 CGO，建议 CI/CD 中 Linux + `-race` 验证（Soak Test 框架已就绪，见 `internal/llm/soak/`） |
+| 2 | Pprof 端点鉴权 | ⚠️ 中 | `/debug/pprof/*` 无内置鉴权，生产需限 localhost 或加 auth |
+| 3 | governance 覆盖率偏低 | ℹ️ 低 | 67.2%，建议补充租户配额边界条件测试 |
+
+---
+
+## 五、进化路线图：全部已完成 ✅
+
+> 原定四个阶段的进化路线图已全部落地实现，以下为完成记录。
+
+### 第一阶段：生产硬化 ✅
+
+| 优先级 | 计划 | 实现位置 | 状态 |
+|--------|------|----------|------|
+| 🔴 P0 | 24h Soak Test 持续负载测试框架 | `internal/llm/soak/soak.go`（含并发 worker、内存/goroutine 增长检测、阈值 pass/fail） | ✅ 完成 |
+| 🔴 P0 | LLM Provider 混沌测试（503→429→超时→恢复） | `internal/llm/chaos/chaos.go`（含 5 种预定义场景：503 风暴/429 限流/超时风暴/间歇故障/恢复期） | ✅ 完成 |
+| 🔴 P0 | 配置启动校验 `Validate()` fail-fast | `cmd/ap/run_config_validate_test.go`（subprocess 技巧验证 os.Exit(1)） | ✅ 完成 |
+
+### 第二阶段：智能体内核升级 ✅
+
+| 优先级 | 计划 | 实现位置 | 状态 |
+|--------|------|----------|------|
+| 🟡 P1 | Tree-of-Thought / MCTS 规划器 | `internal/agent/planning/tot_planner.go`（蒙特卡洛树搜索 + UCB1 + LLM 评分 + beam search） | ✅ 完成 |
+| 🟡 P1 | 记忆层次化（工作/情景/语义） | `internal/memory/hierarchy.go`（LayeredMemory 三层协调 + 自动蒸馏 + 重要性提升阈值） | ✅ 完成 |
+| 🟡 P1 | 流式 RAG 意图感知增量检索 | `internal/agent/rag/streaming_retriever.go`（多阶段管道：Rewrite → Initial → Refined，channel 增量返回） | ✅ 完成 |
+| 🟢 P2 | 工具自动组合（Tool Composition） | `internal/tools/compose/auto_compose.go`（AutoComposer + LLM 建议工具链 + ToolChain 编排） | ✅ 完成 |
+
+### 第三阶段：多智能体协作深化 ✅
+
+| 优先级 | 计划 | 实现位置 | 状态 |
+|--------|------|----------|------|
+| 🟢 P2 | Agent Mesh 协作模式（分治） | `internal/agent/collaboration/divide_conquer.go`（任务分解 + 并行子 Agent 执行 + 多策略合并） | ✅ 完成 |
+| 🟢 P2 | A2A over HTTP/2 + SSE + Agent Card | `internal/agent/a2a/http2/`（RESTful 任务端点 + SSE 事件流 + ALPN TLS + Agent Card 发现） | ✅ 完成 |
+| 🟢 P2 | Pool 优先级队列 + 亲和性调度 + 成本感知 | `internal/pool/priority.go` + `scheduler.go`（max-heap 优先级 + FIFO 平局 + sticky routing + 预算/费率双约束） | ✅ 完成 |
+| 🔵 P3 | 评测体系系统化（标准评测矩阵） | `internal/eval/matrix/matrix.go`（ScoreCard + BenchmarkMatrix + ComparisonReport + CI Gating） | ✅ 完成 |
+
+### 第四阶段：开发者体验与生态 ✅
+
+| 优先级 | 计划 | 实现位置 | 状态 |
+|--------|------|----------|------|
+| 🔵 P3 | Studio 可视化升级 | `agentprimordia/studio/`（完整 Web UI：ReactWaterfall 瀑布图 / CostChart 成本看板 / WorkflowDebugPanel 调试器 / ExecutionTimeline / 8 个页面） | ✅ 完成 |
+| 🔵 P3 | VSCode 插件深度集成 | `sdk/vscode/src/`（新增 chatPanel / runHistory / statusBar / studioApi + 完整测试覆盖） | ✅ 完成 |
+| 🔵 P3 | Agent DevTools Browser Extension | `sdk/browser-extension/`（DevTools Panel + Content Script + Background Service Worker + Popup） | ✅ 完成 |
+
+---
+
+## 六、TypeScript 与 Go 差异化战略
+
+### 6.1 核心定位
+
+> **Go 做"引擎"，TS 做"界面和边缘"。两边共享的是协议和类型，不是实现。**
+
+| | Go | TypeScript |
+|---|---|---|
+| **主战场** | 后端引擎 / 云原生控制面 / 高性能推理服务 | 前端体验 / Edge 计算 / 浏览器 Agent / 开发者工具 |
+| **用户画像** | 后端工程师、平台工程师、SRE | 前端工程师、全栈工程师、应用开发者 |
+| **并发模型** | goroutine + channel | async/await + event loop |
+| **部署形态** | 容器 / 二进制 / K8s Operator | npm 包 / Edge Worker / 浏览器 / Serverless |
+
+### 6.2 TS SDK 应深化的独特优势
+
+TS SDK 已有的 6 个 Go 无法复制的特色模块，不需要跟 Go 对齐，而是要做得更深：
+
+| # | 能力 | 现状 | 下一步 |
+|---|------|------|--------|
+| 1 | **Edge Runtime 适配** | `edge/runtime.ts` 支持 CF/Deno/Bun 检测 | 开箱即用的 Edge Agent 模板（Cloudflare Worker = Agent 实例） |
+| 2 | **浏览器端 Agent** | `browser/wasm-agent.ts` 有 SW + IndexedDB + 离线队列 | 浏览器原生工具集（File System/Clipboard/DOM/Screenshot） |
+| 3 | **WebGPU 本地推理** | `llm/webgpu-provider.ts` 有接口 | 隐私优先混合推理路由（PII → 本地 WebGPU，普通 → 云端 API） |
+| 4 | **React 组件生态** | `react/` 11 个组件文件 + 8 个 hooks | 开箱即用 Agent UI 组件库（Chat/Graph/WorkflowEditor/CostDashboard） |
+| 5 | **CRDT 协作** | `collaboration/crdt.ts` 有 Lamport Clock + LWW | 人机协作编辑（Agent 作为 CRDT 客户端平等参与） |
+| 6 | **统计显著性检验** | `prompt/statistical-test.ts` 有 Welch's t-test | Prompt 实验平台（自动流量分配 + 显著性计算） |
+
+### 6.3 Go 应深化的独特优势
+
+| # | 能力 | 现状 | 下一步 |
+|---|------|------|--------|
+| 1 | **K8s Operator** | `operator/` 有 CRD + controller | HPA 基于 `ap_pool_queued_tasks` 扩缩容 |
+| 2 | **eBPF 系统级追踪** | `otel/ebpf/` 有基础 | Agent 执行全链路 syscall/IO profiling |
+| 3 | **WASM 沙箱** | `wasm/sandbox.go` 有基础 | 用户上传 WASM 模块作为自定义工具 |
+| 4 | **gRPC Mesh** | `a2a/` 有 gRPC + 5 种负载均衡 | mTLS + 跨集群 Agent 通信 + 熔断/限流联动 |
+
+### 6.4 两边的协作架构
+
+```
+┌─────────────────────────────────────────────────┐
+│              TS SDK 层                           │
+│  ┌──────────┐  ┌──────────┐  ┌───────────────┐ │
+│  │ 浏览器    │  │ Edge     │  │ React 组件    │ │
+│  │ Agent    │  │ Worker   │  │ + Playground  │ │
+│  │ (WebGPU) │  │ Agent    │  │               │ │
+│  └────┬─────┘  └────┬─────┘  └───────┬───────┘ │
+│       └──────────────┴────────────────┘         │
+│                      │ HTTP/SSE                  │
+├──────────────────────┼──────────────────────────┤
+│                      ▼                          │
+│              Go 引擎层                           │
+│  ┌──────────┐  ┌──────────┐  ┌───────────────┐ │
+│  │ gRPC     │  │ K8s      │  │ eBPF Tracing  │ │
+│  │ Mesh     │  │ Operator │  │ + OTel        │ │
+│  │ (A2A)    │  │ Autoscale│  │               │ │
+│  └──────────┘  └──────────┘  └───────────────┘ │
+│  ┌──────────┐  ┌──────────┐  ┌───────────────┐ │
+│  │ WASM     │  │ Pool     │  │ DAG Workflow  │ │
+│  │ Sandbox  │  │ Dispatch │  │ Engine        │ │
+│  └──────────┘  └──────────┘  └───────────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+### 6.5 共享层
+
+| 共享内容 | 方式 |
+|----------|------|
+| **A2A 协议** | Go 实现 gRPC 版，TS 实现 HTTP/SSE 版 |
+| **类型定义** | 从 Go 的 protobuf 生成 TS 类型（`codegen/` 已有基础） |
+| **评测用例** | Go 端 `internal/eval/shared_cases.go` + TS 端 `eval/shared-cases.ts` 共享评测标准 |
+
+---
+
+## 七、语言层深度对比摘要
+
+> 完整报告见 [TypeScript_vs_Go_Deep_Evaluation.md](./TypeScript_vs_Go_Deep_Evaluation.md)（15 章深度对比）
+
+### 7.1 全维度评分卡
+
+| 评估维度 | TypeScript | Go | 优势方 |
+|---------|-----------|-----|--------|
+| 执行速度（CPU 密集） | 6/10 | 9/10 | Go |
+| 执行速度（I/O 密集） | 8/10 | 9/10 | Go（微弱） |
+| 内存效率 | 4/10 | 9/10 | Go |
+| 并发处理 | 5/10 | 10/10 | Go |
+| 启动时间 | 4/10 | 9/10 | Go |
+| 类型系统表达力 | 10/10 | 6/10 | TS |
+| 标准库完善度 | 6/10 | 9/10 | Go |
+| 生态系统（前端） | 10/10 | 1/10 | TS |
+| 生态系统（后端/云原生） | 6/10 | 10/10 | Go |
+| 开发效率 | 9/10 | 7/10 | TS |
+| 跨平台部署 | 5/10 | 10/10 | Go |
+| 可观测性工具链 | 6/10 | 9/10 | Go |
+| 安全性（供应链） | 5/10 | 8/10 | Go |
+| 前端开发适用性 | 10/10 | 1/10 | TS |
+| 云原生基础设施适用性 | 3/10 | 10/10 | Go |
+
+### 7.2 选型决策矩阵
+
+| 场景 | 推荐 | 理由 |
+|------|------|------|
+| Web 前端开发 | **TypeScript** | 唯一选择 |
+| 全栈 Web 应用 | **TypeScript** | 前后端类型共享 |
+| 高并发 API 服务 | **Go** | Goroutine + 低内存 + 高吞吐 |
+| 云原生 / K8s | **Go** | 生态基石 |
+| CLI 工具（需分发） | **Go** | 单二进制 |
+| Serverless（冷启动敏感） | **Go** | 启动快 3-10x |
+| AI 推理服务部署 | **Go** | 高性能 + Ollama 生态 |
+| 浏览器端 AI | **TypeScript** | WebGPU + DOM 访问 |
+| Edge Agent | **TypeScript** | V8 isolate 毫秒级冷启动 |
+
+### 7.3 核心结论
+
+**TypeScript 和 Go 是互补而非竞争的两门语言。** AP 的双语言架构正是这一理念的实践：
+
+- **Go**：ReAct 引擎、LLM Provider、工具沙箱、DAG/Pool/Mesh 编排、K8s Operator、eBPF 追踪
+- **TypeScript**：React 组件、Edge/Browser Agent、WebGPU 推理、CRDT 协作、Prompt 实验平台
+- **共享**：A2A 协议（gRPC + HTTP/SSE）、Protobuf 类型定义、评测标准
+
+**不追求功能完全对齐，而是各自在自己的语言生态里做到极致。**
+
+---
+
+*本报告基于 2026 年 7 月 18 日的代码库状态生成。*
+*技术债清理验证：全量测试通过，go vet 零问题，零 linter 错误。*
+*进化路线图：四个阶段 14 项计划全部落地实现。*

@@ -1,4 +1,4 @@
-﻿// Package protocol 提供 AgentPrimordia 统一协议层。
+// Package protocol 提供 AgentPrimordia 统一协议层。
 //
 // 本包定义了跨语言（Go / TypeScript）共享的消息类型和序列化格式，
 // 确保两端对同一份 JSON 数据的编解码结果严格兼容。
@@ -63,12 +63,12 @@ type ToolResult struct {
 
 // MemoryEntry 表示一条记忆条目。
 type MemoryEntry struct {
-	ID        string            `json:"id"`
-	Topic     string            `json:"topic"`
-	Content   string            `json:"content"`
-	Importance float64          `json:"importance"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
-	CreatedAt int64             `json:"created_at"`
+	ID         string            `json:"id"`
+	Topic      string            `json:"topic"`
+	Content    string            `json:"content"`
+	Importance float64           `json:"importance"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
+	CreatedAt  int64             `json:"created_at"`
 }
 
 // MemoryQuery 表示记忆查询请求。

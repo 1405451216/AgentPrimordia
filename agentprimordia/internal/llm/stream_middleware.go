@@ -1,9 +1,10 @@
-﻿// stream_middleware.go — 流式输出中间件管道
+// stream_middleware.go — 流式输出中间件管道
 // 提供可组合的中间件链，用于对流式 Chunk 进行过滤、变换、缓冲、限流等操作
 //
 // 性能优化（perf-v2 #2）：
-//   Use() 时预编译中间件链，Process() 直接执行预编译链，
-//   避免每次 Process() 都从最后一个中间件到第一个逐层包装闭包。
+//
+//	Use() 时预编译中间件链，Process() 直接执行预编译链，
+//	避免每次 Process() 都从最后一个中间件到第一个逐层包装闭包。
 package llm
 
 import (

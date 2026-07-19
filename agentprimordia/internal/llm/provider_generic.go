@@ -1,4 +1,4 @@
-﻿package llm
+package llm
 
 import "context"
 
@@ -24,4 +24,3 @@ type GenericProvider[T any] interface {
 // 均可嵌入此类型以获得 DoRequest / BuildMessages / BuildResponseFormat
 // 等共享方法，避免重复实现。
 type OpenAIBase = BaseProvider
-

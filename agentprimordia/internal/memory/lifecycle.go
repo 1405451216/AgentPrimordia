@@ -31,20 +31,20 @@ type RetentionPolicy struct {
 // DefaultRetentionPolicy 返回默认保留策略
 func DefaultRetentionPolicy() RetentionPolicy {
 	return RetentionPolicy{
-		WorkingMemoryTTL:  7 * 24 * time.Hour,  // 7 天
-		SemanticMemoryTTL: 90 * 24 * time.Hour, // 90 天
+		WorkingMemoryTTL:  7 * 24 * time.Hour,   // 7 天
+		SemanticMemoryTTL: 90 * 24 * time.Hour,  // 90 天
 		EpisodeMemoryTTL:  365 * 24 * time.Hour, // 365 天
-		SessionTTL:        30 * 24 * time.Hour, // 30 天
+		SessionTTL:        30 * 24 * time.Hour,  // 30 天
 	}
 }
 
 // LifecycleReport 生命周期执行报告
 type LifecycleReport struct {
-	ArchivedEpisodes  int64            `json:"archived_episodes"`
-	DeletedEpisodes   int64            `json:"deleted_episodes"`
-	CompressedEpisodes int64           `json:"compressed_episodes"`
-	Details           map[string]int64 `json:"details"`
-	ExecutedAt        time.Time        `json:"executed_at"`
+	ArchivedEpisodes   int64            `json:"archived_episodes"`
+	DeletedEpisodes    int64            `json:"deleted_episodes"`
+	CompressedEpisodes int64            `json:"compressed_episodes"`
+	Details            map[string]int64 `json:"details"`
+	ExecutedAt         time.Time        `json:"executed_at"`
 }
 
 // LifecycleHook 生命周期回调接口

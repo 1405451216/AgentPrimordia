@@ -86,7 +86,9 @@ func (c *PIICheck) Check(ctx context.Context) (*ComplianceFinding, error) {
 	detail := "PII redaction rate: " + formatPercent(redactionRate) +
 		" (" + itoa(c.PIIRedactedCount) + "/" + itoa(c.PIIDetectedCount) + ")"
 	severity := "info"
-	if !passed { severity = "high" }
+	if !passed {
+		severity = "high"
+	}
 	return &ComplianceFinding{
 		Check:    c.Name(),
 		Passed:   passed,
@@ -203,7 +205,9 @@ func (c *AccessControlCheck) Check(ctx context.Context) (*ComplianceFinding, err
 		", deny rate: " + formatPercent(denyRate) +
 		", privileged ops: " + itoa(c.PrivilegedEvents)
 	severity := "info"
-	if !passed { severity = "high" }
+	if !passed {
+		severity = "high"
+	}
 	return &ComplianceFinding{
 		Check:    c.Name(),
 		Passed:   passed,
@@ -284,14 +288,20 @@ func (r *AssessmentReport) PassedChecks() int {
 }
 
 func max(a, b int) int {
-	if a > b { return a }
+	if a > b {
+		return a
+	}
 	return b
 }
 
 func itoa(n int) string {
-	if n == 0 { return "0" }
+	if n == 0 {
+		return "0"
+	}
 	neg := n < 0
-	if neg { n = -n }
+	if neg {
+		n = -n
+	}
 	var buf [20]byte
 	i := len(buf)
 	for n > 0 {

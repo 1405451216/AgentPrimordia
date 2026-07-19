@@ -1,4 +1,4 @@
-﻿package llm
+package llm
 
 import (
 	"strings"
@@ -394,4 +394,3 @@ func TestNewStreamPipeline(t *testing.T) {
 		t.Errorf("new pipeline should have no middlewares, got %d", len(p.middlewares))
 	}
 }
-

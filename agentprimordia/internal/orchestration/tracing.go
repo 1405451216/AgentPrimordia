@@ -196,48 +196,6 @@ func (p *TracingPipeline) Execute(ctx context.Context, input string) (*PipelineR
 	return result, err
 }
 
-// TracingHandoffRecorder 在 handoff 时自动追踪
-//
-// 为每个 handoff 创建 span "orchestration.handoff.<from>_to_<to>" 并记录关键属性。
-type TracingHandoffRecorder struct {
-	inner  *HandoffProtocol
-	config TracingConfig
-}
-
-// NewTracingHandoffRecorder 创建追踪 handoff 包装
-func NewTracingHandoffRecorder(inner *HandoffProtocol, config TracingConfig) *TracingHandoffRecorder {
-	return &TracingHandoffRecorder{
-		inner:  inner,
-		config: config,
-	}
-}
-
-// InitiateHandoff 发起 handoff 并创建 span
-func (r *TracingHandoffRecorder) InitiateHandoff(
-	ctx context.Context,
-	sourceAgent, targetAgent string,
-	handoffType HandoffType,
-	hctx *HandoffContext,
-) (*HandoffRecord, error) {
-	span := r.config.startSpan(
-		fmt.Sprintf("orchestration.handoff.%s_to_%s", sourceAgent, targetAgent),
-		trace.SpanKindInternal,
-	)
-	span.SetAttribute("handoff.source", sourceAgent)
-	span.SetAttribute("handoff.target", targetAgent)
-	span.SetAttribute("handoff.type", string(handoffType))
-
-	record, err := r.inner.InitiateHandoff(ctx, sourceAgent, targetAgent, handoffType, hctx)
-
-	if record != nil {
-		span.SetAttribute("handoff.id", record.ID)
-		span.SetAttribute("handoff.status", string(record.Status))
-		span.SetAttribute("handoff.duration_ms", record.Duration.Milliseconds())
-	}
-	finishSpan(span, err)
-	return record, err
-}
-
 // ConfigureOrchestratorTracing 在 Orchestrator 上启用追踪
 //
 // 通过包装默认 StepExecutor 为 TracingStepExecutor 实现透明追踪。

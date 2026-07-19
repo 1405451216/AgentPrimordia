@@ -12,7 +12,7 @@ type mockRule struct {
 	err      error
 }
 
-func (m *mockRule) Name() string { return m.name }
+func (m *mockRule) Name() string  { return m.name }
 func (m *mockRule) Priority() int { return m.priority }
 func (m *mockRule) Check(_ string, _ CheckPoint) (*Result, error) {
 	return m.result, m.err

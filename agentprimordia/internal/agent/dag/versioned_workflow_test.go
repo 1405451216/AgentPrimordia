@@ -537,8 +537,8 @@ func TestHotMigration_NodeDiff(t *testing.T) {
 
 	// RetryPolicy 不同
 	e := &DAGNode{
-		ID:       "node1",
-		Input:    "input1",
+		ID:          "node1",
+		Input:       "input1",
 		RetryPolicy: &RetryPolicy{MaxRetries: 3},
 	}
 	if !nodesDiffer(a, e) {

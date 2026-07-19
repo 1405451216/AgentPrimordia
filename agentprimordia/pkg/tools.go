@@ -123,9 +123,6 @@ type JSONTool = tools.JSONTool
 // CSVTool 是 CSV 数据处理工具，支持解析、查询、转换等操作
 type CSVTool = tools.CSVTool
 
-// GitTool 是 Git 版本控制工具，支持 status、log、diff 等常用操作
-type GitTool = tools.GitTool
-
 // SQLiteTool 是 SQLite 数据库工具，支持 query 和 execute 操作
 type SQLiteTool = tools.SQLiteTool
 
@@ -140,8 +137,6 @@ var (
 	NewJSONTool = tools.NewJSONTool
 	// NewCSVTool 创建 CSV 数据处理工具
 	NewCSVTool = tools.NewCSVTool
-	// NewGitTool 创建 Git 版本控制工具
-	NewGitTool = tools.NewGitTool
 	// NewSQLiteTool 创建 SQLite 数据库工具
 	NewSQLiteTool = tools.NewSQLiteTool
 	// NewCalculator 创建计算器工具

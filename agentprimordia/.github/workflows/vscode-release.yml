@@ -25,29 +25,29 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: sdk/vscode
+        working-directory: extensions/vscode
         run: npm ci
 
       - name: Build
-        working-directory: sdk/vscode
+        working-directory: extensions/vscode
         run: npm run build
 
       - name: Test
-        working-directory: sdk/vscode
+        working-directory: extensions/vscode
         run: npm test
 
       - name: Install vsce
         run: npm install -g @vscode/vsce
 
       - name: Package extension
-        working-directory: sdk/vscode
+        working-directory: extensions/vscode
         run: vsce package
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: vscode-extension
-          path: sdk/vscode/*.vsix
+          path: extensions/vscode/*.vsix
 
   publish-marketplace:
     name: Publish to VS Code Marketplace
