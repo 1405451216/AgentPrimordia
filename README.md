@@ -1,11 +1,11 @@
 # AgentPrimordia
 
 > 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证
-> **Go + TypeScript 双语言 SDK，100% 功能对等**
+> **Go + TypeScript 双语言 SDK，功能对等，34 模块全覆盖**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
-[![TypeScript](https://img.shields.io/badge/TypeScript-100%25%20Go%20Parity-3178C6.svg)](sdk/typescript/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Go%20Parity-3178C6.svg)](sdk/typescript/)
 
 ![Architecture](agentprimordia/docs/ap-architecture.png)
 
@@ -25,9 +25,9 @@
 - **gRPC 传输** — Agent-to-Agent gRPC + 连接池
 - **语义缓存** — LLM 响应语义缓存 + 多级缓存
 - **K8s Operator** — AgentDeployment CRD 声明式部署
-- **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure）
+- **TypeScript SDK** — Go 功能对等，34 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Edge / Visual / Infrastructure）
 - **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
-- **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+- **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite（modernc.org/sqlite）+ YAML（gopkg.in/yaml.v3）；可选 gRPC/Protobuf（A2A 传输）、Redis（缓存后端）、etcd（服务发现）、wazero（WASM 沙箱）按需引入
 
 ## v2.0.0 Highlights
 
@@ -60,9 +60,16 @@
 - **向后兼容** — Stable API 向后兼容，链式 API 仍可用
 - **版本统一** — Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0，API 稳定性承诺锁定
 
-## TypeScript SDK — 100% Go Parity
+## v0.7.0 Highlights
 
-`sdk/typescript/` 提供与 Go 框架完全对等的 TypeScript SDK，覆盖全部 24 个功能模块：
+- **安全加固** — symlink 逃逸修复、熔断器修复、YAML 注入防护
+- **Operator** — Service 暴露、HPA 自动扩缩容、真实 Pod 指标
+- **TypeScript SDK** — Pipeline/Handoff 编排、A2A 总线、MCP 类型、SQLite 持久化
+- **CI/CD** — 安全扫描、多平台测试、Release 签名 + SBOM
+
+## TypeScript SDK — Go Parity
+
+`sdk/typescript/` 提供与 Go 框架功能对等的 TypeScript SDK，覆盖 34 个模块目录：
 
 | 模块 | Go (`internal/`) | TS (`src/`) | 状态 |
 |------|------------------|------------|------|
@@ -83,6 +90,11 @@
 | Inspector / Debugger | `debugger/` | `debugger/` | ✅ |
 | SQLite Checkpoint | `persist/` | `persist/` | ✅ |
 | Health Endpoints | `health/` | `health/` | ✅ |
+| Edge / Browser Runtime | `edgeruntime/` `wasm/` | `edge/` `browser/` | ✅ |
+| Visual Editor (React) | `studio/web/` | `react/` `visual/` | ✅ |
+| VSCode 集成 | `extensions/vscode/` | `vscode/` | ✅ |
+| Codegen / Schema | — | `codegen/` `schema/` | ✅ |
+| i18n | — | `i18n/` | ✅ |
 
 ```bash
 npm install @agentprimordia/sdk
@@ -108,13 +120,6 @@ health.setReady(true);
 
 详见 [TypeScript SDK 文档](sdk/typescript/README.md)。
 
-## v0.7.0 Highlights
-
-- **安全加固** — symlink 逃逸修复、熔断器修复、YAML 注入防护
-- **Operator** — Service 暴露、HPA 自动扩缩容、真实 Pod 指标
-- **TypeScript SDK** — Pipeline/Handoff 编排、A2A 总线、MCP 类型、SQLite 持久化
-- **CI/CD** — 安全扫描、多平台测试、Release 签名 + SBOM
-
 ## 快速开始
 
 ### 安装 CLI
@@ -132,7 +137,7 @@ cd my-agent
 ap run
 ```
 
-### Hello Agent（5 行代码）
+### Hello Agent（最简示例）
 
 ```go
 package main
@@ -140,6 +145,7 @@ package main
 import (
     "context"
     "fmt"
+    "log"
     "os"
 
     ap "agentprimordia/pkg"
@@ -328,6 +334,8 @@ agent := ap.NewAgent("hello", "你是助手", provider, ap.WithMaxTurns(10)).
     WithRAG(ragProvider)
 
 ```
+
+```
 $ go run ./ecosystem/examples/chain-api/
 
 === 链式 API：最简 Agent ===
@@ -440,7 +448,7 @@ agentprimordia/
 │   ├── llm/                  # LLM 抽象层 (10+ Provider + Resilient)
 │   ├── guardrail/            # 输入输出护栏 (PII/Topic/Injection/Trie)
 │   ├── governance/           # 多租户与治理 (v2.0)
-│   ├── audit/               # 合规审计报告 (v2.0)
+│   ├── audit/                # 合规审计报告 (v2.0)
 │   ├── debugger/             # Inspector / Visualizer / 断点 / 时间旅行
 │   ├── prompt/               # 提示词模板
 │   ├── config/               # 配置热加载
@@ -448,8 +456,15 @@ agentprimordia/
 │   ├── otel/                 # OpenTelemetry 桥接
 │   ├── events/               # 事件总线 + 事件流
 │   ├── security/             # ACL + Sandbox + 密钥管理 + AES-GCM
+│   ├── resilience/           # 熔断器 + 重试 + 降级包装器
 │   ├── logger/               # 结构化日志 + Shipper (v2.0)
-│   ├── eval/                # Agent 评估框架 (v2.0)
+│   ├── eval/                 # Agent 评估框架 (v2.0)
+│   ├── edgeruntime/          # WASM Edge 运行时 (v2.0)
+│   ├── mcp/                  # MCP Server 端实现
+│   ├── protocol/             # 通用协议定义
+│   ├── registry/             # 服务注册中心
+│   ├── health/               # /healthz /readyz /livez + pprof
+│   ├── jsonutil/             # JSON 序列化 buffer 池
 │   ├── persist/              # 状态持久化
 │   └── concurrency/          # 文件锁等并发原语
 ├── operator/                  # K8s Operator (独立 go.mod)
@@ -462,7 +477,7 @@ agentprimordia/
 ├── deploy/grafana/            # Grafana Dashboard 模板
 ├── bench/                     # 性能基准测试套件
 ├── docs/                      # 文档 + Cookbook
-├── sdk/typescript/            # TypeScript SDK (100% Go Parity, 24 模块)
+├── sdk/typescript/            # TypeScript SDK (Go Parity, 34 模块)
 └── pkg/                       # 公共 API (类型别名 + re-export)
 ```
 
@@ -573,15 +588,18 @@ golangci-lint run
 1. **来自生产，服务生产** — 核心模式从 CodeCast 生产环境提炼
 2. **接口优先** — LLM / Tools / Memory 全部接口解耦，自由替换
 3. **并发原生** — Goroutine + Channel 是一等公民
-4. **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+4. **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite + YAML；可选 gRPC/Redis/etcd/wazero 按需引入
 5. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
 
 ## 文档
 
 - [CHANGELOG](docs/CHANGELOG.md)
+- [v2.0.0 发布说明](docs/RELEASE-NOTES-v2.0.0.md)
 - [v1.0.0 发布说明](docs/RELEASE-NOTES-v1.0.0.md)
 - [v0.8.0 发布说明](docs/RELEASE-NOTES-v0.8.0.md)
 - [v0.7.0 发布说明](docs/RELEASE-NOTES-v0.7.0.md)
+- [v0.2.0 发布说明](docs/RELEASE-NOTES-v0.2.0.md)
+- [v0.1.0 发布说明](docs/RELEASE-NOTES-v0.1.0.md)
 - [架构图](docs/architecture-mermaid.md)
 - [API 完整参考](docs/api-reference.md)
 - [TypeScript SDK 文档](sdk/typescript/README.md)

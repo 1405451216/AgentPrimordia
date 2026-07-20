@@ -2,23 +2,23 @@
 
 > 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v2.0.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 无需 CGO，核心仅依赖纯 Go SQLite 驱动与 YAML 解析库
+**版本**: v2.0.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
 
 ---
 
 ## 目录
 
 - [1. 项目概述](#1-项目概述)
-- [2. 整体架构](#2-整体架构)
-- [3. 目录结构](#3-目录结构)
+- [2. 架构总览](#2-架构总览)
+- [3. 项目结构](#3-项目结构)
 - [4. 核心模块详解](#4-核心模块详解)
-  - [4.1 agent — ReAct Loop 引擎](#41-agent--react-loop-引擎)
+  - [4.1 agent — ReAct 引擎与编排](#41-agent--react-引擎与编排)
   - [4.2 llm — LLM 抽象层](#42-llm--llm-抽象层)
   - [4.3 tools — 工具系统](#43-tools--工具系统)
   - [4.4 memory — 记忆存储](#44-memory--记忆存储)
   - [4.5 pool — 多 Agent 调度](#45-pool--多-agent-调度)
-  - [4.6 persist — 检查点持久化](#46-persist--检查点持久化)
-  - [4.7 guardrail — 安全护栏](#47-guardrail--安全护栏)
+  - [4.6 persist — 状态持久化](#46-persist--状态持久化)
+  - [4.7 guardrail — 安全防护](#47-guardrail--安全防护)
   - [4.8 metrics — 可观测性](#48-metrics--可观测性)
   - [4.9 events — 事件总线](#49-events--事件总线)
   - [4.10 security — ACL 与沙箱](#410-security--acl-与沙箱)
@@ -29,25 +29,25 @@
   - [4.15 prompt — Prompt 工程](#415-prompt--prompt-工程)
   - [4.16 debugger — 调试器](#416-debugger--调试器)
   - [4.17 admin — 管理 API](#417-admin--管理-api)
-- [4.18 governance — 多租户与治理](#418-governance--多租户与治理)
-- [4.19 security — 密钥管理与加密](#419-security--密钥管理与加密)
-- [4.20 health — SLO/SLI 与增强诊断](#420-health--slosli-与增强诊断)
-- [4.21 logger — 结构化日志与 shipped](#421-logger--结构化日志与-shipped)
-- [4.22 eval — 评估框架](#422-eval--评估框架)
-- [4.23 orchestration — MapReduce](#423-orchestration--mapreduce)
-- [4.24 transport — gRPC 与连接池](#424-transport--grpc-与连接池)
-- [4.25 tokencache — 语义缓存](#425-tokencache--语义缓存)
-- [4.26 memory — 分层记忆与生命周期](#426-memory--分层记忆与生命周期)
-- [4.27 tools — 动态注册与插件市场](#427-tools--动态注册与插件市场)
-- [4.28 debugger — 断点与时间旅行](#428-debugger--断点与时间旅行)
-- [4.29 audit — 合规报告](#429-audit--合规报告)
-- [4.30 wasm — 增强沙箱](#430-wasm--增强沙箱)
+  - [4.18 governance — 多租户与治理](#418-governance--多租户与治理)
+  - [4.19 security — 密钥管理与加密](#419-security--密钥管理与加密)
+  - [4.20 health — SLO/SLI 与增强诊断](#420-health--slosli-与增强诊断)
+  - [4.21 logger — 结构化日志与 Shipper](#421-logger--结构化日志与-shipper)
+  - [4.22 eval — 评估框架](#422-eval--评估框架)
+  - [4.23 orchestration — MapReduce](#423-orchestration--mapreduce)
+  - [4.24 transport — gRPC 与连接池](#424-transport--grpc-与连接池)
+  - [4.25 tokencache — 语义缓存](#425-tokencache--语义缓存)
+  - [4.26 memory — 分层记忆与生命周期](#426-memory--分层记忆与生命周期)
+  - [4.27 tools — 动态注册与插件市场](#427-tools--动态注册与插件市场)
+  - [4.28 debugger — 断点与时间旅行](#428-debugger--断点与时间旅行)
+  - [4.29 audit — 合规报告](#429-audit--合规报告)
+  - [4.30 wasm — 增强沙箱](#430-wasm--增强沙箱)
 - [5. 协议式微内核架构](#5-协议式微内核架构)
 - [6. 插件生态](#6-插件生态)
-- [7. 公共 API 层 (pkg)](#7-公共-api-层-pkg)
+- [7. 公共 API 层 (pkg/)](#7-公共-api-层-pkg)
 - [8. 依赖关系图](#8-依赖关系图)
 - [9. 关键接口总览](#9-关键接口总览)
-- [10. 错误码体系](#10-错误码体系)
+- [10. 错误码体系详解](#10-错误码体系详解)
 - [11. 快速上手](#11-快速上手)
 - [12. 构建与运行](#12-构建与运行)
 - [13. Docker 部署](#13-docker-部署)
@@ -59,6 +59,7 @@
 - [19. 版本迁移指南](#19-版本迁移指南)
   - [19.1 v0.7 → v0.8 迁移](#191-v07--v08-迁移)
   - [19.2 v0.6 → v0.7 迁移](#192-v06--v07-迁移)
+  - [19.3 v1.0 → v2.0 迁移](#193-v10--v20-迁移)
 - [20. pgvector 适配器](#20-pgvector-适配器)
 - [21. 相关文档](#21-相关文档)
 - [22. 设计哲学](#22-设计哲学)
@@ -85,7 +86,7 @@
 | **可观测性** | Prometheus Metrics / OpenTelemetry / Grafana Dashboard |
 | **K8s Operator** | AgentDeployment CRD 声明式部署 |
 | **CLI 工具** | `ap init / run / debug / loop / test / mcp / plugin / doctor / completion` |
-| **TypeScript SDK** | 100% Go 功能对等，24 模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Infrastructure） |
+| **TypeScript SDK** | Go 功能对等，34 模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Edge / Visual / Infrastructure） |
 
 ### 数据流
 
@@ -118,7 +119,7 @@
 1. **接口驱动** — 所有子系统通过 Go interface 解耦，可独立替换
 2. **组合优于继承** — Agent 能力通过配置组合（Memory、Hooks、RAG 等），而非继承
 3. **弹性优先** — ResilientProvider 内建重试、降级、熔断，生产级可靠性
-4. **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+4. **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite + YAML；可选 gRPC/Redis/etcd/wazero 按需引入
 5. **协议式微内核** — 能力通过接口发现，而非配置字段
 6. **链式 API** — `NewAgent(...).WithMemory(mem).WithRAG(cfg)` 风格
 7. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
@@ -318,6 +319,15 @@ agentprimordia/
 │   │   └── policy_watcher.go     # 策略热监听
 │   ├── audit/                    # 合规审计 (v2.0)
 │   │   └── compliance.go         # 合规报告
+│   ├── resilience/               # 熔断器 + 重试 + 降级 (v2.0)
+│   ├── health/                   # /healthz /readyz /livez + pprof (v2.0)
+│   ├── logger/                   # 结构化日志 + Shipper (v2.0)
+│   ├── eval/                     # Agent 评估框架 (v2.0)
+│   ├── edgeruntime/              # WASM Edge 运行时 (v2.0)
+│   ├── mcp/                      # MCP Server 端实现 (v2.0)
+│   ├── protocol/                 # 通用协议定义
+│   ├── registry/                 # 服务注册中心
+│   └── jsonutil/                 # JSON 序列化 buffer 池
 ├── operator/                     # K8s Operator (独立 go.mod)
 │   ├── api/v1/                   # AgentDeployment CRD
 │   ├── controller/               # Reconciler
@@ -1849,6 +1859,7 @@ BenchmarkToolCall-8          200     6.2 ms/op     512 B/op     8 allocs/op
 | `qwen-provider/` | 千问 Provider |
 | `resilient-provider/` | 弹性 Provider |
 | `debug-tools/` | 调试工具 |
+| `github-issue-triage/` | **GitHub Issue Triage Bot**（生产级，无 API Key 可跑） |
 
 ### 运行示例
 
@@ -1943,7 +1954,7 @@ func (p *MyProvider) Info() ModelInfo {
 
 **位置：** `sdk/typescript/`
 
-**100% Go 功能对等** — 24 个模块覆盖 Go `internal/` 全部能力：
+**Go 功能对等** — 34 个模块目录覆盖 Go `internal/` 全部能力：
 
 ```
 sdk/typescript/src/
@@ -2020,6 +2031,19 @@ sdk/typescript/src/
 │   └── http.ts               # /healthz /readyz /livez 端点
 ├── events/                   # 事件总线
 │   └── bus.ts                # Pub/sub 事件总线
+├── browser/                  # Browser / IndexedDB / WASM Agent
+├── edge/                     # Edge Runtime (Cloudflare/Deno/Bun)
+├── collaboration/            # CRDT 协作
+├── codegen/                  # 代码生成器
+├── schema/                   # JSON Schema 校验
+├── i18n/                     # 国际化
+├── playground/               # Playground 组件 + CLI
+├── react/                    # React 集成（协作 / Hooks / Server Components）
+├── visual/                   # 可视化编辑器（节点 / 边 / 面板）
+├── vscode/                   # VSCode 插件 API
+├── protocol/                 # 通用协议
+├── eval/                     # 评估共享用例
+├── jsonutil/                 # JSON buffer 池
 └── utils/                    # 高级工具
     ├── advanced.ts           # ConfigWatcher / StructuredLogger / EventBus
     └── zerocopy-pricing.ts   # ZeroCopyPool / StringBuilder / PricingCalculator
@@ -2052,6 +2076,10 @@ sdk/typescript/src/
 | `logger/` | `utils/` | ✅ 完整 (StructuredLogger) |
 | `jsonutil/` | `utils/` | ✅ 完整 |
 | `events/` | `events/` | ✅ 完整 |
+| `edgeruntime/` `wasm/` | `edge/` `browser/` | ✅ 完整 (Edge/WASM) |
+| `studio/web/` | `react/` `visual/` | ✅ 完整 (可视化编辑) |
+| `extensions/vscode/` | `vscode/` | ✅ 完整 (VSCode 插件) |
+| — | `codegen/` `schema/` `i18n/` `playground/` | ✅ 完整 (TS 生态) |
 
 ### 使用示例
 
@@ -2159,6 +2187,23 @@ await audit.log({ actor: 'user-1', action: 'agent.run', resource: 'my-agent' });
    - v0.6: 13 家 Provider
    - v0.7: 12 家 Provider（DeepSeek 合并到 OpenAI 兼容模式）
 
+### 19.3 v1.0 → v2.0 迁移
+
+**完全向后兼容**，v1.x 代码无需修改。v2.0.0 新增功能为可选增强：
+
+1. **多租户治理**（可选）— 启用 `TenantManager` + `QuotaManager`，context 级数据隔离
+2. **密钥管理**（可选）— 用 `SecretsManager`（AES-GCM）替代明文环境变量
+3. **gRPC 传输**（可选）— A2A gRPC + 连接池复用
+4. **语义缓存**（可选）— L1/L2 多级语义缓存，降低 LLM 成本
+5. **MapReduce 编排**（可选）— 大规模任务分片并行
+
+```bash
+# 升级依赖
+go get agentprimordia@v2.0.0
+npm install @agentprimordia/sdk@2.0.0
+ap version   # 验证: v2.0.0
+```
+
 ### 迁移检查清单
 
 - [ ] 更新 `ReActConfig` 使用链式 API
@@ -2211,7 +2256,10 @@ agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
 
 | 文档 | 位置 | 说明 |
 |------|------|------|
-| Code Wiki | `CODE_WIKI.md` | 完整代码文档（21 章节） |
+| Code Wiki | `CODE_WIKI.md` | 完整代码文档（22 章节，4.1–4.30 模块详解） |
+| CHANGELOG | `docs/CHANGELOG.md` | 变更日志 |
+| v2.0.0 发布说明 | `docs/RELEASE-NOTES-v2.0.0.md` | 生产就绪里程碑 |
+| v1.0.0 发布说明 | `docs/RELEASE-NOTES-v1.0.0.md` | API 稳定性锁定 |
 | 开发文档 | `DEVELOPMENT.md` | 开发者指南 |
 | 快速入门 | `ecosystem/docs/getting-started.md` | 5 分钟上手 |
 | API 参考 | `ecosystem/docs/api-reference.md` | 完整 API 文档 |
@@ -2244,7 +2292,7 @@ agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
 1. **来自生产，服务生产** — 核心模式从 CodeCast 生产环境提炼
 2. **接口优先** — LLM / Tools / Memory 全部接口解耦，自由替换
 3. **并发原生** — Goroutine + Channel 是一等公民
-4. **最小外部依赖** — 核心仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）与 YAML 解析库（gopkg.in/yaml.v3），无需 CGO
+4. **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite + YAML；可选 gRPC/Redis/etcd/wazero 按需引入
 5. **TDD 强制** — 每个功能先写测试，Red → Green → Refactor
 6. **协议式微内核** — 能力通过接口发现，而非配置字段
 7. **链式 API** — `NewAgent(...).WithMemory(mem).WithRAG(cfg)` 风格
