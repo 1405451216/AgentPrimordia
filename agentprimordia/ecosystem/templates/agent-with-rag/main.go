@@ -4,7 +4,7 @@
 //
 // 前置条件：
 //
-//	export OPENAI_API_KEY=sk-xxx
+//	set AP_LLM_API_KEY=sk-xxx
 //	准备 ./knowledge/*.txt 知识库文件
 //
 // 跑法：
@@ -25,23 +25,24 @@ import (
 )
 
 func main() {
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: os.Getenv("OPENAI_API_KEY"),
-		Model:  "gpt-4o",
-	})
+	cfg := ap.ConfigFromEnv("")
+	if cfg.APIKey == "" {
+		log.Fatal("set AP_LLM_API_KEY env var")
+	}
+	provider, err := ap.NewOpenAIProvider(cfg)
 	if err != nil {
-		log.Fatalf("创建 Provider 失败: %v", err)
+		log.Fatalf("create provider failed: %v", err)
 	}
 
 	// 加载本地知识库
 	knowledgeDir := "./knowledge"
 	docs, err := loadKnowledge(knowledgeDir)
 	if err != nil {
-		log.Fatalf("加载知识库失败: %v", err)
+		log.Fatalf("load knowledge base failed: %v", err)
 	}
-	fmt.Printf("已加载 %d 个知识库文档\n", len(docs))
+	fmt.Printf("Loaded %d knowledge documents\n", len(docs))
 
-	// 构造 RAG 的配置
+	// 构造 RAG 配置
 	ragConfig := ap.RAGConfig{
 		Provider: newSimpleRAG(docs),
 		Mode:     ap.RAGModeAuto, // 每一轮都检索
@@ -54,19 +55,19 @@ func main() {
 		ap.WithRAG(ragConfig),
 	)
 	if err != nil {
-		log.Fatalf("创建 Agent 失败: %v", err)
+		log.Fatalf("create agent failed: %v", err)
 	}
 
 	// 用户提问
 	question := "知识库里有什么内容?"
-	fmt.Printf("\n问题: %s\n", question)
+	fmt.Printf("\nQuestion: %s\n", question)
 
 	resp, err := agent.Run(context.Background(),
 		ap.UserMessage(question))
 	if err != nil {
-		log.Fatalf("调用失败: %v", err)
+		log.Fatalf("call failed: %v", err)
 	}
-	fmt.Printf("回复: %s\n", resp.Content)
+	fmt.Printf("Reply: %s\n", resp.Content)
 }
 
 func loadKnowledge(dir string) ([]string, error) {

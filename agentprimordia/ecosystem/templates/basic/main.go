@@ -9,26 +9,28 @@ import (
 )
 
 func main() {
-	// 设置 Model 为你的 LLM Provider:
-	// provider, err := ap.NewOpenAIProvider(ap.Config{APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o"})
-	// if err != nil {
-	// 	log.Fatalf("创建 Provider 失败: %v", err)
-	// }
-	var provider ap.Provider // nil — 请替换为真实 Provider
-
-	agent, err := ap.NewAgent("{{.ProjectName}}", "你是一个智能助手，用中文回答问题。", provider,
-		ap.WithMaxTurns(10),
-	)
-	if err != nil {
-		log.Fatalf("创建 Agent 失败: %v", err)
+	// 从环境变量读取 LLM 配置（AP_LLM_API_KEY, AP_LLM_MODEL 等）
+	cfg := ap.ConfigFromEnv("")
+	if cfg.APIKey == "" {
+		log.Fatal("set AP_LLM_API_KEY env var, e.g.: set AP_LLM_API_KEY=sk-xxx")
 	}
 
-	prompt := "你好！"
+	provider, err := ap.NewOpenAIProvider(cfg)
+	if err != nil {
+		log.Fatalf("create provider failed: %v", err)
+	}
+
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant.", provider, ap.WithMaxTurns(10))
+	if err != nil {
+		log.Fatalf("create agent failed: %v", err)
+	}
+
+	prompt := "Hello!"
 	resp, err := agent.Run(context.Background(), ap.UserMessage(prompt))
 	if err != nil {
-		log.Fatalf("Agent 运行失败: %v", err)
+		log.Fatalf("agent run failed: %v", err)
 	}
 
-	fmt.Printf("回复: %s\n", resp.Content)
-	fmt.Printf("轮数: %d\n", resp.Metrics.TotalTurns)
+	fmt.Printf("Reply: %s\n", resp.Content)
+	fmt.Printf("Turns: %d\n", resp.Metrics.TotalTurns)
 }

@@ -38,6 +38,7 @@ import (
 	"agentprimordia/internal/agent"
 	"agentprimordia/internal/health"
 	"agentprimordia/internal/memory"
+	"os"
 )
 
 // Agent 是所有 Agent 实现的核心接口，编排模式和 Pool 均面向此接口编程
@@ -589,8 +590,43 @@ var PProfHandler = health.PProfHandler
 // ===== 版本与通用类型 =====
 
 // Version 是 AgentPrimordia 框架的当前版本号
-// 与 README.md 和 Release Notes 保持一致（v1.0.0）
-const Version = "1.0.0"
+// 与 README.md 和 Release Notes 保持一致（v2.0.0）
+const Version = "2.0.0"
 
 // Metadata 是消息的元数据，包含时间戳、跟踪 ID 和扩展键值对
 type Metadata = agent.Metadata
+
+// ===== 检查点恢复辅助函数 =====
+//
+// 当 Agent 二进制被 `ap loop resume` 启动时，会通过环境变量注入恢复信息。
+// 在 main() 中调用 ShouldResume() 判断是否需要恢复，若是则调用
+// agent.ResumeFromCheckpoint(ctx) 即可无缝接续之前的执行状态。
+//
+// 示例:
+//
+//	if ap.ShouldResume() {
+//	    agentID := ap.ResumeAgentID()
+//	    // 按 agentID 找到对应 Agent 实例
+//	    if err := myAgent.ResumeFromCheckpoint(ctx); err != nil {
+//	        log.Fatal(err)
+//	    }
+//	    return
+//	}
+
+// ShouldResume 检查环境变量 AP_RESUME 是否为 "1"。
+// 由 `ap loop resume` 注入，用于 Agent 二进制在启动时判断是否需要从检查点恢复。
+func ShouldResume() bool {
+	return os.Getenv("AP_RESUME") == "1"
+}
+
+// ResumeAgentID 返回需要通过 `ap loop resume` 恢复的 Agent 名称。
+// 对应环境变量 AP_RESUME_AGENT。若未设置则返回空字符串。
+func ResumeAgentID() string {
+	return os.Getenv("AP_RESUME_AGENT")
+}
+
+// ResumePrompt 返回 `ap loop resume` 通过 --prompt 参数传入的提示消息。
+// 对应环境变量 AP_PROMPT。若未设置则返回空字符串。
+func ResumePrompt() string {
+	return os.Getenv("AP_PROMPT")
+}

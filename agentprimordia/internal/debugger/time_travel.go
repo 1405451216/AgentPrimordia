@@ -32,7 +32,7 @@ func NewTimeTravelDebugger(maxSize int) *TimeTravelDebugger {
 	}
 }
 
-// Record 记录某个 turn 的状态快照
+// Record 记录某个 turn 的状态快照（深拷贝，避免外部修改污染快照）
 func (tt *TimeTravelDebugger) Record(turn int, state *AgentState) {
 	if tt == nil {
 		return
@@ -42,7 +42,7 @@ func (tt *TimeTravelDebugger) Record(turn int, state *AgentState) {
 
 	snapshot := StateSnapshot{
 		Turn:  turn,
-		State: state,
+		State: cloneAgentState(state),
 	}
 
 	tt.snapshots = append(tt.snapshots, snapshot)
@@ -169,4 +169,26 @@ func (tt *TimeTravelDebugger) Clear() {
 	defer tt.mu.Unlock()
 	tt.snapshots = tt.snapshots[:0]
 	tt.cursor = -1
+}
+
+// cloneAgentState 深拷贝 AgentState，确保快照不受外部修改影响。
+func cloneAgentState(s *AgentState) *AgentState {
+	if s == nil {
+		return nil
+	}
+	clone := &AgentState{
+		Turn:   s.Turn,
+		Status: s.Status,
+	}
+	if s.Memory != nil {
+		m := *s.Memory
+		clone.Memory = &m
+	}
+	if len(s.Attributes) > 0 {
+		clone.Attributes = make(map[string]interface{}, len(s.Attributes))
+		for k, v := range s.Attributes {
+			clone.Attributes[k] = v
+		}
+	}
+	return clone
 }

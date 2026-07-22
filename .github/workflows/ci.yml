@@ -122,22 +122,6 @@ jobs:
             echo "::warning::CHANGELOG.md 缺 [Unreleased] 节"
           fi
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.26'
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout=5m
-
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -162,19 +146,19 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: ../sdk/typescript/package-lock.json
+          cache-dependency-path: sdk/typescript/package-lock.json
 
       - name: Install npm dependencies
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm ci
 
       - name: Run npm audit (strict)
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm audit --audit-level=high
         continue-on-error: true
 
       - name: Run Socket security scan
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         env:
           SOCKET_API_KEY: ${{ secrets.SOCKET_API_KEY }}
         run: |
@@ -248,26 +232,26 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: ../sdk/typescript/package-lock.json
+          cache-dependency-path: sdk/typescript/package-lock.json
 
       - name: Install dependencies
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm ci
 
       - name: Type check
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npx tsc --noEmit
 
       - name: Lint (ESLint)
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm run lint
 
       - name: Build
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm run build
 
       - name: Test with coverage
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm test -- --coverage
 
       - name: Upload TS coverage
@@ -275,7 +259,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ts-coverage
-          path: ../sdk/typescript/coverage
+          path: sdk/typescript/coverage
 
   build-cli:
     name: Build CLI

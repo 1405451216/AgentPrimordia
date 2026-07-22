@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,10 +27,12 @@ var blockedCommands = []string{
 }
 
 // defaultWhitelist 默认允许的安全命令列表
+// 不包含 curl/wget（可下载执行任意内容）、npm/pip（postinstall 脚本风险）、
+// chmod/chown（权限变更风险）等高危工具。如需使用，请通过 WithWhitelist 显式添加。
 var defaultWhitelist = []string{
 	"ls", "cat", "head", "tail", "wc", "echo", "pwd", "whoami",
-	"grep", "find", "sort", "uniq", "diff", "curl", "wget",
-	"git", "go", "python", "python3", "node", "npm", "pip",
+	"grep", "find", "sort", "uniq", "diff",
+	"git", "go", "python", "python3", "node",
 	"make", "cargo", "rustc",
 	"date", "uname", "which", "env", "printenv",
 	"mkdir", "cp", "mv", "touch", "ln",
@@ -220,9 +223,13 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 		}
 	}
 	if workdir != "" && len(s.allowedWorkdirs) > 0 {
+		// 使用 filepath.Clean + 分隔符边界检查，与 scope.go 的 Allow 实现一致。
+		// 防止 "/home/app" 被路径 "/home/app-secret" 绕过。
 		allowed := false
+		absWorkdir := filepath.Clean(workdir)
 		for _, dir := range s.allowedWorkdirs {
-			if strings.HasPrefix(workdir, dir) {
+			absDir := filepath.Clean(dir)
+			if absWorkdir == absDir || strings.HasPrefix(absWorkdir, absDir+string(filepath.Separator)) {
 				allowed = true
 				break
 			}

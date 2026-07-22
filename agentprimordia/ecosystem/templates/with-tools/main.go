@@ -10,6 +10,17 @@ import (
 )
 
 func main() {
+	// 从环境变量读取 LLM 配置
+	cfg := ap.ConfigFromEnv("")
+	if cfg.APIKey == "" {
+		log.Fatal("set AP_LLM_API_KEY env var, e.g.: set AP_LLM_API_KEY=sk-xxx")
+	}
+
+	provider, err := ap.NewOpenAIProvider(cfg)
+	if err != nil {
+		log.Fatalf("create provider failed: %v", err)
+	}
+
 	// 配置工具集
 	registry, err := ap.DefaultToolkit(ap.ToolkitConfig{
 		RootDir:     ".",
@@ -18,39 +29,36 @@ func main() {
 		EnableWeb:   true,
 	})
 	if err != nil {
-		log.Fatalf("创建工具集失败: %v", err)
+		log.Fatalf("create toolkit failed: %v", err)
 	}
 
 	// 配置记忆存储
 	memory, err := ap.WithInMemory()
 	if err != nil {
-		log.Fatalf("创建记忆存储失败: %v", err)
+		log.Fatalf("create memory store failed: %v", err)
 	}
 	defer memory.Close()
 
-	// 注意：此模板未设置 Model，请根据需要取消注释并配置你的 LLM Provider。
-	var provider ap.Provider // nil — 请替换为真实 Provider
-
-	// 使用 NewAgent 构造器注入工具和记忆能力（v0.7.0 推荐）。
-	agent, err := ap.NewAgent("{{.ProjectName}}", "你是一个可以读写文件、执行命令和访问网页的助手。", provider,
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are an assistant that can read/write files, execute commands, and browse the web.",
+		provider,
 		ap.WithMaxTurns(20),
 		ap.WithToolkit(registry),
 		ap.WithMemory(memory),
 	)
 	if err != nil {
-		log.Fatalf("创建 Agent 失败: %v", err)
+		log.Fatalf("create agent failed: %v", err)
 	}
 
-	prompt := "列出当前目录的文件"
+	prompt := "list files in the current directory"
 	if envPrompt := os.Getenv("AP_PROMPT"); envPrompt != "" {
 		prompt = envPrompt
 	}
 
 	resp, err := agent.Run(context.Background(), ap.UserMessage(prompt))
 	if err != nil {
-		log.Fatalf("Agent 运行失败: %v", err)
+		log.Fatalf("agent run failed: %v", err)
 	}
 
-	fmt.Printf("回复: %s\n", resp.Content)
-	fmt.Printf("工具调用: %d 次\n", resp.Metrics.TotalTools)
+	fmt.Printf("Reply: %s\n", resp.Content)
+	fmt.Printf("Tool calls: %d\n", resp.Metrics.TotalTools)
 }

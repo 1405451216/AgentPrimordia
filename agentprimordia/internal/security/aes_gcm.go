@@ -3,7 +3,9 @@ package security
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/binary"
 	"errors"
@@ -44,15 +46,34 @@ func NewAESGCMEncryptor(key []byte) (*AESGCMEncryptor, error) {
 	}, nil
 }
 
+// deriveDEK 使用 HKDF-SHA256 从 KEK 和版本号派生数据加密密钥。
+// HKDF 是 NIST SP 800-56C 推荐的标准密钥派生函数，
+// 相比 XOR 方案可抵抗已知明文攻击和密钥相关性攻击。
+// 实现基于 crypto/hmac + sha256，遵循 RFC 5869。
 func deriveDEK(kek []byte, version uint32) []byte {
-	dek := make([]byte, aesKeySize)
-	copy(dek, kek)
-	bb := make([]byte, 4)
-	binary.BigEndian.PutUint32(bb, version)
-	for i := 0; i < aesKeySize; i++ {
-		dek[i] ^= bb[i%4]
+	// HKDF-Extract: PRK = HMAC-Hash(salt, IKM)
+	// salt 为 nil 时使用 Hash 输出长度的零值（SHA-256 为 32 字节零值）
+	prkHMAC := hmac.New(sha256.New, nil)
+	prkHMAC.Write(kek)
+	prk := prkHMAC.Sum(nil)
+
+	// HKDF-Expand: OKM = T(1) || T(2) || ...
+	// T(i) = HMAC-Hash(PRK, T(i-1) || info || i)
+	var okm []byte
+	var prev []byte
+	info := make([]byte, 8)
+	binary.BigEndian.PutUint32(info[:4], version)
+	binary.BigEndian.PutUint32(info[4:], uint32(aesKeySize))
+
+	for i := byte(1); len(okm) < aesKeySize; i++ {
+		h := hmac.New(sha256.New, prk)
+		h.Write(prev)
+		h.Write(info)
+		h.Write([]byte{i})
+		prev = h.Sum(nil)
+		okm = append(okm, prev...)
 	}
-	return dek
+	return okm[:aesKeySize]
 }
 
 func (e *AESGCMEncryptor) Encrypt(plaintext []byte) ([]byte, error) {

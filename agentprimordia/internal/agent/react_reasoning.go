@@ -55,7 +55,7 @@ func (a *ReActAgent) syncReasoning(ctx context.Context, llmMessages []llm.ChatMe
 // 优化（Task 1.5 / Task 2.5）：
 //   - 流式拼接改用 strings.Builder，避免 O(n^2) 的字符串拼接
 //   - toolDefs 一次性转换，复用传入的 []llm.ToolDefinition，不再重复 tk.Definitions()
-func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMessages []llm.ChatMessage, toolDefs []llm.ToolDefinition, llmStart time.Time) Thought {
+func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMessages []llm.ChatMessage, toolDefs []llm.ToolDefinition, llmStart time.Time) (Thought, error) {
 	streamCh, streamErr := a.config.Model.Stream(ctx, &llm.CompletionRequest{
 		Messages:    llmMessages,
 		Temperature: llm.Float64Ptr(a.config.Temperature),
@@ -71,7 +71,7 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 			if ctx.Err() != nil {
 				_ = a.lifecycle.SetStatus(StatusCancelled)
 				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: ctx.Err().Error()})
-				return Thought{}
+				return Thought{}, ctx.Err()
 			}
 			if chunk.Content != "" {
 				contentBuilder.WriteString(chunk.Content)
@@ -95,7 +95,7 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 		}
 
 		a.recordLLM(time.Since(llmStart), nil)
-		return thought
+		return thought, nil
 	}
 
 	// Fallback: 非流式调用
@@ -105,7 +105,7 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 			a.recordLLM(time.Since(llmStart), err)
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
-			return Thought{}
+			return Thought{}, err
 		}
 		if len(resp.ToolCalls) == 0 && resp.Content == "" {
 			completeResp, completeErr := a.completeWithRetry(ctx, llmMessages)
@@ -113,18 +113,18 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 				a.recordLLM(time.Since(llmStart), completeErr)
 				_ = a.lifecycle.SetStatus(StatusFailed)
 				a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: completeErr.Error()})
-				return Thought{}
+				return Thought{}, completeErr
 			}
 			a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: completeResp.Content})
 			a.recordLLM(time.Since(llmStart), nil)
-			return Thought{Content: completeResp.Content}
+			return Thought{Content: completeResp.Content}, nil
 		}
 		a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
 		a.recordLLM(time.Since(llmStart), nil)
 		return Thought{
 			Content:   resp.Content,
 			ToolCalls: convertToToolCalls(resp.ToolCalls),
-		}
+		}, nil
 	}
 
 	resp, err := a.completeWithRetry(ctx, llmMessages)
@@ -132,9 +132,9 @@ func (a *ReActAgent) streamReasoning(ctx context.Context, cfg loopConfig, llmMes
 		a.recordLLM(time.Since(llmStart), err)
 		_ = a.lifecycle.SetStatus(StatusFailed)
 		a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: err.Error()})
-		return Thought{}
+		return Thought{}, err
 	}
 	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: resp.Content})
 	a.recordLLM(time.Since(llmStart), nil)
-	return Thought{Content: resp.Content}
+	return Thought{Content: resp.Content}, nil
 }

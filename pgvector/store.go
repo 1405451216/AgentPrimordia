@@ -44,6 +44,7 @@ type Config struct {
 type VectorEntry struct {
 	ID       string
 	Vector   []float32
+	Text     string
 	Metadata map[string]string
 }
 
@@ -51,6 +52,7 @@ type VectorEntry struct {
 type SearchResult struct {
 	ID       string
 	Distance float32
+	Text     string
 	Metadata map[string]string
 	Score    float32
 }
@@ -123,6 +125,7 @@ func (s *Store) initSchema(ctx context.Context) error {
 	query := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %s (
 			id TEXT PRIMARY KEY,
+			text TEXT NOT NULL DEFAULT '',
 			vector vector(%d) NOT NULL,
 			metadata JSONB DEFAULT '{}',
 			created_at TIMESTAMPTZ DEFAULT now()
@@ -189,11 +192,15 @@ func vectorOpIP() string { return "vector_ip_ops" }
 
 // Add 添加向量
 func (s *Store) Add(ctx context.Context, id string, vector []float32, metadata map[string]string) error {
+	return s.AddWithText(ctx, id, vector, "", metadata)
+}
+
+// AddWithText 添加向量（含文本字段）
+func (s *Store) AddWithText(ctx context.Context, id string, vector []float32, text string, metadata map[string]string) error {
 	if len(vector) != s.dim {
 		return fmt.Errorf("dimension mismatch: expected %d, got %d", s.dim, len(vector))
 	}
 
-	// 将 []float32 转换为 pgvector 格式字符串
 	vecStr := float32SliceToVectorString(vector)
 
 	// 将 metadata map 转为 JSON
@@ -207,23 +214,61 @@ func (s *Store) Add(ctx context.Context, id string, vector []float32, metadata m
 	}
 
 	query := fmt.Sprintf(
-		"INSERT INTO %s (id, vector, metadata) VALUES ($1, $2::vector, $3::jsonb) ON CONFLICT (id) DO UPDATE SET vector = EXCLUDED.vector, metadata = EXCLUDED.metadata",
+		"INSERT INTO %s (id, text, vector, metadata) VALUES ($1, $2, $3::vector, $4::jsonb) ON CONFLICT (id) DO UPDATE SET text = EXCLUDED.text, vector = EXCLUDED.vector, metadata = EXCLUDED.metadata",
 		s.table,
 	)
 
-	_, err := s.db.Exec(ctx, query, id, vecStr, metaJSON)
+	_, err := s.db.Exec(ctx, query, id, text, vecStr, metaJSON)
 	return err
+}
+
+// BatchInsert 批量插入向量记录
+func (s *Store) BatchInsert(ctx context.Context, ids []string, vectors [][]float32, texts []string, metadatas []map[string]string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	query := fmt.Sprintf(
+		"INSERT INTO %s (id, text, vector, metadata) VALUES ($1, $2, $3::vector, $4::jsonb) ON CONFLICT (id) DO UPDATE SET text = EXCLUDED.text, vector = EXCLUDED.vector, metadata = EXCLUDED.metadata",
+		s.table,
+	)
+
+	for i := range ids {
+		if len(vectors[i]) != s.dim {
+			return fmt.Errorf("dimension mismatch at index %d: expected %d, got %d", i, s.dim, len(vectors[i]))
+		}
+		vecStr := float32SliceToVectorString(vectors[i])
+		metaJSON := "{}"
+		if metadatas != nil && i < len(metadatas) && len(metadatas[i]) > 0 {
+			parts := make([]string, 0, len(metadatas[i]))
+			for k, v := range metadatas[i] {
+				parts = append(parts, fmt.Sprintf("%q:%q", k, v))
+			}
+			metaJSON = "{" + strings.Join(parts, ",") + "}"
+		}
+		text := ""
+		if texts != nil && i < len(texts) {
+			text = texts[i]
+		}
+		if _, err := tx.Exec(ctx, query, ids[i], text, vecStr, metaJSON); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 // Get 获取向量
 func (s *Store) Get(ctx context.Context, id string) (*VectorEntry, error) {
-	query := fmt.Sprintf("SELECT id, vector, metadata FROM %s WHERE id = $1", s.table)
+	query := fmt.Sprintf("SELECT id, text, vector, metadata FROM %s WHERE id = $1", s.table)
 	row := s.db.QueryRow(ctx, query, id)
 
 	var entry VectorEntry
 	var vecStr string
 	var metaJSON string
-	if err := row.Scan(&entry.ID, &vecStr, &metaJSON); err != nil {
+	if err := row.Scan(&entry.ID, &entry.Text, &vecStr, &metaJSON); err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("vector %s not found", id)
 		}
@@ -275,10 +320,10 @@ func (s *Store) Search(ctx context.Context, query []float32, topK int, filters m
 	}
 
 	sqlQuery := fmt.Sprintf(`
-		SELECT id, vector %s $1::vector AS distance, metadata 
-		FROM %s 
-		%s 
-		ORDER BY distance 
+		SELECT id, text, vector %s $1::vector AS distance, metadata
+		FROM %s
+		%s
+		ORDER BY distance
 		LIMIT $2
 	`, distanceOp, s.table, whereClause)
 
@@ -292,7 +337,7 @@ func (s *Store) Search(ctx context.Context, query []float32, topK int, filters m
 	for rows.Next() {
 		var r SearchResult
 		var metaJSON string
-		if err := rows.Scan(&r.ID, &r.Distance, &metaJSON); err != nil {
+		if err := rows.Scan(&r.ID, &r.Text, &r.Distance, &metaJSON); err != nil {
 			return nil, err
 		}
 		r.Metadata = map[string]string{"raw": metaJSON}
@@ -341,6 +386,22 @@ func float32SliceToVectorString(v []float32) string {
 		parts[i] = fmt.Sprintf("%g", f)
 	}
 	return "[" + strings.Join(parts, ",") + "]"
+}
+
+// Ensure interface
+// Count 返回向量记录总数
+func (s *Store) Count(ctx context.Context) (int64, error) {
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", s.table)
+	var count int64
+	err := s.db.QueryRow(ctx, query).Scan(&count)
+	return count, err
+}
+
+// HealthCheck 检查连接是否正常
+func (s *Store) HealthCheck(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	return s.db.Ping(ctx)
 }
 
 // Ensure interface

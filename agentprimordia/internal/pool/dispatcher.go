@@ -438,7 +438,21 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 
 				if p.isRetryable(err) && pt.retryCount < p.config.RetryPolicy.MaxRetries {
 					pt.retryCount++
-					time.Sleep(p.config.RetryPolicy.Backoff)
+					// 重试前检查 ctx，避免在已取消的上下文上无意义地等待
+					if ctx.Err() != nil {
+						p.mu.Lock()
+						pt.storeStatus(PoolTaskCancelled)
+						p.mu.Unlock()
+						return pt.result, ctx.Err()
+					}
+					select {
+					case <-time.After(p.config.RetryPolicy.Backoff):
+					case <-ctx.Done():
+						p.mu.Lock()
+						pt.storeStatus(PoolTaskCancelled)
+						p.mu.Unlock()
+						return pt.result, ctx.Err()
+					}
 					continue
 				}
 
@@ -841,12 +855,8 @@ func (p *Pool) Close() {
 }
 
 // acquireSlot 获取动态并发度信号量令牌。
-// 使用短间隔轮询检查令牌可用性，支持 ctx 取消和超时。
+// 使用 sync.Cond 阻塞等待，避免轮询造成的 CPU 浪费和延迟。
 // 返回 error 仅在 ctx 被取消或超时时非 nil。
-//
-// 设计说明：相比 sync.Cond + goroutine 方案，轮询方式更简洁，
-// 避免了每个阻塞调用者创建额外 goroutine（~2KB 栈）。
-// 在 dispatcher 场景下并发等待数通常较小，10ms 轮询开销可忽略。
 func (p *Pool) acquireSlot(ctx context.Context) error {
 	// 快速路径：检查是否可以立即获取
 	p.semaMu.Lock()
@@ -857,9 +867,20 @@ func (p *Pool) acquireSlot(ctx context.Context) error {
 	}
 	p.semaMu.Unlock()
 
-	// 慢路径：轮询检查令牌可用性
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
+	// 慢路径：通过 sync.Cond 阻塞等待令牌
+	// 用辅助 goroutine 在 ctx 取消时唤醒 Wait()
+	p.semaMu.Lock()
+	defer p.semaMu.Unlock()
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			p.semaCond.Broadcast() // 唤醒所有等待者
+		case <-done:
+		}
+	}()
 
 	var timerC <-chan time.Time
 	if p.config.Timeout > 0 {
@@ -868,24 +889,21 @@ func (p *Pool) acquireSlot(ctx context.Context) error {
 		timerC = timer.C
 	}
 
-	for {
-		p.semaMu.Lock()
-		if p.semaCount < p.dynamicConcurrency.Load() {
-			p.semaCount++
-			p.semaMu.Unlock()
-			return nil
-		}
-		p.semaMu.Unlock()
-
-		select {
-		case <-ctx.Done():
+	for p.semaCount >= p.dynamicConcurrency.Load() {
+		if ctx.Err() != nil {
 			return ctx.Err()
-		case <-timerC:
-			return ErrTimeout
-		case <-ticker.C:
-			// 继续轮询
 		}
+		p.semaCond.Wait()
 	}
+	// 再次检查超时（Wait 返回后可能已超时）
+	select {
+	case <-timerC:
+		return ErrTimeout
+	default:
+	}
+
+	p.semaCount++
+	return nil
 }
 
 // releaseSlot 释放动态并发度信号量令牌，并唤醒一个等待者。

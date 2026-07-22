@@ -3,7 +3,7 @@
 //
 // 前置条件：
 //
-//	export OPENAI_API_KEY=sk-xxx
+//	set AP_LLM_API_KEY=sk-xxx
 //
 // 跑法：
 //
@@ -16,18 +16,18 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	ap "agentprimordia/pkg"
 )
 
 func main() {
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: os.Getenv("OPENAI_API_KEY"),
-		Model:  "gpt-4o",
-	})
+	cfg := ap.ConfigFromEnv("")
+	if cfg.APIKey == "" {
+		log.Fatal("set AP_LLM_API_KEY env var")
+	}
+	provider, err := ap.NewOpenAIProvider(cfg)
 	if err != nil {
-		log.Fatalf("创建 Provider 失败: %v", err)
+		log.Fatalf("create provider failed: %v", err)
 	}
 
 	// 启用 LLM 缓存（简化配置：仅 maxSize + minScore，无 embedding）
@@ -36,35 +36,35 @@ func main() {
 		MinScore: 0.8,
 	})
 
-	agent, err := ap.NewAgent("{{.ProjectName}}", "你是一个智能助手", provider,
+	agent, err := ap.NewAgent("{{.ProjectName}}", "you are a helpful assistant", provider,
 		ap.WithMaxTurns(10),
 		ap.WithCache(cache),
 	)
 	if err != nil {
-		log.Fatalf("创建 Agent 失败: %v", err)
+		log.Fatalf("create agent failed: %v", err)
 	}
 
 	// 第一次调用 — 真实请求 LLM
-	fmt.Println("=== 第一次调用 ===")
+	fmt.Println("=== First call ===")
 	resp1, err := agent.Run(context.Background(),
 		ap.UserMessage("用一句话介绍 Go 语言"))
 	if err != nil {
-		log.Fatalf("调用失败: %v", err)
+		log.Fatalf("call failed: %v", err)
 	}
-	fmt.Printf("回复: %s\n", resp1.Content)
+	fmt.Printf("Reply: %s\n", resp1.Content)
 
 	// 第二次相同调用 — 应命中缓存
-	fmt.Println("\n=== 第二次调用 ===")
+	fmt.Println("\n=== Second call ===")
 	resp2, err := agent.Run(context.Background(),
 		ap.UserMessage("用一句话介绍 Go 语言"))
 	if err != nil {
-		log.Fatalf("调用失败: %v", err)
+		log.Fatalf("call failed: %v", err)
 	}
-	fmt.Printf("回复: %s\n", resp2.Content)
+	fmt.Printf("Reply: %s\n", resp2.Content)
 
 	// 打印缓存统计
 	stats := cache.Stats(context.Background())
-	fmt.Printf("\n缓存统计: 总查询 %d, 命中 %d, 未命中 %d, 命中率 %.1f%%\n",
+	fmt.Printf("\nCache stats: queries=%d, hits=%d, misses=%d, hit_rate=%.1f%%\n",
 		stats.TotalQueries, stats.CacheHits, stats.CacheMisses,
 		stats.HitRate*100)
 }

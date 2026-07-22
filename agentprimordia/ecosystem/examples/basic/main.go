@@ -29,7 +29,27 @@ func main() {
 		log.Fatalf("创建 Agent 失败: %v", err)
 	}
 
-	resp, err := agent.Run(context.Background(), ap.UserMessage("你好！"))
+	ctx := context.Background()
+
+	// 检查点恢复：当被 `ap loop resume` 启动时，AP_RESUME=1 会被注入
+	if ap.ShouldResume() {
+		agentID := ap.ResumeAgentID()
+		if agentID == "" || agentID == "BasicAgent" {
+			fmt.Printf("[info] 从检查点恢复 Agent %q...\n", agentID)
+			if _, err := agent.ResumeFromCheckpoint(ctx); err != nil {
+				log.Fatalf("恢复失败: %v", err)
+			}
+			return
+		}
+	}
+
+	// 正常启动：使用 --prompt 参数或默认问候
+	prompt := ap.ResumePrompt()
+	if prompt == "" {
+		prompt = "你好！"
+	}
+
+	resp, err := agent.Run(ctx, ap.UserMessage(prompt))
 	if err != nil {
 		log.Fatalf("Agent 运行失败: %v", err)
 	}

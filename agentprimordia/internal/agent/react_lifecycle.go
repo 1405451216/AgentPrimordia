@@ -163,5 +163,12 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	}
 	toolCount := prevMetrics.TotalTools
 
+	// 恢复路径绕过了 reactLoopEngine 入口，必须在此处填充 capCache，
+	// 否则 runLoop 内对 a.capCache.model 等字段的无保护访问会 panic。
+	// 注意：runLoop 不会像 reactLoopEngine 那样在 defer 中清理 capCache，
+	// 因此这里显式清理，避免后续 Run() 误用本次恢复的旧引用。
+	a.capCache = a.resolveCapabilities(reqID)
+	defer func() { a.capCache = nil }()
+
 	return a.runLoop(ctx, history, state.TurnCount, loopConfig{requestID: reqID}, totalLLMLatency, totalToolLatency, toolCount)
 }

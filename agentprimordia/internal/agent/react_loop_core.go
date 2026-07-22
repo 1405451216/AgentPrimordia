@@ -156,9 +156,11 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		var thought Thought
 
 		if cfg.stream {
-			thought = a.streamReasoning(ctx, cfg, llmMessages, toolDefinitions, llmStart)
+			var sErr error
+			thought, sErr = a.streamReasoning(ctx, cfg, llmMessages, toolDefinitions, llmStart)
 			if thought.Content == "" && len(thought.ToolCalls) == 0 {
-				return &Response{RequestID: cfg.requestID, Error: fmt.Errorf("stream reasoning failed")}, fmt.Errorf("stream reasoning failed")
+				err := fmt.Errorf("stream reasoning failed: %w", sErr)
+				return &Response{RequestID: cfg.requestID, Error: err}, err
 			}
 		} else {
 			var err error
