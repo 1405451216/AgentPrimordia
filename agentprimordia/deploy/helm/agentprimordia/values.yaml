@@ -1,0 +1,132 @@
+# AgentPrimordia Helm Chart 默认配置
+
+replicaCount: 3
+
+image:
+  repository: ghcr.io/agentprimordia/ap
+  tag: "v3.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# ─── 集群配置 ─────────────────────────────────────────────────
+cluster:
+  enabled: true
+  # 服务发现后端: etcd | memory
+  discovery: etcd
+  # 引导节点数（首次启动时的种子节点）
+  bootstrapReplicas: 1
+  # 一致性哈希虚拟节点数
+  virtualNodes: 150
+
+# ─── etcd 依赖 ────────────────────────────────────────────────
+etcd:
+  # 使用内置 etcd（bitnami 子 chart）
+  enabled: true
+  endpoints: ""  # 外部 etcd 时填写，格式: http://etcd-0:2379,http://etcd-1:2379
+  auth:
+    enabled: false
+
+# ─── 服务配置 ─────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 8080
+  metricsPort: 9090
+
+# ─── 资源限制 ─────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# ─── 自动伸缩 ─────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# ─── 探针配置 ─────────────────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# ─── Studio Web UI ────────────────────────────────────────────
+studio:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/agentprimordia/ap-studio
+    tag: "v3.1.0"
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ─── Operator（可选）──────────────────────────────────────────
+operator:
+  enabled: false
+  image:
+    repository: ghcr.io/agentprimordia/ap-operator
+    tag: "v0.1.0"
+
+# ─── 可观测性 ─────────────────────────────────────────────────
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    namespace: ""
+
+# ─── 日志 ─────────────────────────────────────────────────────
+logLevel: info
+
+# ─── Pod 配置 ─────────────────────────────────────────────────
+podAnnotations: {}
+podSecurityContext:
+  fsGroup: 1000
+  runAsNonRoot: true
+  runAsUser: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ─── 持久化存储（可选）────────────────────────────────────────
+persistence:
+  enabled: false
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi

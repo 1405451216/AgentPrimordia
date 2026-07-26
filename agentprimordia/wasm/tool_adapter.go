@@ -151,12 +151,13 @@ func (a *WASMToolAdapter) GetTool(name string) (ToolMetadata, bool) {
 	return entry.metadata, true
 }
 
-// ExecuteTool 执行 WASM 工具
+// ExecuteTool 执行 WASM 工具（V3.1 真实内存传递实现）
 //
 // 流程：
 // 1. 查找工具元数据
-// 2. 在沙箱中执行 WASM 导出函数
-// 3. 解析返回值
+// 2. 将 JSON 参数序列化
+// 3. 通过沙箱内存 API 写入参数并调用导出函数
+// 4. 从 WASM 内存读取 JSON 返回值
 func (a *WASMToolAdapter) ExecuteTool(ctx context.Context, toolName string, args json.RawMessage) (*WASMToolResult, error) {
 	a.mu.RLock()
 	entry, exists := a.tools[toolName]
@@ -166,10 +167,21 @@ func (a *WASMToolAdapter) ExecuteTool(ctx context.Context, toolName string, args
 		return nil, fmt.Errorf("wasm: tool %q not found", toolName)
 	}
 
-	// 执行 WASM 函数
-	// WASM 函数接收参数通过内存写入，这里简化为直接调用
-	// 实际实现需要通过 WASM 内存 API 传递 JSON 参数
-	result, err := a.sandbox.Execute(ctx, entry.module, entry.metadata.ExecuteFunc)
+	// 构造输入 JSON（包含工具名和参数）
+	input := map[string]any{
+		"tool_name": toolName,
+		"args":      json.RawMessage(args),
+	}
+	inputBytes, err := json.Marshal(input)
+	if err != nil {
+		return &WASMToolResult{
+			Content: fmt.Sprintf("marshal input error: %v", err),
+			IsError: true,
+		}, nil
+	}
+
+	// 通过沙箱内存 API 执行（alloc → write → call → read）
+	outputBytes, err := a.sandbox.ExecuteWithMemory(ctx, entry.module, entry.metadata.ExecuteFunc, inputBytes)
 	if err != nil {
 		return &WASMToolResult{
 			Content: fmt.Sprintf("execution error: %v", err),
@@ -177,19 +189,17 @@ func (a *WASMToolAdapter) ExecuteTool(ctx context.Context, toolName string, args
 		}, nil
 	}
 
-	// 简化：WASM 函数返回 0 表示成功，非 0 表示错误
-	// 实际实现需要从 WASM 内存读取 JSON 结果
-	if result == 0 {
+	// 解析输出 JSON
+	var result WASMToolResult
+	if err := json.Unmarshal(outputBytes, &result); err != nil {
+		// 输出不是有效 JSON，将原始字节作为内容
 		return &WASMToolResult{
-			Content: "ok",
+			Content: string(outputBytes),
 			IsError: false,
 		}, nil
 	}
 
-	return &WASMToolResult{
-		Content: fmt.Sprintf("tool execution returned: %d", result),
-		IsError: result != 0,
-	}, nil
+	return &result, nil
 }
 
 // Close 关闭适配器，卸载所有模块

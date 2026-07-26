@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agentprimordia.fullname" . }}
+  labels:
+    {{- include "agentprimordia.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if .Values.metrics.enabled }}
+    - port: {{ .Values.service.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
+  selector:
+    {{- include "agentprimordia.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.studio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "agentprimordia.studioFullname" . }}
+  labels:
+    {{- include "agentprimordia.labels" . | nindent 4 }}
+    app.kubernetes.io/component: studio
+spec:
+  type: {{ .Values.studio.service.type }}
+  ports:
+    - port: {{ .Values.studio.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "agentprimordia.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: studio
+{{- end }}

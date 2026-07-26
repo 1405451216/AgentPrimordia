@@ -22,6 +22,9 @@ Commands:
   config       manage configuration
   mcp          manage MCP servers
   plugin       manage plugins
+  cluster      manage cluster (init/join/status/leave/scale)
+  marketplace  manage agent templates
+  create-edge-agent  create an Edge Agent project
   doctor       health check
   completion   generate shell completion scripts
   version      show version
@@ -57,6 +60,12 @@ func main() {
 		err = runMCP(args)
 	case "plugin":
 		err = runPlugin(args)
+	case "cluster":
+		err = runCluster(args)
+	case "marketplace":
+		err = runMarketplace(args)
+	case "create-edge-agent":
+		err = runCreateEdgeAgent(args)
 	case "doctor":
 		err = runDoctor(args)
 	case "completion":

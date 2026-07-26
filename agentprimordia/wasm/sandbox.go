@@ -97,6 +97,85 @@ func (s *Sandbox) Execute(ctx context.Context, moduleName, funcName string, args
 	return 0, nil
 }
 
+// ExecuteWithMemory 通过内存 API 执行 WASM 工具（V3.1 真实实现）。
+//
+// 调用协议：
+//   - 模块必须导出 alloc(uint64) -> ptr、memory、以及目标函数 (ptr, len) -> (ptr, len)
+//   - 宿主通过 alloc 分配内存，写入 JSON 参数，调用函数，读取 JSON 结果
+//
+// 这是替代旧版 Execute（仅返回 uint64）的生产级实现。
+func (s *Sandbox) ExecuteWithMemory(ctx context.Context, moduleName, funcName string, input []byte) ([]byte, error) {
+	s.mu.RLock()
+	compiled, ok := s.modules[moduleName]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("module %s not found", moduleName)
+	}
+
+	// 施加执行超时
+	execCtx, cancel := context.WithTimeout(ctx, s.config.MaxExecutionTime)
+	defer cancel()
+
+	mod, err := s.runtime.InstantiateModule(execCtx, compiled,
+		wazero.NewModuleConfig().WithName(moduleName).
+			WithStdout(nil).WithStderr(nil).WithStdin(nil))
+	if err != nil {
+		return nil, fmt.Errorf("instantiate %s: %w", moduleName, err)
+	}
+	defer mod.Close(execCtx)
+
+	// 获取导出函数
+	fn := mod.ExportedFunction(funcName)
+	if fn == nil {
+		return nil, fmt.Errorf("function %s not found in %s", funcName, moduleName)
+	}
+	alloc := mod.ExportedFunction("alloc")
+	if alloc == nil {
+		return nil, fmt.Errorf("module %s does not export alloc", moduleName)
+	}
+	mem := mod.ExportedMemory("memory")
+	if mem == nil {
+		return nil, fmt.Errorf("module %s does not export memory", moduleName)
+	}
+
+	// 分配并写入参数
+	argLen := uint64(len(input))
+	offset, err := alloc.Call(execCtx, argLen)
+	if err != nil {
+		return nil, fmt.Errorf("alloc in %s: %w", moduleName, err)
+	}
+
+	if !mem.Write(uint32(offset[0]), input) {
+		return nil, fmt.Errorf("memory write failed in %s", moduleName)
+	}
+
+	// 调用工具函数：(ptr, len) -> (ret_ptr, ret_len)
+	results, err := fn.Call(execCtx, offset[0], argLen)
+	if err != nil {
+		return nil, fmt.Errorf("execute %s.%s: %w", moduleName, funcName, err)
+	}
+
+	if len(results) < 2 {
+		return nil, fmt.Errorf("%s.%s must return (ptr, len), got %d results", moduleName, funcName, len(results))
+	}
+
+	retPtr := uint32(results[0])
+	retLen := uint32(results[1])
+
+	// 从内存读取结果
+	result, ok := mem.Read(retPtr, retLen)
+	if !ok {
+		return nil, fmt.Errorf("memory read failed in %s (ptr=%d, len=%d)", moduleName, retPtr, retLen)
+	}
+
+	// 尝试释放返回的内存（可选）
+	if free := mod.ExportedFunction("free"); free != nil {
+		_, _ = free.Call(execCtx, uint64(retPtr), uint64(retLen))
+	}
+
+	return result, nil
+}
+
 // Unload 卸载模块。
 func (s *Sandbox) Unload(name string) error {
 	s.mu.Lock()

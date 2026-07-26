@@ -1,0 +1,163 @@
+# AgentPrimordia 本地多节点集群
+#
+# 用法:
+#   docker compose -f deploy/compose/cluster.yaml up -d
+#
+# 启动 3 节点集群 + etcd + Prometheus + Grafana + Studio
+#
+# 环境变量（可选）:
+#   AP_IMAGE       — 自定义镜像（默认本地构建）
+#   AP_CLUSTER_SIZE — 节点数（默认 3）
+#   AP_STUDIO_PORT — Studio 端口（默认 3000）
+
+x-ap-node: &ap-node-defaults
+  build:
+    context: ../..
+    dockerfile: agentprimordia/Dockerfile.prod
+  environment: &ap-node-env
+    AP_CLUSTER_ENABLED: "true"
+    AP_CLUSTER_DISCOVERY: "etcd"
+    AP_ETCD_ENDPOINTS: "http://etcd:2379"
+    AP_METRICS_ENABLED: "true"
+    AP_METRICS_PORT: "9090"
+    AP_LOG_LEVEL: "info"
+  depends_on:
+    etcd:
+      condition: service_healthy
+  networks:
+    - ap-cluster
+  restart: unless-stopped
+  healthcheck:
+    test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+    start_period: 10s
+
+services:
+  # ─── 基础设施 ───────────────────────────────────────────────
+  etcd:
+    image: bitnami/etcd:3.5
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    ports:
+      - "2379:2379"
+    networks:
+      - ap-cluster
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - etcd-data:/bitnami/etcd
+
+  # ─── Agent 节点 ─────────────────────────────────────────────
+  ap-node-1:
+    <<: *ap-node-defaults
+    container_name: ap-node-1
+    hostname: ap-node-1
+    environment:
+      <<: *ap-node-env
+      AP_NODE_ID: "node-1"
+      AP_LISTEN_ADDR: ":8080"
+      AP_CLUSTER_BOOTSTRAP: "true"
+    ports:
+      - "8081:8080"
+      - "9091:9090"
+
+  ap-node-2:
+    <<: *ap-node-defaults
+    container_name: ap-node-2
+    hostname: ap-node-2
+    environment:
+      <<: *ap-node-env
+      AP_NODE_ID: "node-2"
+      AP_LISTEN_ADDR: ":8080"
+      AP_CLUSTER_SEEDS: "ap-node-1:8080"
+    ports:
+      - "8082:8080"
+      - "9092:9090"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      ap-node-1:
+        condition: service_healthy
+
+  ap-node-3:
+    <<: *ap-node-defaults
+    container_name: ap-node-3
+    hostname: ap-node-3
+    environment:
+      <<: *ap-node-env
+      AP_NODE_ID: "node-3"
+      AP_LISTEN_ADDR: ":8080"
+      AP_CLUSTER_SEEDS: "ap-node-1:8080"
+    ports:
+      - "8083:8080"
+      - "9093:9090"
+    depends_on:
+      etcd:
+        condition: service_healthy
+      ap-node-1:
+        condition: service_healthy
+
+  # ─── 可观测性 ───────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/alerts-agentprimordia.yaml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - ap-cluster
+    depends_on:
+      - ap-node-1
+      - ap-node-2
+      - ap-node-3
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "agentprimordia"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ../grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+      - ../grafana:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - ap-cluster
+    depends_on:
+      - prometheus
+
+  # ─── Studio Web UI ─────────────────────────────────────────
+  studio:
+    build:
+      context: ../..
+      dockerfile: agentprimordia/Dockerfile.prod
+      target: studio
+    environment:
+      AP_API_ENDPOINTS: "http://ap-node-1:8080,http://ap-node-2:8080,http://ap-node-3:8080"
+    ports:
+      - "${AP_STUDIO_PORT:-3000}:3000"
+    networks:
+      - ap-cluster
+    depends_on:
+      - ap-node-1
+      - ap-node-2
+      - ap-node-3
+
+networks:
+  ap-cluster:
+    driver: bridge
+
+volumes:
+  etcd-data:
+  prometheus-data:
+  grafana-data:
