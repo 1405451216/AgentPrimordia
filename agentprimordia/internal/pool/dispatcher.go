@@ -1,3 +1,11 @@
+// dispatcher.go — Pool 核心调度引擎
+//
+// 职责：Pool 结构体定义、构造、任务派发（Dispatch）、任务执行（executeTask）、
+// Agent 创建（createAgentForTask）、并发信号量（acquireSlot / releaseSlot）。
+//
+// 拆分说明（代码审查优化）：
+//   - dispatcher_ops.go        — 任务查询/取消/清理/生命周期/统计
+//   - dispatcher_extensions.go — GoroutinePool / LLMBatch 扩展集成
 package pool
 
 import (
@@ -352,13 +360,11 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 	}
 
 	// 获取动态信号量（仅获取一次，重试期间持有不释放）
-	// 使用 sync.Cond 实现可动态调整上限的计数信号量
 	if err := p.acquireSlot(ctx); err != nil {
 		if err == ctx.Err() {
 			p.mu.Lock()
-			pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
+			pt.storeStatus(PoolTaskCancelled)
 			p.mu.Unlock()
-			// 优化（Task 8）：原子计数 - queued 转 cancelled
 			p.queuedCount.Add(-1)
 			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 			return &TaskResult{
@@ -368,11 +374,9 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 				Status: PoolTaskCancelled,
 			}, ctx.Err()
 		}
-		// 超时（acquireSlot 内部已经处理了超时）
 		p.mu.Lock()
-		pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
+		pt.storeStatus(PoolTaskFailed)
 		p.mu.Unlock()
-		// 优化（Task 8）：原子计数 - queued 转 failed
 		p.queuedCount.Add(-1)
 		p.failedCount.Add(1)
 		p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
@@ -386,13 +390,12 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 	defer p.releaseSlot()
 
 	// 重试循环（semaphore 已持有，不再重复获取）
-	// 优化（Task 8）：从 queued 转为 running（仅在首次进入循环时）
 	p.queuedCount.Add(-1)
 	p.runningCount.Add(1)
 	defer p.runningCount.Add(-1)
 	for {
 		p.mu.Lock()
-		pt.storeStatus(PoolTaskRunning) // perf-v6 Task A
+		pt.storeStatus(PoolTaskRunning)
 		p.mu.Unlock()
 		p.emitEvent(PoolEvent{Type: "task_started", TaskID: task.ID, Data: task.Title})
 
@@ -423,25 +426,22 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		if err != nil {
 			if taskCtxErr == context.DeadlineExceeded {
 				p.mu.Lock()
-				pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
+				pt.storeStatus(PoolTaskFailed)
 				p.mu.Unlock()
-				// 优化（Task 8）：running 转 failed
 				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: "timeout"})
 			} else if taskCtxErr == context.Canceled || ctx.Err() != nil {
 				p.mu.Lock()
-				pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
+				pt.storeStatus(PoolTaskCancelled)
 				p.mu.Unlock()
-				// cancelled 不计入 failed
 				p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
 			} else {
 				p.mu.Lock()
-				pt.storeStatus(PoolTaskFailed) // perf-v6 Task A
+				pt.storeStatus(PoolTaskFailed)
 				p.mu.Unlock()
 
 				if p.isRetryable(err) && pt.retryCount < p.config.RetryPolicy.MaxRetries {
 					pt.retryCount++
-					// 重试前检查 ctx，避免在已取消的上下文上无意义地等待
 					if ctx.Err() != nil {
 						p.mu.Lock()
 						pt.storeStatus(PoolTaskCancelled)
@@ -459,15 +459,13 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 					continue
 				}
 
-				// 优化（Task 8）：running 转 failed
 				p.failedCount.Add(1)
 				p.emitEvent(PoolEvent{Type: "task_failed", TaskID: task.ID, Data: err.Error()})
 			}
 		} else {
 			p.mu.Lock()
-			pt.storeStatus(PoolTaskCompleted) // perf-v6 Task A
+			pt.storeStatus(PoolTaskCompleted)
 			p.mu.Unlock()
-			// 优化（Task 8）：running 转 completed
 			p.completedCount.Add(1)
 			p.emitEvent(PoolEvent{Type: "task_completed", TaskID: task.ID})
 		}
@@ -484,8 +482,6 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 		p.mu.Lock()
 		delete(p.agents, task.ID)
 		p.mu.Unlock()
-
-		// 保留 updateStats() 调用以同步 PoolStats 整体结构；Stats() 现在直接读原子变量
 
 		return pt.result, err
 	}
@@ -564,310 +560,6 @@ func (p *Pool) SetAgentFactory(factory AgentFactory) {
 	p.agentFactory = factory
 }
 
-func (p *Pool) getTask(id string) *poolTask {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.tasks[id]
-}
-
-// updateStats 同步原子计数器到 PoolStats 结构体，供向后兼容的 Stats() 调用使用。
-// 优化（Task 8）：O(1) 原子读取替代 O(n) 全量遍历 tasks map。
-func (p *Pool) updateStats() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.stats.RunningTasks = int(p.runningCount.Load())
-	p.stats.QueuedTasks = int(p.queuedCount.Load())
-	p.stats.CompletedTasks = int(p.completedCount.Load())
-	p.stats.FailedTasks = int(p.failedCount.Load())
-	p.stats.ActiveConcurrency = p.stats.RunningTasks
-}
-
-func (p *Pool) emitEvent(event PoolEvent) {
-	event.Timestamp = time.Now()
-	select {
-	case p.eventCh <- event:
-	default:
-		// 事件 channel 满，丢弃事件并记录 warning（背压策略）
-		n := p.droppedEvents.Add(1)
-		if n == 1 || n%100 == 0 {
-			// 首次丢弃或每 100 次记录一次，避免日志风暴
-			fmt.Printf("[pool] WARNING: event channel full, dropped %d events (type=%s)\n", n, event.Type)
-		}
-	}
-}
-
-// DroppedEvents 返回因 channel 满而被丢弃的事件总数。
-func (p *Pool) DroppedEvents() int64 {
-	return p.droppedEvents.Load()
-}
-
-func (p *Pool) isRetryable(err error) bool {
-	if p.config.RetryPolicy.MaxRetries == 0 {
-		return false
-	}
-
-	errMsg := err.Error()
-	for _, pattern := range p.config.RetryPolicy.RetryableErrors {
-		if strings.Contains(errMsg, pattern) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (p *Pool) Cancel(taskID string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	task, exists := p.tasks[taskID]
-	if !exists {
-		return ErrTaskNotFound
-	}
-
-	if task.loadStatus() == PoolTaskRunning {
-		task.cancelFunc()
-		task.storeStatus(PoolTaskCancelled) // perf-v6 Task A
-	}
-
-	p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: taskID})
-	return nil
-}
-
-func (p *Pool) CancelAll() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	for id, task := range p.tasks {
-		if task.loadStatus() == PoolTaskQueued || task.loadStatus() == PoolTaskRunning {
-			task.cancelFunc()
-			task.storeStatus(PoolTaskCancelled) // perf-v6 Task A
-			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: id})
-		}
-	}
-}
-
-// GetTasksBySession 返回指定会话的任务结果。
-// 优化（perf-v2）：使用会话索引 O(k) 查找替代 O(n) 全量遍历。
-func (p *Pool) GetTasksBySession(sessionID string) []TaskResult {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	taskIDs, ok := p.sessionIndex[sessionID]
-	if !ok {
-		return nil
-	}
-
-	results := make([]TaskResult, 0, len(taskIDs))
-	for taskID := range taskIDs {
-		pt, exists := p.tasks[taskID]
-		if !exists {
-			continue
-		}
-		if pt.result != nil {
-			results = append(results, *pt.result)
-		} else {
-			results = append(results, TaskResult{
-				TaskID: pt.config.ID,
-				Task:   pt.config,
-				Status: pt.loadStatus(),
-			})
-		}
-	}
-	return results
-}
-
-// CancelBySession 取消指定会话的所有任务。
-// 优化（perf-v2）：使用会话索引 O(k) 查找替代 O(n) 全量遍历。
-func (p *Pool) CancelBySession(sessionID string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	taskIDs, ok := p.sessionIndex[sessionID]
-	if !ok {
-		return nil
-	}
-
-	for taskID := range taskIDs {
-		pt, exists := p.tasks[taskID]
-		if !exists {
-			continue
-		}
-		if pt.loadStatus() == PoolTaskQueued || pt.loadStatus() == PoolTaskRunning {
-			pt.cancelFunc()
-			pt.storeStatus(PoolTaskCancelled) // perf-v6 Task A
-			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: taskID})
-		}
-	}
-	return nil
-}
-
-func (p *Pool) GetTask(id string) (TaskResult, bool) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	pt, exists := p.tasks[id]
-	if !exists || pt.result == nil {
-		return TaskResult{}, false
-	}
-	return *pt.result, true
-}
-
-// ListTasks 返回所有任务的结果列表
-func (p *Pool) ListTasks() []TaskResult {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	results := make([]TaskResult, 0, len(p.tasks))
-	for _, pt := range p.tasks {
-		if pt.result != nil {
-			results = append(results, *pt.result)
-		} else {
-			results = append(results, TaskResult{
-				TaskID: pt.config.ID,
-				Task:   pt.config,
-				Status: pt.loadStatus(),
-			})
-		}
-	}
-	return results
-}
-
-// ListAgents 返回所有 Agent 的统计信息，按任务 ID 索引
-func (p *Pool) ListAgents() map[string]agent.AgentStats {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	result := make(map[string]agent.AgentStats, len(p.agents))
-	for id, agt := range p.agents {
-		result[id] = agt.Stats()
-	}
-	return result
-}
-
-// Stats 直接读取原子计数器 + 缓存的 stats 字段，避免双重锁。
-// 优化（Task 8）：Stats() 不再调用 updateStats() 走写锁后再读 RLock，
-// 改为仅一次读锁 + 直接读原子变量。
-func (p *Pool) Stats() PoolStats {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	// 原子读取叠加到返回的快照上，避免修改共享的 p.stats
-	stats := p.stats
-	stats.RunningTasks = int(p.runningCount.Load())
-	stats.QueuedTasks = int(p.queuedCount.Load())
-	stats.CompletedTasks = int(p.completedCount.Load())
-	stats.FailedTasks = int(p.failedCount.Load())
-	stats.ActiveConcurrency = stats.RunningTasks
-	return stats
-}
-
-func (p *Pool) EventChannel() <-chan PoolEvent {
-	return p.eventCh
-}
-
-func (p *Pool) SetModel(model llm.Provider) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.model = model
-}
-
-func (p *Pool) SetToolkit(registry *tools.Registry) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.toolkit = registry
-}
-
-// Cleanup 清理已完成、失败或取消的任务记录，释放 tasks map 中的内存
-// 优化（perf-v2）：同步清理会话索引
-func (p *Pool) Cleanup() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	for id, t := range p.tasks {
-		if t.loadStatus() == PoolTaskCompleted || t.loadStatus() == PoolTaskFailed || t.loadStatus() == PoolTaskCancelled {
-			// 清理会话索引
-			if t.sessionID != "" {
-				if ids, ok := p.sessionIndex[t.sessionID]; ok {
-					delete(ids, id)
-					if len(ids) == 0 {
-						delete(p.sessionIndex, t.sessionID)
-					}
-				}
-			}
-			delete(p.tasks, id)
-		}
-	}
-}
-
-// cleanupIfNeeded 当 task map 超过 MaxRetainedTasks 阈值时自动清理终态任务（M8 修复）。
-// 优化（perf-v2）：同步清理会话索引，避免索引泄漏。
-func (p *Pool) cleanupIfNeeded() {
-	if p.config.MaxRetainedTasks <= 0 {
-		return
-	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if len(p.tasks) < p.config.MaxRetainedTasks {
-		return
-	}
-	for id, t := range p.tasks {
-		if t.loadStatus() == PoolTaskCompleted || t.loadStatus() == PoolTaskFailed || t.loadStatus() == PoolTaskCancelled {
-			// 清理会话索引
-			if t.sessionID != "" {
-				if ids, ok := p.sessionIndex[t.sessionID]; ok {
-					delete(ids, id)
-					if len(ids) == 0 {
-						delete(p.sessionIndex, t.sessionID)
-					}
-				}
-			}
-			delete(p.tasks, id)
-		}
-	}
-}
-
-// GracefulShutdown 优雅关闭：停止接受新任务，等待正在执行的任务完成
-func (p *Pool) GracefulShutdown(ctx context.Context) error {
-	// 标记为关闭状态，拒绝新任务
-	p.shutdown.Store(true)
-
-	// 如果 Pool 已关闭（cancel 已调用），直接返回
-	select {
-	case <-p.ctx.Done():
-		return nil
-	default:
-	}
-
-	// 等待正在执行的任务完成
-	ticker := time.NewTicker(50 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-p.ctx.Done():
-			// Pool 已被 Close()，直接返回
-			return nil
-		case <-ticker.C:
-			if p.runningCount.Load() == 0 {
-				p.Close()
-				return nil
-			}
-		}
-	}
-}
-
-func (p *Pool) Close() {
-	p.closeOnce.Do(func() {
-		// 广播唤醒所有等待信号量的 goroutine
-		p.semaCond.Broadcast()
-		p.cancel()
-		p.wg.Wait()
-		close(p.eventCh)
-	})
-}
-
 // acquireSlot 获取动态并发度信号量令牌。
 // 使用 sync.Cond 阻塞等待，避免轮询造成的 CPU 浪费和延迟。
 // 返回 error 仅在 ctx 被取消或超时时非 nil。
@@ -930,121 +622,6 @@ func (p *Pool) releaseSlot() {
 
 // generateTaskID 生成唯一任务 ID。优化（Task 8）：使用 strconv 避免 fmt.Sprintf 的反射分配。
 var taskIDCounter atomic.Int64
-
-// SubmitBackground 把任务投递到内部 GoroutinePool（Phase 3 Task 4）。
-//
-// 用于无需同步等待结果的后台工作（指标聚合、审计 flush、预热缓存等）。
-// 如果 PoolConfig.GoroutinePool 未配置，返回 concurrency.ErrPoolStopped。
-//
-// 返回的错误直接透传 concurrency.GoroutinePool 的错误（ErrQueueFull / ErrPoolStopped）。
-func (p *Pool) SubmitBackground(ctx context.Context, task concurrency.Task) error {
-	p.mu.RLock()
-	gp := p.goroutinePool
-	p.mu.RUnlock()
-	if gp == nil {
-		return concurrency.ErrPoolStopped
-	}
-	return gp.SubmitWithContext(ctx, task)
-}
-
-// GoroutinePoolStats 返回内部 GoroutinePool 的运行指标（Phase 3 Task 5）。
-//
-// 如果 PoolConfig.GoroutinePool 未配置，返回 zero value + ok=false。
-//
-// 调用方通常将其映射为 Prometheus 指标：
-//
-//	pool_workers{pool="..."}        = stats.Workers
-//	pool_active_workers{pool="..."} = stats.ActiveWorkers
-//	pool_queue_depth{pool="..."}    = stats.QueueDepth
-//	pool_queue_capacity{pool="..."} = stats.QueueCapacity
-func (p *Pool) GoroutinePoolStats() (concurrency.PoolStats, bool) {
-	p.mu.RLock()
-	gp := p.goroutinePool
-	p.mu.RUnlock()
-	if gp == nil {
-		return concurrency.PoolStats{}, false
-	}
-	return gp.Stats(), true
-}
-
-// HasGoroutinePool 报告 Pool 是否配置了内部 GoroutinePool。
-func (p *Pool) HasGoroutinePool() bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.goroutinePool != nil
-}
-
-// SetLLMBatchProcessor 把 BatchProcessor 接入 Pool（Phase 3 Task 6）。
-//
-// 集成方式：
-//  1. 把 Pool 的模型替换为 BatchProcessor（其实现了 llm.Provider）
-//  2. 如果 Pool 启用了 GoroutinePool（cfg.GoroutinePool != nil），
-//     则把 BatchProcessor.Close() / flush 交给 GoroutinePool 在后台执行，
-//     避免阻塞 Pool 主调度循环。
-//
-// 注意：必须在 SetModel 之前或之后调用均可，SetLLMBatchProcessor 内部
-// 会用 BatchProcessor 覆盖原 model。Pool.Close() 时会自动调用 bp.Close()。
-func (p *Pool) SetLLMBatchProcessor(bp *llm.BatchProcessor) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.batchProcessor = bp
-	if bp != nil {
-		// 替换 model 为 BatchProcessor（实现 Provider 接口）
-		p.model = bp
-	}
-}
-
-// LLMBatchStats 返回当前 BatchProcessor 的运行指标（Phase 3 Task 6）。
-//
-// 如果未配置，返回 zero value + ok=false。可作为 Prometheus 导出源。
-func (p *Pool) LLMBatchStats() (LLMBatchStats, bool) {
-	p.mu.RLock()
-	bp := p.batchProcessor
-	p.mu.RUnlock()
-	if bp == nil {
-		return LLMBatchStats{}, false
-	}
-	return LLMBatchStats{
-		// 当前 BatchProcessor 暴露的指标有限；后续 perf-v6 会扩展。
-		Enabled:    true,
-		HasModel:   true,
-		QueueDepth: bp.QueueDepth(),
-	}, true
-}
-
-// LLMBatchStats 是 Phase 3 Task 6 的 BatchProcessor 统计快照。
-type LLMBatchStats struct {
-	Enabled    bool
-	HasModel   bool
-	QueueDepth int
-}
-
-// RunBatchFlushLoop 在 GoroutinePool 上调度 BatchProcessor 的 flush 循环（Phase 3 Task 6）。
-//
-// 当 Pool 同时配置了 GoroutinePool 与 BatchProcessor 时，调用此方法把
-// BatchProcessor 的内部 flushLoop 放到协程池中执行，防止高并发场景下
-// BatchProcessor 的定时 flush 抢占 Pool 主调度线程。
-//
-// 如果 GoroutinePool 未配置，本方法返回 concurrency.ErrPoolStopped。
-func (p *Pool) RunBatchFlushLoop(ctx context.Context) error {
-	p.mu.RLock()
-	gp := p.goroutinePool
-	bp := p.batchProcessor
-	p.mu.RUnlock()
-	if gp == nil {
-		return concurrency.ErrPoolStopped
-	}
-	if bp == nil {
-		return nil
-	}
-	// 把 BatchProcessor 的 close 任务交给 GoroutinePool
-	return gp.SubmitWithContext(ctx, func(c context.Context) error {
-		// 当 ctx 取消时调用 BatchProcessor.Close() 触发 flush
-		<-c.Done()
-		bp.Close()
-		return c.Err()
-	})
-}
 
 func generateTaskID(index int) string {
 	seq := taskIDCounter.Add(1)
