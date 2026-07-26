@@ -1,48 +1,82 @@
 {
   "date": "2026-Q2",
-  "version": "0.7.0",
+  "version": "3.1.0",
   "environment": {
-    "go": "1.26",
+    "go": "1.26.3",
     "os": "linux/amd64",
     "cpu": "4 cores",
     "memory": "8GB"
   },
+  "status": "pending_real_run",
+  "run_instructions": "cd agentprimordia && go test -bench=. -benchmem -count=3 ./bench/suite/ | tee bench/results/raw-output.txt",
   "results": {
     "tool_calling_accuracy": {
       "description": "工具调用准确率（50个场景）",
       "unit": "%",
       "value": null,
-      "note": "需配置真实 LLM 后运行"
+      "note": "需配置真实 LLM API Key 后运行: go test -bench=BenchmarkToolCalling ./bench/suite/"
     },
     "rag_recall_at_5": {
       "description": "RAG 检索 Recall@5",
       "unit": "%",
       "value": null,
-      "note": "需配置真实 LLM 后运行"
+      "note": "需配置真实 LLM API Key 后运行"
     },
     "agent_run_throughput": {
       "description": "单 Agent 运行吞吐量",
       "unit": "ops/sec",
       "value": null,
-      "note": "运行 go test -bench=BenchmarkAgentRun"
+      "note": "go test -bench=BenchmarkAgentRun ./bench/suite/"
     },
     "pool_10_concurrent": {
       "description": "10 并发 Agent 吞吐量",
       "unit": "ops/sec",
       "value": null,
-      "note": "运行 go test -bench=BenchmarkConcurrent"
+      "note": "go test -bench=BenchmarkConcurrent ./bench/suite/"
     },
     "vector_search_10k": {
       "description": "10K 向量搜索延迟 P95",
       "unit": "ms",
       "value": null,
-      "note": "运行 go test -bench=BenchmarkVectorSearch"
+      "note": "go test -bench=BenchmarkVectorSearch ./bench/suite/"
     },
     "memory_search_1k": {
       "description": "1K 记忆搜索延迟 P95",
       "unit": "ms",
       "value": null,
-      "note": "运行 go test -bench=BenchmarkMemoryLatency"
+      "note": "go test -bench=BenchmarkMemoryLatency ./bench/suite/"
+    }
+  },
+  "v31_suites": {
+    "capacity": {
+      "description": "容量规划基准（Pool 并发上限 / 内存增长曲线）",
+      "file": "bench/suite/capacity_test.go",
+      "value": null
+    },
+    "cluster": {
+      "description": "集群消息总线延迟与吞吐",
+      "file": "bench/suite/cluster_bench_test.go",
+      "value": null
+    },
+    "latency": {
+      "description": "端到端延迟分布（P50/P95/P99）",
+      "file": "bench/suite/latency_test.go",
+      "value": null
+    },
+    "learning": {
+      "description": "知识蒸馏管道吞吐量",
+      "file": "bench/suite/learning_bench_test.go",
+      "value": null
+    },
+    "privacy": {
+      "description": "PII 检测 + 路由延迟",
+      "file": "bench/suite/privacy_bench_test.go",
+      "value": null
+    },
+    "tool_calling": {
+      "description": "工具调用端到端延迟",
+      "file": "bench/suite/tool_calling_test.go",
+      "value": null
     }
   }
 }
