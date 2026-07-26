@@ -300,7 +300,7 @@ const server = Bun.serve({
   },
 });
 
-console.log(\`🚀 %s listening on http://localhost:\${server.port}\`);
+console.log("%s listening on http://localhost:" + server.port);
 `, name, name, name)
 	}
 }
