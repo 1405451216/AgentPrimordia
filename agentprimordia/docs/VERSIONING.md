@@ -8,7 +8,27 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 - **次版本号（MINOR）**：向后兼容的功能新增
 - **修订号（PATCH）**：向后兼容的问题修复
 
-当前版本：`3.0.0`（定义于 `pkg/version.go`）
+当前版本：`3.1.0`（定义于 `pkg/version.go`，git tag 管理）
+
+## 版本信息单一事实来源
+
+> **重要**：本文件是版本信息的权威参考。其他文档（README、RELEASE-NOTES、ROADMAP）中的版本描述应与本文件保持一致。
+
+| 组件 | 当前版本 | 版本定义位置 |
+|------|----------|----------------|
+| Go SDK | v3.1.0 | `pkg/version.go` + git tag |
+| TypeScript SDK | v2.0.0 | `sdk/typescript/package.json` |
+| Python 客户端 | v2.0.0 | `sdk/python/pyproject.toml` |
+| Rust 客户端 | v2.0.0 | `sdk/rust/Cargo.toml` |
+| CLI | v3.1.0 | `cmd/ap/version.go` |
+| K8s Operator | v2.0.0 | `operator/go.mod` |
+
+### 版本发布纪律
+
+1. 每次发布必须更新 `docs/CHANGELOG.md`
+2. 每次发布必须打 git tag（格式：`v{MAJOR}.{MINOR}.{PATCH}`）
+3. 功能合并后应及时 bump 版本号，避免“功能已达 v3.1 但版本号仍为 v2.0”的脱节
+4. RELEASE-NOTES 为面向用户的摘要，CHANGELOG 为完整技术记录
 
 ## 兼容性承诺
 
@@ -58,6 +78,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 | API | 替代方案 | 计划移除版本 |
 |-----|---------|-------------|
 | `NewReActAgent()` | `NewAgent()` | v4.0.0 |
+| `RegisterPProf()` | `RegisterPProfSecure()` / `RegisterPProfStrict()` | v4.0.0 |
 
 ## 模块迁移历史
 

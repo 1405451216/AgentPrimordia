@@ -2,6 +2,93 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [Unreleased]
+
+### Added
+
+- **pprof 生产强制鉴权** (`internal/health/pprof.go`): 新增 `RegisterPProfStrict` / `PProfHandlerStrict`，强制要求 PPROF_TOKEN 已设置，否则返回 `ErrPProfTokenRequired`（fail-fast）
+- **Pool 背压告警结构化日志**: `emitEvent` 节流告警从 `fmt.Printf` 迁移至 `slog.Warn`，接入统一日志管道
+- **Python/Rust 客户端定位明确**: SDK README 明确“轻量级远程 HTTP 客户端”定位
+
+### Changed
+
+- **RegisterPProf 标记 Deprecated**: 无鉴权版本仅适用于本地开发，生产环境应使用 `RegisterPProfSecure` 或 `RegisterPProfStrict`
+
+## [v3.1.0] - 2026-07-26
+
+### Added — From Framework to Production
+
+**Phase 1: 真实后端**
+- **etcd 服务发现** (`internal/agent/cluster/etcd_discovery.go`): EtcdKVStore 实现 KVStore 接口，Lease + KeepAlive 节点注册 + Watch 事件（build tag `etcd` 门控）
+- **gRPC 跨节点消息总线** (`internal/agent/cluster/grpc_bus.go`): 复用 A2A gRPC 基础设施，`cluster.proto` 消息定义
+- **WASM 真实 ABI 执行** (`wasm/tool_executor.go`): wazero 内存 API 传参/读结果，替代桩实现
+- **LLM 知识蒸馏** (`internal/agent/learning/distiller.go`): LLM 提取事实→ SemanticMemory 写入
+- **混沌真实注入** (`internal/chaos/real_injector_linux.go`): iptables/tc 网络延迟/丢包/分区（Linux）
+- **WebGPU 模型连接** (`sdk/typescript/src/webgpu_model_runner.ts`): 真实模型加载 + PrivacyRouter 集成
+- **CRDT 同步服务器** (`sdk/typescript/src/collaboration/sync-server.ts`): WebSocket 实时同步
+
+**Phase 2: 跨组件集成**
+- 集群×市场、学习×记忆、隐私×集群、混沌×Soak 联动
+
+**Phase 3: 开发者体验**
+- **CLI 集群/市场/Edge 命令**: `ap cluster`、`ap market`、`ap create-edge-agent` 脚手架
+- **Studio UI 四面板**: ChaosLab / ClusterDashboard / LearningMonitor / MarketplacePage
+
+**Phase 4: 性能验证**
+- **6 个基准套件** (`bench/suite/`): capacity / cluster / latency / learning / privacy / tool_calling
+
+## [v3.0.0] - 2026-07-20
+
+### Added — 八大方向框架落地
+
+- **混沌工程** (`internal/chaos/`): ChaosEngine 实验编排器 + 稳态验证器 + Markdown 报告 + LLM 故障代理
+- **WASM 自定义工具** (`wasm/tool_adapter.go`): WASM→Tool 适配器 + 上传 API + Ed25519 签名验证
+- **分布式集群** (`internal/agent/cluster/`): KVStore 接口 + MemKVStore + DistributedDiscovery + RemoteMessageBus（14 个文件）
+- **Agent 市场** (`internal/agent/marketplace/`): TemplateRegistry + 评分 + 一键部署 + cosign 验签
+- **Edge Agent 模板**: 开箱即用模板 + 脚手架生成
+- **隐私混合推理**: PrivacyRouter PII 检测 + 路由策略（敏感→本地 WebGPU）
+- **CRDT 协作**: Lamport Clock + LWW + CRDTDocument + AgentCRDTClient
+- **自适应学习** (`internal/agent/learning/`): KnowledgeDistiller + 能力进化框架 + 记忆集成
+
+## [v2.0.0] - 2026-07-18
+
+### Added — 生产就绪
+
+- **多租户 SaaS 隔离**: TenantManager + QuotaManager + 令牌桶限流 + context 级数据隔离
+- **密钥管理系统**: SecretsManager + AES-GCM + 环境/Vault KV v2 多后端 + TTL 缓存装饰器
+- **gRPC 传输层**: A2A gRPC Server/Client + 连接池 + 拦截器（panic 恢复 + tracing）
+- **语义缓存**: L1 内存 / L2 持久化多级缓存 + 可配置相似度阈值
+- **MapReduce 编排**: 自动分片 + 并行执行 + 结果聚合
+- **SLO/SLI 指标**: 服务质量目标监控 + 结构化定义
+- **24h Soak Test**: 持续负载测试框架（恒定/阶梯/突发/随机四模式 + 退化检测）
+- **ToT/MCTS 规划器** (`internal/agent/planning/tot_planner.go`)
+- **流式 RAG**: 多阶段管道（Rewrite → Initial → Refined，channel 增量返回）
+- **工具自动组合**: AutoComposer LLM 建议工具链自动编排
+- **Agent Mesh**: 5 种负载均衡策略
+- **Pool 优先级队列**: 亲和性调度 + 成本感知（预算/费率双约束）
+- **Studio 可视化升级**: ReactWaterfall / CostChart / WorkflowDebugPanel / ExecutionTimeline
+- **VSCode 插件深度集成**: chatPanel / runHistory / statusBar / studioApi
+- **Browser DevTools 扩展**: DevTools Panel + Content Script + Background SW + Popup
+
+### Changed
+
+- **版本统一 v2.0.0**: Go SDK / TS SDK / CLI / VSCode / Browser Extension 全局对齐
+- **Deprecated 字段移除**: ReActConfig 14 个能力字段在 v2.0 兑现移除，仅保留标量配置
+- **math/rand/v2 全量迁移**: 消除全局锁竞争（9 个文件）
+
+### Fixed
+
+- `runLoop` 7 参数过多 → `loopState` 结构体封装
+- RAG 查询提取重复（3 处）→ `extractLastUserMessage` helper
+- `Stream()` 重试不对齐 → 复用 `executeWithRetry` 泛型
+- `ReadAllPooled` 脏读 → `buf.Reset()`
+- symlink 逃逸 → `EvalSymlinks` 失败不放行
+- 熔断器 HalfOpen 反转 → 状态转换修正
+- YAML 注入 → `yaml.Marshal` 替代 Sprintf
+- Pool Task Map 无界 → `MaxRetainedTasks`
+- 编排循环缺 ctx 检查 → 全部添加取消检查
+- Metrics label 缺失 → `LabeledMetricsRecorder`
+
 ## [v0.8.0] - 2026-07-07
 
 ### Added
@@ -20,18 +107,6 @@
 
 - `github.com/jackc/pgx/v5` — pgvector 模块（无法用 stdlib 复现）
 - `github.com/tetratelabs/wazero` — wasm 模块（纯 Go WASM 运行时）
-
-## [Unreleased]
-
-### Added
-
-- **子包测试迁移**：将 `workflow_test.go` 和 `hooks_test.go` 从父包迁移到各自子包，新增 `core_test.go`、`tokencache_edge_test.go`、`gateway_test.go`，共 98 个新测试
-- **子包覆盖率提升**：workflow/ 0%→73.9%，hooks/ 0%→82.1%，core/ 0%→100%，tokencache/ 55%→96.6%，gateway/ 0%→60.9%
-
-### Changed
-
-- **Phase 3 包拆分**：提取 workflow/、hooks/、core/、dag/、cost/、bufferpool/、tokencache/、zerocopy/、hitl/、context/ 子包，父包通过类型别名保持向后兼容
-- **Deprecated 标注完善**：所有 `// Deprecated:` 注释补充 `// Removed in v2.0.` 标记
 
 ## [1.0.0] - 2026-06-30
 
