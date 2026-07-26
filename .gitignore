@@ -30,7 +30,7 @@ CodeCast-*.tar.gz
 Thumbs.db
 Desktop.ini
 ehthumbs.db
-# Windows 系统缓存（防止误入库）
+# Windows 绯荤粺缂撳瓨锛堥槻姝㈣�鍏ュ簱锛�
 **/ProgramData/Microsoft/Windows/Caches/
 **/%SystemDrive%/
 
@@ -134,12 +134,15 @@ count_lines.ps1
 .pgo/
 default.pgo
 
+# ---------- PDF 报告构建临时目录 ----------
+.pdf-build/
+
 # ---------- Go Build Cache ----------
 .gocache/
-# ����������ļ����Ѵ� index �Ƴ�
+# 死代码测试文件，已从 index 移除
 agentprimordia/internal/prompt/prompt_test.go
 
-# ��ʱ�������棨���ύ��
+# 临时分析报告（不提交）
 deadcode-report.txt
 deadcode-final.txt
 lint-report.txt
