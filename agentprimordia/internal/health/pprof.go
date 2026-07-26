@@ -4,11 +4,15 @@
 package health
 
 import (
+	"errors"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"strings"
 )
+
+// ErrPProfTokenRequired 当生产模式下 PPROF_TOKEN 未设置时返回此错误。
+var ErrPProfTokenRequired = errors.New("health: PPROF_TOKEN environment variable is required in production mode")
 
 // RegisterPProf 将 pprof 端点注册到给定的 http.ServeMux。
 // 注册以下路由：
@@ -23,14 +27,8 @@ import (
 //   - /debug/pprof/block       — 阻塞 profile
 //   - /debug/pprof/mutex       — 互斥锁 profile
 //
-// 使用示例：
-//
-//	mux := http.NewServeMux()
-//	health.RegisterPProf(mux)
-//	go http.ListenAndServe("localhost:6060", mux)
-//
-// 安全提示：pprof 端点会暴露进程内部信息，生产环境应仅监听 localhost
-// 或通过鉴权中间件保护。
+// Deprecated: 无鉴权版本，生产环境请使用 RegisterPProfSecure 或 RegisterPProfStrict。
+// 仅适用于本地开发调试。
 func RegisterPProf(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
@@ -127,4 +125,34 @@ func PProfHandlerSecure() http.Handler {
 	mux := http.NewServeMux()
 	RegisterPProfSecure(mux)
 	return mux
+}
+
+// RegisterPProfStrict 将 pprof 端点注册到给定的 http.ServeMux，
+// 强制要求环境变量 PPROF_TOKEN 已设置，否则返回 ErrPProfTokenRequired。
+// 与 RegisterPProfSecure 不同，此函数不允许开发模式回退，
+// 适用于生产环境配置校验（fail-fast）。
+//
+// 使用示例：
+//
+//	mux := http.NewServeMux()
+//	if err := health.RegisterPProfStrict(mux); err != nil {
+//		log.Fatal("pprof 配置错误: ", err)
+//	}
+//	go http.ListenAndServe(":6060", mux)
+func RegisterPProfStrict(mux *http.ServeMux) error {
+	if os.Getenv("PPROF_TOKEN") == "" {
+		return ErrPProfTokenRequired
+	}
+	RegisterPProfSecure(mux)
+	return nil
+}
+
+// PProfHandlerStrict 返回一个包含 pprof 端点的 http.Handler，
+// 强制要求 PPROF_TOKEN 已设置，否则返回错误。
+// 生产环境推荐使用此版本。
+func PProfHandlerStrict() (http.Handler, error) {
+	if os.Getenv("PPROF_TOKEN") == "" {
+		return nil, ErrPProfTokenRequired
+	}
+	return PProfHandlerSecure(), nil
 }

@@ -2,6 +2,7 @@ package health
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -200,5 +201,77 @@ func TestPProfHandlerSecure_WithToken(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Errorf("PProfHandlerSecure 正确 token 时期望状态码 %d, 得到 %d", http.StatusOK, w.Code)
+	}
+}
+
+// ===== pprof 生产强制鉴权测试（RegisterPProfStrict） =====
+
+func TestPProfStrict_NoToken_ReturnsError(t *testing.T) {
+	// 确保 PPROF_TOKEN 未设置
+	t.Setenv("PPROF_TOKEN", "")
+
+	mux := http.NewServeMux()
+	err := RegisterPProfStrict(mux)
+	if err == nil {
+		t.Fatal("期望 PPROF_TOKEN 未设置时返回错误，得到 nil")
+	}
+	if !errors.Is(err, ErrPProfTokenRequired) {
+		t.Errorf("期望 ErrPProfTokenRequired，得到: %v", err)
+	}
+}
+
+func TestPProfStrict_WithToken_Success(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "prod-secret-token")
+
+	mux := http.NewServeMux()
+	err := RegisterPProfStrict(mux)
+	if err != nil {
+		t.Fatalf("PPROF_TOKEN 已设置时不应返回错误，得到: %v", err)
+	}
+
+	// 验证鉴权生效：无 token 请求应被拒绝
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("无 Authorization 时期望 %d, 得到 %d", http.StatusUnauthorized, w.Code)
+	}
+
+	// 正确 token 应放行
+	req2 := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	req2.Header.Set("Authorization", "Bearer prod-secret-token")
+	w2 := httptest.NewRecorder()
+	mux.ServeHTTP(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Errorf("正确 token 时期望 %d, 得到 %d", http.StatusOK, w2.Code)
+	}
+}
+
+func TestPProfHandlerStrict_NoToken_ReturnsError(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "")
+
+	_, err := PProfHandlerStrict()
+	if err == nil {
+		t.Fatal("期望 PPROF_TOKEN 未设置时返回错误")
+	}
+	if !errors.Is(err, ErrPProfTokenRequired) {
+		t.Errorf("期望 ErrPProfTokenRequired，得到: %v", err)
+	}
+}
+
+func TestPProfHandlerStrict_WithToken_Success(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "handler-strict-token")
+
+	handler, err := PProfHandlerStrict()
+	if err != nil {
+		t.Fatalf("不应返回错误: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	req.Header.Set("Authorization", "Bearer handler-strict-token")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("期望 %d, 得到 %d", http.StatusOK, w.Code)
 	}
 }

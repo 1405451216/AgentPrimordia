@@ -583,13 +583,8 @@ var NewHealthChecker = health.NewChecker
 
 // RegisterPProf 将 pprof 性能分析端点注册到给定的 http.ServeMux。
 // 注册 /debug/pprof/ 下的所有标准 profile 路由（CPU、heap、goroutine 等）。
-// 生产环境应仅监听 localhost 或通过鉴权保护。
 //
-// 使用示例：
-//
-//	mux := http.NewServeMux()
-//	ap.RegisterPProf(mux)
-//	go http.ListenAndServe("localhost:6060", mux)
+// Deprecated: 无鉴权版本，生产环境请使用 RegisterPProfSecure 或 RegisterPProfStrict。
 var RegisterPProf = health.RegisterPProf
 
 // PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。
@@ -604,6 +599,18 @@ var RegisterPProfSecure = health.RegisterPProfSecure
 // PProfHandlerSecure 返回一个包含 pprof 端点的独立 http.Handler，
 // 并启用 Bearer Token 鉴权。
 var PProfHandlerSecure = health.PProfHandlerSecure
+
+// RegisterPProfStrict 将 pprof 端点注册到给定的 http.ServeMux，
+// 强制要求环境变量 PPROF_TOKEN 已设置，否则返回 ErrPProfTokenRequired。
+// 生产环境推荐使用此版本（fail-fast，不允许开发模式回退）。
+var RegisterPProfStrict = health.RegisterPProfStrict
+
+// PProfHandlerStrict 返回一个包含 pprof 端点的独立 http.Handler，
+// 强制要求 PPROF_TOKEN 已设置，否则返回错误。
+var PProfHandlerStrict = health.PProfHandlerStrict
+
+// ErrPProfTokenRequired 当生产模式下 PPROF_TOKEN 未设置时返回此错误。
+var ErrPProfTokenRequired = health.ErrPProfTokenRequired
 
 // ===== 配置加载 =====
 
