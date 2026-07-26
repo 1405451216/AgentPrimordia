@@ -16,8 +16,11 @@ type KnowledgeItem = learning.KnowledgeItem
 // LearningInteraction 一次 Agent 交互（用于知识蒸馏输入）
 type LearningInteraction = learning.Interaction
 
-// DistillerStats 蒸馏统计
+// DistillerStats 蒸馏统计（内部使用，含 atomic 字段）
 type DistillerStats = learning.DistillerStats
+
+// DistillerStatsSnapshot 蒸馏统计快照（值安全，GetStats 返回此类型）
+type DistillerStatsSnapshot = learning.DistillerStatsSnapshot
 
 var (
 	// NewKnowledgeDistiller 创建知识蒸馏器

@@ -112,8 +112,8 @@ func TestRemoteMessageBusLocalSend(t *testing.T) {
 	}
 
 	stats := remoteBus.GetStats()
-	if stats.LocalSends.Load() != 1 {
-		t.Errorf("LocalSends = %d, want 1", stats.LocalSends.Load())
+	if stats.LocalSends != 1 {
+		t.Errorf("LocalSends = %d, want 1", stats.LocalSends)
 	}
 }
 
@@ -164,8 +164,8 @@ func TestRemoteMessageBusRemoteForward(t *testing.T) {
 	}
 
 	stats := remoteBus.GetStats()
-	if stats.RemoteForwards.Load() != 1 {
-		t.Errorf("RemoteForwards = %d, want 1", stats.RemoteForwards.Load())
+	if stats.RemoteForwards != 1 {
+		t.Errorf("RemoteForwards = %d, want 1", stats.RemoteForwards)
 	}
 }
 
@@ -214,11 +214,11 @@ func TestRemoteMessageBusBroadcast(t *testing.T) {
 	}
 
 	stats := remoteBus.GetStats()
-	if stats.Broadcasts.Load() != 1 {
-		t.Errorf("Broadcasts = %d, want 1", stats.Broadcasts.Load())
+	if stats.Broadcasts != 1 {
+		t.Errorf("Broadcasts = %d, want 1", stats.Broadcasts)
 	}
-	if stats.RemoteBroadcasts.Load() != 1 {
-		t.Errorf("RemoteBroadcasts = %d, want 1", stats.RemoteBroadcasts.Load())
+	if stats.RemoteBroadcasts != 1 {
+		t.Errorf("RemoteBroadcasts = %d, want 1", stats.RemoteBroadcasts)
 	}
 }
 

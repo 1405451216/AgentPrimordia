@@ -53,11 +53,18 @@ type KnowledgeDistiller struct {
 	stats  DistillerStats
 }
 
-// DistillerStats 蒸馏统计
+// DistillerStats 蒸馏统计（内部使用，含 atomic 字段，禁止值拷贝）
 type DistillerStats struct {
 	TotalInteractions  atomic.Int64
 	TotalDistilled     atomic.Int64
 	TotalKnowledgeItems atomic.Int64
+}
+
+// DistillerStatsSnapshot 蒸馏统计快照（值安全，可自由拷贝）
+type DistillerStatsSnapshot struct {
+	TotalInteractions   int64 `json:"total_interactions"`
+	TotalDistilled      int64 `json:"total_distilled"`
+	TotalKnowledgeItems int64 `json:"total_knowledge_items"`
 }
 
 // NewKnowledgeDistiller 创建知识蒸馏器
@@ -255,9 +262,13 @@ func (d *KnowledgeDistiller) SearchKnowledge(category, query string) []Knowledge
 	return results
 }
 
-// GetStats 获取蒸馏统计
-func (d *KnowledgeDistiller) GetStats() DistillerStats {
-	return d.stats
+// GetStats 获取蒸馏统计快照（返回值安全，无 atomic 拷贝）
+func (d *KnowledgeDistiller) GetStats() DistillerStatsSnapshot {
+	return DistillerStatsSnapshot{
+		TotalInteractions:   d.stats.TotalInteractions.Load(),
+		TotalDistilled:      d.stats.TotalDistilled.Load(),
+		TotalKnowledgeItems: d.stats.TotalKnowledgeItems.Load(),
+	}
 }
 
 // splitSentences 分割句子

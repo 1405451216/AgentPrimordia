@@ -134,13 +134,22 @@ type RemoteMessageBus struct {
 	state     *DistributedState // 可选：关联分布式状态用于同步
 }
 
-// RemoteBusStats 远程消息总线统计
+// RemoteBusStats 远程消息总线统计（内部使用，含 atomic 字段，禁止值拷贝）
 type RemoteBusStats struct {
 	LocalSends       atomic.Int64
 	RemoteForwards   atomic.Int64
 	RemoteFailures   atomic.Int64
 	Broadcasts       atomic.Int64
 	RemoteBroadcasts atomic.Int64
+}
+
+// RemoteBusStatsSnapshot 远程消息总线统计快照（值安全，可自由拷贝）
+type RemoteBusStatsSnapshot struct {
+	LocalSends       int64 `json:"local_sends"`
+	RemoteForwards   int64 `json:"remote_forwards"`
+	RemoteFailures   int64 `json:"remote_failures"`
+	Broadcasts       int64 `json:"broadcasts"`
+	RemoteBroadcasts int64 `json:"remote_broadcasts"`
 }
 
 // RemoteBusConfig 远程消息总线配置
@@ -194,9 +203,15 @@ func (b *RemoteMessageBus) GetNodes() []*RemoteNode {
 	return result
 }
 
-// GetStats 获取统计信息
-func (b *RemoteMessageBus) GetStats() RemoteBusStats {
-	return b.stats
+// GetStats 获取统计信息快照（返回值安全，无 atomic 拷贝）
+func (b *RemoteMessageBus) GetStats() RemoteBusStatsSnapshot {
+	return RemoteBusStatsSnapshot{
+		LocalSends:       b.stats.LocalSends.Load(),
+		RemoteForwards:   b.stats.RemoteForwards.Load(),
+		RemoteFailures:   b.stats.RemoteFailures.Load(),
+		Broadcasts:       b.stats.Broadcasts.Load(),
+		RemoteBroadcasts: b.stats.RemoteBroadcasts.Load(),
+	}
 }
 
 // Send 发送消息到指定 Agent
@@ -278,7 +293,6 @@ func (b *RemoteMessageBus) Broadcast(ctx context.Context, msg *bus.BusMessage) m
 	b.mu.RUnlock()
 
 	var wg sync.WaitGroup
-	var remoteMu sync.Mutex
 
 	for _, node := range nodes {
 		wg.Add(1)
@@ -294,7 +308,6 @@ func (b *RemoteMessageBus) Broadcast(ctx context.Context, msg *bus.BusMessage) m
 	}
 	wg.Wait()
 
-	_ = remoteMu // 保持引用
 	return results
 }
 

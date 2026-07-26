@@ -142,10 +142,10 @@ func TestKnowledgeDistillerStats(t *testing.T) {
 	}
 
 	stats := distiller.GetStats()
-	if stats.TotalInteractions.Load() != 5 {
-		t.Errorf("TotalInteractions = %d, 期望 5", stats.TotalInteractions.Load())
+	if stats.TotalInteractions != 5 {
+		t.Errorf("TotalInteractions = %d, 期望 5", stats.TotalInteractions)
 	}
-	if stats.TotalDistilled.Load() == 0 {
+	if stats.TotalDistilled == 0 {
 		t.Error("TotalDistilled 应 > 0")
 	}
 }

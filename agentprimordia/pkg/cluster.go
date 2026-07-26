@@ -103,8 +103,11 @@ type RemoteMessageBus = cluster.RemoteMessageBus
 // RemoteBusConfig 远程消息总线配置
 type RemoteBusConfig = cluster.RemoteBusConfig
 
-// RemoteBusStats 远程消息总线统计
+// RemoteBusStats 远程消息总线统计（内部使用，含 atomic 字段）
 type RemoteBusStats = cluster.RemoteBusStats
+
+// RemoteBusStatsSnapshot 远程消息总线统计快照（值安全，GetStats 返回此类型）
+type RemoteBusStatsSnapshot = cluster.RemoteBusStatsSnapshot
 
 var (
 	// NewRemoteNode 创建远程节点
