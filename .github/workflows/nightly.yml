@@ -103,3 +103,45 @@ jobs:
 
       - name: Verify image
         run: docker run --rm agentprimordia:nightly echo "Docker image OK"
+
+  chaos-engineering:
+    name: Chaos Engineering Nightly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Download dependencies
+        working-directory: agentprimordia
+        run: go mod download
+
+      - name: Run chaos engineering tests
+        working-directory: agentprimordia
+        run: |
+          go test -v -race -count=1 -timeout=10m ./internal/chaos/... 2>&1 | tee chaos-report.txt
+
+      - name: Run soak test (short mode)
+        working-directory: agentprimordia
+        run: |
+          go test -v -race -count=1 -timeout=5m -run TestSoak ./internal/llm/soak/... 2>&1 | tee -a chaos-report.txt || true
+
+      - name: Upload chaos report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-nightly-report
+          path: agentprimordia/chaos-report.txt
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 混沌工程 Nightly 报告" >> $GITHUB_STEP_SUMMARY
+          echo "运行时间: $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          if [ -f agentprimordia/chaos-report.txt ]; then
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            tail -20 agentprimordia/chaos-report.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
