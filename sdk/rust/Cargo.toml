@@ -2,7 +2,7 @@
 name = "agentprimordia"
 version = "2.0.0"
 edition = "2021"
-description = "AgentPrimordia SDK for Rust"
+description = "AgentPrimordia Remote HTTP Client for Rust (lightweight REST API client, not a full SDK)"
 
 [dependencies]
 reqwest = { version = "0.12", features = ["json", "stream"] }
