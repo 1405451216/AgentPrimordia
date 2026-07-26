@@ -67,3 +67,48 @@ var (
 	// NewDistributedState 创建分布式状态存储
 	NewDistributedState = cluster.NewDistributedState
 )
+
+// ===== 分布式服务发现 =====
+
+// KVStore 分布式 KV 存储接口（支撑分布式服务发现）
+type KVStore = cluster.KVStore
+
+// KVEvent KV 变化事件
+type KVEvent = cluster.KVEvent
+
+// MemKVStore 内存 KV 存储（测试和单节点模式用）
+type MemKVStore = cluster.MemKVStore
+
+// DistributedDiscovery 分布式服务发现（基于 KV 存储）
+type DistributedDiscovery = cluster.DistributedDiscovery
+
+// DistributedDiscoveryConfig 分布式发现配置
+type DistributedDiscoveryConfig = cluster.DistributedDiscoveryConfig
+
+var (
+	// NewMemKVStore 创建内存 KV 存储
+	NewMemKVStore = cluster.NewMemKVStore
+	// NewDistributedDiscovery 创建分布式服务发现
+	NewDistributedDiscovery = cluster.NewDistributedDiscovery
+)
+
+// ===== 跨节点消息总线 =====
+
+// RemoteNode 远程节点连接
+type RemoteNode = cluster.RemoteNode
+
+// RemoteMessageBus 跨节点消息总线
+type RemoteMessageBus = cluster.RemoteMessageBus
+
+// RemoteBusConfig 远程消息总线配置
+type RemoteBusConfig = cluster.RemoteBusConfig
+
+// RemoteBusStats 远程消息总线统计
+type RemoteBusStats = cluster.RemoteBusStats
+
+var (
+	// NewRemoteNode 创建远程节点
+	NewRemoteNode = cluster.NewRemoteNode
+	// NewRemoteMessageBus 创建跨节点消息总线
+	NewRemoteMessageBus = cluster.NewRemoteMessageBus
+)

@@ -107,11 +107,11 @@ v3.0 启动
 | # | 任务 | 文件 | 说明 |
 |---|------|------|------|
 | 1 | ClusterManager | `cluster/manager.go` | 集群管理器：节点加入/离开/心跳/选举 |
-| 2 | 分布式发现 | `cluster/discovery_distributed.go` | etcd 后端实现（build tag 门控） |
+| 2 | 分布式发现 | `cluster/discovery_distributed.go` | ✅ DistributedDiscovery + KVStore 接口 + MemKVStore（可插拔 etcd/Consul） |
 | 3 | 分布式状态 | `cluster/state.go` | 分布式 KV 状态存储 + 一致性哈希分片 |
-| 4 | 跨节点消息 | `cluster/remote_bus.go` | RemoteMessageBus：gRPC 跨节点消息 |
-| 5 | 选举 | `cluster/election.go` | Raft 简化版领导者选举 |
-| 6 | 测试 | `cluster/*_test.go` | 管理器/发现/状态/消息全覆盖 |
+| 4 | 跨节点消息 | `cluster/remote_bus.go` | ✅ RemoteMessageBus + RemoteNode + HTTP 跨节点消息 + 状态同步 + HTTP Handler |
+| 5 | 选举 | `cluster/manager.go`（内联） | 简化版基于租约的领导者选举（electionLoop/checkLeadership/startElection） |
+| 6 | 测试 | `cluster/*_test.go` | ✅ 管理器/发现/状态/消息/远程总线全覆盖（discovery_distributed_test.go + remote_bus_test.go） |
 
 ---
 
@@ -138,7 +138,7 @@ v3.0 启动
 | 1 | EdgeAgentTemplate | `edge/template.ts` | 开箱即用模板：fetch handler→Agent run→SSE 流 |
 | 2 | 脚手架生成 | `edge/scaffold.ts` | `npx @agentprimordia/sdk create-edge-agent` |
 | 3 | wrangler 配置 | `edge/wrangler-template.toml` | CF Workers 部署配置模板 |
-| 4 | 测试 | `edge/*_test.ts` | 模板验证 |
+| 4 | 测试 | `tests/unit/edge-template.test.ts` | ✅ 14 个测试用例（模板/脚手架/wrangler 配置/TSConfig） |
 
 ---
 
@@ -151,7 +151,7 @@ v3.0 启动
 | 1 | PrivacyRouter | `llm/privacy-router.ts` | PII 检测→本地 WebGPU / 远程 API 路由 |
 | 2 | 混合推理策略 | `llm/hybrid-strategy.ts` | 成本/延迟/隐私 三维路由策略 |
 | 3 | PII 脱敏 | `llm/pii-redact.ts` | 发送远程前自动脱敏 PII |
-| 4 | 测试 | `llm/*_test.ts` | 路由/策略/脱敏全覆盖 |
+| 4 | 测试 | `tests/unit/privacy-router.test.ts` | ✅ 18 个测试用例（PII 检测/脱敏/路由策略） |
 
 ---
 
@@ -164,7 +164,7 @@ v3.0 启动
 | 1 | AgentCRDTClient | `collaboration/agent-client.ts` | Agent 作为 CRDT 客户端参与编辑 |
 | 2 | 实时同步层 | `collaboration/sync-layer.ts` | WebSocket 实时操作同步 |
 | 3 | 冲突解决策略 | `collaboration/conflict-resolver.ts` | Agent 生成内容与人工编辑的冲突解决 |
-| 4 | 测试 | `collaboration/*_test.ts` | 全覆盖 |
+| 4 | 测试 | `tests/unit/agent-client.test.ts` | ✅ 25 个测试用例（编辑/同步/冲突解决/批量冲突） |
 
 ---
 
@@ -197,3 +197,17 @@ v3.0 启动
 ---
 
 *本计划将随实施进度持续更新。每个方向完成后标记状态并更新完成项计数。*
+
+### 文件合并说明
+
+以下计划中的多个独立文件被合并到更大的文件中，功能完整：
+
+| 方向 | 计划文件 | 实际文件 | 说明 |
+|------|----------|----------|------|
+| 4. 集群 | election.go | manager.go（内联） | 选举逻辑在 ClusterManager 中实现 |
+| 8. 市场 | registry.go, deploy.go, validator.go | template.go（合并） | 全部功能在单个文件中 |
+| 3. 学习 | evolver.go, feedback.go | distiller.go（合并） | KnowledgeDistiller + CapabilityEvolver + FeedbackLearner |
+| 1. WASM | upload.go, resource.go | tool_adapter.go（合并） | UploadTool 方法 + 资源限制内联 |
+| 2. Edge | scaffold.ts, wrangler-template.toml | template.ts（合并） | 脚手架 + wrangler 配置生成 |
+| 6. 隐私 | hybrid-strategy.ts, pii-redact.ts | privacy-router.ts（合并） | PII 检测 + 脱敏 + 路由策略 |
+| 7. CRDT | sync-layer.ts, conflict-resolver.ts | agent-client.ts（合并） | WebSocket 同步 + ConflictResolver |
