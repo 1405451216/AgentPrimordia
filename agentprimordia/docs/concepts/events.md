@@ -1,1 +1,49 @@
-﻿
+﻿# 事件系统（Events）
+
+AgentPrimordia 内置轻量级事件总线，用于模块间解耦通信。
+
+## 核心概念
+
+- **Event**：事件载体，包含 ID、类型、来源、时间戳和 Payload
+- **Bus**：事件总线，支持发布/订阅模式，线程安全
+- **Subscriber**：订阅者，通过 channel 接收感兴趣的事件
+
+## 事件类型
+
+| 事件 | 说明 |
+|------|------|
+| `agent.start` | Agent 启动 |
+| `agent.stop` | Agent 停止 |
+| `agent.panic` | Agent 异常 |
+| `agent.error` | Agent 错误 |
+| `turn.start` / `turn.end` | ReAct 轮次开始/结束 |
+| `tool.call` / `tool.result` | 工具调用/结果 |
+| `llm.call` / `llm.response` | LLM 请求/响应 |
+| `pool.dispatch` / `pool.complete` | Pool 任务分发/完成 |
+| `*` | 通配符，订阅所有事件 |
+
+## 使用方式
+
+```go
+import "agentprimordia/internal/events"
+
+bus := events.NewBus()
+
+// 订阅
+sub := bus.Subscribe(events.EventToolCall)
+go func() {
+    for event := range sub.Ch {
+        fmt.Printf("工具调用: %v\n", event.Payload)
+    }
+}()
+
+// 发布
+bus.PublishAsync("tool.call", "agent-1", payload)
+```
+
+## 设计要点
+
+- 异步发布（`PublishAsync`），不阻塞调用方
+- 支持通配符订阅（`*`）
+- 关闭后发布返回 `ErrBusClosed`
+- 缓冲区默认 64，可通过选项调整

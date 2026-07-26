@@ -1,0 +1,108 @@
+# 向量存储选型指南
+
+> 本文档帮助用户根据数据规模选择合适的向量存储后端。
+
+## 决策矩阵
+
+| 数据规模 | 推荐后端 | 理由 |
+|----------|----------|------|
+| < 10K 向量 | **内置 HNSW**（`internal/memory/hnsw.go`） | 零依赖、纯内存、延迟最低 |
+| 10K - 100K 向量 | **内置 HNSW** + 监控内存 | 仍可控，建议 < 512MB 内存预算 |
+| 100K - 1M 向量 | **pgvector**（`pgvector/`） | PostgreSQL 生态、SQL 查询、HNSW/IVFFlat 索引 |
+| > 1M 向量 | **Qdrant / Milvus** | 专用向量数据库、分布式、GPU 加速 |
+
+## 内置 HNSW（默认）
+
+```go
+// 零配置，适合小规模场景
+store := memory.NewVectorStore(1536) // 维度
+store.Add(ctx, memory.VectorRecord{
+    ID:     "doc-1",
+    Vector: embedding,
+    Meta:   map[string]any{"source": "wiki"},
+})
+results, _ := store.Search(ctx, queryVec, 5) // Top-5
+```
+
+**优势**：零外部依赖、纯 Go、与 RAG 管道无缝集成
+**限制**：全内存索引，>1M 向量时内存压力显著（每 1536 维向量约 6KB + 图结构开销）
+
+## pgvector（推荐中大规模）
+
+```go
+import "agentprimordia/pgvector"
+
+store, err := pgvector.NewStore(pgvector.Config{
+    DSN:       "postgres://user:pass@localhost:5432/ap?sslmode=disable",
+    TableName: "agent_embeddings",
+    Dimension: 1536,
+    IndexType: pgvector.IndexHNSW, // 或 IndexIVFFlat
+})
+```
+
+**优势**：
+- PostgreSQL 生态（事务、JOIN、SQL 过滤）
+- HNSW / IVFFlat 双索引
+- 独立 Go 模块，pgx 依赖不污染主框架
+- 支持 JSONB 元数据过滤
+
+**部署**：
+```bash
+# Docker 一键启动
+docker run -d --name pgvector \
+  -e POSTGRES_DB=ap -e POSTGRES_PASSWORD=secret \
+  -p 5432:5432 pgvector/pgvector:pg16
+```
+
+## Qdrant / Milvus（超大规模）
+
+当向量数超过 1M 或需要以下能力时，建议使用专用向量数据库：
+
+- 分布式水平扩展
+- GPU 加速索引构建
+- 多租户隔离
+- 混合搜索（向量 + 全文 + 结构化过滤）
+
+AgentPrimordia 的 `VectorStore` 接口设计允许无缝切换后端：
+
+```go
+// 只需实现 memory.VectorStore 接口
+type VectorStore interface {
+    Add(ctx context.Context, record VectorRecord) error
+    Search(ctx context.Context, query []float32, topK int) ([]SearchResult, error)
+    Delete(ctx context.Context, id string) error
+    Count(ctx context.Context) (int, error)
+}
+```
+
+## 性能参考
+
+| 后端 | 10K 搜索 P95 | 100K 搜索 P95 | 1M 搜索 P95 | 内存占用 |
+|------|-------------|--------------|-------------|----------|
+| 内置 HNSW | ~2ms | ~8ms | ~30ms | 全量常驻 |
+| pgvector (HNSW) | ~5ms | ~15ms | ~40ms | PG 管理 |
+| Qdrant | ~3ms | ~10ms | ~20ms | 独立服务 |
+
+> 注：以上为估算值，实际性能取决于硬件配置和向量维度。建议运行 `bench/suite/` 获取实测数据。
+
+## RAG 集成
+
+无论选择哪种后端，RAG 管道（`internal/memory/rag.go`）均通过 `VectorStore` 接口透明集成：
+
+```go
+ragStore := memory.NewRAGStore(memory.RAGConfig{
+    VectorStore: myVectorStore, // 任意后端
+    EpisodeStore: episodeStore,
+    FusionMode:  memory.FusionRRF,
+})
+```
+
+## 迁移路径
+
+```
+起步（< 10K）          成长（10K-1M）           规模化（> 1M）
+内置 HNSW    ──→     pgvector        ──→     Qdrant/Milvus
+零配置               一次 DSN 配置            独立集群部署
+```
+
+迁移时只需替换 `VectorStore` 实现，RAG 管道和 Agent 代码无需修改。

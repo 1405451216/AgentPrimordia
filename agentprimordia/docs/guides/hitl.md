@@ -1,1 +1,48 @@
-﻿
+﻿# Human-in-the-Loop（HITL）
+
+HITL 模块让 Agent 在执行敏感操作前请求人类确认，实现人机协作。
+
+## 工作原理
+
+当工具调用被标记为需要确认时，ReAct 循环会暂停执行，等待人类审批：
+
+1. LLM 发起工具调用
+2. HITL Manager 检查该工具是否需要确认
+3. 若需要，生成确认请求并阻塞
+4. 人类通过 API 批准或拒绝
+5. 循环继续或中止
+
+## 使用方式
+
+```go
+import ap "agentprimordia/pkg"
+
+hitlMgr := ap.NewHITLManager()
+
+// 标记需要确认的工具
+hitlMgr.RequireConfirmation("shell", "filesystem.write", "database.execute")
+
+// 注入 Agent
+agent := ap.NewReActAgent(cfg).
+    WithTools(toolkit).
+    WithHITL(hitlMgr)
+```
+
+## 确认回调
+
+注册自定义确认处理器（例如对接 Web UI 或 Slack）：
+
+```go
+hitlMgr.SetHandler(func(req ap.ConfirmRequest) (bool, error) {
+    fmt.Printf("工具 %s 请求执行:\n%s\n", req.ToolName, req.Args)
+    // 返回 true 批准，false 拒绝
+    return askUserForApproval(req)
+})
+```
+
+## 适用场景
+
+- Shell 命令执行（防止危险操作）
+- 文件写入/删除
+- 数据库变更
+- 外部 API 调用（如发送邮件、支付）
