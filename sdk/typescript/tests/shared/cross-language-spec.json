@@ -1,0 +1,143 @@
+{
+  "version": "1.0.0",
+  "description": "Go/TS 跨语言行为一致性测试规范",
+  "testSuites": [
+    {
+      "name": "agent_config",
+      "description": "Agent 配置等价性",
+      "cases": [
+        {
+          "id": "agent_basic_config",
+          "description": "基本 Agent 配置应产生等价内部状态",
+          "input": {
+            "name": "test-agent",
+            "systemPrompt": "You are a helpful assistant",
+            "model": "gpt-4",
+            "maxTurns": 10,
+            "temperature": 0.7
+          },
+          "expected": {
+            "name": "test-agent",
+            "maxTurns": 10,
+            "temperature": 0.7
+          }
+        },
+        {
+          "id": "agent_default_max_turns",
+          "description": "默认 MaxTurns 应为 50",
+          "input": {
+            "name": "default-agent"
+          },
+          "expected": {
+            "maxTurns": 50
+          }
+        }
+      ]
+    },
+    {
+      "name": "tool_execution",
+      "description": "工具执行行为一致性",
+      "cases": [
+        {
+          "id": "echo_tool_basic",
+          "description": "Echo 工具应返回输入文本",
+          "input": {
+            "toolName": "echo",
+            "args": {"text": "hello world"}
+          },
+          "expected": {
+            "result": "Echo: hello world"
+          }
+        },
+        {
+          "id": "echo_tool_empty",
+          "description": "Echo 工具空输入应返回默认值",
+          "input": {
+            "toolName": "echo",
+            "args": {}
+          },
+          "expected": {
+            "result": "Echo: empty"
+          }
+        }
+      ]
+    },
+    {
+      "name": "vector_operations",
+      "description": "向量操作一致性",
+      "cases": [
+        {
+          "id": "cosine_similarity_identical",
+          "description": "相同向量的余弦相似度应为 1.0",
+          "input": {
+            "vectorA": [1.0, 0.0, 0.0],
+            "vectorB": [1.0, 0.0, 0.0]
+          },
+          "expected": {
+            "score": 1.0,
+            "tolerance": 0.001
+          }
+        },
+        {
+          "id": "cosine_similarity_orthogonal",
+          "description": "正交向量的余弦相似度应为 0.0",
+          "input": {
+            "vectorA": [1.0, 0.0, 0.0],
+            "vectorB": [0.0, 1.0, 0.0]
+          },
+          "expected": {
+            "score": 0.0,
+            "tolerance": 0.001
+          }
+        }
+      ]
+    },
+    {
+      "name": "error_handling",
+      "description": "错误处理一致性",
+      "cases": [
+        {
+          "id": "empty_agent_name",
+          "description": "空 Agent 名称应返回错误",
+          "input": {
+            "name": ""
+          },
+          "expected": {
+            "shouldError": true
+          }
+        },
+        {
+          "id": "negative_max_turns",
+          "description": "负数 MaxTurns 应返回错误",
+          "input": {
+            "name": "test",
+            "maxTurns": -1
+          },
+          "expected": {
+            "shouldError": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "json_serialization",
+      "description": "JSON 序列化一致性",
+      "cases": [
+        {
+          "id": "vector_record_roundtrip",
+          "description": "VectorRecord JSON 序列化/反序列化应保持数据一致",
+          "input": {
+            "id": "test-1",
+            "vector": [0.1, 0.2, 0.3],
+            "metadata": {"source": "test"}
+          },
+          "expected": {
+            "id": "test-1",
+            "vector": [0.1, 0.2, 0.3],
+            "metadata": {"source": "test"}
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,14 +1,16 @@
+// Package ebpf 提供 Agent 执行全链路 syscall/IO profiling。
+//
+// 在 Linux 平台上，通过读取 /proc/[pid]/io 获取进程级读写统计。
+// 在其他平台上，返回 ErrNotSupported。
+//
+// 完整 eBPF 实现（需 cilium/ebpf）可通过构建标签启用。
 package ebpf
 
 import (
 	"errors"
-	"runtime"
 )
 
-// ===== #13 eBPF 系统调用追踪 =====
-// 注意：eBPF 是 Linux 特有功能，此包仅在 Linux 环境编译。
-// 在非 Linux 平台，所有操作返回 ErrNotSupported。
-
+// ErrNotSupported 表示当前平台不支持追踪。
 var ErrNotSupported = errors.New("eBPF is only supported on Linux")
 
 // Tracer 是 eBPF 追踪器的接口抽象。
@@ -41,31 +43,5 @@ type TracerConfig struct {
 // NewTracer 创建 eBPF 追踪器。
 // 在 Linux 上返回真实实现，其他平台返回 no-op 实现。
 func NewTracer(config TracerConfig) Tracer {
-	if runtime.GOOS == "linux" {
-		return newLinuxTracer(config)
-	}
-	return &noopTracer{}
+	return newPlatformTracer(config)
 }
-
-// noopTracer 是非 Linux 平台的 no-op 实现。
-type noopTracer struct{}
-
-func (t *noopTracer) Attach() error               { return ErrNotSupported }
-func (t *noopTracer) Detach() error               { return nil }
-func (t *noopTracer) Events() <-chan SyscallEvent { return nil }
-func (t *noopTracer) Close() error                { return nil }
-
-// newLinuxTracer Linux 平台真实实现（需要 cilium/ebpf 依赖）。
-// 当前为占位实现，恢复网络下载 github.com/cilium/ebpf 后替换。
-func newLinuxTracer(config TracerConfig) Tracer {
-	return &linuxTracerStub{config: config}
-}
-
-type linuxTracerStub struct {
-	config TracerConfig
-}
-
-func (t *linuxTracerStub) Attach() error               { return ErrNotSupported }
-func (t *linuxTracerStub) Detach() error               { return nil }
-func (t *linuxTracerStub) Events() <-chan SyscallEvent { return nil }
-func (t *linuxTracerStub) Close() error                { return nil }

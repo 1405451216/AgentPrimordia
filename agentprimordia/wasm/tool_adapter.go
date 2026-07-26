@@ -1,0 +1,292 @@
+package wasm
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"sync"
+	"time"
+)
+
+// ToolMetadata WASM 工具元数据
+type ToolMetadata struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+	// ExecuteFunc 是 WASM 模块中导出的执行函数名
+	ExecuteFunc string `json:"execute_func"`
+	// Version 模块版本
+	Version string `json:"version"`
+}
+
+// WASMToolAdapter 将 WASM 模块适配为 tools.Tool 接口
+//
+// 使用方式：
+//
+//	sandbox := wasm.NewSandbox(wasm.DefaultSandboxConfig())
+//	adapter := wasm.NewWASMToolAdapter(sandbox)
+//	err := adapter.RegisterTool(ctx, wasm.ToolMetadata{
+//	    Name:        "calculator",
+//	    Description: "A simple calculator tool",
+//	    Parameters:  json.RawMessage(`{"type":"object","properties":{"expression":{"type":"string"}}}`),
+//	    ExecuteFunc: "calculate",
+//	    Version:     "1.0.0",
+//	}, wasmBytes)
+type WASMToolAdapter struct {
+	sandbox *Sandbox
+	mu      sync.RWMutex
+	tools   map[string]*wasmToolEntry
+	logger  *slog.Logger
+}
+
+type wasmToolEntry struct {
+	metadata ToolMetadata
+	module   string // 沙箱中的模块名
+}
+
+// WASMToolResult WASM 工具执行结果（从 WASM 内存读取）
+type WASMToolResult struct {
+	Content string `json:"content"`
+	IsError bool   `json:"is_error"`
+}
+
+// NewWASMToolAdapter 创建 WASM 工具适配器
+func NewWASMToolAdapter(sandbox *Sandbox) *WASMToolAdapter {
+	return &WASMToolAdapter{
+		sandbox: sandbox,
+		tools:   make(map[string]*wasmToolEntry),
+		logger:  slog.Default(),
+	}
+}
+
+// WithLogger 设置日志器
+func (a *WASMToolAdapter) WithLogger(logger *slog.Logger) *WASMToolAdapter {
+	a.logger = logger
+	return a
+}
+
+// RegisterTool 注册一个 WASM 工具
+//
+// 流程：
+// 1. 验证元数据
+// 2. 将 WASM 字节码加载到沙箱
+// 3. 注册工具元数据
+func (a *WASMToolAdapter) RegisterTool(ctx context.Context, meta ToolMetadata, wasmBytes []byte) error {
+	if meta.Name == "" {
+		return fmt.Errorf("wasm: tool name is required")
+	}
+	if meta.ExecuteFunc == "" {
+		return fmt.Errorf("wasm: execute_func is required")
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// 检查是否已注册
+	if _, exists := a.tools[meta.Name]; exists {
+		return fmt.Errorf("wasm: tool %q already registered", meta.Name)
+	}
+
+	// 加载 WASM 模块到沙箱
+	moduleName := "tool_" + meta.Name
+	if err := a.sandbox.Load(moduleName, wasmBytes); err != nil {
+		return fmt.Errorf("wasm: load module for tool %q: %w", meta.Name, err)
+	}
+
+	a.tools[meta.Name] = &wasmToolEntry{
+		metadata: meta,
+		module:   moduleName,
+	}
+
+	a.logger.Info("WASM 工具注册成功",
+		"name", meta.Name,
+		"version", meta.Version,
+		"execute_func", meta.ExecuteFunc,
+	)
+
+	return nil
+}
+
+// UnregisterTool 注销一个 WASM 工具
+func (a *WASMToolAdapter) UnregisterTool(name string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	entry, exists := a.tools[name]
+	if !exists {
+		return fmt.Errorf("wasm: tool %q not found", name)
+	}
+
+	if err := a.sandbox.Unload(entry.module); err != nil {
+		return fmt.Errorf("wasm: unload module for tool %q: %w", name, err)
+	}
+
+	delete(a.tools, name)
+	a.logger.Info("WASM 工具已注销", "name", name)
+	return nil
+}
+
+// ListTools 列出已注册的 WASM 工具
+func (a *WASMToolAdapter) ListTools() []ToolMetadata {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	result := make([]ToolMetadata, 0, len(a.tools))
+	for _, entry := range a.tools {
+		result = append(result, entry.metadata)
+	}
+	return result
+}
+
+// GetTool 获取指定工具的元数据
+func (a *WASMToolAdapter) GetTool(name string) (ToolMetadata, bool) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	entry, exists := a.tools[name]
+	if !exists {
+		return ToolMetadata{}, false
+	}
+	return entry.metadata, true
+}
+
+// ExecuteTool 执行 WASM 工具
+//
+// 流程：
+// 1. 查找工具元数据
+// 2. 在沙箱中执行 WASM 导出函数
+// 3. 解析返回值
+func (a *WASMToolAdapter) ExecuteTool(ctx context.Context, toolName string, args json.RawMessage) (*WASMToolResult, error) {
+	a.mu.RLock()
+	entry, exists := a.tools[toolName]
+	a.mu.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("wasm: tool %q not found", toolName)
+	}
+
+	// 执行 WASM 函数
+	// WASM 函数接收参数通过内存写入，这里简化为直接调用
+	// 实际实现需要通过 WASM 内存 API 传递 JSON 参数
+	result, err := a.sandbox.Execute(ctx, entry.module, entry.metadata.ExecuteFunc)
+	if err != nil {
+		return &WASMToolResult{
+			Content: fmt.Sprintf("execution error: %v", err),
+			IsError: true,
+		}, nil
+	}
+
+	// 简化：WASM 函数返回 0 表示成功，非 0 表示错误
+	// 实际实现需要从 WASM 内存读取 JSON 结果
+	if result == 0 {
+		return &WASMToolResult{
+			Content: "ok",
+			IsError: false,
+		}, nil
+	}
+
+	return &WASMToolResult{
+		Content: fmt.Sprintf("tool execution returned: %d", result),
+		IsError: result != 0,
+	}, nil
+}
+
+// Close 关闭适配器，卸载所有模块
+func (a *WASMToolAdapter) Close() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	for name, entry := range a.tools {
+		_ = a.sandbox.Unload(entry.module)
+		delete(a.tools, name)
+	}
+
+	a.logger.Info("WASM 工具适配器已关闭")
+	return nil
+}
+
+// UploadRequest WASM 工具上传请求
+type UploadRequest struct {
+	ToolName    string          `json:"tool_name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+	ExecuteFunc string          `json:"execute_func"`
+	Version     string          `json:"version"`
+	// WASM 字节码
+	WasmBytes []byte `json:"-"`
+	// 签名（Ed25519）
+	Signature []byte `json:"signature"`
+	// 公钥
+	PublicKey []byte `json:"public_key"`
+	// 最大执行时间
+	MaxExecutionTime time.Duration `json:"max_execution_time"`
+	// 最大内存页数
+	MaxMemoryPages int `json:"max_memory_pages"`
+}
+
+// UploadResponse WASM 工具上传响应
+type UploadResponse struct {
+	Success  bool   `json:"success"`
+	ToolName string `json:"tool_name"`
+	Message  string `json:"message"`
+}
+
+// UploadTool 上传并注册一个 WASM 工具
+//
+// 流程：
+// 1. 验证签名（如果提供）
+// 2. 设置沙箱资源限制
+// 3. 注册到适配器
+func (a *WASMToolAdapter) UploadTool(ctx context.Context, req UploadRequest) (*UploadResponse, error) {
+	if req.ToolName == "" {
+		return &UploadResponse{Success: false, Message: "tool_name is required"}, nil
+	}
+
+	if len(req.WasmBytes) == 0 {
+		return &UploadResponse{Success: false, Message: "wasm bytes is empty"}, nil
+	}
+
+	// 验证签名（如果提供了签名和公钥）
+	if len(req.Signature) > 0 && len(req.PublicKey) > 0 {
+		if err := VerifySignature(req.WasmBytes, req.Signature, req.PublicKey); err != nil {
+			return &UploadResponse{
+				Success:  false,
+				ToolName: req.ToolName,
+				Message:  fmt.Sprintf("signature verification failed: %v", err),
+			}, nil
+		}
+		a.logger.Info("签名验证通过", "tool", req.ToolName)
+	}
+
+	// 设置沙箱资源限制
+	if req.MaxMemoryPages > 0 {
+		a.sandbox.SetMemoryLimit(req.MaxMemoryPages)
+	}
+	if req.MaxExecutionTime > 0 {
+		a.sandbox.SetTimeLimit(req.MaxExecutionTime)
+	}
+
+	// 注册工具
+	meta := ToolMetadata{
+		Name:        req.ToolName,
+		Description: req.Description,
+		Parameters:  req.Parameters,
+		ExecuteFunc: req.ExecuteFunc,
+		Version:     req.Version,
+	}
+
+	if err := a.RegisterTool(ctx, meta, req.WasmBytes); err != nil {
+		return &UploadResponse{
+			Success:  false,
+			ToolName: req.ToolName,
+			Message:  err.Error(),
+		}, nil
+	}
+
+	return &UploadResponse{
+		Success:  true,
+		ToolName: req.ToolName,
+		Message:  "tool uploaded and registered successfully",
+	}, nil
+}

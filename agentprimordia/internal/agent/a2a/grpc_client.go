@@ -9,7 +9,9 @@ import (
 
 	a2av1 "agentprimordia/internal/agent/a2a/proto/a2a/v1"
 
+	"agentprimordia/internal/resilience"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -32,13 +34,26 @@ func WithGRPCClientBearerToken(token string) GRPCClientOption {
 	return func(c *A2AGRPCClient) { c.bearerToken = token }
 }
 
+// WithGRPCClientTLS 启用 gRPC 客户端 TLS/mTLS。
+func WithGRPCClientTLS(config TLSConfig) GRPCClientOption {
+	return func(c *A2AGRPCClient) { c.tlsConfig = &config }
+}
+
+// WithGRPCClientCredentials 直接设置 gRPC 客户端 TransportCredentials。
+func WithGRPCClientCredentials(creds credentials.TransportCredentials) GRPCClientOption {
+	return func(c *A2AGRPCClient) { c.tlsCreds = creds }
+}
+
 // A2AGRPCClient gRPC 客户端。
 type A2AGRPCClient struct {
-	client      a2av1.A2AServiceClient
-	conn        *grpc.ClientConn
-	apiKey      string
-	bearerToken string
-	logger      *slog.Logger
+	client        a2av1.A2AServiceClient
+	conn          *grpc.ClientConn
+	apiKey        string
+	bearerToken   string
+	logger        *slog.Logger
+	tlsConfig     *TLSConfig
+	tlsCreds      credentials.TransportCredentials
+	circuitBreaker *resilience.CircuitBreaker
 }
 
 // NewA2AGRPCClient 创建 gRPC 客户端。
@@ -51,7 +66,32 @@ func NewA2AGRPCClient(target string, opts ...GRPCClientOption) (*A2AGRPCClient, 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, target, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	// 构建 dial 选项
+	dialOpts := []grpc.DialOption{}
+
+	// TLS 配置
+	switch {
+	case c.tlsCreds != nil:
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(c.tlsCreds))
+	case c.tlsConfig != nil:
+		creds, err := ClientTLSCredentials(*c.tlsConfig)
+		if err != nil {
+			return nil, fmt.Errorf("mTLS 配置失败: %w", err)
+		}
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
+	default:
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	// 断路器拦截器
+	if c.circuitBreaker != nil {
+		interceptor := NewCircuitBreakerInterceptorWithCB(c.circuitBreaker, nil)
+		dialOpts = append(dialOpts,
+			grpc.WithUnaryInterceptor(interceptor.UnaryClientInterceptor()),
+		)
+	}
+
+	conn, err := grpc.DialContext(ctx, target, append(dialOpts, grpc.WithBlock())...)
 	if err != nil {
 		return nil, fmt.Errorf("连接 gRPC server 失败: %w", err)
 	}

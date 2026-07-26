@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/tools"
 )
@@ -26,7 +27,8 @@ const (
 
 // runLoop ReAct 循环核心体，被 reactLoopEngine 和 ResumeFromCheckpoint 共享
 // 封装从 startTurn 开始的主循环逻辑，包括 LLM 调用、工具执行、checkpoint 保存等
-func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn int, cfg loopConfig, totalLLMLatency time.Duration, totalToolLatency time.Duration, toolCount int) (*Response, error) {
+// rootSpanCtx 为根 Span 上下文（可为零值），用于将 turn span 链接到根 span
+func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn int, cfg loopConfig, totalLLMLatency time.Duration, totalToolLatency time.Duration, toolCount int, rootSpanCtx ...SpanContext) (*Response, error) {
 	// 优化（Task 2）：从 capCache 一次性取所有能力引用；capCache 由 reactLoopEngine 在 Run 入口处填充
 	tracer := Tracer(nil)
 	costTracker := (*CostTracker)(nil)
@@ -83,10 +85,17 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		var turnSpan Span = &NoopSpan{}
 		if tracer != nil {
+			opts := []SpanOption{
+				WithAttributes(map[string]any{"agent": a.config.Name, "turn": turn}),
+			}
+			// 如果有根 Span 上下文，将 turn span 链接到根 span
+			if len(rootSpanCtx) > 0 && rootSpanCtx[0].IsValid() {
+				opts = append(opts, WithParent(rootSpanCtx[0]))
+			}
 			turnSpan = tracer.Start(
 				"turn."+strconv.Itoa(turn),
 				SpanKindInternal,
-				WithAttributes(map[string]any{"agent": a.config.Name, "turn": turn}),
+				opts...,
 			)
 		}
 
@@ -109,7 +118,18 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 
 		if a.shouldRAG(turn) && ragQuery != "" {
+			var ragSpan Span = &NoopSpan{}
+			if tracer != nil {
+				ragSpan = tracer.Start(
+					"rag.search",
+					SpanKindInternal,
+					WithParent(turnSpan.SpanContext()),
+					WithAttributes(map[string]any{"agent": a.config.Name, "turn": turn}),
+				)
+			}
 			ragContext, ragDocs := a.searchRAG(ctx, ragQuery)
+			ragSpan.SetAttribute("docs_found", len(ragDocs))
+			ragSpan.End()
 			if ragContext != "" {
 				history = a.injectRAGContext(history, ragContext)
 				a.logger.Debug("RAG 上下文已注入", "turn", turn, "query_len", len(ragQuery), "docs", len(ragDocs))
@@ -279,6 +299,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 				Result:   auditResultSuccess,
 				Details:  map[string]any{"turns": turn + 1, "duration_ms": duration.Milliseconds()},
 			})
+			// v3.0：自适应学习——从本次交互中蒸馏知识
+			a.distillKnowledge(ctx, history, finalContent)
 			return response, nil
 		}
 
@@ -355,5 +377,49 @@ func (a *ReActAgent) writeAudit(ctx context.Context, event AuditEvent) {
 	}
 	if err := a.capCache.auditLogger.Log(ctx, event); err != nil {
 		a.logger.Warn("写入审计事件失败", "action", event.Action, "err", err)
+	}
+}
+
+// distillKnowledge 从本次交互中蒸馏知识（v3.0 自适应学习）。
+//
+// 在 Agent 完成推理后调用，将用户输入和 Agent 输出封装为 Interaction，
+// 交给 KnowledgeDistiller 提取事实/模式/偏好类知识。
+// 该方法是 fire-and-forget 模式，错误仅记录日志，不影响主流程。
+func (a *ReActAgent) distillKnowledge(ctx context.Context, history []Message, agentOutput string) {
+	if a.capCache == nil || a.capCache.distiller == nil {
+		return
+	}
+
+	// 从历史中提取用户输入（最后一条 user 消息）
+	var userInput string
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].Role == RoleUser {
+			userInput = history[i].Content
+			break
+		}
+	}
+	if userInput == "" {
+		return
+	}
+
+	interaction := learning.Interaction{
+		ID:          a.config.Name + "_" + a.capCache.requestID,
+		UserInput:   userInput,
+		AgentOutput: agentOutput,
+		Success:     true,
+		Timestamp:   time.Now(),
+		Metadata: map[string]string{
+			"agent_name": a.config.Name,
+			"session_id": a.config.SessionID,
+		},
+	}
+
+	items, err := a.capCache.distiller.Distill(ctx, interaction)
+	if err != nil {
+		a.logger.Warn("知识蒸馏失败", "error", err)
+		return
+	}
+	if len(items) > 0 {
+		a.logger.Info("知识蒸馏完成", "items", len(items), "interaction", interaction.ID)
 	}
 }

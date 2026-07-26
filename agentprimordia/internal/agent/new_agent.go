@@ -122,5 +122,10 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 		cap = cap.WithRAG(cfg.RAG)
 	}
 
+	// 注入自适应学习能力（v3.0）
+	if cfg.Learning.Distiller != nil || cfg.Learning.Evolver != nil || cfg.Learning.FeedbackLearner != nil {
+		cap = cap.WithLearning(cfg.Learning)
+	}
+
 	return cap, nil
 }

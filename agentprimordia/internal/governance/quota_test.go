@@ -247,3 +247,62 @@ func TestDailyKey(t *testing.T) {
 		t.Errorf("dailyKey length = %d, want 10", len(k1))
 	}
 }
+
+// === 补充：DecrementSessionCount 边界条件测试 ===
+
+func TestQuotaManager_DecrementSessionCount(t *testing.T) {
+	qm := NewQuotaManager("t_test", TenantQuota{MaxSessions: 5})
+	qm.IncrementSessionCount()
+	qm.IncrementSessionCount()
+
+	if qm.Status().SessionCount != 2 {
+		t.Errorf("SessionCount = %d, want 2", qm.Status().SessionCount)
+	}
+
+	qm.DecrementSessionCount()
+	if qm.Status().SessionCount != 1 {
+		t.Errorf("after decrement: SessionCount = %d, want 1", qm.Status().SessionCount)
+	}
+
+	qm.DecrementSessionCount()
+	if qm.Status().SessionCount != 0 {
+		t.Errorf("after second decrement: SessionCount = %d, want 0", qm.Status().SessionCount)
+	}
+}
+
+func TestQuotaManager_DecrementSessionCount_GoesNegative(t *testing.T) {
+	qm := NewQuotaManager("t_test", TenantQuota{MaxSessions: 5})
+	// 未 increment 就 decrement，atomic 允许负数（这是设计上的 trade-off）
+	qm.DecrementSessionCount()
+	status := qm.Status()
+	// 验证 decrement 确实减少了计数
+	if status.SessionCount != -1 {
+		t.Errorf("SessionCount = %d, want -1 (atomic decrement)", status.SessionCount)
+	}
+}
+
+func TestQuotaManager_SessionCountAtLimit(t *testing.T) {
+	qm := NewQuotaManager("t_test", TenantQuota{MaxSessions: 2})
+	qm.IncrementSessionCount()
+	qm.IncrementSessionCount()
+
+	if err := qm.CheckSessionCount(); err == nil {
+		t.Error("CheckSessionCount should fail at MaxSessions")
+	}
+
+	// Decrement 后应恢复
+	qm.DecrementSessionCount()
+	if err := qm.CheckSessionCount(); err != nil {
+		t.Errorf("after decrement, CheckSessionCount error: %v", err)
+	}
+}
+
+func TestQuotaManager_CheckSessionCount_Unlimited(t *testing.T) {
+	qm := NewQuotaManager("t_test", TenantQuota{MaxSessions: 0})
+	for i := 0; i < 100; i++ {
+		qm.IncrementSessionCount()
+	}
+	if err := qm.CheckSessionCount(); err != nil {
+		t.Errorf("unlimited sessions: CheckSessionCount error: %v", err)
+	}
+}

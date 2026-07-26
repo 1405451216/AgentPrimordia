@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
@@ -45,6 +46,11 @@ type CapabilityAgent struct {
 	toolLearner tool_learning.ToolLearner
 	outputGuard OutputGuard
 	auditLogger AuditLogger
+
+	// v3.0：自适应学习能力
+	distiller       *learning.KnowledgeDistiller
+	evolver         *learning.CapabilityEvolver
+	feedbackLearner *learning.FeedbackLearner
 }
 
 // ===== Agent 接口委托 =====
@@ -297,4 +303,62 @@ func (c *CapabilityAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
 // GetAuditLogger 返回审计日志器
 func (c *CapabilityAgent) GetAuditLogger() AuditLogger {
 	return c.auditLogger
+}
+
+// ===== v3.0 自适应学习能力 =====
+
+// WithLearning 一次性注入自适应学习相关配置（Distiller / Evolver / FeedbackLearner）。
+//
+// 使用方式：
+//
+//	agent.WithLearning(learning.LearningConfig{
+//		Distiller: learning.NewKnowledgeDistiller(),
+//	})
+func (c *CapabilityAgent) WithLearning(cfg LearningConfig) *CapabilityAgent {
+	if cfg.Distiller != nil {
+		c.distiller = cfg.Distiller
+	}
+	if cfg.Evolver != nil {
+		c.evolver = cfg.Evolver
+	}
+	if cfg.FeedbackLearner != nil {
+		c.feedbackLearner = cfg.FeedbackLearner
+	}
+	return c
+}
+
+// WithKnowledgeDistiller 注入知识蒸馏器（LearningCapable）。
+// 引擎在 Agent 完成推理后自动从交互中蒸馏知识并存入知识库。
+func (c *CapabilityAgent) WithKnowledgeDistiller(d *learning.KnowledgeDistiller) *CapabilityAgent {
+	c.distiller = d
+	return c
+}
+
+// GetKnowledgeDistiller 返回知识蒸馏器（LearningCapable）
+func (c *CapabilityAgent) GetKnowledgeDistiller() *learning.KnowledgeDistiller {
+	return c.distiller
+}
+
+// WithCapabilityEvolver 注入能力进化器。
+// 引擎可据此评估 Agent 能力弱项并自动改进。
+func (c *CapabilityAgent) WithCapabilityEvolver(e *learning.CapabilityEvolver) *CapabilityAgent {
+	c.evolver = e
+	return c
+}
+
+// GetCapabilityEvolver 返回能力进化器
+func (c *CapabilityAgent) GetCapabilityEvolver() *learning.CapabilityEvolver {
+	return c.evolver
+}
+
+// WithFeedbackLearner 注入反馈学习器。
+// 引擎可据此记录人类反馈并调整 Agent 行为偏好。
+func (c *CapabilityAgent) WithFeedbackLearner(f *learning.FeedbackLearner) *CapabilityAgent {
+	c.feedbackLearner = f
+	return c
+}
+
+// GetFeedbackLearner 返回反馈学习器
+func (c *CapabilityAgent) GetFeedbackLearner() *learning.FeedbackLearner {
+	return c.feedbackLearner
 }

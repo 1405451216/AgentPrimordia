@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
@@ -174,4 +175,13 @@ type GuardrailCapable interface {
 // 引擎在 LLM 调用、工具调用、Agent 启动/停止等关键路径自动写入审计事件。
 type AuditLoggerCapable interface {
 	GetAuditLogger() AuditLogger
+}
+
+// LearningCapable 标识 Agent 具备自适应学习能力。
+// 引擎在 Agent 完成推理后自动调用 KnowledgeDistiller 从交互中蒸馏知识，
+// 并可通过 FeedbackLearner 记录人类反馈、通过 CapabilityEvolver 评估能力。
+type LearningCapable interface {
+	GetKnowledgeDistiller() *learning.KnowledgeDistiller
+	GetCapabilityEvolver() *learning.CapabilityEvolver
+	GetFeedbackLearner() *learning.FeedbackLearner
 }

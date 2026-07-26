@@ -112,6 +112,9 @@ type Pool struct {
 	// 使用 sync.Cond 实现可动态调整上限的计数信号量
 	semaMu    sync.Mutex
 	semaCond  *sync.Cond
+
+	// droppedEvents 记录因 eventCh 满而被丢弃的事件数（用于可观测性）
+	droppedEvents atomic.Int64
 	semaCount int64 // 当前已获取令牌的 goroutine 数
 
 	// 优化（perf-v2）：会话索引，将 GetTasksBySession/CancelBySession 从 O(n) 优化为 O(k)
@@ -585,7 +588,18 @@ func (p *Pool) emitEvent(event PoolEvent) {
 	select {
 	case p.eventCh <- event:
 	default:
+		// 事件 channel 满，丢弃事件并记录 warning（背压策略）
+		n := p.droppedEvents.Add(1)
+		if n == 1 || n%100 == 0 {
+			// 首次丢弃或每 100 次记录一次，避免日志风暴
+			fmt.Printf("[pool] WARNING: event channel full, dropped %d events (type=%s)\n", n, event.Type)
+		}
 	}
+}
+
+// DroppedEvents 返回因 channel 满而被丢弃的事件总数。
+func (p *Pool) DroppedEvents() int64 {
+	return p.droppedEvents.Load()
 }
 
 func (p *Pool) isRetryable(err error) bool {

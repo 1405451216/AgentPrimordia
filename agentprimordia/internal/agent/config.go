@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -71,6 +72,21 @@ type ToolsConfig struct {
 	Registry *tools.Registry
 }
 
+// LearningConfig 自适应学习能力分组配置（v3.0）。
+//
+// 注入后引擎在 Agent 完成推理后自动从交互中蒸馏知识，
+// 并可评估能力弱项、记录人类反馈。
+type LearningConfig struct {
+	// Distiller 知识蒸馏器：从交互中提取事实/模式/偏好
+	Distiller *learning.KnowledgeDistiller
+
+	// Evolver 能力进化器：评估 Agent 能力弱项
+	Evolver *learning.CapabilityEvolver
+
+	// FeedbackLearner 反馈学习器：记录人类反馈并调整行为偏好
+	FeedbackLearner *learning.FeedbackLearner
+}
+
 // AgentConfig 是 Agent 的分组式配置结构。
 //
 // v0.7.0 引入，替代 ReActConfig 的扁平字段布局。字段按职责分组：
@@ -99,6 +115,7 @@ type AgentConfig struct {
 	Observability ObservabilityConfig
 	Resilience    ResilienceConfig
 	Tools         ToolsConfig
+	Learning      LearningConfig
 
 	// ===== 运行时辅助 =====
 	Lifecycle *Lifecycle

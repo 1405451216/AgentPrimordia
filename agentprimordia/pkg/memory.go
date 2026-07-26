@@ -152,3 +152,37 @@ var (
 	NewMMRReranker                 = memory.NewMMRReranker
 	NewCompressor                  = memory.NewCompressor
 )
+
+// ===== pgvector 向量存储（生产级 PostgreSQL + pgvector 后端） =====
+
+// PgVectorVectorStore 基于 PostgreSQL + pgvector 的向量存储实现
+//
+// 适用于生产环境，支持大规模向量数据（>1M 文档）。
+//
+// 使用方式：
+//
+//	store, err := ap.NewPgVectorVectorStore(ctx, ap.PgVectorConfig{
+//	    ConnString: "postgres://user:pass@host:5432/dbname",
+//	    Dimensions: 1536,
+//	})
+//	defer store.Close()
+//
+// Stability: Experimental
+type PgVectorVectorStore = memory.PgVectorVectorStore
+
+// PgVectorConfig pgvector 后端配置
+type PgVectorConfig = memory.PgVectorConfig
+
+// VectorRecord 向量记录（ID + 向量 + 元数据）
+type VectorRecord = memory.VectorRecord
+
+// VectorMatch 向量搜索匹配结果
+type VectorMatch = memory.VectorMatch
+
+// VectorSearchOptions 向量搜索选项
+type VectorSearchOptions = memory.VectorSearchOptions
+
+var (
+	// NewPgVectorVectorStore 创建 pgvector 向量存储实例
+	NewPgVectorVectorStore = memory.NewPgVectorVectorStore
+)

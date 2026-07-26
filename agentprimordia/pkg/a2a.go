@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"agentprimordia/internal/agent/a2a"
+	"agentprimordia/internal/resilience"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // ============================================================================
@@ -446,4 +448,72 @@ func A2AChildTraceContext(parent A2ATraceContext) A2ATraceContext {
 // A2AParseTraceParent 解析 W3C traceparent header（"00-<trace>-<span>-<flags>"）
 func A2AParseTraceParent(header string) (A2ATraceContext, error) {
 	return a2a.ParseTraceParent(header)
+}
+
+// ============================================================================
+// mTLS（双向 TLS 配置与证书管理）
+// ============================================================================
+
+// A2ATLSConfig 定义 gRPC 双向 TLS 配置
+type A2ATLSConfig = a2a.TLSConfig
+
+// A2AServerTLSCredentials 从 TLSConfig 创建服务端 TLS 凭证（含 mTLS 客户端证书验证）
+func A2AServerTLSCredentials(config A2ATLSConfig) (credentials.TransportCredentials, error) {
+	return a2a.ServerTLSCredentials(config)
+}
+
+// A2AClientTLSCredentials 从 TLSConfig 创建客户端 TLS 凭证
+func A2AClientTLSCredentials(config A2ATLSConfig) (credentials.TransportCredentials, error) {
+	return a2a.ClientTLSCredentials(config)
+}
+
+// ============================================================================
+// gRPC 客户端配置选项（TLS / 认证 / 断路器）
+// ============================================================================
+
+// WithA2AGRPCClientTLS 启用 gRPC 客户端 TLS/mTLS
+func WithA2AGRPCClientTLS(config A2ATLSConfig) A2AGRPCClientOption {
+	return a2a.WithGRPCClientTLS(config)
+}
+
+// WithA2AGRPCClientCredentials 直接设置 gRPC 客户端 TransportCredentials
+func WithA2AGRPCClientCredentials(creds credentials.TransportCredentials) A2AGRPCClientOption {
+	return a2a.WithGRPCClientCredentials(creds)
+}
+
+// WithA2AGRPCClientLogger 设置 gRPC 客户端日志器
+func WithA2AGRPCClientLogger(logger *slog.Logger) A2AGRPCClientOption {
+	return a2a.WithGRPCClientLogger(logger)
+}
+
+// WithA2AGRPCClientAPIKey 设置 gRPC 客户端 API Key
+func WithA2AGRPCClientAPIKey(key string) A2AGRPCClientOption {
+	return a2a.WithGRPCClientAPIKey(key)
+}
+
+// WithA2AGRPCClientBearerToken 设置 gRPC 客户端 Bearer Token
+func WithA2AGRPCClientBearerToken(token string) A2AGRPCClientOption {
+	return a2a.WithGRPCClientBearerToken(token)
+}
+
+// ============================================================================
+// gRPC 断路器拦截器
+// ============================================================================
+
+// A2ACircuitBreakerInterceptor 基于 断路器的 gRPC 客户端拦截器
+type A2ACircuitBreakerInterceptor = a2a.CircuitBreakerInterceptor
+
+// NewA2ACircuitBreakerInterceptor 创建断路器拦截器
+func NewA2ACircuitBreakerInterceptor(cfg resilience.Config, logger *slog.Logger) *A2ACircuitBreakerInterceptor {
+	return a2a.NewCircuitBreakerInterceptor(cfg, logger)
+}
+
+// NewA2ACircuitBreakerInterceptorWithCB 使用已有断路器创建拦截器
+func NewA2ACircuitBreakerInterceptorWithCB(cb *resilience.CircuitBreaker, logger *slog.Logger) *A2ACircuitBreakerInterceptor {
+	return a2a.NewCircuitBreakerInterceptorWithCB(cb, logger)
+}
+
+// WithA2AGRPCCircuitBreaker 为 gRPC 客户端添加断路器
+func WithA2AGRPCCircuitBreaker(cb *resilience.CircuitBreaker) A2AGRPCClientOption {
+	return a2a.WithGRPCCircuitBreaker(cb)
 }

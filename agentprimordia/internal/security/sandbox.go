@@ -44,53 +44,81 @@ type ACLRule struct {
 
 type ACL struct {
 	mu    sync.RWMutex
-	rules []ACLRule
-	deny  []ACLRule
+	rules map[string][]ACLRule // key: agentID ("*" 表示通配)
+	deny  map[string][]ACLRule // key: agentID ("*" 表示通配)
 }
 
 func NewACL() *ACL {
 	return &ACL{
-		rules: make([]ACLRule, 0),
-		deny:  make([]ACLRule, 0),
+		rules: make(map[string][]ACLRule),
+		deny:  make(map[string][]ACLRule),
 	}
 }
 
 func (a *ACL) Allow(agentID, resource string, level AccessLevel) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.rules = append(a.rules, ACLRule{AgentID: agentID, Resource: resource, Level: level})
+	a.rules[agentID] = append(a.rules[agentID], ACLRule{AgentID: agentID, Resource: resource, Level: level})
 }
 
 func (a *ACL) Deny(agentID, resource string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.deny = append(a.deny, ACLRule{AgentID: agentID, Resource: resource})
+	a.deny[agentID] = append(a.deny[agentID], ACLRule{AgentID: agentID, Resource: resource})
 }
 
+// Check 检查 Agent 是否有权访问指定资源。
+// 性能：O(m) 其中 m 为匹配该 agentID + 通配 "*" 的规则数，
+// 远优于旧实现的 O(n)（n 为总规则数）。
 func (a *ACL) Check(agentID, resource string, required AccessLevel) bool {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	for _, rule := range a.deny {
-		if matchRule(rule, agentID, resource) {
-			return false
-		}
+	// 先检查 deny（deny 优先）
+	if a.checkRules(a.deny, agentID, resource, 0, true) == denied {
+		return false
 	}
 
-	for _, rule := range a.rules {
-		if matchRule(rule, agentID, resource) {
-			return rule.Level&required == required
+	// 再检查 allow
+	return a.checkRules(a.rules, agentID, resource, required, false) == allowed
+}
+
+// checkResult 表示规则检查结果
+type checkResult int
+
+const (
+	noMatch checkResult = iota
+	denied
+	allowed
+)
+
+// checkRules 遍历指定 agentID 和通配 "*" 的规则
+// 对于 deny 规则：匹配即返回 denied
+// 对于 allow 规则：匹配且级别足够才返回 allowed
+func (a *ACL) checkRules(ruleMap map[string][]ACLRule, agentID, resource string, required AccessLevel, isDeny bool) checkResult {
+	// 先检查具体 agentID 的规则，再检查通配 "*"
+	groups := [][]ACLRule{ruleMap[agentID], ruleMap["*"]}
+	for _, rules := range groups {
+		for _, rule := range rules {
+			if !matchRule(rule, agentID, resource) {
+				continue
+			}
+			if isDeny {
+				return denied
+			}
+			if rule.Level&required == required {
+				return allowed
+			}
 		}
 	}
-
-	return false
+	return noMatch
 }
 
 func (a *ACL) Reset() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	a.rules = a.rules[:0]
-	a.deny = a.deny[:0]
+	a.rules = make(map[string][]ACLRule)
+	a.deny = make(map[string][]ACLRule)
 }
 
 func matchRule(rule ACLRule, agentID, resource string) bool {

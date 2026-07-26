@@ -36,6 +36,7 @@ package ap
 
 import (
 	"agentprimordia/internal/agent"
+	"agentprimordia/internal/config"
 	"agentprimordia/internal/health"
 	"agentprimordia/internal/memory"
 	"os"
@@ -281,6 +282,8 @@ var (
 	WithCache = agent.WithCache
 	// WithHITL 注入 Human-in-the-Loop 配置
 	WithHITL = agent.WithHITL
+	// WithLearning 注入自适应学习配置（知识蒸馏/能力进化/反馈学习）
+	WithLearning = agent.WithLearning
 
 	// ===== 分组注入 Option =====
 
@@ -320,6 +323,9 @@ type ToolsConfig = agent.ToolsConfig
 
 // HITLConfig 人机协作配置
 type HITLConfig = agent.HITLConfig
+
+// LearningConfig 自适应学习分组配置（Distiller / Evolver / FeedbackLearner）
+type LearningConfig = agent.LearningConfig
 
 // ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
 
@@ -389,6 +395,9 @@ type FileScopeCapable = agent.FileScopeCapable
 
 // CacheCapable 标识 Agent 具备 LLM 缓存能力
 type CacheCapable = agent.CacheCapable
+
+// LearningCapable 标识 Agent 具备自适应学习能力，引擎在完成时自动蒸馏知识
+type LearningCapable = agent.LearningCapable
 
 // ===== DAG 工作流引擎 =====
 
@@ -586,6 +595,28 @@ var RegisterPProf = health.RegisterPProf
 // PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。
 // 适用于仅需暴露 profiling 而无需自定义路由的场景。
 var PProfHandler = health.PProfHandler
+
+// RegisterPProfSecure 将 pprof 端点注册到给定的 http.ServeMux，
+// 并通过 Bearer Token 鉴权保护。
+// 若环境变量 PPROF_TOKEN 未设置则无鉴权（开发模式），生产环境必须设置。
+var RegisterPProfSecure = health.RegisterPProfSecure
+
+// PProfHandlerSecure 返回一个包含 pprof 端点的独立 http.Handler，
+// 并启用 Bearer Token 鉴权。
+var PProfHandlerSecure = health.PProfHandlerSecure
+
+// ===== 配置加载 =====
+
+// NewConfigLoader 创建统一配置加载器（YAML < ENV < flags）。
+// 用法：
+//
+//	cfg := &MyConfig{}
+//	err := ap.NewConfigLoader(cfg, "AP").
+//	    LoadYAML(".ap.yaml").
+//	    LoadEnv().
+//	    LoadFlags().
+//	    Validate()
+var NewConfigLoader = config.New
 
 // ===== 版本与通用类型 =====
 

@@ -248,11 +248,19 @@ func TestSecretsAuditLog_Clear(t *testing.T) {
 	}
 }
 
-// ===== VaultBackend 测试（预留接口） =====
+// ===== VaultBackend 测试 =====
 
-func TestSecretsVaultBackend_NotImplemented(t *testing.T) {
-	_, err := NewVaultBackend("http://localhost:8200", "token", "secret/")
-	if err == nil {
-		t.Fatal("expected error for unimplemented vault backend")
+func TestSecretsVaultBackend_New(t *testing.T) {
+	v, err := NewVaultBackend(VaultConfig{
+		Address: "http://localhost:8200",
+		Token:   "token",
+		Mount:   "secret",
+		Prefix:  "myapp",
+	})
+	if err != nil {
+		t.Fatalf("NewVaultBackend should succeed: %v", err)
+	}
+	if v == nil {
+		t.Fatal("NewVaultBackend returned nil")
 	}
 }

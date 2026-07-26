@@ -105,3 +105,100 @@ func TestHealthz_NoCheckers(t *testing.T) {
 		t.Errorf("无 checker 时状态码 = %d, 期望 %d", w.Code, http.StatusOK)
 	}
 }
+
+// ===== pprof Bearer Token 鉴权测试 =====
+
+func TestPProfAuth_NoTokenSet_AllowsAll(t *testing.T) {
+	// 确保 PPROF_TOKEN 未设置
+	t.Setenv("PPROF_TOKEN", "")
+
+	mux := http.NewServeMux()
+	RegisterPProfSecure(mux)
+
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("未设置 PPROF_TOKEN 时期望状态码 %d, 得到 %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestPProfAuth_WithToken_MissingAuth(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "secret-token-123")
+
+	mux := http.NewServeMux()
+	RegisterPProfSecure(mux)
+
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("缺少 Authorization 头时期望状态码 %d, 得到 %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestPProfAuth_WithToken_InvalidFormat(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "secret-token-123")
+
+	mux := http.NewServeMux()
+	RegisterPProfSecure(mux)
+
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	req.Header.Set("Authorization", "Basic dXNlcjpwYXNz") // 非 Bearer
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("非 Bearer 格式时期望状态码 %d, 得到 %d", http.StatusUnauthorized, w.Code)
+	}
+}
+
+func TestPProfAuth_WithToken_WrongToken(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "secret-token-123")
+
+	mux := http.NewServeMux()
+	RegisterPProfSecure(mux)
+
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	req.Header.Set("Authorization", "Bearer wrong-token")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("错误 token 时期望状态码 %d, 得到 %d", http.StatusForbidden, w.Code)
+	}
+}
+
+func TestPProfAuth_WithToken_CorrectToken(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "secret-token-123")
+
+	mux := http.NewServeMux()
+	RegisterPProfSecure(mux)
+
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	req.Header.Set("Authorization", "Bearer secret-token-123")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("正确 token 时期望状态码 %d, 得到 %d", http.StatusOK, w.Code)
+	}
+}
+
+func TestPProfHandlerSecure_WithToken(t *testing.T) {
+	t.Setenv("PPROF_TOKEN", "secure-test-token")
+
+	handler := PProfHandlerSecure()
+
+	// 正确 token
+	req := httptest.NewRequest("GET", "/debug/pprof/", nil)
+	req.Header.Set("Authorization", "Bearer secure-test-token")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("PProfHandlerSecure 正确 token 时期望状态码 %d, 得到 %d", http.StatusOK, w.Code)
+	}
+}

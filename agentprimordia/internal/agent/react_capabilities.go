@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
@@ -210,6 +211,33 @@ func (a *ReActAgent) getReflector() reflection.Reflector {
 func (a *ReActAgent) getToolLearner() tool_learning.ToolLearner {
 	if c, ok := a.self.(ToolLearningCapable); ok {
 		return c.GetToolLearner()
+	}
+	return nil
+}
+
+// getKnowledgeDistiller 获取知识蒸馏器，通过 LearningCapable 接口发现
+// v3.0：自适应学习接入的发现入口
+func (a *ReActAgent) getKnowledgeDistiller() *learning.KnowledgeDistiller {
+	if c, ok := a.self.(LearningCapable); ok {
+		return c.GetKnowledgeDistiller()
+	}
+	return nil
+}
+
+// getCapabilityEvolver 获取能力进化器，通过 LearningCapable 接口发现
+// v3.0：自适应学习接入的发现入口
+func (a *ReActAgent) getCapabilityEvolver() *learning.CapabilityEvolver {
+	if c, ok := a.self.(LearningCapable); ok {
+		return c.GetCapabilityEvolver()
+	}
+	return nil
+}
+
+// getFeedbackLearner 获取反馈学习器，通过 LearningCapable 接口发现
+// v3.0：自适应学习接入的发现入口
+func (a *ReActAgent) getFeedbackLearner() *learning.FeedbackLearner {
+	if c, ok := a.self.(LearningCapable); ok {
+		return c.GetFeedbackLearner()
 	}
 	return nil
 }

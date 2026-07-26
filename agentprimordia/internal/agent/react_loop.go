@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
@@ -211,6 +212,11 @@ type capabilityCache struct {
 	planner     planning.Planner          // G1-1 Planning 接入
 	reflector   reflection.Reflector      // G1-2 Reflection 接入
 	toolLearner tool_learning.ToolLearner // G1-3 ToolLearning 接入
+
+	// v3.0：自适应学习能力
+distiller       *learning.KnowledgeDistiller // 知识蒸馏器
+evolver         *learning.CapabilityEvolver // 能力进化器
+feedbackLearner *learning.FeedbackLearner   // 反馈学习器
 }
 
 // resolveCapabilities 一次性查找所有能力并填充到 capabilityCache。
@@ -234,6 +240,11 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		planner:     a.getPlanner(),
 		reflector:   a.getReflector(),
 		toolLearner: a.getToolLearner(),
+
+		// v3.0：自适应学习能力查找
+		distiller:       a.getKnowledgeDistiller(),
+		evolver:         a.getCapabilityEvolver(),
+		feedbackLearner: a.getFeedbackLearner(),
 	}
 	// 缓存 labeled 记录器
 	if c.metricsRecorder != nil {

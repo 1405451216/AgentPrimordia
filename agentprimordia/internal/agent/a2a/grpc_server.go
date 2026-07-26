@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -37,6 +38,10 @@ type A2AGRPCServer struct {
 	metrics *A2AInterceptorMetrics
 	// slowThreshold 慢请求阈值；0 表示使用默认值（1s）
 	slowThreshold time.Duration
+	// tlsConfig TLS 配置（可选，设置后启用 mTLS）
+	tlsConfig *TLSConfig
+	// tlsCreds 直接设置的 TLS 凭证（优先级高于 tlsConfig）
+	tlsCreds credentials.TransportCredentials
 }
 
 // NewA2AGRPCServer 创建 gRPC 服务实现。
@@ -189,10 +194,26 @@ func NewGRPCServer(service *A2AService, opts ...GRPCServerOption) *grpc.Server {
 		unaryInterceptors = append(unaryInterceptors, UnaryAuthInterceptor(s.auth))
 		streamInterceptors = append(streamInterceptors, StreamAuthInterceptor(s.auth))
 	}
-	server := grpc.NewServer(
+	// 构建 gRPC server 选项
+	serverOpts := []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
 		grpc.ChainStreamInterceptor(streamInterceptors...),
-	)
+	}
+
+	// TLS/mTLS 配置
+	switch {
+	case s.tlsCreds != nil:
+		serverOpts = append(serverOpts, grpc.Creds(s.tlsCreds))
+	case s.tlsConfig != nil:
+		creds, err := ServerTLSCredentials(*s.tlsConfig)
+		if err != nil {
+			s.logger.Error("gRPC TLS 配置失败", "error", err)
+		} else {
+			serverOpts = append(serverOpts, grpc.Creds(creds))
+		}
+	}
+
+	server := grpc.NewServer(serverOpts...)
 	s.Register(server)
 	return server
 }
@@ -218,5 +239,19 @@ func WithGRPCSlowRequestThreshold(d time.Duration) GRPCServerOption {
 		if d > 0 {
 			s.slowThreshold = d
 		}
+	}
+}
+
+// WithGRPCTLS 启用 gRPC TLS（服务端证书 + mTLS 客户端验证）。
+func WithGRPCTLS(config TLSConfig) GRPCServerOption {
+	return func(s *A2AGRPCServer) {
+		s.tlsConfig = &config
+	}
+}
+
+// WithGRPCCredentials 直接设置 gRPC TransportCredentials。
+func WithGRPCCredentials(creds credentials.TransportCredentials) GRPCServerOption {
+	return func(s *A2AGRPCServer) {
+		s.tlsCreds = creds
 	}
 }

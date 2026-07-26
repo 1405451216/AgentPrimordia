@@ -6,6 +6,8 @@ package health
 import (
 	"net/http"
 	"net/http/pprof"
+	"os"
+	"strings"
 )
 
 // RegisterPProf 将 pprof 端点注册到给定的 http.ServeMux。
@@ -53,5 +55,76 @@ func RegisterPProf(mux *http.ServeMux) {
 func PProfHandler() http.Handler {
 	mux := http.NewServeMux()
 	RegisterPProf(mux)
+	return mux
+}
+
+// pprofAuthMiddleware 返回一个 Bearer Token 鉴权中间件。
+// 从环境变量 PPROF_TOKEN 读取预期 token，若未配置则允许所有请求（开发模式）。
+// 生产环境必须设置 PPROF_TOKEN。
+func pprofAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expected := os.Getenv("PPROF_TOKEN")
+		if expected == "" {
+			// 未配置 token，放行（开发模式）
+			next.ServeHTTP(w, r)
+			return
+		}
+		auth := r.Header.Get("Authorization")
+		if auth == "" {
+			http.Error(w, `{"error":"missing Authorization header"}`, http.StatusUnauthorized)
+			return
+		}
+		const prefix = "Bearer "
+		if !strings.HasPrefix(auth, prefix) {
+			http.Error(w, `{"error":"invalid Authorization format, expected Bearer token"}`, http.StatusUnauthorized)
+			return
+		}
+		token := strings.TrimPrefix(auth, prefix)
+		if token != expected {
+			http.Error(w, `{"error":"invalid token"}`, http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RegisterPProfSecure 将 pprof 端点注册到给定的 http.ServeMux，
+// 并通过 Bearer Token 鉴权保护。
+//
+// 鉴权逻辑：
+//   - 若环境变量 PPROF_TOKEN 未设置，等同于 RegisterPProf（无鉴权，适用于开发环境）。
+//   - 若 PPROF_TOKEN 已设置，请求必须携带 Authorization: Bearer <token> 头。
+//
+// 使用示例：
+//
+//	mux := http.NewServeMux()
+//	health.RegisterPProfSecure(mux)
+//	go http.ListenAndServe("localhost:6060", mux)
+func RegisterPProfSecure(mux *http.ServeMux) {
+	// 用鉴权中间件包装独立的 pprof 子 mux
+	pprofMux := http.NewServeMux()
+	pprofMux.HandleFunc("/debug/pprof/", pprof.Index)
+	pprofMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	pprofMux.Handle("/debug/pprof/heap", pprof.Handler("heap"))
+	pprofMux.Handle("/debug/pprof/goroutine", pprof.Handler("goroutine"))
+	pprofMux.Handle("/debug/pprof/threadcreate", pprof.Handler("threadcreate"))
+	pprofMux.Handle("/debug/pprof/block", pprof.Handler("block"))
+	pprofMux.Handle("/debug/pprof/mutex", pprof.Handler("mutex"))
+
+	mux.Handle("/debug/pprof/", pprofAuthMiddleware(pprofMux))
+}
+
+// PProfHandlerSecure 返回一个包含 pprof 端点的 http.Handler（独立 ServeMux），
+// 并启用 Bearer Token 鉴权。
+//
+// 使用示例：
+//
+//	go http.ListenAndServe("localhost:6060", health.PProfHandlerSecure())
+func PProfHandlerSecure() http.Handler {
+	mux := http.NewServeMux()
+	RegisterPProfSecure(mux)
 	return mux
 }

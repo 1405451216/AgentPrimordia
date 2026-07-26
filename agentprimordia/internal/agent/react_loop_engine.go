@@ -14,6 +14,20 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	a.runMu.Lock()
 	defer a.runMu.Unlock()
 
+	// 创建根 Span，包裹整个 Agent 执行生命周期
+	var rootSpan Span = &NoopSpan{}
+	if tracer := a.getTracer(); tracer != nil {
+		rootSpan = tracer.Start(
+			"agent.run",
+			SpanKindServer,
+			WithAttributes(map[string]any{
+				"agent":   a.config.Name,
+				"session": a.config.SessionID,
+				"stream":  cfg.stream,
+			}),
+		)
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			a.logger.Error("ReAct 循环 panic 恢复", "error", r)
@@ -21,7 +35,9 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 			a.publishEvent(EventAgentPanic, map[string]string{"name": a.config.Name, "error": fmt.Sprintf("%v", r)})
 			err = fmt.Errorf("agent panic recovered: %v", r)
 			resp = &Response{RequestID: cfg.requestID, Error: err}
+			rootSpan.SetStatus(SpanStatusError, fmt.Sprintf("panic: %v", r))
 		}
+		rootSpan.End()
 		// 优化（Task 1）：flush 异步记忆写入队列，确保所有 saveMemory 调用完成
 		a.flushMemoryWriter()
 		// 清理 capCache，避免下次 Run() 误用旧引用
@@ -122,5 +138,6 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	history = append(history, input)
 	a.saveMemory(ctx, input)
 
-	return a.runLoop(ctx, history, 0, cfg, 0, 0, 0)
+	return a.runLoop(ctx, history, 0, cfg, 0, 0, 0, rootSpan.SpanContext())
 }
+

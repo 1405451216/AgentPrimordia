@@ -130,3 +130,17 @@ func WithResilience(cfg ResilienceConfig) Option {
 func WithToolsConfig(cfg ToolsConfig) Option {
 	return func(c *AgentConfig) { c.Tools = cfg }
 }
+
+// WithLearning 整体设置自适应学习能力分组配置（Distiller / Evolver / FeedbackLearner）。
+// 注入后引擎在 Agent 完成推理后自动从交互中蒸馏知识。
+//
+// 使用方式：
+//
+//	agent, _ := NewAgent("bot", "prompt", provider,
+//	    WithLearning(LearningConfig{
+//	        Distiller: learning.NewKnowledgeDistiller(),
+//	    }),
+//	)
+func WithLearning(cfg LearningConfig) Option {
+	return func(c *AgentConfig) { c.Learning = cfg }
+}
