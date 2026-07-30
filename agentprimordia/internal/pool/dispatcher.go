@@ -256,6 +256,15 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 
 	taskCh := make(chan dispatchItem, len(tasks))
 
+	// 优化（Task 3.6）：先批量构建 poolTask，再一次加锁写入 map，
+	// 将 N 次 Lock/Unlock 减少为 1 次，降低高并发派发时的锁竞争。
+	type preparedTask struct {
+		pt   *poolTask
+		item dispatchItem
+	}
+	prepared := make([]preparedTask, 0, len(tasks))
+	now := time.Now()
+
 	for i, task := range tasks {
 		if task.ID == "" {
 			task.ID = generateTaskID(i)
@@ -266,29 +275,46 @@ func (p *Pool) Dispatch(ctx context.Context, tasks []TaskConfig) ([]*TaskResult,
 		pt := &poolTask{
 			config:     task,
 			sessionID:  task.SessionID,
-			startTime:  time.Now(),
+			startTime:  now,
 			cancelCtx:  taskCtx,
 			cancelFunc: taskCancel,
 		}
 		pt.storeStatus(PoolTaskQueued) // perf-v6 Task A
 
-		p.mu.Lock()
-		if _, exists := p.tasks[task.ID]; exists {
-			p.mu.Unlock()
-			close(taskCh)
-			return nil, fmt.Errorf("duplicate task ID: %s", task.ID)
-		}
-		p.tasks[task.ID] = pt
-		// 优化（perf-v2）：维护会话索引
-		if task.SessionID != "" {
-			if p.sessionIndex[task.SessionID] == nil {
-				p.sessionIndex[task.SessionID] = make(map[string]struct{})
-			}
-			p.sessionIndex[task.SessionID][task.ID] = struct{}{}
-		}
-		p.mu.Unlock()
+		prepared = append(prepared, preparedTask{
+			pt:   pt,
+			item: dispatchItem{idx: i, task: task, taskCtx: taskCtx, taskCancel: taskCancel},
+		})
+	}
 
-		taskCh <- dispatchItem{idx: i, task: task, taskCtx: taskCtx, taskCancel: taskCancel}
+	// 单次加锁：批量写入 + 重复检测
+	p.mu.Lock()
+	for _, prep := range prepared {
+		if _, exists := p.tasks[prep.item.task.ID]; exists {
+			p.mu.Unlock()
+			// 回滚：取消所有已创建的 context
+			for _, p2 := range prepared {
+				p2.item.taskCancel()
+			}
+			close(taskCh)
+			return nil, fmt.Errorf("duplicate task ID: %s", prep.item.task.ID)
+		}
+	}
+	for _, prep := range prepared {
+		p.tasks[prep.item.task.ID] = prep.pt
+		// 优化（perf-v2）：维护会话索引
+		if prep.item.task.SessionID != "" {
+			if p.sessionIndex[prep.item.task.SessionID] == nil {
+				p.sessionIndex[prep.item.task.SessionID] = make(map[string]struct{})
+			}
+			p.sessionIndex[prep.item.task.SessionID][prep.item.task.ID] = struct{}{}
+		}
+	}
+	p.mu.Unlock()
+
+	// 写入 dispatch channel
+	for _, prep := range prepared {
+		taskCh <- prep.item
 	}
 	close(taskCh)
 

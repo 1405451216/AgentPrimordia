@@ -443,5 +443,21 @@ export type { Operation, OperationType, CRDTDocument } from './collaboration/crd
 export { EnhancedWSTransport } from './a2a/enhanced-websocket-transport.js';
 export type { EnhancedWSOptions, ConnectionStatus } from './a2a/enhanced-websocket-transport.js';
 
+// ===== 混沌工程（对齐 Go internal/chaos/） =====
+export {
+  ChaosEngine,
+  LatencyFault, ErrorFault, ResourceFault, NoopFault,
+  LLMTimeoutFault, LLMErrorFault, LLMRateLimitFault,
+  SLOSteadyState, AvailabilitySteadyState, LatencySteadyState, CustomSteadyState,
+  summarize, formatReport, formatSummaryTable,
+} from './chaos/index.js';
+export type {
+  ExperimentStatus, EngineOptions,
+  FaultInjector, FaultResult, LLMFault,
+  SteadyState, SteadyStateResult, ExperimentSummary,
+} from './chaos/index.js';
+// 注: Experiment / ExperimentResult 类型从 './chaos/index.js' 直接导入，
+// 避免与 A/B 测试模块的同名类型冲突
+
 // Tree-shakeable 标记
 export { __treeShakeable, __bundlerMarker } from './internal/tree-shakeable.js';
