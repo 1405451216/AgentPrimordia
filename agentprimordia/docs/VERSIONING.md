@@ -8,7 +8,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 - **次版本号（MINOR）**：向后兼容的功能新增
 - **修订号（PATCH）**：向后兼容的问题修复
 
-当前版本：`3.1.0`（定义于 `pkg/version.go`，git tag 管理）
+当前版本：`3.1.0`（定义于 `pkg/agent.go`，git tag 管理）
 
 ## 版本信息单一事实来源
 
@@ -16,7 +16,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 | 组件 | 当前版本 | 版本定义位置 |
 |------|----------|----------------|
-| Go SDK | v3.1.0 | `pkg/version.go` + git tag |
+| Go SDK | v3.1.0 | `pkg/agent.go` + git tag |
 | TypeScript SDK | v2.0.0 | `sdk/typescript/package.json` |
 | Python 客户端 | v2.0.0 | `sdk/python/pyproject.toml` |
 | Rust 客户端 | v2.0.0 | `sdk/rust/Cargo.toml` |

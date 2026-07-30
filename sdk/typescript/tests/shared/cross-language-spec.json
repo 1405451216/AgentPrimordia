@@ -1,6 +1,7 @@
 {
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Go/TS 跨语言行为一致性测试规范",
+  "lastUpdated": "2026-07-31",
   "testSuites": [
     {
       "name": "agent_config",
@@ -89,6 +90,18 @@
             "score": 0.0,
             "tolerance": 0.001
           }
+        },
+        {
+          "id": "cosine_similarity_opposite",
+          "description": "反向向量的余弦相似度应为 -1.0",
+          "input": {
+            "vectorA": [1.0, 0.0, 0.0],
+            "vectorB": [-1.0, 0.0, 0.0]
+          },
+          "expected": {
+            "score": -1.0,
+            "tolerance": 0.001
+          }
         }
       ]
     },
@@ -135,6 +148,311 @@
             "id": "test-1",
             "vector": [0.1, 0.2, 0.3],
             "metadata": {"source": "test"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "error_code_mapping",
+      "description": "Go pkg/errors.go 错误码与 TS ErrorCode 枚举的完整映射一致性",
+      "cases": [
+        {
+          "id": "agent_error_codes",
+          "description": "Agent 模块错误码前缀和编号一致",
+          "input": {"module": "agent"},
+          "expected": {
+            "codes": ["AGENT_001", "AGENT_002", "AGENT_003", "AGENT_004"]
+          }
+        },
+        {
+          "id": "tool_error_codes",
+          "description": "Tool 模块错误码前缀和编号一致",
+          "input": {"module": "tool"},
+          "expected": {
+            "codes": ["TOOL_001", "TOOL_002", "TOOL_003", "TOOL_004"]
+          }
+        },
+        {
+          "id": "llm_error_codes",
+          "description": "LLM 模块错误码前缀和编号一致",
+          "input": {"module": "llm"},
+          "expected": {
+            "codes": ["LLM_001", "LLM_002", "LLM_003", "LLM_004", "LLM_005", "LLM_006", "LLM_007", "LLM_008"]
+          }
+        },
+        {
+          "id": "pool_error_codes",
+          "description": "Pool 模块错误码前缀和编号一致",
+          "input": {"module": "pool"},
+          "expected": {
+            "codes": ["POOL_001", "POOL_002", "POOL_003"]
+          }
+        },
+        {
+          "id": "memory_error_codes",
+          "description": "Memory 模块错误码前缀和编号一致",
+          "input": {"module": "memory"},
+          "expected": {
+            "codes": ["MEM_001", "MEM_002", "MEM_003", "MEM_004", "MEM_005", "MEM_006", "MEM_007", "MEM_008"]
+          }
+        },
+        {
+          "id": "security_error_codes",
+          "description": "Security 模块错误码前缀和编号一致",
+          "input": {"module": "security"},
+          "expected": {
+            "codes": ["SEC_001", "SEC_002", "SEC_003", "SEC_004"]
+          }
+        },
+        {
+          "id": "infra_error_codes",
+          "description": "基础设施模块错误码一致（Event/Persist/Concurrency/Context）",
+          "input": {"module": "infra"},
+          "expected": {
+            "codes": ["EVT_001", "PST_001", "CON_001", "CON_002", "CTX_001"]
+          }
+        },
+        {
+          "id": "unknown_error_code",
+          "description": "未知错误应返回 UNKNOWN 错误码",
+          "input": {"error": "some random error"},
+          "expected": {
+            "code": "UNKNOWN"
+          }
+        }
+      ]
+    },
+    {
+      "name": "memory_store",
+      "description": "Memory CRUD 行为一致性",
+      "cases": [
+        {
+          "id": "memory_add_and_search",
+          "description": "添加记忆后应可搜索到",
+          "input": {
+            "operation": "add_then_search",
+            "episode": {
+              "id": "ep-1",
+              "sessionID": "session-1",
+              "role": "user",
+              "content": "Hello, how are you?"
+            },
+            "searchQuery": "hello"
+          },
+          "expected": {
+            "found": true,
+            "minResults": 1
+          }
+        },
+        {
+          "id": "memory_empty_search",
+          "description": "空存储搜索应返回空结果",
+          "input": {
+            "operation": "search",
+            "searchQuery": "anything"
+          },
+          "expected": {
+            "found": false,
+            "resultCount": 0
+          }
+        },
+        {
+          "id": "memory_importance_validation",
+          "description": "重要性值必须在 [0, 1] 范围内",
+          "input": {
+            "operation": "add",
+            "episode": {
+              "id": "ep-2",
+              "sessionID": "session-1",
+              "role": "assistant",
+              "content": "test",
+              "importance": 1.5
+            }
+          },
+          "expected": {
+            "shouldError": true,
+            "errorCode": "MEM_002"
+          }
+        },
+        {
+          "id": "memory_empty_content_rejected",
+          "description": "空内容应被拒绝",
+          "input": {
+            "operation": "add",
+            "episode": {
+              "id": "ep-3",
+              "sessionID": "session-1",
+              "role": "user",
+              "content": ""
+            }
+          },
+          "expected": {
+            "shouldError": true,
+            "errorCode": "MEM_006"
+          }
+        }
+      ]
+    },
+    {
+      "name": "llm_provider",
+      "description": "LLM Provider 接口行为一致性（MockProvider）",
+      "cases": [
+        {
+          "id": "mock_provider_basic_response",
+          "description": "MockProvider 应返回预配置的响应",
+          "input": {
+            "provider": "mock",
+            "configuredResponse": "Hello from mock",
+            "messages": [{"role": "user", "content": "Hi"}]
+          },
+          "expected": {
+            "content": "Hello from mock",
+            "role": "assistant"
+          }
+        },
+        {
+          "id": "mock_provider_error_mode",
+          "description": "MockProvider 错误模式应返回 LLM_001",
+          "input": {
+            "provider": "mock",
+            "errorMode": true,
+            "messages": [{"role": "user", "content": "Hi"}]
+          },
+          "expected": {
+            "shouldError": true,
+            "errorCode": "LLM_001"
+          }
+        },
+        {
+          "id": "mock_provider_empty_messages",
+          "description": "空消息列表应返回错误",
+          "input": {
+            "provider": "mock",
+            "messages": []
+          },
+          "expected": {
+            "shouldError": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "health_check",
+      "description": "健康检查端点行为一致性",
+      "cases": [
+        {
+          "id": "health_ready_state",
+          "description": "就绪状态应返回 200 + ready",
+          "input": {
+            "ready": true,
+            "endpoint": "/healthz"
+          },
+          "expected": {
+            "statusCode": 200,
+            "body": {"status": "ready"}
+          }
+        },
+        {
+          "id": "health_not_ready_state",
+          "description": "未就绪状态应返回 503",
+          "input": {
+            "ready": false,
+            "endpoint": "/healthz"
+          },
+          "expected": {
+            "statusCode": 503,
+            "body": {"status": "not_ready"}
+          }
+        }
+      ]
+    },
+    {
+      "name": "chaos_config",
+      "description": "混沌工程配置行为一致性",
+      "cases": [
+        {
+          "id": "chaos_experiment_basic",
+          "description": "基本实验配置应包含必要字段",
+          "input": {
+            "name": "test-experiment",
+            "hypothesis": "System should handle timeout",
+            "faults": [{"type": "network_delay", "target": "api.example.com", "delay": "100ms"}]
+          },
+          "expected": {
+            "name": "test-experiment",
+            "status": "pending",
+            "faultCount": 1
+          }
+        },
+        {
+          "id": "chaos_empty_name_rejected",
+          "description": "空实验名称应被拒绝",
+          "input": {
+            "name": "",
+            "hypothesis": "test"
+          },
+          "expected": {
+            "shouldError": true
+          }
+        },
+        {
+          "id": "chaos_steady_state_slo",
+          "description": "SLO 稳态验证阈值配置",
+          "input": {
+            "type": "slo",
+            "metric": "availability",
+            "threshold": 0.999
+          },
+          "expected": {
+            "type": "slo",
+            "threshold": 0.999
+          }
+        }
+      ]
+    },
+    {
+      "name": "orchestration",
+      "description": "编排模式执行语义一致性",
+      "cases": [
+        {
+          "id": "pipeline_sequential_execution",
+          "description": "Pipeline 应按顺序执行各阶段",
+          "input": {
+            "pattern": "pipeline",
+            "stages": ["stage-1", "stage-2", "stage-3"]
+          },
+          "expected": {
+            "executionOrder": ["stage-1", "stage-2", "stage-3"],
+            "allCompleted": true
+          }
+        },
+        {
+          "id": "pipeline_empty_stages",
+          "description": "空 Pipeline 应返回错误",
+          "input": {
+            "pattern": "pipeline",
+            "stages": []
+          },
+          "expected": {
+            "shouldError": true
+          }
+        },
+        {
+          "id": "dag_dependency_resolution",
+          "description": "DAG 应正确解析依赖关系",
+          "input": {
+            "pattern": "dag",
+            "nodes": [
+              {"id": "A", "deps": []},
+              {"id": "B", "deps": ["A"]},
+              {"id": "C", "deps": ["A"]},
+              {"id": "D", "deps": ["B", "C"]}
+            ]
+          },
+          "expected": {
+            "validOrder": true,
+            "firstNode": "A",
+            "lastNode": "D"
           }
         }
       ]
