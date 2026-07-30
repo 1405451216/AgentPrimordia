@@ -1,0 +1,4936 @@
+{
+  "version": "3.1.0",
+  "goVersion": "1.26",
+  "generated": "api-extract v1.0",
+  "modules": [
+    {
+      "file": "pkg/a2a.go",
+      "types": [
+        {
+          "name": "A2AAgentCard",
+          "kind": "alias",
+          "doc": "A2AAgentCard 描述 Agent 的能力、技能和端点信息"
+        },
+        {
+          "name": "A2AAgentSkill",
+          "kind": "alias",
+          "doc": "A2AAgentSkill 描述 Agent 提供的一项技能"
+        },
+        {
+          "name": "A2AAgentCapabilities",
+          "kind": "alias",
+          "doc": "A2AAgentCapabilities 描述 Agent 支持的能力（流式、推送等）"
+        },
+        {
+          "name": "A2AAgentEndpoints",
+          "kind": "alias",
+          "doc": "A2AAgentEndpoints 描述 Agent 的服务端点"
+        },
+        {
+          "name": "A2ATask",
+          "kind": "alias",
+          "doc": "A2ATask 表示一个 A2A 任务"
+        },
+        {
+          "name": "A2ATaskState",
+          "kind": "alias",
+          "doc": "A2ATaskState 表示任务状态"
+        },
+        {
+          "name": "A2ATaskStatus",
+          "kind": "alias",
+          "doc": "A2ATaskStatus 表示任务状态结构"
+        },
+        {
+          "name": "A2ATaskFilter",
+          "kind": "alias",
+          "doc": "A2ATaskFilter 任务过滤条件"
+        },
+        {
+          "name": "A2ATaskManager",
+          "kind": "alias",
+          "doc": "A2ATaskManager 任务管理器接口"
+        },
+        {
+          "name": "A2ATaskHandler",
+          "kind": "alias",
+          "doc": "A2ATaskHandler 自定义任务处理器接口"
+        },
+        {
+          "name": "A2AMessage",
+          "kind": "alias",
+          "doc": "A2AMessage A2A 协议消息"
+        },
+        {
+          "name": "A2AArtifact",
+          "kind": "alias",
+          "doc": "A2AArtifact 任务产物"
+        },
+        {
+          "name": "A2APart",
+          "kind": "alias",
+          "doc": "A2APart 消息内容片段接口"
+        },
+        {
+          "name": "A2ATextPart",
+          "kind": "alias",
+          "doc": "A2ATextPart 文本内容片段"
+        },
+        {
+          "name": "A2AFilePart",
+          "kind": "alias",
+          "doc": "A2AFilePart 文件内容片段"
+        },
+        {
+          "name": "A2ADataPart",
+          "kind": "alias",
+          "doc": "A2ADataPart 结构化数据片段"
+        },
+        {
+          "name": "A2AServer",
+          "kind": "alias",
+          "doc": "A2AServer JSON-RPC over HTTP 版的 A2A 服务端（兼容旧 API）"
+        },
+        {
+          "name": "A2AServerOption",
+          "kind": "alias",
+          "doc": "A2AServerOption JSON-RPC 服务端配置选项"
+        },
+        {
+          "name": "A2AClient",
+          "kind": "alias",
+          "doc": "A2AClient JSON-RPC over HTTP 版的 A2A 客户端（兼容旧 API）"
+        },
+        {
+          "name": "A2AClientOption",
+          "kind": "alias",
+          "doc": "A2AClientOption JSON-RPC 客户端配置选项"
+        },
+        {
+          "name": "A2APrincipal",
+          "kind": "alias",
+          "doc": "A2APrincipal 认证主体"
+        },
+        {
+          "name": "A2AAuthenticator",
+          "kind": "alias",
+          "doc": "A2AAuthenticator 认证器接口"
+        },
+        {
+          "name": "A2ANoopAuthenticator",
+          "kind": "alias",
+          "doc": "A2ANoopAuthenticator 空认证器（不校验）"
+        },
+        {
+          "name": "A2AAPIKeyAuthenticator",
+          "kind": "alias",
+          "doc": "A2AAPIKeyAuthenticator API Key 认证器"
+        },
+        {
+          "name": "A2ABearerTokenAuthenticator",
+          "kind": "alias",
+          "doc": "A2ABearerTokenAuthenticator Bearer Token 认证器"
+        },
+        {
+          "name": "A2ABearerTokenValidator",
+          "kind": "alias",
+          "doc": "A2ABearerTokenValidator Bearer Token 校验函数类型"
+        },
+        {
+          "name": "A2ADiscovery",
+          "kind": "alias",
+          "doc": "A2ADiscovery 服务发现接口"
+        },
+        {
+          "name": "A2AAgentRegistry",
+          "kind": "alias",
+          "doc": "A2AAgentRegistry Agent 注册表"
+        },
+        {
+          "name": "A2ADiscoveryEvent",
+          "kind": "alias",
+          "doc": "A2ADiscoveryEvent 发现事件"
+        },
+        {
+          "name": "A2ADiscoveryEventType",
+          "kind": "alias",
+          "doc": "A2ADiscoveryEventType 发现事件类型"
+        },
+        {
+          "name": "A2ALocalDiscovery",
+          "kind": "alias",
+          "doc": "A2ALocalDiscovery 本地服务发现实现"
+        },
+        {
+          "name": "A2AJSONRPCRequest",
+          "kind": "alias",
+          "doc": "A2AJSONRPCRequest JSON-RPC 2.0 请求"
+        },
+        {
+          "name": "A2AJSONRPCResponse",
+          "kind": "alias",
+          "doc": "A2AJSONRPCResponse JSON-RPC 2.0 响应"
+        },
+        {
+          "name": "A2AJSONRPCError",
+          "kind": "alias",
+          "doc": "A2AJSONRPCError JSON-RPC 2.0 错误"
+        },
+        {
+          "name": "A2AMessageBridge",
+          "kind": "alias",
+          "doc": "A2AMessageBridge A2A 消息与内部 Message 的桥接器"
+        },
+        {
+          "name": "A2AService",
+          "kind": "alias",
+          "doc": "A2AService 传输无关的 A2A 业务核心"
+        },
+        {
+          "name": "A2AServiceOption",
+          "kind": "alias",
+          "doc": "A2AServiceOption A2AService 配置选项"
+        },
+        {
+          "name": "A2ACreateTaskRequest",
+          "kind": "alias",
+          "doc": "A2ACreateTaskRequest 创建任务请求"
+        },
+        {
+          "name": "A2AGRPCServer",
+          "kind": "alias",
+          "doc": "A2AGRPCServer A2A gRPC 服务端实现"
+        },
+        {
+          "name": "A2AGRPCServerOption",
+          "kind": "alias",
+          "doc": "A2AGRPCServerOption gRPC 服务端配置选项"
+        },
+        {
+          "name": "A2AGRPCClient",
+          "kind": "alias",
+          "doc": "A2AGRPCClient A2A gRPC 客户端"
+        },
+        {
+          "name": "A2AGRPCClientOption",
+          "kind": "alias",
+          "doc": "A2AGRPCClientOption gRPC 客户端配置选项"
+        },
+        {
+          "name": "A2AGRPCAuthFunc",
+          "kind": "alias",
+          "doc": "A2AGRPCAuthFunc gRPC 认证函数"
+        },
+        {
+          "name": "A2AInterceptorMetrics",
+          "kind": "alias",
+          "doc": "A2AInterceptorMetrics gRPC 拦截器共享的指标收集器"
+        },
+        {
+          "name": "A2AMetricsSnapshot",
+          "kind": "alias",
+          "doc": "A2AMetricsSnapshot 指标快照"
+        },
+        {
+          "name": "A2AInterceptorConfig",
+          "kind": "alias",
+          "doc": "A2AInterceptorConfig gRPC 拦截器共享配置"
+        },
+        {
+          "name": "A2ATraceContext",
+          "kind": "alias",
+          "doc": "A2ATraceContext W3C Trace Context 表示（version-trace_id-span_id-flags）"
+        },
+        {
+          "name": "A2AMetadata",
+          "kind": "alias",
+          "doc": "A2AMetadata gRPC metadata 抽象，便于不直接依赖 google.golang.org/grpc/metadata"
+        },
+        {
+          "name": "A2ATLSConfig",
+          "kind": "alias",
+          "doc": "A2ATLSConfig 定义 gRPC 双向 TLS 配置"
+        },
+        {
+          "name": "A2ACircuitBreakerInterceptor",
+          "kind": "alias",
+          "doc": "A2ACircuitBreakerInterceptor 基于 断路器的 gRPC 客户端拦截器"
+        }
+      ],
+      "functions": [
+        {
+          "name": "NewA2AAgentCard",
+          "params": [
+            "agentID string",
+            "name string"
+          ],
+          "returns": [
+            "*A2AAgentCard"
+          ],
+          "doc": "NewA2AAgentCard 创建一张新的 Agent Card"
+        },
+        {
+          "name": "NewA2ATaskManager",
+          "returns": [
+            "*a2a.TaskManagerImpl"
+          ],
+          "doc": "NewA2ATaskManager 创建默认的任务管理器实现"
+        },
+        {
+          "name": "NewA2ATextPart",
+          "params": [
+            "text string"
+          ],
+          "returns": [
+            "A2ATextPart"
+          ],
+          "doc": "NewA2ATextPart 创建文本片段"
+        },
+        {
+          "name": "NewA2AFilePartFromURI",
+          "params": [
+            "uri string",
+            "mime string"
+          ],
+          "returns": [
+            "A2AFilePart"
+          ],
+          "doc": "NewA2AFilePartFromURI 从 URI 创建文件片段"
+        },
+        {
+          "name": "NewA2ADataPart",
+          "params": [
+            "data []byte"
+          ],
+          "returns": [
+            "A2ADataPart"
+          ],
+          "doc": "NewA2ADataPart 创建数据片段"
+        },
+        {
+          "name": "NewA2AServer",
+          "params": [
+            "tm A2ATaskManager",
+            "opts ...A2AServerOption"
+          ],
+          "returns": [
+            "*A2AServer"
+          ],
+          "doc": "NewA2AServer 创建 JSON-RPC over HTTP 版 A2A 服务端"
+        },
+        {
+          "name": "NewA2AServerWithService",
+          "params": [
+            "service *A2AService",
+            "opts ...A2AServerOption"
+          ],
+          "returns": [
+            "*A2AServer"
+          ],
+          "doc": "NewA2AServerWithService 使用已有的 A2AService 创建 JSON-RPC A2A 服务端"
+        },
+        {
+          "name": "NewA2AClient",
+          "params": [
+            "baseURL string",
+            "opts ...A2AClientOption"
+          ],
+          "returns": [
+            "*A2AClient"
+          ],
+          "doc": "NewA2AClient 创建 JSON-RPC over HTTP 版 A2A 客户端"
+        },
+        {
+          "name": "NewA2ANoopAuthenticator",
+          "returns": [
+            "*A2ANoopAuthenticator"
+          ],
+          "doc": "NewA2ANoopAuthenticator 创建空认证器"
+        },
+        {
+          "name": "NewA2AAPIKeyAuthenticator",
+          "params": [
+            "keys map[string]string",
+            "headerName string"
+          ],
+          "returns": [
+            "*A2AAPIKeyAuthenticator"
+          ],
+          "doc": "NewA2AAPIKeyAuthenticator 创建 API Key 认证器"
+        },
+        {
+          "name": "NewA2ABearerTokenAuthenticator",
+          "params": [
+            "validate A2ABearerTokenValidator"
+          ],
+          "returns": [
+            "*A2ABearerTokenAuthenticator"
+          ],
+          "doc": "NewA2ABearerTokenAuthenticator 创建 Bearer Token 认证器"
+        },
+        {
+          "name": "NewA2ALocalDiscovery",
+          "returns": [
+            "*A2ALocalDiscovery"
+          ],
+          "doc": "NewA2ALocalDiscovery 创建本地服务发现实例"
+        },
+        {
+          "name": "NewA2AMessageBridge",
+          "returns": [
+            "*A2AMessageBridge"
+          ],
+          "doc": "NewA2AMessageBridge 创建消息桥接器"
+        },
+        {
+          "name": "NewA2AService",
+          "params": [
+            "card *A2AAgentCard",
+            "tm A2ATaskManager",
+            "opts ...A2AServiceOption"
+          ],
+          "returns": [
+            "*A2AService"
+          ],
+          "doc": "NewA2AService 创建 A2A 业务核心"
+        },
+        {
+          "name": "NewA2AGRPCServer",
+          "params": [
+            "service *A2AService",
+            "opts ...A2AGRPCServerOption"
+          ],
+          "returns": [
+            "*A2AGRPCServer"
+          ],
+          "doc": "NewA2AGRPCServer 创建 A2A gRPC 服务端实现"
+        },
+        {
+          "name": "NewA2AGRPCServerWithService",
+          "params": [
+            "service *A2AService",
+            "opts ...A2AGRPCServerOption"
+          ],
+          "returns": [
+            "*grpc.Server"
+          ],
+          "doc": "NewA2AGRPCServerWithService 构造并返回已注册 A2A 服务的 *grpc.Server"
+        },
+        {
+          "name": "NewA2AGRPCClient",
+          "params": [
+            "target string",
+            "opts ...A2AGRPCClientOption"
+          ],
+          "returns": [
+            "*A2AGRPCClient",
+            "error"
+          ],
+          "doc": "NewA2AGRPCClient 创建 A2A gRPC 客户端"
+        },
+        {
+          "name": "NewA2AGRPCClientWithConn",
+          "params": [
+            "conn *grpc.ClientConn",
+            "opts ...A2AGRPCClientOption"
+          ],
+          "returns": [
+            "*A2AGRPCClient"
+          ],
+          "doc": "NewA2AGRPCClientWithConn 使用已有 gRPC 连接创建客户端"
+        },
+        {
+          "name": "WithGRPCAuth",
+          "params": [
+            "auth A2AGRPCAuthFunc"
+          ],
+          "returns": [
+            "A2AGRPCServerOption"
+          ],
+          "doc": "WithGRPCAuth 设置 gRPC server 认证函数"
+        },
+        {
+          "name": "WithGRPCLogger",
+          "params": [
+            "logger *slog.Logger"
+          ],
+          "returns": [
+            "A2AGRPCServerOption"
+          ],
+          "doc": "WithGRPCLogger 设置 gRPC server 日志器"
+        },
+        {
+          "name": "NewA2AInterceptorMetrics",
+          "returns": [
+            "*A2AInterceptorMetrics"
+          ],
+          "doc": "NewA2AInterceptorMetrics 创建新的指标收集器"
+        },
+        {
+          "name": "WithGRPCMetrics",
+          "params": [
+            "m *A2AInterceptorMetrics"
+          ],
+          "returns": [
+            "A2AGRPCServerOption"
+          ],
+          "doc": "WithGRPCMetrics 注入共享的指标收集器"
+        },
+        {
+          "name": "WithGRPCSlowRequestThreshold",
+          "params": [
+            "d time.Duration"
+          ],
+          "returns": [
+            "A2AGRPCServerOption"
+          ],
+          "doc": "WithGRPCSlowRequestThreshold 设置慢请求日志阈值"
+        },
+        {
+          "name": "RecoveryInterceptor",
+          "returns": [
+            "grpc.UnaryServerInterceptor"
+          ],
+          "doc": "RecoveryInterceptor panic 恢复拦截器（链最外层）"
+        },
+        {
+          "name": "StreamRecoveryInterceptor",
+          "returns": [
+            "grpc.StreamServerInterceptor"
+          ],
+          "doc": "StreamRecoveryInterceptor 流式 panic 恢复拦截器"
+        },
+        {
+          "name": "LoggingInterceptor",
+          "params": [
+            "cfg A2AInterceptorConfig"
+          ],
+          "returns": [
+            "grpc.UnaryServerInterceptor"
+          ],
+          "doc": "LoggingInterceptor 日志拦截器"
+        },
+        {
+          "name": "StreamLoggingInterceptor",
+          "params": [
+            "cfg A2AInterceptorConfig"
+          ],
+          "returns": [
+            "grpc.StreamServerInterceptor"
+          ],
+          "doc": "StreamLoggingInterceptor 流式日志拦截器"
+        },
+        {
+          "name": "MetricsInterceptor",
+          "params": [
+            "m *A2AInterceptorMetrics"
+          ],
+          "returns": [
+            "grpc.UnaryServerInterceptor"
+          ],
+          "doc": "MetricsInterceptor 指标拦截器"
+        },
+        {
+          "name": "StreamMetricsInterceptor",
+          "params": [
+            "m *A2AInterceptorMetrics"
+          ],
+          "returns": [
+            "grpc.StreamServerInterceptor"
+          ],
+          "doc": "StreamMetricsInterceptor 流式指标拦截器"
+        },
+        {
+          "name": "ChainUnaryInterceptors",
+          "params": [
+            "interceptors ...grpc.UnaryServerInterceptor"
+          ],
+          "returns": [
+            "grpc.UnaryServerInterceptor"
+          ],
+          "doc": "ChainUnaryInterceptors 组合多个 unary 拦截器"
+        },
+        {
+          "name": "ChainStreamInterceptors",
+          "params": [
+            "interceptors ...grpc.StreamServerInterceptor"
+          ],
+          "returns": [
+            "grpc.StreamServerInterceptor"
+          ],
+          "doc": "ChainStreamInterceptors 组合多个 stream 拦截器"
+        },
+        {
+          "name": "A2AStartTrace",
+          "params": [
+            "ctx context.Context"
+          ],
+          "returns": [
+            "context.Context",
+            "A2ATraceContext"
+          ],
+          "doc": "A2AStartTrace 在 client 端启动一条新的 trace 并注入 ctx"
+        },
+        {
+          "name": "A2AContinueTrace",
+          "params": [
+            "ctx context.Context",
+            "parent A2ATraceContext"
+          ],
+          "returns": [
+            "context.Context",
+            "A2ATraceContext"
+          ],
+          "doc": "A2AContinueTrace 基于父 TraceContext 创建子 TraceContext 并注入 ctx"
+        },
+        {
+          "name": "A2AExtractTraceContext",
+          "params": [
+            "ctx context.Context"
+          ],
+          "returns": [
+            "A2ATraceContext",
+            "bool"
+          ],
+          "doc": "A2AExtractTraceContext 从 ctx 提取当前生效的 TraceContext"
+        },
+        {
+          "name": "A2AInjectTraceToGRPCClient",
+          "params": [
+            "ctx context.Context",
+            "tc A2ATraceContext"
+          ],
+          "returns": [
+            "context.Context"
+          ],
+          "doc": "A2AInjectTraceToGRPCClient 将 TraceContext 写入 A2AGRPCClient 的 outgoing context"
+        },
+        {
+          "name": "A2AGenerateTraceContext",
+          "returns": [
+            "A2ATraceContext"
+          ],
+          "doc": "A2AGenerateTraceContext 生成一个新的 W3C TraceContext"
+        },
+        {
+          "name": "A2AChildTraceContext",
+          "params": [
+            "parent A2ATraceContext"
+          ],
+          "returns": [
+            "A2ATraceContext"
+          ],
+          "doc": "A2AChildTraceContext 基于父 TraceContext 创建子 TraceContext"
+        },
+        {
+          "name": "A2AParseTraceParent",
+          "params": [
+            "header string"
+          ],
+          "returns": [
+            "A2ATraceContext",
+            "error"
+          ],
+          "doc": "A2AParseTraceParent 解析 W3C traceparent header（\"00-\u003ctrace\u003e-\u003cspan\u003e-\u003cflags\u003e\"）"
+        },
+        {
+          "name": "A2AServerTLSCredentials",
+          "params": [
+            "config A2ATLSConfig"
+          ],
+          "returns": [
+            "credentials.TransportCredentials",
+            "error"
+          ],
+          "doc": "A2AServerTLSCredentials 从 TLSConfig 创建服务端 TLS 凭证（含 mTLS 客户端证书验证）"
+        },
+        {
+          "name": "A2AClientTLSCredentials",
+          "params": [
+            "config A2ATLSConfig"
+          ],
+          "returns": [
+            "credentials.TransportCredentials",
+            "error"
+          ],
+          "doc": "A2AClientTLSCredentials 从 TLSConfig 创建客户端 TLS 凭证"
+        },
+        {
+          "name": "WithA2AGRPCClientTLS",
+          "params": [
+            "config A2ATLSConfig"
+          ],
+          "returns": [
+            "A2AGRPCClientOption"
+          ],
+          "doc": "WithA2AGRPCClientTLS 启用 gRPC 客户端 TLS/mTLS"
+        },
+        {
+          "name": "WithA2AGRPCClientCredentials",
+          "params": [
+            "creds credentials.TransportCredentials"
+          ],
+          "returns": [
+            "A2AGRPCClientOption"
+          ],
+          "doc": "WithA2AGRPCClientCredentials 直接设置 gRPC 客户端 TransportCredentials"
+        },
+        {
+          "name": "WithA2AGRPCClientLogger",
+          "params": [
+            "logger *slog.Logger"
+          ],
+          "returns": [
+            "A2AGRPCClientOption"
+          ],
+          "doc": "WithA2AGRPCClientLogger 设置 gRPC 客户端日志器"
+        },
+        {
+          "name": "WithA2AGRPCClientAPIKey",
+          "params": [
+            "key string"
+          ],
+          "returns": [
+            "A2AGRPCClientOption"
+          ],
+          "doc": "WithA2AGRPCClientAPIKey 设置 gRPC 客户端 API Key"
+        },
+        {
+          "name": "WithA2AGRPCClientBearerToken",
+          "params": [
+            "token string"
+          ],
+          "returns": [
+            "A2AGRPCClientOption"
+          ],
+          "doc": "WithA2AGRPCClientBearerToken 设置 gRPC 客户端 Bearer Token"
+        },
+        {
+          "name": "NewA2ACircuitBreakerInterceptor",
+          "params": [
+            "cfg resilience.Config",
+            "logger *slog.Logger"
+          ],
+          "returns": [
+            "*A2ACircuitBreakerInterceptor"
+          ],
+          "doc": "NewA2ACircuitBreakerInterceptor 创建断路器拦截器"
+        },
+        {
+          "name": "NewA2ACircuitBreakerInterceptorWithCB",
+          "params": [
+            "cb *resilience.CircuitBreaker",
+            "logger *slog.Logger"
+          ],
+          "returns": [
+            "*A2ACircuitBreakerInterceptor"
+          ],
+          "doc": "NewA2ACircuitBreakerInterceptorWithCB 使用已有断路器创建拦截器"
+        },
+        {
+          "name": "WithA2AGRPCCircuitBreaker",
+          "params": [
+            "cb *resilience.CircuitBreaker"
+          ],
+          "returns": [
+            "A2AGRPCClientOption"
+          ],
+          "doc": "WithA2AGRPCCircuitBreaker 为 gRPC 客户端添加断路器"
+        }
+      ]
+    },
+    {
+      "file": "pkg/adapters.go",
+      "functions": [
+        {
+          "name": "NewEventBusAdapter",
+          "params": [
+            "bus *events.Bus"
+          ],
+          "returns": [
+            "agent.EventPublisher"
+          ],
+          "doc": "NewEventBusAdapter 将 events.Bus 适配为 agent.EventPublisher，用于注入到 Agent 的事件发布器"
+        },
+        {
+          "name": "NewEmbeddingAdapter",
+          "params": [
+            "provider llm.Provider",
+            "dimensions int"
+          ],
+          "returns": [
+            "memory.EmbeddingProvider"
+          ],
+          "doc": "NewEmbeddingAdapter 将 llm.Provider 适配为 memory.EmbeddingProvider，dimensions 指定向量维度（默认 1536）"
+        },
+        {
+          "name": "NewRAGStore",
+          "params": [
+            "memStore memory.Memory",
+            "embedder memory.EmbeddingProvider"
+          ],
+          "returns": [
+            "*memory.RAGStore"
+          ],
+          "doc": "NewRAGStore 创建 RAG 存储实例，集成 Memory + Embedding + Vector，提供混合检索能力"
+        },
+        {
+          "name": "NewRAGProviderAdapter",
+          "params": [
+            "store *memory.RAGStore"
+          ],
+          "returns": [
+            "agent.RAGProvider"
+          ],
+          "doc": "NewRAGProviderAdapter 将 memory.RAGStore 适配为 agent.RAGProvider，用于注入到 Agent 的 RAG 配置"
+        },
+        {
+          "name": "NewKnowledgeSearcherAdapter",
+          "params": [
+            "store *memory.RAGStore"
+          ],
+          "returns": [
+            "builtin.KnowledgeSearcher"
+          ],
+          "doc": "NewKnowledgeSearcherAdapter 将 memory.RAGStore 适配为 builtin.KnowledgeSearcher，用于注入到 ToolkitConfig"
+        },
+        {
+          "name": "NewSummarizerLLMAdapter",
+          "params": [
+            "provider llm.Provider"
+          ],
+          "returns": [
+            "memory.SummarizerLLM"
+          ],
+          "doc": "NewSummarizerLLMAdapter 将 llm.Provider 适配为 memory.SummarizerLLM，用于创建 Summarizer"
+        }
+      ]
+    },
+    {
+      "file": "pkg/agent.go",
+      "types": [
+        {
+          "name": "Agent",
+          "kind": "alias",
+          "doc": "Agent 是所有 Agent 实现的核心接口，编排模式和 Pool 均面向此接口编程"
+        },
+        {
+          "name": "ReActAgent",
+          "kind": "alias",
+          "doc": "ReActAgent 是基于 ReAct（推理+行动）循环的 Agent 实现"
+        },
+        {
+          "name": "ReActConfig",
+          "kind": "alias",
+          "doc": "ReActConfig 是 ReActAgent 的配置结构，包含模型、系统提示词、温度等核心参数"
+        },
+        {
+          "name": "PromptTemplate",
+          "kind": "alias",
+          "doc": "PromptTemplate 支持 {{.Variable}} 格式的系统提示词模板，可自动注入 Agent 名称、权限规则等\ufffd\ufffd..."
+        },
+        {
+          "name": "AgentStatus",
+          "kind": "alias",
+          "doc": "AgentStatus 表示 Agent 的当前运行状态"
+        },
+        {
+          "name": "AgentStats",
+          "kind": "alias",
+          "doc": "AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、工具调用次数等"
+        },
+        {
+          "name": "Message",
+          "kind": "alias",
+          "doc": "Message 表示对话中的一条消息，包含角色、内容和可选的工具调用"
+        },
+        {
+          "name": "Role",
+          "kind": "alias",
+          "doc": "Role 表示消息发送者的角色（system / user / assistant / tool）"
+        },
+        {
+          "name": "ContentPart",
+          "kind": "alias",
+          "doc": "ContentPart 是多模态消息的内容片段（文本/图片URL/Base64图片/音频/视频）"
+        },
+        {
+          "name": "ToolCall",
+          "kind": "alias",
+          "doc": "ToolCall 表示 LLM 发起的工具调用请求，包含调用 ID、工具名称和 JSON 参数"
+        },
+        {
+          "name": "Thought",
+          "kind": "alias",
+          "doc": "Thought 表示 LLM 的推理输出，包含文本内容和可选的工具调用列表"
+        },
+        {
+          "name": "Response",
+          "kind": "alias",
+          "doc": "Response 表示 Agent 的最终响应，包含内容、工具调用、用量和指标"
+        },
+        {
+          "name": "AgentUsage",
+          "kind": "alias",
+          "doc": "AgentUsage 表示 LLM 调用的 Token 用量统计"
+        },
+        {
+          "name": "AgentMetrics",
+          "kind": "alias",
+          "doc": "AgentMetrics 表示 Agent 运行期间的性能指标，包括轮次、工具数、延迟等"
+        },
+        {
+          "name": "MemoryStore",
+          "kind": "alias",
+          "doc": "MemoryStore 是 Agent 所需的记忆存储接口，由 memory.Memory 通过适配器实现"
+        },
+        {
+          "name": "SummaryExtractor",
+          "kind": "alias",
+          "doc": "SummaryExtractor 是摘要提取接口，供 Agent 层依赖，由 memory.Summarizer 实现"
+        },
+        {
+          "name": "SummaryResult",
+          "kind": "alias",
+          "doc": "SummaryResult 是摘要提取的结果，包含摘要文本和主题标签"
+        },
+        {
+          "name": "Summarizer",
+          "kind": "alias",
+          "doc": "Summarizer 使用 LLM 从内容中提取摘要和标签"
+        },
+        {
+          "name": "EventPublisher",
+          "kind": "alias",
+          "doc": "EventPublisher 是 Agent 所需的事件发布接口，用于异步发布生命周期事件"
+        },
+        {
+          "name": "MetricsRecorder",
+          "kind": "alias",
+          "doc": "MetricsRecorder 是 Agent 所需的指标记录接口，用于收集 LLM 调用、工具调用等指标"
+        },
+        {
+          "name": "StreamEvent",
+          "kind": "alias",
+          "doc": "StreamEvent 是流式输出的事件，包含事件类型、内容和附加数据"
+        },
+        {
+          "name": "StreamEventType",
+          "kind": "alias",
+          "doc": "StreamEventType 标识流式事件的类型（token / thought / tool_call / tool_result / complete / error）"
+        },
+        {
+          "name": "MessageBus",
+          "kind": "alias",
+          "doc": "MessageBus 是统一消息总线接口，支持 Agent 间的点对点消息发送和广播"
+        },
+        {
+          "name": "LocalMessageBus",
+          "kind": "alias",
+          "doc": "LocalMessageBus 是进程内消息总线实现，支持注册、发送、广播和订阅"
+        },
+        {
+          "name": "BusMessage",
+          "kind": "alias",
+          "doc": "BusMessage 是统一消息结构，包含发送方、接收方、类型、内容和元数据"
+        },
+        {
+          "name": "BusMessageType",
+          "kind": "alias",
+          "doc": "BusMessageType 是统一消息类型，覆盖任务请求/结果、查询/响应、交接、广播、状态更新、\ufffd..."
+        },
+        {
+          "name": "BusMessageHandler",
+          "kind": "alias",
+          "doc": "BusMessageHandler 是消息处理函数类型，接收消息并返回响应"
+        },
+        {
+          "name": "RAGDocument",
+          "kind": "alias",
+          "doc": "RAGDocument 是 RAG 检索返回的文档片段，包含 ID、内容、相关度分数和来源"
+        },
+        {
+          "name": "RAGProvider",
+          "kind": "alias",
+          "doc": "RAGProvider 是 Agent 可使用的 RAG 检索接口，由 memory.RAGStore 通过适配器实现"
+        },
+        {
+          "name": "RAGMode",
+          "kind": "alias",
+          "doc": "RAGMode 控制 RAG 在 ReAct Loop 中的注入方式（auto / first / on_demand）"
+        },
+        {
+          "name": "RAGConfig",
+          "kind": "alias",
+          "doc": "RAGConfig 配置 RAG 注入行为，包括提供者、模式、TopK、最低分数和上下文模板"
+        },
+        {
+          "name": "Transport",
+          "kind": "alias",
+          "doc": "Transport 是跨进程 Agent 通信传输层接口，定义发送、接收、启动和关闭方法"
+        },
+        {
+          "name": "HTTPTransport",
+          "kind": "alias",
+          "doc": "HTTPTransport 是基于 HTTP 的跨进程 Agent 通信传输层实现"
+        },
+        {
+          "name": "AgentOption",
+          "kind": "alias",
+          "doc": "AgentOption 是 NewAgent 的函数式选项类型（v0.7.0 起等同于 agent.Option）"
+        },
+        {
+          "name": "AgentConfig",
+          "kind": "alias",
+          "doc": "AgentConfig 是 Agent 的完整配置，构造后不可变。"
+        },
+        {
+          "name": "MemoryConfig",
+          "kind": "alias",
+          "doc": "MemoryConfig 记忆能力分组配置（Store / Summarizer / FileScope）"
+        },
+        {
+          "name": "ObservabilityConfig",
+          "kind": "alias",
+          "doc": "ObservabilityConfig 可观测性分组配置（Hooks / Tracer / Metrics / Events / CostTracker）"
+        },
+        {
+          "name": "ResilienceConfig",
+          "kind": "alias",
+          "doc": "ResilienceConfig 容错分组配置（CheckpointStore / HITL / Cache / ContextWindow）"
+        },
+        {
+          "name": "ToolsConfig",
+          "kind": "alias",
+          "doc": "ToolsConfig 工具系统分组配置（Registry）"
+        },
+        {
+          "name": "HITLConfig",
+          "kind": "alias",
+          "doc": "HITLConfig 人机协作配置"
+        },
+        {
+          "name": "LearningConfig",
+          "kind": "alias",
+          "doc": "LearningConfig 自适应学习分组配置（Distiller / Evolver / FeedbackLearner）"
+        },
+        {
+          "name": "CapabilityAgent",
+          "kind": "alias",
+          "doc": "CapabilityAgent 是可组合能力的 Agent 包装器，通过链式 API 按需注入能力"
+        },
+        {
+          "name": "Session",
+          "kind": "alias",
+          "doc": "Session 维护多轮对话上下文，自动追加历史到记忆。"
+        },
+        {
+          "name": "SessionOption",
+          "kind": "alias",
+          "doc": "SessionOption 是 NewSession 的函数式选项"
+        },
+        {
+          "name": "MemoryCapable",
+          "kind": "alias",
+          "doc": "MemoryCapable 标识 Agent 具备记忆存储能力，引擎自动保存对话"
+        },
+        {
+          "name": "RAGCapable",
+          "kind": "alias",
+          "doc": "RAGCapable 标识 Agent 具备 RAG 检索能力，引擎自动注入知识库上下文"
+        },
+        {
+          "name": "HITLCapable",
+          "kind": "alias",
+          "doc": "HITLCapable 标识 Agent 具备人机协作能力，工具执行前自动检查人类确认"
+        },
+        {
+          "name": "HookCapable",
+          "kind": "alias",
+          "doc": "HookCapable 标识 Agent 具备 Hook 能力，引擎自动触发注册的 Hook 函数"
+        },
+        {
+          "name": "TraceCapable",
+          "kind": "alias",
+          "doc": "TraceCapable 标识 Agent 具备分布式追踪能力，引擎自动创建 Span"
+        },
+        {
+          "name": "CostCapable",
+          "kind": "alias",
+          "doc": "CostCapable 标识 Agent 具备成本追踪能力，引擎自动记录 LLM Usage"
+        },
+        {
+          "name": "ContextWindowCapable",
+          "kind": "alias",
+          "doc": "ContextWindowCapable 标识 Agent 具备上下文窗口裁剪能力"
+        },
+        {
+          "name": "EventCapable",
+          "kind": "alias",
+          "doc": "EventCapable 标识 Agent 具备事件发布能力"
+        },
+        {
+          "name": "MetricsCapable",
+          "kind": "alias",
+          "doc": "MetricsCapable 标识 Agent 具备指标记录能力"
+        },
+        {
+          "name": "CheckpointCapable",
+          "kind": "alias",
+          "doc": "CheckpointCapable 标识 Agent 具备检查点持久化能力"
+        },
+        {
+          "name": "SummarizerCapable",
+          "kind": "alias",
+          "doc": "SummarizerCapable 标识 Agent 具备摘要提取能力"
+        },
+        {
+          "name": "FileScopeCapable",
+          "kind": "alias",
+          "doc": "FileScopeCapable 标识 Agent 具备文件作用域限制能力"
+        },
+        {
+          "name": "CacheCapable",
+          "kind": "alias",
+          "doc": "CacheCapable 标识 Agent 具备 LLM 缓存能力"
+        },
+        {
+          "name": "LearningCapable",
+          "kind": "alias",
+          "doc": "LearningCapable 标识 Agent 具备自适应学习能力，引擎在完成时自动蒸馏知识"
+        },
+        {
+          "name": "DAGWorkflow",
+          "kind": "alias",
+          "doc": "DAGWorkflow 是 DAG 工作流引擎，支持拓扑排序、并行执行、条件分支和重试"
+        },
+        {
+          "name": "DAGNode",
+          "kind": "alias",
+          "doc": "DAGNode 是 DAG 工作流节点"
+        },
+        {
+          "name": "DAGEdge",
+          "kind": "alias",
+          "doc": "DAGEdge 是 DAG 工作流边（含条件谓词）"
+        },
+        {
+          "name": "DAGNodeResult",
+          "kind": "alias",
+          "doc": "DAGNodeResult 是节点执行结果"
+        },
+        {
+          "name": "DAGResult",
+          "kind": "alias",
+          "doc": "DAGResult 是 DAG 工作流执行结果"
+        },
+        {
+          "name": "DAGMetrics",
+          "kind": "alias",
+          "doc": "DAGMetrics 是 DAG 执行指标"
+        },
+        {
+          "name": "NodeExecutionStats",
+          "kind": "alias",
+          "doc": "NodeExecutionStats 是单节点执行统计"
+        },
+        {
+          "name": "DAGBuilder",
+          "kind": "alias",
+          "doc": "DAGBuilder 是声明式 DAG 构建器，提供链式 API"
+        },
+        {
+          "name": "NodeHandler",
+          "kind": "alias",
+          "doc": "NodeHandler 是节点处理函数类型"
+        },
+        {
+          "name": "NodePair",
+          "kind": "alias",
+          "doc": "NodePair 是节点定义对（ID + Handler），用于 Sequential/Parallel"
+        },
+        {
+          "name": "AgentDelegateNode",
+          "kind": "alias",
+          "doc": "AgentDelegateNode 将 Agent 实例包装为 DAG 节点"
+        },
+        {
+          "name": "SubWorkflowNode",
+          "kind": "alias",
+          "doc": "SubWorkflowNode 将子工作流包装为 DAG 节点"
+        },
+        {
+          "name": "WorkflowExecution",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowType",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowStatus",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowNode",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowEvent",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowResult",
+          "kind": "alias"
+        },
+        {
+          "name": "WorkflowMetrics",
+          "kind": "alias"
+        },
+        {
+          "name": "ExecutionRecord",
+          "kind": "alias"
+        },
+        {
+          "name": "NodeType",
+          "kind": "alias"
+        },
+        {
+          "name": "NodeCondition",
+          "kind": "alias"
+        },
+        {
+          "name": "NodeConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "NodeExecutionStatus",
+          "kind": "alias"
+        },
+        {
+          "name": "Transition",
+          "kind": "alias"
+        },
+        {
+          "name": "TransitionCondition",
+          "kind": "alias"
+        },
+        {
+          "name": "ErrorHandling",
+          "kind": "alias"
+        },
+        {
+          "name": "WfRetryPolicy",
+          "kind": "alias"
+        },
+        {
+          "name": "CostTracker",
+          "kind": "alias",
+          "doc": "CostTracker is the LLM cost tracking engine"
+        },
+        {
+          "name": "CostRecord",
+          "kind": "alias",
+          "doc": "CostRecord is a single cost record for an LLM call"
+        },
+        {
+          "name": "BudgetConfig",
+          "kind": "alias",
+          "doc": "BudgetConfig configures cost budget limits and callback"
+        },
+        {
+          "name": "CostSummary",
+          "kind": "alias",
+          "doc": "CostSummary is the aggregated cost summary"
+        },
+        {
+          "name": "ModelCost",
+          "kind": "alias",
+          "doc": "ModelCost is the per-model cost breakdown"
+        },
+        {
+          "name": "SummaryEngine",
+          "kind": "alias",
+          "doc": "SummaryEngine orchestrates summarization with a strategy, summarizer, and memory store"
+        },
+        {
+          "name": "SummaryStrategy",
+          "kind": "alias",
+          "doc": "SummaryStrategy is the interface for summarization strategies"
+        },
+        {
+          "name": "WindowSummaryStrategy",
+          "kind": "alias",
+          "doc": "WindowSummaryStrategy triggers summarization when episode count exceeds window size"
+        },
+        {
+          "name": "Lifecycle",
+          "kind": "alias",
+          "doc": "Lifecycle 管理 Agent 的生命周期状态转换（idle / running / paused / stopped / completed / failed / cancell..."
+        },
+        {
+          "name": "ContextWindowStrategy",
+          "kind": "alias",
+          "doc": "ContextWindowStrategy 是上下文窗口裁剪策略接口，定义如何裁剪过长的历史消息"
+        },
+        {
+          "name": "DefaultStrategy",
+          "kind": "alias",
+          "doc": "DefaultStrategy 是默认的上下文窗口裁剪策略，保留系统消息和最近的对话历史"
+        },
+        {
+          "name": "HealthChecker",
+          "kind": "alias",
+          "doc": "HealthChecker 聚合健康检查器，处理 /healthz 和 /readyz 请求"
+        },
+        {
+          "name": "HealthCheckable",
+          "kind": "alias",
+          "doc": "HealthCheckable 健康检查接口，各组件实现此接口以注册到聚合检查器"
+        },
+        {
+          "name": "Metadata",
+          "kind": "alias",
+          "doc": "Metadata 是消息的元数据，包含时间戳、跟踪 ID 和扩展键值对"
+        }
+      ],
+      "functions": [
+        {
+          "name": "ShouldResume",
+          "returns": [
+            "bool"
+          ],
+          "doc": "ShouldResume 检查环境变量 AP_RESUME 是否为 \"1\"。"
+        },
+        {
+          "name": "ResumeAgentID",
+          "returns": [
+            "string"
+          ],
+          "doc": "ResumeAgentID 返回需要通过 `ap loop resume` 恢复的 Agent 名称。"
+        },
+        {
+          "name": "ResumePrompt",
+          "returns": [
+            "string"
+          ],
+          "doc": "ResumePrompt 返回 `ap loop resume` 通过 --prompt 参数传入的提示消息。"
+        }
+      ],
+      "constants": [
+        {
+          "name": "RoleSystem"
+        },
+        {
+          "name": "RoleUser"
+        },
+        {
+          "name": "RoleAssistant"
+        },
+        {
+          "name": "RoleTool"
+        },
+        {
+          "name": "StatusIdle"
+        },
+        {
+          "name": "StatusRunning"
+        },
+        {
+          "name": "StatusPaused"
+        },
+        {
+          "name": "StatusCompleted"
+        },
+        {
+          "name": "StatusFailed"
+        },
+        {
+          "name": "StatusCancelled"
+        },
+        {
+          "name": "StreamEventToken"
+        },
+        {
+          "name": "StreamEventThought"
+        },
+        {
+          "name": "StreamEventToolCall"
+        },
+        {
+          "name": "StreamEventToolResult"
+        },
+        {
+          "name": "StreamEventComplete"
+        },
+        {
+          "name": "StreamEventError"
+        },
+        {
+          "name": "RAGModeAuto"
+        },
+        {
+          "name": "RAGModeFirst"
+        },
+        {
+          "name": "RAGModeOnDemand"
+        },
+        {
+          "name": "BusMsgTaskRequest"
+        },
+        {
+          "name": "BusMsgTaskResult"
+        },
+        {
+          "name": "BusMsgQuery"
+        },
+        {
+          "name": "BusMsgResponse"
+        },
+        {
+          "name": "BusMsgHandoff"
+        },
+        {
+          "name": "BusMsgBroadcast"
+        },
+        {
+          "name": "BusMsgStatusUpdate"
+        },
+        {
+          "name": "BusMsgNotify"
+        },
+        {
+          "name": "LinearWorkflow"
+        },
+        {
+          "name": "ConditionalWorkflow"
+        },
+        {
+          "name": "LoopWorkflow"
+        },
+        {
+          "name": "ParallelForkJoinWf"
+        },
+        {
+          "name": "StateMachineWf"
+        },
+        {
+          "name": "WfStatusPending"
+        },
+        {
+          "name": "WfStatusRunning"
+        },
+        {
+          "name": "WfStatusPaused"
+        },
+        {
+          "name": "WfStatusCompleted"
+        },
+        {
+          "name": "WfStatusFailed"
+        },
+        {
+          "name": "WfStatusCancelled"
+        },
+        {
+          "name": "TaskNode"
+        },
+        {
+          "name": "ConditionNode"
+        },
+        {
+          "name": "ParallelNode"
+        },
+        {
+          "name": "LoopStartNode"
+        },
+        {
+          "name": "LoopEndNode"
+        },
+        {
+          "name": "FallbackNode"
+        },
+        {
+          "name": "SubWfNode"
+        },
+        {
+          "name": "NodePending"
+        },
+        {
+          "name": "NodeRunning"
+        },
+        {
+          "name": "NodeCompleted"
+        },
+        {
+          "name": "NodeSkipped"
+        },
+        {
+          "name": "NodeFailed"
+        },
+        {
+          "name": "Version",
+          "value": "\"3.1.0\"",
+          "doc": "Version 是 AgentPrimordia 框架的当前版本号"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewPromptTemplate"
+        },
+        {
+          "name": "DefaultSystemPrompt"
+        },
+        {
+          "name": "UserMessage"
+        },
+        {
+          "name": "SystemMessage"
+        },
+        {
+          "name": "FormatRAGDocuments"
+        },
+        {
+          "name": "NewSummarizer"
+        },
+        {
+          "name": "DefaultCleanupConfig"
+        },
+        {
+          "name": "NewLocalMessageBus"
+        },
+        {
+          "name": "NewHTTPTransport"
+        },
+        {
+          "name": "NewRequestID"
+        },
+        {
+          "name": "WithRequestID"
+        },
+        {
+          "name": "RequestIDFromCtx"
+        },
+        {
+          "name": "NewAgent"
+        },
+        {
+          "name": "WithMaxTurns"
+        },
+        {
+          "name": "WithTemperature"
+        },
+        {
+          "name": "WithSessionID"
+        },
+        {
+          "name": "WithPromptTemplate"
+        },
+        {
+          "name": "WithMemory"
+        },
+        {
+          "name": "WithToolkit"
+        },
+        {
+          "name": "WithHooks"
+        },
+        {
+          "name": "WithRAG"
+        },
+        {
+          "name": "WithTracer"
+        },
+        {
+          "name": "WithCostTracker"
+        },
+        {
+          "name": "WithContextWindow"
+        },
+        {
+          "name": "WithEvents"
+        },
+        {
+          "name": "WithMetrics"
+        },
+        {
+          "name": "WithCheckpointStore"
+        },
+        {
+          "name": "WithSummarizer"
+        },
+        {
+          "name": "WithFileScope"
+        },
+        {
+          "name": "WithCache"
+        },
+        {
+          "name": "WithHITL"
+        },
+        {
+          "name": "WithLearning"
+        },
+        {
+          "name": "WithMemoryConfig"
+        },
+        {
+          "name": "WithObservability"
+        },
+        {
+          "name": "WithResilience"
+        },
+        {
+          "name": "WithToolsConfig"
+        },
+        {
+          "name": "SessWithID",
+          "doc": "SessWithID 设置自定义会话 ID，不传则自动生成。"
+        },
+        {
+          "name": "NewSession",
+          "doc": "NewSession 创建新会话。"
+        },
+        {
+          "name": "NewDAGWorkflow"
+        },
+        {
+          "name": "NewDAGBuilder"
+        },
+        {
+          "name": "MakeNode"
+        },
+        {
+          "name": "NewAgentDelegateNode"
+        },
+        {
+          "name": "NewSubWorkflowNode"
+        },
+        {
+          "name": "MapFromDependent"
+        },
+        {
+          "name": "MapConcatAll"
+        },
+        {
+          "name": "MapPassThrough"
+        },
+        {
+          "name": "MapTemplate"
+        },
+        {
+          "name": "ConditionOnOutput"
+        },
+        {
+          "name": "ConditionOnError"
+        },
+        {
+          "name": "ConditionOnSuccess"
+        },
+        {
+          "name": "NewWorkflowExecution"
+        },
+        {
+          "name": "NewCostTracker"
+        },
+        {
+          "name": "NewSummaryEngine"
+        },
+        {
+          "name": "NewWindowSummaryStrategy"
+        },
+        {
+          "name": "NewLifecycle"
+        },
+        {
+          "name": "NewDefaultStrategy"
+        },
+        {
+          "name": "NewHealthChecker",
+          "doc": "NewHealthChecker 创建健康检查器"
+        },
+        {
+          "name": "RegisterPProf",
+          "doc": "RegisterPProf 将 pprof 性能分析端点注册到给定的 http.ServeMux。"
+        },
+        {
+          "name": "PProfHandler",
+          "doc": "PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。"
+        },
+        {
+          "name": "RegisterPProfSecure",
+          "doc": "RegisterPProfSecure 将 pprof 端点注册到给定的 http.ServeMux，"
+        },
+        {
+          "name": "PProfHandlerSecure",
+          "doc": "PProfHandlerSecure 返回一个包含 pprof 端点的独立 http.Handler，"
+        },
+        {
+          "name": "RegisterPProfStrict",
+          "doc": "RegisterPProfStrict 将 pprof 端点注册到给定的 http.ServeMux，"
+        },
+        {
+          "name": "PProfHandlerStrict",
+          "doc": "PProfHandlerStrict 返回一个包含 pprof 端点的独立 http.Handler，"
+        },
+        {
+          "name": "ErrPProfTokenRequired",
+          "doc": "ErrPProfTokenRequired 当生产模式下 PPROF_TOKEN 未设置时返回此错误。"
+        },
+        {
+          "name": "NewConfigLoader",
+          "doc": "NewConfigLoader 创建统一配置加载器（YAML \u003c ENV \u003c flags）。"
+        }
+      ]
+    },
+    {
+      "file": "pkg/chaos.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "ChaosEngine",
+          "kind": "alias",
+          "doc": "ChaosEngine 混沌实验引擎，编排实验定义→注入→观测→判定"
+        },
+        {
+          "name": "ChaosExperiment",
+          "kind": "alias",
+          "doc": "ChaosExperiment 混沌实验定义"
+        },
+        {
+          "name": "ChaosExperimentResult",
+          "kind": "alias",
+          "doc": "ChaosExperimentResult 实验结果"
+        },
+        {
+          "name": "ChaosExperimentStatus",
+          "kind": "alias",
+          "doc": "ChaosExperimentStatus 实验状态"
+        },
+        {
+          "name": "ChaosExperimentSummary",
+          "kind": "alias",
+          "doc": "ChaosExperimentSummary 实验摘要（用于批量报告）"
+        },
+        {
+          "name": "ChaosFault",
+          "kind": "alias",
+          "doc": "ChaosFault 故障定义接口"
+        },
+        {
+          "name": "ChaosCleanupFunc",
+          "kind": "alias",
+          "doc": "ChaosCleanupFunc 故障清理函数"
+        },
+        {
+          "name": "ChaosFaultResult",
+          "kind": "alias",
+          "doc": "ChaosFaultResult 故障注入结果"
+        },
+        {
+          "name": "ChaosNetworkDelayFault",
+          "kind": "alias",
+          "doc": "ChaosNetworkDelayFault 网络延迟故障"
+        },
+        {
+          "name": "ChaosNetworkPartitionFault",
+          "kind": "alias",
+          "doc": "ChaosNetworkPartitionFault 网络分区故障"
+        },
+        {
+          "name": "ChaosConnectionRefusedFault",
+          "kind": "alias",
+          "doc": "ChaosConnectionRefusedFault 连接拒绝故障"
+        },
+        {
+          "name": "ChaosCPUStressFault",
+          "kind": "alias",
+          "doc": "ChaosCPUStressFault CPU 压力故障"
+        },
+        {
+          "name": "ChaosMemoryStressFault",
+          "kind": "alias",
+          "doc": "ChaosMemoryStressFault 内存压力故障"
+        },
+        {
+          "name": "ChaosProcessKillFault",
+          "kind": "alias",
+          "doc": "ChaosProcessKillFault 进程杀死故障"
+        },
+        {
+          "name": "ChaosCompositeFault",
+          "kind": "alias",
+          "doc": "ChaosCompositeFault 组合故障（多个故障同时注入）"
+        },
+        {
+          "name": "ChaosNoopFault",
+          "kind": "alias",
+          "doc": "ChaosNoopFault 空操作故障（用于测试框架）"
+        },
+        {
+          "name": "LLMHTTPStatusFault",
+          "kind": "alias",
+          "doc": "LLMHTTPStatusFault LLM HTTP 状态码故障"
+        },
+        {
+          "name": "LLMTimeoutFault",
+          "kind": "alias",
+          "doc": "LLMTimeoutFault LLM 超时故障"
+        },
+        {
+          "name": "LLMIntermittentFault",
+          "kind": "alias",
+          "doc": "LLMIntermittentFault LLM 间歇性故障"
+        },
+        {
+          "name": "LLMSlowResponseFault",
+          "kind": "alias",
+          "doc": "LLMSlowResponseFault LLM 慢响应故障"
+        },
+        {
+          "name": "LLMFaultScenario",
+          "kind": "alias",
+          "doc": "LLMFaultScenario 预定义 LLM 故障场景序列"
+        },
+        {
+          "name": "ChaosSteadyState",
+          "kind": "alias",
+          "doc": "ChaosSteadyState 稳态条件接口"
+        },
+        {
+          "name": "ChaosSteadyStateResult",
+          "kind": "alias",
+          "doc": "ChaosSteadyStateResult 稳态检查结果"
+        },
+        {
+          "name": "SLOSteadyState",
+          "kind": "alias",
+          "doc": "SLOSteadyState 基于 SLO 的稳态条件"
+        },
+        {
+          "name": "AvailabilitySteadyState",
+          "kind": "alias",
+          "doc": "AvailabilitySteadyState 可用性稳态条件"
+        },
+        {
+          "name": "LatencySteadyState",
+          "kind": "alias",
+          "doc": "LatencySteadyState 延迟稳态条件"
+        },
+        {
+          "name": "CompositeSteadyState",
+          "kind": "alias",
+          "doc": "CompositeSteadyState 组合稳态条件（所有条件都必须满足）"
+        }
+      ],
+      "constants": [
+        {
+          "name": "ChaosStatusPending"
+        },
+        {
+          "name": "ChaosStatusRunning"
+        },
+        {
+          "name": "ChaosStatusCompleted"
+        },
+        {
+          "name": "ChaosStatusAborted"
+        },
+        {
+          "name": "ChaosStatusFailed"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewChaosEngine"
+        },
+        {
+          "name": "ChaosFormatReport"
+        },
+        {
+          "name": "ChaosSummarize"
+        },
+        {
+          "name": "ChaosFormatSummaryTable"
+        },
+        {
+          "name": "NewChaosNetworkDelayFault"
+        },
+        {
+          "name": "NewChaosNetworkPartitionFault"
+        },
+        {
+          "name": "NewChaosConnectionRefusedFault"
+        },
+        {
+          "name": "NewChaosCPUStressFault"
+        },
+        {
+          "name": "NewChaosMemoryStressFault"
+        },
+        {
+          "name": "NewChaosProcessKillFault"
+        },
+        {
+          "name": "NewChaosCompositeFault"
+        },
+        {
+          "name": "NewChaosNoopFault"
+        },
+        {
+          "name": "LLMHTTP503Fault"
+        },
+        {
+          "name": "LLMHTTP429Fault"
+        },
+        {
+          "name": "LLMHTTP500Fault"
+        },
+        {
+          "name": "NewLLMTimeoutFault"
+        },
+        {
+          "name": "NewLLMIntermittentFault"
+        },
+        {
+          "name": "NewLLMSlowResponseFault"
+        },
+        {
+          "name": "LLMFailoverScenario"
+        },
+        {
+          "name": "LLMChaosScenario"
+        },
+        {
+          "name": "NewSLOSteadyState"
+        },
+        {
+          "name": "NewAvailabilitySteadyState"
+        },
+        {
+          "name": "NewLatencySteadyState"
+        },
+        {
+          "name": "NewCompositeSteadyState"
+        }
+      ]
+    },
+    {
+      "file": "pkg/cluster.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "ClusterManager",
+          "kind": "alias",
+          "doc": "ClusterManager 集群管理器，管理节点加入/离开/心跳/选举"
+        },
+        {
+          "name": "ClusterConfig",
+          "kind": "alias",
+          "doc": "ClusterConfig 集群配置"
+        },
+        {
+          "name": "ClusterNodeInfo",
+          "kind": "alias",
+          "doc": "ClusterNodeInfo 节点信息"
+        },
+        {
+          "name": "ClusterNodeRole",
+          "kind": "alias",
+          "doc": "ClusterNodeRole 节点角色"
+        },
+        {
+          "name": "ClusterNodeStatus",
+          "kind": "alias",
+          "doc": "ClusterNodeStatus 节点状态"
+        },
+        {
+          "name": "ConsistentHash",
+          "kind": "alias",
+          "doc": "ConsistentHash 一致性哈希环，用于将 Agent/任务分片到不同节点"
+        },
+        {
+          "name": "DistributedState",
+          "kind": "alias",
+          "doc": "DistributedState 分布式 KV 状态存储，提供带 TTL 的状态管理"
+        },
+        {
+          "name": "ClusterRemoteEntry",
+          "kind": "alias",
+          "doc": "ClusterRemoteEntry 远程状态条目（用于节点间同步）"
+        },
+        {
+          "name": "KVStore",
+          "kind": "alias",
+          "doc": "KVStore 分布式 KV 存储接口（支撑分布式服务发现）"
+        },
+        {
+          "name": "KVEvent",
+          "kind": "alias",
+          "doc": "KVEvent KV 变化事件"
+        },
+        {
+          "name": "MemKVStore",
+          "kind": "alias",
+          "doc": "MemKVStore 内存 KV 存储（测试和单节点模式用）"
+        },
+        {
+          "name": "DistributedDiscovery",
+          "kind": "alias",
+          "doc": "DistributedDiscovery 分布式服务发现（基于 KV 存储）"
+        },
+        {
+          "name": "DistributedDiscoveryConfig",
+          "kind": "alias",
+          "doc": "DistributedDiscoveryConfig 分布式发现配置"
+        },
+        {
+          "name": "RemoteNode",
+          "kind": "alias",
+          "doc": "RemoteNode 远程节点连接"
+        },
+        {
+          "name": "RemoteMessageBus",
+          "kind": "alias",
+          "doc": "RemoteMessageBus 跨节点消息总线"
+        },
+        {
+          "name": "RemoteBusConfig",
+          "kind": "alias",
+          "doc": "RemoteBusConfig 远程消息总线配置"
+        },
+        {
+          "name": "RemoteBusStats",
+          "kind": "alias",
+          "doc": "RemoteBusStats 远程消息总线统计（内部使用，含 atomic 字段）"
+        },
+        {
+          "name": "RemoteBusStatsSnapshot",
+          "kind": "alias",
+          "doc": "RemoteBusStatsSnapshot 远程消息总线统计快照（值安全，GetStats 返回此类型）"
+        }
+      ],
+      "constants": [
+        {
+          "name": "ClusterRoleFollower"
+        },
+        {
+          "name": "ClusterRoleLeader"
+        },
+        {
+          "name": "ClusterRoleCandidate"
+        },
+        {
+          "name": "ClusterStatusOnline"
+        },
+        {
+          "name": "ClusterStatusOffline"
+        },
+        {
+          "name": "ClusterStatusLeaving"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewClusterManager"
+        },
+        {
+          "name": "ClusterConfigWithDefaults"
+        },
+        {
+          "name": "NewConsistentHash"
+        },
+        {
+          "name": "NewDistributedState"
+        },
+        {
+          "name": "NewMemKVStore"
+        },
+        {
+          "name": "NewDistributedDiscovery"
+        },
+        {
+          "name": "NewRemoteNode"
+        },
+        {
+          "name": "NewRemoteMessageBus"
+        }
+      ]
+    },
+    {
+      "file": "pkg/debate.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "Debater",
+          "kind": "alias",
+          "doc": "Debater 辩论参与者接口"
+        },
+        {
+          "name": "Argument",
+          "kind": "alias",
+          "doc": "Argument 单个论点"
+        },
+        {
+          "name": "DebateResult",
+          "kind": "alias",
+          "doc": "DebateResult 辩论结果"
+        },
+        {
+          "name": "DebateConfig",
+          "kind": "alias",
+          "doc": "DebateConfig 辩论配置"
+        },
+        {
+          "name": "Debate",
+          "kind": "alias",
+          "doc": "Debate 辩论管理器"
+        },
+        {
+          "name": "DebateEvent",
+          "kind": "alias",
+          "doc": "DebateEvent 辩论事件"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewDebate"
+        }
+      ]
+    },
+    {
+      "file": "pkg/debugger.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "DebugServer",
+          "kind": "alias",
+          "doc": "DebugServer 是调试 HTTP 服务器，提供实时事件记录和查询"
+        },
+        {
+          "name": "Visualizer",
+          "kind": "alias",
+          "doc": "Visualizer 是调试可视化工具，支持渲染 Memory 快照和 Agent 生命周期"
+        },
+        {
+          "name": "MemorySnapshot",
+          "kind": "alias",
+          "doc": "MemorySnapshot 是 Memory 状态快照，包含总条目数、热门会话和最近事件"
+        },
+        {
+          "name": "SessionInfo",
+          "kind": "alias",
+          "doc": "SessionInfo 是会话信息，包含会话 ID 和条目数"
+        },
+        {
+          "name": "RecentEvent",
+          "kind": "alias",
+          "doc": "RecentEvent 是最近事件记录，包含时间、角色和内容"
+        },
+        {
+          "name": "LifecycleStep",
+          "kind": "alias",
+          "doc": "LifecycleStep 是 Agent 生命周期步骤，包含状态、时间戳和消息"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewDebugServer"
+        },
+        {
+          "name": "NewVisualizer"
+        }
+      ]
+    },
+    {
+      "file": "pkg/errors.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "CodeError",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Code",
+              "type": "string"
+            },
+            {
+              "name": "Message",
+              "type": "string"
+            }
+          ],
+          "methods": [
+            "Error"
+          ],
+          "doc": "CodeError 是带错误码的错误类型，用于结构化错误返回"
+        },
+        {
+          "name": "AggregatedError",
+          "kind": "alias",
+          "doc": "AggregatedError 聚合多个任务的错误信息，支持 errors.Is/errors.As 解包"
+        },
+        {
+          "name": "TaskError",
+          "kind": "alias",
+          "doc": "TaskError 单个任务的错误信息"
+        }
+      ],
+      "functions": [
+        {
+          "name": "WithCode",
+          "params": [
+            "code string",
+            "message string"
+          ],
+          "returns": [
+            "*CodeError"
+          ],
+          "doc": "WithCode 创建带错误码的错误实例"
+        },
+        {
+          "name": "GetErrorCode",
+          "params": [
+            "err error"
+          ],
+          "returns": [
+            "string"
+          ]
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrAgentStopped"
+        },
+        {
+          "name": "ErrAgentRunning"
+        },
+        {
+          "name": "ErrMaxTurnsExceeded"
+        },
+        {
+          "name": "ErrNoToolkit"
+        },
+        {
+          "name": "ErrToolNotFound"
+        },
+        {
+          "name": "ErrToolExecution"
+        },
+        {
+          "name": "ErrConfirmDenied"
+        },
+        {
+          "name": "ErrInvalidConfig"
+        },
+        {
+          "name": "ErrLLMCallFailed"
+        },
+        {
+          "name": "ErrNotSupported"
+        },
+        {
+          "name": "ErrCircuitOpen"
+        },
+        {
+          "name": "ErrAPIKeyRequired"
+        },
+        {
+          "name": "ErrEmptyResponse"
+        },
+        {
+          "name": "ErrResponseParseFailed"
+        },
+        {
+          "name": "ErrRetriesExhausted"
+        },
+        {
+          "name": "ErrFallbackFailed"
+        },
+        {
+          "name": "ErrPoolFull"
+        },
+        {
+          "name": "ErrTaskNotFound"
+        },
+        {
+          "name": "ErrTimeout"
+        },
+        {
+          "name": "ErrContextCanceled"
+        },
+        {
+          "name": "ErrEpisodeNotFound"
+        },
+        {
+          "name": "ErrInvalidImportance"
+        },
+        {
+          "name": "ErrEmptyEpisodeID"
+        },
+        {
+          "name": "ErrEmptySessionID"
+        },
+        {
+          "name": "ErrEmptyRole"
+        },
+        {
+          "name": "ErrEmptyContent"
+        },
+        {
+          "name": "ErrDimensionMismatch"
+        },
+        {
+          "name": "ErrVectorNotFound"
+        },
+        {
+          "name": "ErrCommandBlocked"
+        },
+        {
+          "name": "ErrCommandNotAllowed"
+        },
+        {
+          "name": "ErrAccessDenied"
+        },
+        {
+          "name": "ErrPathTraversal"
+        },
+        {
+          "name": "ErrBusClosed"
+        },
+        {
+          "name": "ErrCheckpointNotFound"
+        },
+        {
+          "name": "ErrGlobalWriteConflict"
+        },
+        {
+          "name": "ErrScopeOverlap"
+        }
+      ]
+    },
+    {
+      "file": "pkg/events.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "Bus",
+          "kind": "alias",
+          "doc": "Bus 是事件总线，支持发布/订阅模式的事件分发"
+        },
+        {
+          "name": "Event",
+          "kind": "alias",
+          "doc": "Event 是事件结构，包含类型、来源、时间戳和负载"
+        },
+        {
+          "name": "EventType",
+          "kind": "alias",
+          "doc": "EventType 是事件类型标识"
+        },
+        {
+          "name": "Subscriber",
+          "kind": "alias",
+          "doc": "Subscriber 是事件订阅者，接收匹配类型的事件"
+        }
+      ],
+      "constants": [
+        {
+          "name": "EventAgentStart"
+        },
+        {
+          "name": "EventAgentStop"
+        },
+        {
+          "name": "EventAgentPanic"
+        },
+        {
+          "name": "EventAgentError"
+        },
+        {
+          "name": "EventAgentResume"
+        },
+        {
+          "name": "EventTurnStart"
+        },
+        {
+          "name": "EventTurnEnd"
+        },
+        {
+          "name": "EventToolCall"
+        },
+        {
+          "name": "EventToolResult"
+        },
+        {
+          "name": "EventLLMCall"
+        },
+        {
+          "name": "EventLLMResponse"
+        },
+        {
+          "name": "EventPoolDispatch"
+        },
+        {
+          "name": "EventPoolComplete"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewBus",
+          "doc": "NewBus 创建事件总线实例"
+        }
+      ]
+    },
+    {
+      "file": "pkg/guardrail.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "GuardrailEngine",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailRule",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailReport",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailResult",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailAction",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailSeverity",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailCheckPoint",
+          "kind": "alias"
+        },
+        {
+          "name": "PIIRule",
+          "kind": "alias"
+        },
+        {
+          "name": "PIIRuleConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "SensitiveWordRule",
+          "kind": "alias"
+        },
+        {
+          "name": "SensitiveWordConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "PromptInjectionRule",
+          "kind": "alias"
+        },
+        {
+          "name": "PromptInjectionConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "TopicConstraintRule",
+          "kind": "alias"
+        },
+        {
+          "name": "TopicConstraintConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "OutputSafetyRule",
+          "kind": "alias"
+        },
+        {
+          "name": "OutputSafetyConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "Sanitizer",
+          "kind": "alias"
+        },
+        {
+          "name": "SanitizerConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "SanitizeStrategy",
+          "kind": "alias"
+        },
+        {
+          "name": "SanitizePosition",
+          "kind": "alias"
+        },
+        {
+          "name": "GuardrailHook",
+          "kind": "alias"
+        }
+      ],
+      "constants": [
+        {
+          "name": "GuardrailPass"
+        },
+        {
+          "name": "GuardrailReject"
+        },
+        {
+          "name": "GuardrailSanitize"
+        },
+        {
+          "name": "GuardrailFlag"
+        },
+        {
+          "name": "SeverityLow"
+        },
+        {
+          "name": "SeverityMedium"
+        },
+        {
+          "name": "SeverityHigh"
+        },
+        {
+          "name": "SeverityCritical"
+        },
+        {
+          "name": "CheckInput"
+        },
+        {
+          "name": "CheckOutput"
+        },
+        {
+          "name": "StrategyMask"
+        },
+        {
+          "name": "StrategyRedact"
+        },
+        {
+          "name": "StrategyReplace"
+        },
+        {
+          "name": "StrategyHash"
+        },
+        {
+          "name": "TopicModeAllowlist"
+        },
+        {
+          "name": "TopicModeDenylist"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewGuardrailEngine"
+        },
+        {
+          "name": "NewPIIRule"
+        },
+        {
+          "name": "DefaultPIIRuleConfig"
+        },
+        {
+          "name": "NewSensitiveWordRule"
+        },
+        {
+          "name": "NewPromptInjectionRule"
+        },
+        {
+          "name": "NewTopicConstraintRule"
+        },
+        {
+          "name": "NewOutputSafetyRule"
+        },
+        {
+          "name": "NewSanitizer"
+        },
+        {
+          "name": "NewGuardrailHook"
+        }
+      ]
+    },
+    {
+      "file": "pkg/hooks.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "HookPoint",
+          "kind": "alias",
+          "doc": "HookPoint 标识钩子的挂载点，对应 Agent 生命周期的各个阶段"
+        },
+        {
+          "name": "HookContext",
+          "kind": "alias",
+          "doc": "HookContext 是钩子执行时的上下文，包含 Agent ID、会话 ID、轮次、消息、响应等信息"
+        },
+        {
+          "name": "HookFunc",
+          "kind": "alias",
+          "doc": "HookFunc 是钩子处理函数类型，接收上下文并返回错误"
+        },
+        {
+          "name": "HookManager",
+          "kind": "alias",
+          "doc": "HookManager 管理所有钩子的注册和触发，支持优先级排序"
+        },
+        {
+          "name": "Hook",
+          "kind": "alias",
+          "doc": "Hook 是一个注册的钩子，包含挂载点、处理函数和优先级"
+        },
+        {
+          "name": "Hooks",
+          "kind": "alias",
+          "doc": "Hooks 是 HookManager 的指针别名，用于在配置中传递钩子管理器"
+        },
+        {
+          "name": "HookPhase",
+          "kind": "alias"
+        }
+      ],
+      "constants": [
+        {
+          "name": "HookBeforeRun"
+        },
+        {
+          "name": "HookAfterRun"
+        },
+        {
+          "name": "HookBeforeTurn"
+        },
+        {
+          "name": "HookAfterTurn"
+        },
+        {
+          "name": "HookBeforeLLM"
+        },
+        {
+          "name": "HookAfterLLM"
+        },
+        {
+          "name": "HookBeforeTool"
+        },
+        {
+          "name": "HookAfterTool"
+        },
+        {
+          "name": "HookOnError"
+        },
+        {
+          "name": "HookOnComplete"
+        },
+        {
+          "name": "HookBeforeRAG"
+        },
+        {
+          "name": "HookAfterRAG"
+        },
+        {
+          "name": "HookBeforePipelineStep"
+        },
+        {
+          "name": "HookAfterPipelineStep"
+        },
+        {
+          "name": "HookBeforeHandoff"
+        },
+        {
+          "name": "HookAfterHandoff"
+        },
+        {
+          "name": "HookBeforeParallelAgent"
+        },
+        {
+          "name": "HookAfterParallelAgent"
+        },
+        {
+          "name": "PhaseValidation"
+        },
+        {
+          "name": "PhasePreProcessing"
+        },
+        {
+          "name": "PhaseExecution"
+        },
+        {
+          "name": "PhasePostProcessing"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewHookManager",
+          "doc": "NewHookManager 创建钩子管理器实例"
+        }
+      ]
+    },
+    {
+      "file": "pkg/learning.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "KnowledgeDistiller",
+          "kind": "alias",
+          "doc": "KnowledgeDistiller 知识蒸馏器，从交互中提取知识→压缩→存入语义记忆"
+        },
+        {
+          "name": "KnowledgeItem",
+          "kind": "alias",
+          "doc": "KnowledgeItem 蒸馏出的知识项"
+        },
+        {
+          "name": "LearningInteraction",
+          "kind": "alias",
+          "doc": "LearningInteraction 一次 Agent 交互（用于知识蒸馏输入）"
+        },
+        {
+          "name": "DistillerStats",
+          "kind": "alias",
+          "doc": "DistillerStats 蒸馏统计（内部使用，含 atomic 字段）"
+        },
+        {
+          "name": "DistillerStatsSnapshot",
+          "kind": "alias",
+          "doc": "DistillerStatsSnapshot 蒸馏统计快照（值安全，GetStats 返回此类型）"
+        },
+        {
+          "name": "CapabilityEvolver",
+          "kind": "alias",
+          "doc": "CapabilityEvolver 能力进化器，评估 Agent 能力并识别弱项"
+        },
+        {
+          "name": "LearningCapability",
+          "kind": "alias",
+          "doc": "LearningCapability 能力定义（名称、描述、评分、测试次数）"
+        },
+        {
+          "name": "FeedbackLearner",
+          "kind": "alias",
+          "doc": "FeedbackLearner 反馈学习器，从人类反馈中学习偏好模型"
+        },
+        {
+          "name": "FeedbackEntry",
+          "kind": "alias",
+          "doc": "FeedbackEntry 反馈条目"
+        },
+        {
+          "name": "PreferenceModel",
+          "kind": "alias",
+          "doc": "PreferenceModel 偏好模型"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewKnowledgeDistiller"
+        },
+        {
+          "name": "NewCapabilityEvolver"
+        },
+        {
+          "name": "NewFeedbackLearner"
+        }
+      ]
+    },
+    {
+      "file": "pkg/llm.go",
+      "types": [
+        {
+          "name": "Provider",
+          "kind": "alias",
+          "doc": "Provider 是 LLM 提供者的核心接口，定义补全、流式、工具调用和嵌入等方法"
+        },
+        {
+          "name": "Config",
+          "kind": "alias",
+          "doc": "Config 是 LLM 提供者的通用配置，包含 API Key、Base URL、模型名、温度和最大 Token 数"
+        },
+        {
+          "name": "CompletionRequest",
+          "kind": "alias",
+          "doc": "CompletionRequest 是补全请求，包含消息列表、模型、温度和最大 Token 数"
+        },
+        {
+          "name": "CompletionResponse",
+          "kind": "alias",
+          "doc": "CompletionResponse 是补全响应，包含 ID、内容、角色和用量"
+        },
+        {
+          "name": "ChatMessage",
+          "kind": "alias",
+          "doc": "ChatMessage 是对话消息，包含角色、内容、工具调用和工具调用 ID"
+        },
+        {
+          "name": "ToolCallRequest",
+          "kind": "alias",
+          "doc": "ToolCallRequest 是工具调用请求，包含消息列表和工具定义列表"
+        },
+        {
+          "name": "ToolCallResponse",
+          "kind": "alias",
+          "doc": "ToolCallResponse 是工具调用响应，包含内容、工具调用列表和用量"
+        },
+        {
+          "name": "Chunk",
+          "kind": "alias",
+          "doc": "Chunk 是流式输出的一个片段，包含内容和完成标记"
+        },
+        {
+          "name": "ModelInfo",
+          "kind": "alias",
+          "doc": "ModelInfo 是模型信息，包含名称、提供者、上下文窗口大小和能力标记"
+        },
+        {
+          "name": "Usage",
+          "kind": "alias",
+          "doc": "Usage 是 Token 用量统计，包含输入、输出和总 Token 数"
+        },
+        {
+          "name": "FunctionCall",
+          "kind": "alias",
+          "doc": "FunctionCall 表示 LLM 发起的函数调用，包含 ID、名称和 JSON 参数"
+        },
+        {
+          "name": "FunctionDefinition",
+          "kind": "alias",
+          "doc": "FunctionDefinition 是函数定义，包含名称、描述和参数 JSON Schema"
+        },
+        {
+          "name": "ToolDefinition",
+          "kind": "alias",
+          "doc": "ToolDefinition 是工具定义，包含类型和函数定义"
+        },
+        {
+          "name": "APIError",
+          "kind": "alias",
+          "doc": "APIError 是 LLM API 返回的错误，包含错误码、消息和类型"
+        },
+        {
+          "name": "OpenAIProvider",
+          "kind": "alias",
+          "doc": "OpenAIProvider 实现 OpenAI 系列模型调用（GPT-4o 等）"
+        },
+        {
+          "name": "AnthropicProvider",
+          "kind": "alias",
+          "doc": "AnthropicProvider 实现 Claude 系列模型调用"
+        },
+        {
+          "name": "GeminiProvider",
+          "kind": "alias",
+          "doc": "GeminiProvider 实现 Google Gemini 系列模型调用"
+        },
+        {
+          "name": "OllamaProvider",
+          "kind": "alias",
+          "doc": "OllamaProvider 实现本地 Ollama 模型调用"
+        },
+        {
+          "name": "AzureOpenAIProvider",
+          "kind": "alias",
+          "doc": "AzureOpenAIProvider 实现 Azure OpenAI 模型调用"
+        },
+        {
+          "name": "AzureConfig",
+          "kind": "alias",
+          "doc": "AzureConfig 是 Azure OpenAI 的专有配置，包含资源名称、部署名称和 API 版本"
+        },
+        {
+          "name": "ResilientProvider",
+          "kind": "alias",
+          "doc": "ResilientProvider 是弹性 LLM 提供者，支持重试、熔断和降级"
+        },
+        {
+          "name": "ResilientConfig",
+          "kind": "alias",
+          "doc": "ResilientConfig 是弹性提供者的配置，包含最大重试次数、退避时间和熔断阈值"
+        },
+        {
+          "name": "CohereProvider",
+          "kind": "alias",
+          "doc": "CohereProvider 实现 Cohere v2 API 模型调用"
+        },
+        {
+          "name": "MistralProvider",
+          "kind": "alias",
+          "doc": "MistralProvider 实现 Mistral AI 模型调用"
+        },
+        {
+          "name": "GeminiMultimodalProvider",
+          "kind": "alias",
+          "doc": "GeminiMultimodalProvider 实现 Google Gemini 多模态模型调用（文本+图片+音频+视频）"
+        },
+        {
+          "name": "LLMCache",
+          "kind": "alias",
+          "doc": "LLMCache 是 LLM 响应缓存接口，支持 Get/Set/Stats/Clear/Invalidate"
+        },
+        {
+          "name": "CacheStats",
+          "kind": "alias",
+          "doc": "CacheStats 是缓存统计信息"
+        },
+        {
+          "name": "CacheEntry",
+          "kind": "alias",
+          "doc": "CacheEntry 是缓存条目"
+        },
+        {
+          "name": "CachedProvider",
+          "kind": "alias",
+          "doc": "CachedProvider 是带 LLM 缓存的 Provider 装饰器"
+        },
+        {
+          "name": "InMemoryCache",
+          "kind": "alias",
+          "doc": "InMemoryCache 是基于内存的向量相似度缓存"
+        },
+        {
+          "name": "InMemoryCacheFullConfig",
+          "kind": "alias",
+          "doc": "InMemoryCacheFullConfig 是内存缓存的完整配置"
+        },
+        {
+          "name": "FingerprintCache",
+          "kind": "alias",
+          "doc": "FingerprintCache 是基于 Prompt 指纹的精确匹配缓存"
+        },
+        {
+          "name": "HybridCache",
+          "kind": "alias",
+          "doc": "HybridCache 是混合缓存，先精确匹配再语义匹配"
+        },
+        {
+          "name": "CacheManager",
+          "kind": "alias",
+          "doc": "CacheManager 是缓存管理器，统一管理缓存实例和 Tracer 联动"
+        },
+        {
+          "name": "CacheManagerConfig",
+          "kind": "alias",
+          "doc": "CacheManagerConfig 是缓存管理器配置"
+        },
+        {
+          "name": "NoopCache",
+          "kind": "alias",
+          "doc": "NoopCache 是空缓存实现，用于禁用缓存"
+        },
+        {
+          "name": "EmbeddingFunc",
+          "kind": "alias",
+          "doc": "EmbeddingFunc 是文本向量化函数类型"
+        },
+        {
+          "name": "SchemaDef",
+          "kind": "alias",
+          "doc": "SchemaDef 是 JSON Schema 定义，用于结构化输出"
+        },
+        {
+          "name": "ResponseFormat",
+          "kind": "alias",
+          "doc": "ResponseFormat 是 LLM 响应格式控制"
+        },
+        {
+          "name": "ResponseFormatType",
+          "kind": "alias",
+          "doc": "ResponseFormatType 是响应格式类型"
+        },
+        {
+          "name": "ValidationError",
+          "kind": "alias",
+          "doc": "ValidationError 是 Schema 验证错误"
+        },
+        {
+          "name": "StructuredExtractor",
+          "kind": "alias",
+          "doc": "StructuredExtractor 是结构化数据提取器"
+        },
+        {
+          "name": "ExtractorConfig",
+          "kind": "alias",
+          "doc": "ExtractorConfig 是提取器配置"
+        },
+        {
+          "name": "SchemaOption",
+          "kind": "alias",
+          "doc": "SchemaOption 是 Schema 生成选项函数"
+        },
+        {
+          "name": "SentimentOutput",
+          "kind": "alias",
+          "doc": "预定义模板输出类型"
+        },
+        {
+          "name": "SentimentDetailOutput",
+          "kind": "alias"
+        },
+        {
+          "name": "AspectSentiment",
+          "kind": "alias"
+        },
+        {
+          "name": "NEROutput",
+          "kind": "alias"
+        },
+        {
+          "name": "Entity",
+          "kind": "alias"
+        },
+        {
+          "name": "ClassificationOutput",
+          "kind": "alias"
+        },
+        {
+          "name": "MultiLabelClassificationOutput",
+          "kind": "alias"
+        },
+        {
+          "name": "LabelScore",
+          "kind": "alias"
+        },
+        {
+          "name": "SummaryOutput",
+          "kind": "alias"
+        },
+        {
+          "name": "ExtractiveSummaryOutput",
+          "kind": "alias"
+        },
+        {
+          "name": "MultimodalCapability",
+          "kind": "alias",
+          "doc": "MultimodalCapability 是多模态能力标记（CapText/CapVision/CapAudio/CapVideo）"
+        },
+        {
+          "name": "MultimodalProvider",
+          "kind": "alias",
+          "doc": "MultimodalProvider 是多模态 LLM 提供者接口，扩展标准 Provider 以支持多模态输入"
+        },
+        {
+          "name": "MultimodalAdapter",
+          "kind": "alias",
+          "doc": "MultimodalAdapter 是多模态适配器，将不同 Provider 统一为 MultimodalProvider 接口"
+        },
+        {
+          "name": "CompletionRequestExt",
+          "kind": "alias",
+          "doc": "CompletionRequestExt 是扩展的补全请求，支持多模态内容块"
+        },
+        {
+          "name": "MultimodalContent",
+          "kind": "alias",
+          "doc": "MultimodalContent 是多模态内容块抽象（Text/Image/Audio/Video）"
+        },
+        {
+          "name": "ChatMessageExt",
+          "kind": "alias",
+          "doc": "ChatMessageExt 是扩展的聊天消息，支持多模态内容"
+        },
+        {
+          "name": "ModelPricing",
+          "kind": "alias",
+          "doc": "ModelPricing 定义按模型计费的价格信息，用于成本估算"
+        },
+        {
+          "name": "CircuitBreaker",
+          "kind": "alias",
+          "doc": "CircuitBreaker 断路器，用于 LLM Provider 故障转移"
+        },
+        {
+          "name": "CircuitBreakerConfig",
+          "kind": "alias",
+          "doc": "CircuitBreakerConfig 断路器配置"
+        },
+        {
+          "name": "CircuitBreakerState",
+          "kind": "alias",
+          "doc": "CircuitBreakerState 断路器状态"
+        }
+      ],
+      "constants": [
+        {
+          "name": "CapText"
+        },
+        {
+          "name": "CapVision"
+        },
+        {
+          "name": "CapAudio"
+        },
+        {
+          "name": "CapVideo"
+        },
+        {
+          "name": "ContentTypeText"
+        },
+        {
+          "name": "ContentTypeImageURL"
+        },
+        {
+          "name": "ContentTypeImageB64"
+        },
+        {
+          "name": "ContentTypeAudio"
+        },
+        {
+          "name": "ContentTypeVideo"
+        },
+        {
+          "name": "CircuitClosed"
+        },
+        {
+          "name": "CircuitOpen"
+        },
+        {
+          "name": "CircuitHalfOpen"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewOpenAIProvider"
+        },
+        {
+          "name": "NewAnthropicProvider"
+        },
+        {
+          "name": "NewGeminiProvider"
+        },
+        {
+          "name": "NewGeminiMultimodalProvider"
+        },
+        {
+          "name": "NewOpenAIMultimodalProvider"
+        },
+        {
+          "name": "NewAnthropicVisionProvider"
+        },
+        {
+          "name": "NewOllamaProvider"
+        },
+        {
+          "name": "NewAzureOpenAIProvider"
+        },
+        {
+          "name": "NewResilientProvider"
+        },
+        {
+          "name": "DefaultResilientConfig"
+        },
+        {
+          "name": "NewCohereProvider"
+        },
+        {
+          "name": "NewMistralProvider"
+        },
+        {
+          "name": "NewQwenProvider"
+        },
+        {
+          "name": "NewGLMProvider"
+        },
+        {
+          "name": "ConfigFromEnv"
+        },
+        {
+          "name": "NewInMemoryCache"
+        },
+        {
+          "name": "NewInMemoryCacheWithFullConfig"
+        },
+        {
+          "name": "NewCachedProvider"
+        },
+        {
+          "name": "NewCachedProviderWithManager"
+        },
+        {
+          "name": "NewFingerprintCache"
+        },
+        {
+          "name": "NewHybridCache"
+        },
+        {
+          "name": "NewCacheManager"
+        },
+        {
+          "name": "PromptFingerprint"
+        },
+        {
+          "name": "ResponseFormatText"
+        },
+        {
+          "name": "ResponseFormatJSONObject"
+        },
+        {
+          "name": "ResponseFormatJSONSchema"
+        },
+        {
+          "name": "NewStructuredExtractor"
+        },
+        {
+          "name": "NewStructuredExtractorWithConfig"
+        },
+        {
+          "name": "SchemaFromStruct"
+        },
+        {
+          "name": "WithSchemaName"
+        },
+        {
+          "name": "WithStrictMode"
+        },
+        {
+          "name": "ValidateAgainstSchema"
+        },
+        {
+          "name": "SentimentSchema"
+        },
+        {
+          "name": "SentimentDetailSchema"
+        },
+        {
+          "name": "NERSchema"
+        },
+        {
+          "name": "ClassificationSchema"
+        },
+        {
+          "name": "MultiLabelClassificationSchema"
+        },
+        {
+          "name": "SummarySchema"
+        },
+        {
+          "name": "ExtractiveSummarySchema"
+        },
+        {
+          "name": "CodeAnalysisSchema"
+        },
+        {
+          "name": "DocumentExtractionSchema"
+        },
+        {
+          "name": "APIResponseAnalysisSchema"
+        },
+        {
+          "name": "NewMultimodalProvider"
+        },
+        {
+          "name": "NewMultimodalAdapter"
+        },
+        {
+          "name": "NewTextContent"
+        },
+        {
+          "name": "NewImageURLContent"
+        },
+        {
+          "name": "NewImageB64Content"
+        },
+        {
+          "name": "NewAudioContent"
+        },
+        {
+          "name": "NewVideoContent"
+        },
+        {
+          "name": "NewUserTextMessage"
+        },
+        {
+          "name": "NewUserMultimodalMessage"
+        },
+        {
+          "name": "DefaultPricingTable"
+        },
+        {
+          "name": "EstimateCost"
+        },
+        {
+          "name": "NewCircuitBreaker",
+          "doc": "NewCircuitBreaker 创建断路器"
+        }
+      ]
+    },
+    {
+      "file": "pkg/logger.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "Logger",
+          "kind": "alias",
+          "doc": "Logger 结构化日志器"
+        },
+        {
+          "name": "LogConfig",
+          "kind": "alias",
+          "doc": "LogConfig 日志配置"
+        }
+      ],
+      "constants": [
+        {
+          "name": "LogLevelDebug"
+        },
+        {
+          "name": "LogLevelInfo"
+        },
+        {
+          "name": "LogLevelWarn"
+        },
+        {
+          "name": "LogLevelError"
+        },
+        {
+          "name": "LogFormatJSON"
+        },
+        {
+          "name": "LogFormatText"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewLogger",
+          "doc": "NewLogger 创建结构化日志器"
+        }
+      ]
+    },
+    {
+      "file": "pkg/logger/logger.go",
+      "functions": [
+        {
+          "name": "SetLevel",
+          "params": [
+            "l slog.Level"
+          ],
+          "doc": "SetLevel 设置全局日志级别。应在应用启动时调用一次。"
+        },
+        {
+          "name": "Default",
+          "returns": [
+            "*slog.Logger"
+          ],
+          "doc": "Default 返回全局默认日志器。"
+        },
+        {
+          "name": "WithComponent",
+          "params": [
+            "name string"
+          ],
+          "returns": [
+            "*slog.Logger"
+          ],
+          "doc": "WithComponent 返回带 \"component\" 属性的子日志器，便于区分模块来源。"
+        }
+      ]
+    },
+    {
+      "file": "pkg/marketplace.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "AgentTemplate",
+          "kind": "alias",
+          "doc": "AgentTemplate Agent 模板定义（配置+工具集+系统提示+记忆策略）"
+        },
+        {
+          "name": "TemplateValidationResult",
+          "kind": "alias",
+          "doc": "TemplateValidationResult 模板验证结果"
+        },
+        {
+          "name": "TemplateRegistry",
+          "kind": "alias",
+          "doc": "TemplateRegistry Agent 模板注册表，支持注册、搜索、评分"
+        },
+        {
+          "name": "TemplateDeployer",
+          "kind": "alias",
+          "doc": "TemplateDeployer 模板部署器，一键从模板部署运行 Agent"
+        },
+        {
+          "name": "TemplateDeployConfig",
+          "kind": "alias",
+          "doc": "TemplateDeployConfig 部署配置"
+        },
+        {
+          "name": "TemplateDeployResult",
+          "kind": "alias",
+          "doc": "TemplateDeployResult 部署结果"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewTemplateRegistry"
+        },
+        {
+          "name": "NewTemplateDeployer"
+        }
+      ]
+    },
+    {
+      "file": "pkg/memory.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "Memory",
+          "kind": "alias",
+          "doc": "Memory 是记忆存储的核心接口，提供增删查改、搜索、统计、导入导出等完整能力"
+        },
+        {
+          "name": "Episode",
+          "kind": "alias",
+          "doc": "Episode 是一条记忆片段，包含会话 ID、角色、内容、摘要、主题、重要性等"
+        },
+        {
+          "name": "SearchOptions",
+          "kind": "alias",
+          "doc": "SearchOptions 是记忆搜索的选项，支持会话过滤、分页和角色过滤"
+        },
+        {
+          "name": "ListOptions",
+          "kind": "alias",
+          "doc": "ListOptions 是记忆列表的选项，支持会话过滤、分页、排序方向"
+        },
+        {
+          "name": "MemoryStats",
+          "kind": "alias",
+          "doc": "MemoryStats 是记忆存储的统计信息，包含总数、会话数、时间范围和存储大小"
+        },
+        {
+          "name": "SQLiteStore",
+          "kind": "alias",
+          "doc": "SQLiteStore 是基于 SQLite + FTS5 的记忆存储实现，支持全文搜索和自动清理"
+        },
+        {
+          "name": "VectorStore",
+          "kind": "alias",
+          "doc": "VectorStore 是内存向量存储，支持余弦相似度搜索"
+        },
+        {
+          "name": "VectorEntry",
+          "kind": "alias",
+          "doc": "VectorEntry 是向量存储中的一条记录，包含 ID、向量和元数据"
+        },
+        {
+          "name": "VectorSearchResult",
+          "kind": "alias",
+          "doc": "VectorSearchResult 是向量搜索的结果，包含 ID、相似度分数和元数据"
+        },
+        {
+          "name": "EmbeddingProvider",
+          "kind": "alias",
+          "doc": "EmbeddingProvider 是向量化接口，由 LLM Provider 适配实现"
+        },
+        {
+          "name": "RAGStore",
+          "kind": "alias",
+          "doc": "RAGStore 封装了 Memory + VectorStore + EmbeddingProvider，提供混合 RAG 检索能力"
+        },
+        {
+          "name": "RAGResult",
+          "kind": "alias",
+          "doc": "RAGResult 是 RAG 查询的结果，包含匹配的记忆片段、相关度分数和来源（fts / vector）"
+        },
+        {
+          "name": "HybridFusionMode",
+          "kind": "alias",
+          "doc": "HybridFusionMode 是 RAG 混合检索的融合模式"
+        },
+        {
+          "name": "RAGFusionConfig",
+          "kind": "alias",
+          "doc": "RAGFusionConfig 是 RAG 检索融合配置，支持运行时调参"
+        },
+        {
+          "name": "Reranker",
+          "kind": "alias",
+          "doc": "Reranker 是 RAG 搜索结果重排序接口"
+        },
+        {
+          "name": "MMRReranker",
+          "kind": "alias",
+          "doc": "MMRReranker 使用最大边际相关性算法进行重排序"
+        },
+        {
+          "name": "MMRConfig",
+          "kind": "alias",
+          "doc": "MMRConfig 是 MMR 重排序配置"
+        },
+        {
+          "name": "Compressor",
+          "kind": "alias",
+          "doc": "Compressor 是记忆压缩器接口"
+        },
+        {
+          "name": "CompressorConfig",
+          "kind": "alias",
+          "doc": "CompressorConfig 是压缩器配置"
+        },
+        {
+          "name": "CompressSummarizer",
+          "kind": "alias",
+          "doc": "CompressSummarizer 是压缩摘要接口"
+        },
+        {
+          "name": "CompressorSummary",
+          "kind": "alias",
+          "doc": "CompressorSummary 是压缩摘要结果"
+        },
+        {
+          "name": "CleanupConfig",
+          "kind": "alias",
+          "doc": "CleanupConfig 是记忆自动清理配置，包含过期天数、清理间隔和保留角色"
+        },
+        {
+          "name": "HNSWIndex",
+          "kind": "alias",
+          "doc": "HNSWIndex 是 HNSW 向量索引，支持快速近似最近邻搜索"
+        },
+        {
+          "name": "HNSWConfig",
+          "kind": "alias",
+          "doc": "HNSWConfig 是 HNSW 索引配置"
+        },
+        {
+          "name": "HNSWSearchResult",
+          "kind": "alias",
+          "doc": "HNSWSearchResult 是 HNSW 搜索结果"
+        },
+        {
+          "name": "BackendType",
+          "kind": "alias",
+          "doc": "BackendType 是记忆存储后端类型（sqlite / memory）"
+        },
+        {
+          "name": "StoreConfig",
+          "kind": "alias",
+          "doc": "StoreConfig 是记忆存储工厂配置，指定后端类型和路径"
+        },
+        {
+          "name": "InMemoryStore",
+          "kind": "alias",
+          "doc": "InMemoryStore 是纯内存记忆存储实现，适用于测试和临时场景"
+        },
+        {
+          "name": "LLMGenerator",
+          "kind": "alias",
+          "doc": "LLMGenerator 是 LLM 文本生成接口，用于 RAG 端到端生成（与 llm.Provider 解耦）"
+        },
+        {
+          "name": "RetrievalAugmentedGenerator",
+          "kind": "alias",
+          "doc": "RetrievalAugmentedGenerator 是 RAG 端到端生成器（检索→上下文组装→LLM 生成）"
+        },
+        {
+          "name": "RAGGeneratorConfig",
+          "kind": "alias",
+          "doc": "RAGConfig 是 RAG 生成器配置"
+        },
+        {
+          "name": "QueryResult",
+          "kind": "alias",
+          "doc": "QueryResult 是 RAG 查询结果（答案 + 来源 + 上下文）"
+        },
+        {
+          "name": "PgVectorVectorStore",
+          "kind": "alias",
+          "doc": "PgVectorVectorStore 基于 PostgreSQL + pgvector 的向量存储实现"
+        },
+        {
+          "name": "PgVectorConfig",
+          "kind": "alias",
+          "doc": "PgVectorConfig pgvector 后端配置"
+        },
+        {
+          "name": "VectorRecord",
+          "kind": "alias",
+          "doc": "VectorRecord 向量记录（ID + 向量 + 元数据）"
+        },
+        {
+          "name": "VectorMatch",
+          "kind": "alias",
+          "doc": "VectorMatch 向量搜索匹配结果"
+        },
+        {
+          "name": "VectorSearchOptions",
+          "kind": "alias",
+          "doc": "VectorSearchOptions 向量搜索选项"
+        }
+      ],
+      "constants": [
+        {
+          "name": "FusionLinear"
+        },
+        {
+          "name": "FusionRRF"
+        },
+        {
+          "name": "BackendSQLite"
+        },
+        {
+          "name": "BackendMemory"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewRAGStoreWithFusionConfig"
+        },
+        {
+          "name": "DefaultRAGFusionConfig"
+        },
+        {
+          "name": "NewSQLiteStore"
+        },
+        {
+          "name": "WithInMemory"
+        },
+        {
+          "name": "NewInMemoryStore"
+        },
+        {
+          "name": "NewMemory"
+        },
+        {
+          "name": "NewVectorStore"
+        },
+        {
+          "name": "NewVectorStoreWithHNSW"
+        },
+        {
+          "name": "NewHNSWIndex"
+        },
+        {
+          "name": "FormatRAGContext"
+        },
+        {
+          "name": "NewRetrievalAugmentedGenerator"
+        },
+        {
+          "name": "NewMMRReranker"
+        },
+        {
+          "name": "NewCompressor"
+        },
+        {
+          "name": "NewPgVectorVectorStore"
+        }
+      ]
+    },
+    {
+      "file": "pkg/metrics.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "AgentMetricsCollector",
+          "kind": "alias",
+          "doc": "AgentMetricsCollector 是 Agent 指标收集器，记录 LLM 调用、工具调用和轮次等指标"
+        },
+        {
+          "name": "Histogram",
+          "kind": "alias",
+          "doc": "Histogram 是直方图指标，用于统计值分布（如延迟、Token 用量）"
+        },
+        {
+          "name": "HistogramSnapshot",
+          "kind": "alias",
+          "doc": "HistogramSnapshot 是直方图的快照，包含分位数和统计值"
+        },
+        {
+          "name": "MetricsSnapshot",
+          "kind": "alias",
+          "doc": "MetricsSnapshot 是指标系统的完整快照"
+        },
+        {
+          "name": "PrometheusHandler",
+          "kind": "alias",
+          "doc": "PrometheusHandler 是 Prometheus 格式的指标 HTTP 处理器"
+        },
+        {
+          "name": "TelemetryExporter",
+          "kind": "alias",
+          "doc": "TelemetryExporter 是遥测数据导出接口"
+        },
+        {
+          "name": "MultiExporter",
+          "kind": "alias",
+          "doc": "MultiExporter 是多目标导出器，支持同时导出到多个目标"
+        },
+        {
+          "name": "LogExporter",
+          "kind": "alias",
+          "doc": "LogExporter 是日志格式的指标导出器"
+        },
+        {
+          "name": "JSONExporter",
+          "kind": "alias",
+          "doc": "JSONExporter 是 JSON 格式的指标导出器"
+        },
+        {
+          "name": "MetricsHandler",
+          "kind": "alias",
+          "doc": "MetricsHandler 提供 Prometheus /metrics 端点（可组合 http.Handler）"
+        },
+        {
+          "name": "MetricsExporter",
+          "kind": "alias",
+          "doc": "MetricsExporter 是指标导出器的通用接口"
+        },
+        {
+          "name": "CostExporterConfig",
+          "kind": "alias",
+          "doc": "CostExporterConfig 成本导出器配置（与 metrics.CostExporterConfig 类型别名）"
+        },
+        {
+          "name": "CostExporterSnapshot",
+          "kind": "alias",
+          "doc": "CostExporterSnapshot 成本导出器运行时快照"
+        },
+        {
+          "name": "CostSource",
+          "kind": "alias",
+          "doc": "CostSource 抽象 CostTracker 数据源（metrics.CostSource 别名）"
+        },
+        {
+          "name": "CostSourceSummary",
+          "kind": "alias",
+          "doc": "CostSourceSummary 抽象汇总数据（metrics.CostSourceSummary 别名）"
+        },
+        {
+          "name": "CostSourceModelCost",
+          "kind": "alias",
+          "doc": "CostSourceModelCost 单模型成本（metrics.CostSourceModelCost 别名）"
+        },
+        {
+          "name": "CostSourceRecord",
+          "kind": "alias",
+          "doc": "CostSourceRecord 抽象单次调用记录（metrics.CostSourceRecord 别名）"
+        },
+        {
+          "name": "CostTrackerSource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Tracker",
+              "type": "*agent.CostTracker"
+            }
+          ],
+          "methods": [
+            "Summary",
+            "Records"
+          ],
+          "doc": "CostTrackerSource 把 agent.CostTracker 包装为 metrics.CostSource"
+        }
+      ],
+      "functions": [
+        {
+          "name": "WrapCostTracker",
+          "params": [
+            "ct *agent.CostTracker"
+          ],
+          "returns": [
+            "*CostTrackerSource"
+          ],
+          "doc": "WrapCostTracker 把 *agent.CostTracker 包装为 metrics.CostSource"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewMetrics"
+        },
+        {
+          "name": "NewHistogram"
+        },
+        {
+          "name": "NewPrometheusHandler"
+        },
+        {
+          "name": "NewHandler"
+        },
+        {
+          "name": "NewMultiExporter"
+        },
+        {
+          "name": "NewLogExporter"
+        },
+        {
+          "name": "NewJSONExporter"
+        },
+        {
+          "name": "NewMetricsExporter"
+        },
+        {
+          "name": "NewCostExporter"
+        },
+        {
+          "name": "DefaultMetrics"
+        },
+        {
+          "name": "RecordCostUSD",
+          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+        },
+        {
+          "name": "RecordCostCalls",
+          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+        },
+        {
+          "name": "RecordCostTokens",
+          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+        },
+        {
+          "name": "SetLastCostUSD",
+          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+        }
+      ]
+    },
+    {
+      "file": "pkg/options.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "Option",
+          "kind": "alias",
+          "doc": "Option 是 Agent 行为配置的函数选项"
+        },
+        {
+          "name": "StreamingFunc",
+          "kind": "alias",
+          "doc": "StreamingFunc 是流式输出时每个 chunk 的回调函数"
+        }
+      ],
+      "functions": [
+        {
+          "name": "WithTimeout",
+          "params": [
+            "d time.Duration"
+          ],
+          "returns": [
+            "Option"
+          ],
+          "doc": "WithTimeout 设置执行超时时间"
+        },
+        {
+          "name": "WithMaxIterations",
+          "params": [
+            "n int"
+          ],
+          "returns": [
+            "Option"
+          ],
+          "doc": "WithMaxIterations 设置 ReAct 循环的最大迭代次数（区别于 agent.WithMaxTurns 的 AgentOption 类型）"
+        },
+        {
+          "name": "WithTemp",
+          "params": [
+            "t float64"
+          ],
+          "returns": [
+            "Option"
+          ],
+          "doc": "WithTemp 设置 LLM 温度参数（区别于 agent.WithTemperature 的 AgentOption 类型）"
+        },
+        {
+          "name": "WithCheckpoint",
+          "params": [
+            "dir string"
+          ],
+          "returns": [
+            "Option"
+          ],
+          "doc": "WithCheckpoint 启用状态检查点，将状态持久化到指定目录"
+        },
+        {
+          "name": "WithStreaming",
+          "params": [
+            "fn StreamingFunc"
+          ],
+          "returns": [
+            "Option"
+          ],
+          "doc": "WithStreaming 启用流式输出模式，每个 chunk 调用回调函数"
+        },
+        {
+          "name": "WithMetadata",
+          "params": [
+            "m Metadata"
+          ],
+          "returns": [
+            "Option"
+          ],
+          "doc": "WithMetadata 添加自定义元数据到会话"
+        },
+        {
+          "name": "ApplyOptions",
+          "params": [
+            "opts ...Option"
+          ],
+          "returns": [
+            "options"
+          ],
+          "doc": "ApplyOptions 将选项列表应用到目标对象。"
+        }
+      ]
+    },
+    {
+      "file": "pkg/otel.go",
+      "types": [
+        {
+          "name": "Tracer",
+          "kind": "alias"
+        },
+        {
+          "name": "TracerDebug",
+          "kind": "alias"
+        },
+        {
+          "name": "NoopTracer",
+          "kind": "alias"
+        },
+        {
+          "name": "OTLPConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "OTLPExporter",
+          "kind": "alias"
+        },
+        {
+          "name": "TelemetryConfig",
+          "kind": "alias"
+        },
+        {
+          "name": "TelemetryProvider",
+          "kind": "alias"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewNoopTracer"
+        },
+        {
+          "name": "NewOTLPExporter"
+        },
+        {
+          "name": "NewTelemetryProvider"
+        }
+      ]
+    },
+    {
+      "file": "pkg/persist.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "CheckpointStore",
+          "kind": "alias",
+          "doc": "CheckpointStore 是状态持久化接口，支持 Agent 状态的保存和恢复"
+        },
+        {
+          "name": "AgentState",
+          "kind": "alias",
+          "doc": "AgentState 是 Agent 的持久化状态，包含消息历史、轮次和状态信息"
+        },
+        {
+          "name": "SQLiteCheckpointStore",
+          "kind": "alias",
+          "doc": "SQLiteCheckpointStore 是基于 SQLite 的检查点存储实现"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewSQLiteCheckpointStore"
+        },
+        {
+          "name": "InMemoryCheckpointStore"
+        },
+        {
+          "name": "UnmarshalAgentState"
+        }
+      ]
+    },
+    {
+      "file": "pkg/pipeline.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "Pipeline",
+          "kind": "alias",
+          "doc": "Pipeline 是顺序编排器，前一个 Agent 的输出作为后一个的输入"
+        },
+        {
+          "name": "PipelineStep",
+          "kind": "alias",
+          "doc": "PipelineStep 是 Pipeline 中的一个步骤，包含名称、Agent、输入和条件谓词"
+        },
+        {
+          "name": "PipelineResult",
+          "kind": "alias",
+          "doc": "PipelineResult 是 Pipeline 的执行结果，包含各步骤结果、最终输出和总耗时"
+        },
+        {
+          "name": "StepResult",
+          "kind": "alias",
+          "doc": "StepResult 是 Pipeline 单步骤的执行结果，包含名称、输出、耗时和跳过标记"
+        },
+        {
+          "name": "Handoff",
+          "kind": "alias",
+          "doc": "Handoff 是动态交接编排器，支持 Agent 间根据路由函数自动交接"
+        },
+        {
+          "name": "HandoffConfig",
+          "kind": "alias",
+          "doc": "HandoffConfig 定义 Agent 间的交接规则，包含参与 Agent 列表、路由函数和最大交接次数"
+        },
+        {
+          "name": "HandoffResult",
+          "kind": "alias",
+          "doc": "HandoffResult 是 Handoff 的执行结果，包含最终 Agent 名称、输出和交接次数"
+        },
+        {
+          "name": "ParallelResult",
+          "kind": "alias",
+          "doc": "ParallelResult 是并行执行的结果，包含各 Agent 的结果和总耗时"
+        },
+        {
+          "name": "AgentResult",
+          "kind": "alias",
+          "doc": "AgentResult 是单个 Agent 的执行结果，包含名称、输出、耗时和错误"
+        },
+        {
+          "name": "GroupChat",
+          "kind": "alias",
+          "doc": "GroupChat 是多 Agent 群组讨论管理器，支持轮次发言、终止条件和共识机制"
+        },
+        {
+          "name": "GroupChatConfig",
+          "kind": "alias",
+          "doc": "GroupChatConfig 是 GroupChat 的配置，包含参与 Agent 列表、最大轮次等"
+        },
+        {
+          "name": "GroupChatResult",
+          "kind": "alias",
+          "doc": "GroupChatResult 是 GroupChat 的运行结果，包含消息列表和讨论轮次"
+        },
+        {
+          "name": "Document",
+          "kind": "alias",
+          "doc": "Document 是加载后的文档，包含 ID、内容、元数据和来源路径"
+        },
+        {
+          "name": "DocumentLoader",
+          "kind": "alias",
+          "doc": "DocumentLoader 是文档加载接口，支持从文件或目录加载文档"
+        },
+        {
+          "name": "TextFileLoader",
+          "kind": "alias",
+          "doc": "TextFileLoader 从文件路径加载文本文档，支持递归加载目录"
+        },
+        {
+          "name": "ReaderLoader",
+          "kind": "alias",
+          "doc": "ReaderLoader 从 io.Reader 加载文本文档"
+        },
+        {
+          "name": "TextSplitter",
+          "kind": "alias",
+          "doc": "TextSplitter 是文本切分接口，将长文本切分为适合检索的块"
+        },
+        {
+          "name": "CharacterSplitter",
+          "kind": "alias",
+          "doc": "CharacterSplitter 按字符数切分文本，支持重叠和分隔符"
+        },
+        {
+          "name": "RecursiveSplitter",
+          "kind": "alias",
+          "doc": "RecursiveSplitter 递归切分器，按多种分隔符逐级尝试切分"
+        },
+        {
+          "name": "LineSplitter",
+          "kind": "alias",
+          "doc": "LineSplitter 按行数切分文本"
+        },
+        {
+          "name": "DocChunk",
+          "kind": "alias",
+          "doc": "DocChunk 是切分后的文本块，包含序号、内容和元数据"
+        },
+        {
+          "name": "DocumentPipeline",
+          "kind": "alias",
+          "doc": "DocumentPipeline 是文档处理管道，串联加载和切分两个阶段"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewPipeline"
+        },
+        {
+          "name": "NewHandoff"
+        },
+        {
+          "name": "ParallelRun"
+        },
+        {
+          "name": "NewGroupChat"
+        },
+        {
+          "name": "NewTextFileLoader"
+        },
+        {
+          "name": "NewReaderLoader"
+        },
+        {
+          "name": "NewCharacterSplitter"
+        },
+        {
+          "name": "NewRecursiveSplitter"
+        },
+        {
+          "name": "NewLineSplitter"
+        },
+        {
+          "name": "NewDocumentPipeline"
+        }
+      ]
+    },
+    {
+      "file": "pkg/planning.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "Planner",
+          "kind": "alias",
+          "doc": "Planner 定义任务规划和分解接口"
+        },
+        {
+          "name": "SubTask",
+          "kind": "alias",
+          "doc": "SubTask 表示一个子任务"
+        },
+        {
+          "name": "Plan",
+          "kind": "alias",
+          "doc": "Plan 表示执行计划"
+        },
+        {
+          "name": "TaskStatus",
+          "kind": "alias",
+          "doc": "TaskStatus 任务状态"
+        },
+        {
+          "name": "LLMPlanner",
+          "kind": "alias",
+          "doc": "LLMPlanner 使用 LLM 进行任务规划"
+        }
+      ],
+      "constants": [
+        {
+          "name": "TaskPending"
+        },
+        {
+          "name": "TaskRunning"
+        },
+        {
+          "name": "TaskCompleted"
+        },
+        {
+          "name": "TaskFailed"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewLLMPlanner"
+        }
+      ]
+    },
+    {
+      "file": "pkg/pool.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "Pool",
+          "kind": "alias",
+          "doc": "Pool 是多 Agent 并发调度器，支持任务分发、重试、取消和会话管理"
+        },
+        {
+          "name": "PoolConfig",
+          "kind": "alias",
+          "doc": "PoolConfig 是 Pool 的配置结构，包含最大并发数、超时、重试策略和默认 Agent 配置"
+        },
+        {
+          "name": "TaskConfig",
+          "kind": "alias",
+          "doc": "TaskConfig 是提交给 Pool 的任务配置，包含 ID、标题、提示词、会话和作用域等"
+        },
+        {
+          "name": "TaskResult",
+          "kind": "alias",
+          "doc": "TaskResult 是任务执行结果，包含任务 ID、Agent 响应、错误、耗时和状态"
+        },
+        {
+          "name": "PoolEvent",
+          "kind": "alias",
+          "doc": "PoolEvent 是 Pool 发出的事件，包含事件类型、任务 ID、时间戳和附加数据"
+        },
+        {
+          "name": "PoolStats",
+          "kind": "alias",
+          "doc": "PoolStats 是 Pool 的运行统计，包含总任务数、完成数、失败数、运行数等"
+        },
+        {
+          "name": "RetryPolicy",
+          "kind": "alias",
+          "doc": "RetryPolicy 是任务重试策略，包含最大重试次数、退避时间和可重试错误模式"
+        },
+        {
+          "name": "ReActAgentConfig",
+          "kind": "alias",
+          "doc": "ReActAgentConfig 是 Pool 中默认 Agent 的配置，包含系统提示词、最大轮次和温度"
+        },
+        {
+          "name": "PoolTaskStatus",
+          "kind": "alias",
+          "doc": "PoolTaskStatus 表示 Pool 任务的状态（queued / running / completed / failed / cancelled）"
+        },
+        {
+          "name": "AgentFactory",
+          "kind": "alias",
+          "doc": "AgentFactory 是创建 Agent 实例的工厂函数，Pool 使用此工厂为每个任务创建 Agent"
+        },
+        {
+          "name": "AgentFactoryConfig",
+          "kind": "alias",
+          "doc": "AgentFactoryConfig 是创建 Agent 时传递的完整配置，包含名称、提示词、作用域和会话 ID"
+        }
+      ],
+      "constants": [
+        {
+          "name": "PoolTaskQueued"
+        },
+        {
+          "name": "PoolTaskRunning"
+        },
+        {
+          "name": "PoolTaskCompleted"
+        },
+        {
+          "name": "PoolTaskFailed"
+        },
+        {
+          "name": "PoolTaskCancelled"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewPool",
+          "doc": "NewPool 创建多 Agent 并发调度器实例"
+        }
+      ]
+    },
+    {
+      "file": "pkg/reflection.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "Reflector",
+          "kind": "alias",
+          "doc": "Reflector 定义自我反思和纠错接口"
+        },
+        {
+          "name": "Reflection",
+          "kind": "alias",
+          "doc": "Reflection 反思结果"
+        },
+        {
+          "name": "Critique",
+          "kind": "alias",
+          "doc": "Critique 批评结果"
+        },
+        {
+          "name": "Issue",
+          "kind": "alias",
+          "doc": "Issue 问题描述"
+        },
+        {
+          "name": "Severity",
+          "kind": "alias",
+          "doc": "Severity 严重程度"
+        },
+        {
+          "name": "Correction",
+          "kind": "alias",
+          "doc": "Correction 纠正建议"
+        },
+        {
+          "name": "LLMReflector",
+          "kind": "alias",
+          "doc": "LLMReflector 使用 LLM 进行自我反思"
+        }
+      ],
+      "constants": [
+        {
+          "name": "ReflectSeverityLow"
+        },
+        {
+          "name": "ReflectSeverityMedium"
+        },
+        {
+          "name": "ReflectSeverityHigh"
+        },
+        {
+          "name": "ReflectSeverityCritical"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewLLMReflector"
+        }
+      ]
+    },
+    {
+      "file": "pkg/security.go",
+      "stability": "Stable",
+      "types": [
+        {
+          "name": "ACL",
+          "kind": "alias",
+          "doc": "ACL 是访问控制列表，管理 Agent 对资源的访问权限"
+        },
+        {
+          "name": "ACLRule",
+          "kind": "alias",
+          "doc": "ACLRule 是 ACL 规则，定义 Agent 对特定资源的访问级别"
+        },
+        {
+          "name": "AccessLevel",
+          "kind": "alias",
+          "doc": "AccessLevel 是访问级别（none / read / write / execute / all）"
+        },
+        {
+          "name": "Sandbox",
+          "kind": "alias",
+          "doc": "Sandbox 是沙箱环境，限制 Agent 可执行的命令和可访问的路径"
+        },
+        {
+          "name": "PermissionLevel",
+          "kind": "alias",
+          "doc": "PermissionLevel 是统一权限系统的权限级别"
+        },
+        {
+          "name": "PermissionRole",
+          "kind": "alias",
+          "doc": "PermissionRole 是 Agent 在 PermissionManager 中的角色（别名为 security.Role，避免与 pkg/agent.Role 重\ufffd..."
+        },
+        {
+          "name": "PermissionScope",
+          "kind": "alias",
+          "doc": "PermissionScope 是资源范围约束（别名为 security.ScopePolicy，避免与 pkg/tools.ScopePolicy 重名）"
+        },
+        {
+          "name": "Permission",
+          "kind": "alias",
+          "doc": "Permission 是统一的权限接口"
+        },
+        {
+          "name": "PermissionManager",
+          "kind": "alias",
+          "doc": "PermissionManager 是 RBAC + Scope 组合权限管理器"
+        }
+      ],
+      "constants": [
+        {
+          "name": "AccessNone"
+        },
+        {
+          "name": "AccessRead"
+        },
+        {
+          "name": "AccessWrite"
+        },
+        {
+          "name": "AccessExecute"
+        },
+        {
+          "name": "AccessAll"
+        },
+        {
+          "name": "PermNone"
+        },
+        {
+          "name": "PermRead"
+        },
+        {
+          "name": "PermWrite"
+        },
+        {
+          "name": "PermExecute"
+        },
+        {
+          "name": "PermAdmin"
+        }
+      ],
+      "variables": [
+        {
+          "name": "ErrAgentNotFound",
+          "doc": "错误变量"
+        },
+        {
+          "name": "ErrInvalidPermission",
+          "doc": "错误变量"
+        },
+        {
+          "name": "ErrEscalateNotAllowed",
+          "doc": "错误变量"
+        },
+        {
+          "name": "NewACL",
+          "doc": "NewACL 创建访问控制列表实例"
+        },
+        {
+          "name": "NewSandbox",
+          "doc": "NewSandbox 创建沙箱环境实例"
+        },
+        {
+          "name": "NewPermissionManager",
+          "doc": "NewPermissionManager 创建统一权限管理器"
+        }
+      ]
+    },
+    {
+      "file": "pkg/soak.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "SoakRunner",
+          "kind": "alias",
+          "doc": "SoakRunner Soak Test 运行器，执行长时间负载测试以检测退化行为"
+        },
+        {
+          "name": "SoakRunnerConfig",
+          "kind": "alias",
+          "doc": "SoakRunnerConfig Soak Test 运行器配置"
+        },
+        {
+          "name": "SoakResult",
+          "kind": "alias",
+          "doc": "SoakResult Soak Test 结果"
+        },
+        {
+          "name": "SoakSample",
+          "kind": "alias",
+          "doc": "SoakSample 采样点"
+        },
+        {
+          "name": "SoakResponse",
+          "kind": "alias",
+          "doc": "SoakResponse 请求响应"
+        },
+        {
+          "name": "SoakLoadPattern",
+          "kind": "alias",
+          "doc": "SoakLoadPattern 负载模式接口"
+        },
+        {
+          "name": "ConstantLoadPattern",
+          "kind": "alias",
+          "doc": "ConstantLoadPattern 恒定负载模式"
+        },
+        {
+          "name": "StepLoadPattern",
+          "kind": "alias",
+          "doc": "StepLoadPattern 阶梯负载模式"
+        },
+        {
+          "name": "BurstLoadPattern",
+          "kind": "alias",
+          "doc": "BurstLoadPattern 突发负载模式"
+        },
+        {
+          "name": "RandomLoadPattern",
+          "kind": "alias",
+          "doc": "RandomLoadPattern 随机负载模式"
+        },
+        {
+          "name": "RampLoadPattern",
+          "kind": "alias",
+          "doc": "RampLoadPattern 渐进负载模式"
+        },
+        {
+          "name": "SoakTrend",
+          "kind": "alias",
+          "doc": "SoakTrend 趋势类型"
+        },
+        {
+          "name": "DegradationThreshold",
+          "kind": "alias",
+          "doc": "DegradationThreshold 退化检测阈值"
+        },
+        {
+          "name": "DegradationReport",
+          "kind": "alias",
+          "doc": "DegradationReport 退化分析报告"
+        }
+      ],
+      "constants": [
+        {
+          "name": "TrendStable"
+        },
+        {
+          "name": "TrendImproving"
+        },
+        {
+          "name": "TrendDegrading"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewSoakRunner"
+        },
+        {
+          "name": "SoakRunnerConfigWithDefaults"
+        },
+        {
+          "name": "SoakFormatReport"
+        },
+        {
+          "name": "ConstantPattern"
+        },
+        {
+          "name": "StepPattern"
+        },
+        {
+          "name": "BurstPattern"
+        },
+        {
+          "name": "RandomPattern"
+        },
+        {
+          "name": "RampPattern"
+        },
+        {
+          "name": "AnalyzeDegradation"
+        },
+        {
+          "name": "DefaultDegradationThreshold"
+        }
+      ]
+    },
+    {
+      "file": "pkg/supervisor.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "OrchestrationTracer",
+          "kind": "alias",
+          "doc": "OrchestrationTracer 编排层追踪器接口"
+        },
+        {
+          "name": "OrchestrationTracingConfig",
+          "kind": "alias",
+          "doc": "OrchestrationTracingConfig 编排追踪配置"
+        },
+        {
+          "name": "OrchestrationTracingStepExecutor",
+          "kind": "alias",
+          "doc": "OrchestrationTracingStepExecutor 自动追踪的 StepExecutor 装饰器"
+        },
+        {
+          "name": "OrchestrationTracingPipeline",
+          "kind": "alias",
+          "doc": "OrchestrationTracingPipeline 自动追踪的 Pipeline 装饰器"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewOrchestrationNoopTracer"
+        },
+        {
+          "name": "NewOrchestrationTracingStepExecutor"
+        },
+        {
+          "name": "NewOrchestrationTracingPipeline"
+        },
+        {
+          "name": "OrchestrationWithTracer"
+        },
+        {
+          "name": "OrchestrationFromAgentTracer"
+        },
+        {
+          "name": "OrchestrationDefaultTracingConfig"
+        },
+        {
+          "name": "OrchestrationConfigureTracing"
+        }
+      ]
+    },
+    {
+      "file": "pkg/tool_learning.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "ToolLearner",
+          "kind": "alias",
+          "doc": "ToolLearner 定义工具学习能力接口"
+        },
+        {
+          "name": "TLEpisode",
+          "kind": "alias",
+          "doc": "Episode 是工具学习使用的记忆条目"
+        },
+        {
+          "name": "BestPractice",
+          "kind": "alias",
+          "doc": "BestPractice 最佳实践"
+        },
+        {
+          "name": "Suggestion",
+          "kind": "alias",
+          "doc": "Suggestion 改进建议"
+        },
+        {
+          "name": "ToolUsageRecord",
+          "kind": "alias",
+          "doc": "ToolUsageRecord 工具使用记录"
+        },
+        {
+          "name": "MemoryToolLearner",
+          "kind": "alias",
+          "doc": "MemoryToolLearner 基于 MemoryStore 的工具学习器"
+        },
+        {
+          "name": "ToolLearningMemoryStore",
+          "kind": "alias",
+          "doc": "ToolLearningMemoryStore 定义工具学习所需的最小记忆存储接口"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewMemoryToolLearner"
+        }
+      ]
+    },
+    {
+      "file": "pkg/tools.go",
+      "types": [
+        {
+          "name": "Tool",
+          "kind": "alias",
+          "doc": "Tool 是所有工具必须实现的接口，定义名称、描述、参数和执行方法"
+        },
+        {
+          "name": "ToolResult",
+          "kind": "alias",
+          "doc": "ToolResult 是工具执行的结果，包含内容、错误标记和元数据"
+        },
+        {
+          "name": "ToolRegistry",
+          "kind": "alias",
+          "doc": "ToolRegistry 是工具注册中心，管理工具的注册、查找和权限配置"
+        },
+        {
+          "name": "ToolPermission",
+          "kind": "alias",
+          "doc": "ToolPermission 定义工具的访问控制规则，包括允许角色、禁止路径和确认回调"
+        },
+        {
+          "name": "ToolExecutor",
+          "kind": "alias",
+          "doc": "ToolExecutor 是工具执行器，处理工具调用、权限检查、文件锁和超时"
+        },
+        {
+          "name": "ToolFunctionCall",
+          "kind": "alias",
+          "doc": "ToolFunctionCall 表示工具调用请求，包含调用 ID、工具名称和 JSON 参数"
+        },
+        {
+          "name": "ScopePolicy",
+          "kind": "alias",
+          "doc": "ScopePolicy 是作用域权限策略接口，定义 Agent 对资源的访问控制"
+        },
+        {
+          "name": "FileScopePolicy",
+          "kind": "alias",
+          "doc": "FileScopePolicy 是基于文件路径的作用域权限策略实现，按 Agent 分配可访问目录"
+        },
+        {
+          "name": "FileSystem",
+          "kind": "alias",
+          "doc": "FileSystem 是文件系统操作工具，支持读写、搜索目录等操作，可注入权限策略和文件锁"
+        },
+        {
+          "name": "Shell",
+          "kind": "alias",
+          "doc": "Shell 是命令行执行工具，支持超时、白名单和作用域限制"
+        },
+        {
+          "name": "Web",
+          "kind": "alias",
+          "doc": "Web 是 HTTP 请求工具，支持 GET/POST 等方法"
+        },
+        {
+          "name": "KnowledgeSearcher",
+          "kind": "alias",
+          "doc": "KnowledgeSearcher 是知识库搜索接口，由外部注入 RAG Provider 实现"
+        },
+        {
+          "name": "KnowledgeDoc",
+          "kind": "alias",
+          "doc": "KnowledgeDoc 是知识库搜索返回的文档，包含 ID、内容、分数和来源"
+        },
+        {
+          "name": "KnowledgeSearch",
+          "kind": "alias",
+          "doc": "KnowledgeSearch 是内置知识库搜索工具，允许 Agent 主动查询知识库"
+        },
+        {
+          "name": "ToolkitConfig",
+          "kind": "alias",
+          "doc": "ToolkitConfig 是工具包配置，包含根目录、启用的工具类型、权限策略和文件锁"
+        },
+        {
+          "name": "MCPClient",
+          "kind": "alias",
+          "doc": "MCPClient 是 MCP 协议客户端，用于连接外部 MCP Server"
+        },
+        {
+          "name": "MCPRegistry",
+          "kind": "alias",
+          "doc": "MCPRegistry 管理 MCP Server 的注册和生命周期"
+        },
+        {
+          "name": "MCPClientConfig",
+          "kind": "alias",
+          "doc": "MCPClientConfig 描述一个外部 MCP Server 的连接配置"
+        },
+        {
+          "name": "MCPToolDefinition",
+          "kind": "alias",
+          "doc": "MCPToolDefinition 描述 MCP 服务端提供的工具"
+        },
+        {
+          "name": "ToolPlugin",
+          "kind": "alias",
+          "doc": "ToolPlugin 是工具插件接口，支持批量注册工具"
+        },
+        {
+          "name": "PluginLoader",
+          "kind": "alias",
+          "doc": "PluginLoader 管理插件的加载、卸载和查询"
+        },
+        {
+          "name": "PluginInfo",
+          "kind": "alias",
+          "doc": "PluginInfo 描述已加载插件的信息"
+        },
+        {
+          "name": "JSONTool",
+          "kind": "alias",
+          "doc": "JSONTool 是 JSON 数据处理工具，支持查询、提取、转换等操作"
+        },
+        {
+          "name": "CSVTool",
+          "kind": "alias",
+          "doc": "CSVTool 是 CSV 数据处理工具，支持解析、查询、转换等操作"
+        },
+        {
+          "name": "SQLiteTool",
+          "kind": "alias",
+          "doc": "SQLiteTool 是 SQLite 数据库工具，支持 query 和 execute 操作"
+        },
+        {
+          "name": "CalculatorTool",
+          "kind": "alias",
+          "doc": "CalculatorTool 是计算器工具，支持加减乘除等基本运算"
+        },
+        {
+          "name": "DateTimeTool",
+          "kind": "alias",
+          "doc": "DateTimeTool 是日期时间工具，支持获取当前时间和格式化"
+        },
+        {
+          "name": "API",
+          "kind": "alias",
+          "doc": "API 是 REST API 调用工具，支持 GET/POST/PUT/DELETE/PATCH 方法，内置 SSRF 防护"
+        },
+        {
+          "name": "CodeExecution",
+          "kind": "alias",
+          "doc": "CodeExecution 代码执行工具，支持在安全沙箱中执行 Python、JavaScript、Go 代码"
+        },
+        {
+          "name": "Database",
+          "kind": "alias",
+          "doc": "Database 是 SQLite 数据库工具，支持 query 和 execute 操作"
+        },
+        {
+          "name": "DatabaseOption",
+          "kind": "alias",
+          "doc": "DatabaseOption 是 Database 的可选配置"
+        },
+        {
+          "name": "FileLockManager",
+          "kind": "alias",
+          "doc": "FileLockManager 是文件锁管理器，提供跨 Agent 的文件级互斥访问控制"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewToolRegistry"
+        },
+        {
+          "name": "NewToolExecutor"
+        },
+        {
+          "name": "NewToolResult"
+        },
+        {
+          "name": "NewToolErrorResult"
+        },
+        {
+          "name": "NewFileScopePolicy"
+        },
+        {
+          "name": "NewScopeDeniedError"
+        },
+        {
+          "name": "NewFileSystem"
+        },
+        {
+          "name": "NewShell"
+        },
+        {
+          "name": "NewWeb"
+        },
+        {
+          "name": "NewKnowledgeSearch"
+        },
+        {
+          "name": "DefaultToolkit"
+        },
+        {
+          "name": "MinimalToolkit"
+        },
+        {
+          "name": "NewMCPClient"
+        },
+        {
+          "name": "NewMCPRegistry"
+        },
+        {
+          "name": "NewPluginLoader"
+        },
+        {
+          "name": "NewJSONTool"
+        },
+        {
+          "name": "NewCSVTool"
+        },
+        {
+          "name": "NewSQLiteTool"
+        },
+        {
+          "name": "NewCalculator"
+        },
+        {
+          "name": "NewDateTime"
+        },
+        {
+          "name": "NewAPI"
+        },
+        {
+          "name": "NewCodeExecution"
+        },
+        {
+          "name": "NewDatabase"
+        },
+        {
+          "name": "WithReadOnly"
+        },
+        {
+          "name": "WithMaxRows"
+        },
+        {
+          "name": "WithQueryTimeout"
+        },
+        {
+          "name": "NewFileLockManager"
+        },
+        {
+          "name": "ValidateScopes"
+        }
+      ]
+    },
+    {
+      "file": "pkg/wasm.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "WASMSandbox",
+          "kind": "alias",
+          "doc": "WASMSandbox WASM 沙箱实例，基于 wazero 运行时"
+        },
+        {
+          "name": "WASMSandboxConfig",
+          "kind": "alias",
+          "doc": "WASMSandboxConfig WASM 沙箱配置"
+        },
+        {
+          "name": "WASMToolAdapter",
+          "kind": "alias",
+          "doc": "WASMToolAdapter 将 WASM 模块适配为工具接口"
+        },
+        {
+          "name": "WASMToolMetadata",
+          "kind": "alias",
+          "doc": "WASMToolMetadata WASM 工具元数据"
+        },
+        {
+          "name": "WASMToolResult",
+          "kind": "alias",
+          "doc": "WASMToolResult WASM 工具执行结果"
+        },
+        {
+          "name": "WASMUploadRequest",
+          "kind": "alias",
+          "doc": "WASMUploadRequest WASM 工具上传请求"
+        },
+        {
+          "name": "WASMUploadResponse",
+          "kind": "alias",
+          "doc": "WASMUploadResponse WASM 工具上传响应"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewWASMSandbox"
+        },
+        {
+          "name": "DefaultWASMSandboxConfig"
+        },
+        {
+          "name": "NewWASMToolAdapter"
+        },
+        {
+          "name": "WASMVerifySignature"
+        },
+        {
+          "name": "WASMSignWASM"
+        },
+        {
+          "name": "WASMGenerateKeyPair"
+        },
+        {
+          "name": "WASMKeyFingerprint"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 .PHONY: build test test-race test-short test-integration lint lint-all lint-go lint-ts cover cover-html cover-check \
-        deprecation-check benchmark api-diff cover-trend clean run-hello run-multi run-production \
+        deprecation-check benchmark api-diff api-extract cover-trend clean run-hello run-multi run-production \
         docker-build docker-run docker-clean \
         pgo-profile pgo-build pgo-clean test-ts
 
@@ -73,6 +73,10 @@ cover-check:
 # Phase 12.1: API 变化对比
 api-diff:
 	bash ../scripts/api-diff.sh $(REF)
+
+# API 契约提取：从 pkg/ 提取公共 API 签名，输出 JSON 供跨语言漂移检测
+api-extract:
+	go run ./scripts/api-extract/ -output ../sdk/typescript/api-contract.json
 
 # Phase 12.2: 覆盖率趋势跟踪
 cover-trend:

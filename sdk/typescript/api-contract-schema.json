@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AgentPrimordia API Contract",
+  "description": "Go 公共 API 签名契约，由 scripts/api-extract 自动生成。用于跨语言 API 漂移检测。",
+  "type": "object",
+  "required": ["version", "modules"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Go SDK 版本号",
+      "pattern": "^\\d+\\.\\d+\\.\\d+"
+    },
+    "goVersion": {
+      "type": "string",
+      "description": "Go 编译器版本"
+    },
+    "generated": {
+      "type": "string",
+      "description": "生成工具标识"
+    },
+    "modules": {
+      "type": "array",
+      "description": "按文件分组的 API 模块列表",
+      "items": {
+        "$ref": "#/definitions/ModuleAPI"
+      }
+    }
+  },
+  "definitions": {
+    "ModuleAPI": {
+      "type": "object",
+      "required": ["file"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "源文件相对路径（如 pkg/agent.go）"
+        },
+        "stability": {
+          "type": "string",
+          "enum": ["Stable", "Experimental", "Internal", "Deprecated"],
+          "description": "模块稳定性标注（从文件头注释提取）"
+        },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/TypeAPI" }
+        },
+        "functions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/FuncAPI" }
+        },
+        "constants": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ConstAPI" }
+        },
+        "variables": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VarAPI" }
+        }
+      }
+    },
+    "TypeAPI": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "类型名称（如 ReActAgent, Pool）"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["struct", "interface", "alias"],
+          "description": "类型种类"
+        },
+        "fields": {
+          "type": "array",
+          "description": "struct 字段列表",
+          "items": { "$ref": "#/definitions/FieldAPI" }
+        },
+        "methods": {
+          "type": "array",
+          "description": "关联的方法名列表",
+          "items": { "type": "string" }
+        },
+        "doc": {
+          "type": "string",
+          "description": "文档摘要（首行）"
+        }
+      }
+    },
+    "FieldAPI": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string", "description": "Go 类型表达式" },
+        "tag": { "type": "string", "description": "struct tag（如 json:\"name\"）" }
+      }
+    },
+    "FuncAPI": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "params": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "参数列表（格式: name type）"
+        },
+        "returns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "返回值类型列表"
+        },
+        "doc": { "type": "string" }
+      }
+    },
+    "ConstAPI": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" },
+        "doc": { "type": "string" }
+      }
+    },
+    "VarAPI": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "doc": { "type": "string" }
+      }
+    }
+  }
+}
