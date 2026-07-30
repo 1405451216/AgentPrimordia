@@ -443,6 +443,17 @@ export type { Operation, OperationType, CRDTDocument } from './collaboration/crd
 export { EnhancedWSTransport } from './a2a/enhanced-websocket-transport.js';
 export type { EnhancedWSOptions, ConnectionStatus } from './a2a/enhanced-websocket-transport.js';
 
+// ===== 集群协调（对齐 Go internal/agent/cluster/） =====
+export {
+  MemKVStore, DistributedDiscovery, ClusterCoordinator,
+} from './cluster/index.js';
+export type {
+  KVStore, KVEvent, KVEventType,
+  DistributedDiscoveryConfig,
+  ClusterMessage, ClusterReply, RemoteNode, CoordinationConfig,
+} from './cluster/index.js';
+// 注: AgentInfo / Discovery 已从 agent 模块导出，避免重复
+
 // ===== 混沌工程（对齐 Go internal/chaos/） =====
 export {
   ChaosEngine,
