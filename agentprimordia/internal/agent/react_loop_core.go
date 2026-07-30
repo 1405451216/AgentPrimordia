@@ -57,8 +57,14 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 	}
 
+	// 优化（Task 3.5）：仅在需要记录 turn 延迟时获取时间戳
+	needTiming := a.getMetricsRecorder() != nil || a.getLabeledRecorder() != nil
+
 	for turn := startTurn; turn < a.config.MaxTurns; turn++ {
-		turnStart := time.Now()
+		var turnStart time.Time
+		if needTiming {
+			turnStart = time.Now()
+		}
 
 		if a.lifecycle.IsStopped() {
 			_ = a.lifecycle.SetStatus(StatusCancelled)
@@ -72,10 +78,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			return &Response{RequestID: cfg.requestID, Error: ctx.Err()}, ctx.Err()
 		}
 
-		a.statsMu.Lock()
-		a.stats.CurrentTurn = turn + 1
-		a.stats.TotalMessages = len(history)
-		a.statsMu.Unlock()
+		// 优化（Task 3.5）：使用原子操作替代 mutex，消除热路径上的锁竞争
+		a.atomicTurn.Store(int64(turn + 1))
+		a.atomicMessages.Store(int64(len(history)))
 
 		_ = a.fireHookWithPool(HookBeforeTurn, turn)
 		// 优化（Task 3）：仅在存在订阅者时构造 payload map，避免热点路径上的堆分配
@@ -281,7 +286,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			_ = a.fireHookWithPoolResp(HookOnComplete, response)
 			turnSpan.End()
 			_ = a.fireHookWithPool(HookAfterTurn, turn)
-			a.recordTurn(time.Since(turnStart))
+			if needTiming {
+				a.recordTurn(time.Since(turnStart))
+			}
 			if a.hasEventSubscriber() {
 				a.publishEvent(EventTurnEnd, map[string]int{"turn": turn})
 			}
@@ -311,7 +318,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		turnSpan.End()
 		_ = a.fireHookWithPool(HookAfterTurn, turn)
-		a.recordTurn(time.Since(turnStart))
+		if needTiming {
+			a.recordTurn(time.Since(turnStart))
+		}
 		if a.hasEventSubscriber() {
 			a.publishEvent(EventTurnEnd, map[string]int{"turn": turn})
 		}

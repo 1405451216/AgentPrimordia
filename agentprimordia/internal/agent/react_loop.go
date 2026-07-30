@@ -113,10 +113,14 @@ type ReActAgent struct {
 	logger    *slog.Logger
 	startTime time.Time
 	stats     AgentStats
-	statsMu   sync.RWMutex // 锁层级 L1：统计信息（最外层，先获取）
+	statsMu   sync.RWMutex // 锁层级 L1：统计信息（仅保护 ToolsCalled map）
 	runMu     sync.Mutex   // 锁层级 L2：运行状态
 	mu        sync.Mutex   // 锁层级 L3：通用字段（最内层，最后获取）
 	// 锁顺序：statsMu → runMu → mu，禁止反向获取
+
+	// 热路径原子计数器（避免每 turn 加锁，Task 3.5 优化）
+	atomicTurn     atomic.Int64
+	atomicMessages atomic.Int64
 	hitlMgr *HITLManager
 	idGen   idCounter // 实例级 ID 生成器，消除全局可变状态
 

@@ -13,17 +13,23 @@ import (
 
 // Stats returns current agent statistics
 func (a *ReActAgent) Stats() AgentStats {
+	// 优化（Task 3.5）：热路径计数器从原子变量读取，无需加锁
+	stats := AgentStats{
+		CurrentTurn:   int(a.atomicTurn.Load()),
+		TotalMessages: int(a.atomicMessages.Load()),
+		StartTime:     a.startTime,
+	}
+
+	// 仅对 ToolsCalled map 加锁（低频更新）
 	a.statsMu.RLock()
-	stats := a.stats
+	stats.RequestID = a.stats.RequestID
+	toolsCopy := make(map[string]int, len(a.stats.ToolsCalled))
+	maps.Copy(toolsCopy, a.stats.ToolsCalled)
 	a.statsMu.RUnlock()
+	stats.ToolsCalled = toolsCopy
 
 	// 在锁外设置 status，避免嵌套锁定（lifecycle.Status 有自己的锁）
 	stats.Status = a.lifecycle.Status()
-
-	// Deep copy the ToolsCalled map to prevent caller from mutating internal state
-	toolsCopy := make(map[string]int, len(stats.ToolsCalled))
-	maps.Copy(toolsCopy, stats.ToolsCalled)
-	stats.ToolsCalled = toolsCopy
 	return stats
 }
 
@@ -127,11 +133,12 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	a.currentRequestID = reqID
 	a.mu.Unlock()
 
+	// 优化（Task 3.5）：热路径计数器使用原子操作
+	a.atomicTurn.Store(int64(state.TurnCount))
+	a.atomicMessages.Store(int64(len(history)))
+
 	a.statsMu.Lock()
 	a.stats.StartTime = a.startTime
-	a.stats.CurrentTurn = state.TurnCount
-	a.stats.TotalMessages = len(history)
-	a.stats.Status = StatusRunning
 	a.stats.RequestID = reqID
 	a.statsMu.Unlock()
 	_ = a.lifecycle.SetStatus(StatusRunning)

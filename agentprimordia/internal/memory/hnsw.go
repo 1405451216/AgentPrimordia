@@ -1,11 +1,12 @@
 package memory
 
 import (
+	"cmp"
 	"container/heap"
 	"context"
 	"math"
 	"math/rand"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -326,7 +327,8 @@ func (idx *HNSWIndex) pruneConnections(nodeID string, level int, maxConn int) {
 			dists = append(dists, dist{nID, hnswCosineDistance(node.vector, n.vector)})
 		}
 	}
-	sort.Slice(dists, func(i, j int) bool { return dists[i].d < dists[j].d })
+	// 优化（Task 3.7）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(dists, func(a, b dist) int { return cmp.Compare(a.d, b.d) })
 
 	kept := make([]string, 0, maxConn)
 	for i := 0; i < maxConn && i < len(dists); i++ {
