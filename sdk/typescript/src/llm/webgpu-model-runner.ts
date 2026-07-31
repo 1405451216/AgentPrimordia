@@ -9,6 +9,11 @@
  * - 推理执行：使用 compute shader 执行矩阵运算（transformer 推理）
  * - 浏览器能力探测：检测 navigator.gpu 可用性 + 模型缓存策略
  * - 自动降级：WebGPU 不可用时回退到 CPU 或远程 API
+ *
+ * 推理后端（C-4 动态导入方案）：
+ * - 支持通过动态 import() 加载 @xenova/transformers 作为真实推理后端
+ * - 不增加硬依赖：用户自行 `npm install @xenova/transformers` 即可启用
+ * - 未安装时自动回退到内置骨架实现
  */
 
 import type { WebGPUCapabilities, WebGPURuntime, ProviderResponse, ChatChunk } from './webgpu-provider.js';
@@ -63,6 +68,99 @@ export interface CacheStrategy {
   maxCacheSize: number;
 }
 
+/** 推理后端接口（C-4 动态导入抽象） */
+export interface InferenceBackend {
+  /** 加载模型 */
+  load(modelId: string, config: InferenceConfig): Promise<void>;
+  /** 执行推理，返回生成文本 */
+  generate(prompt: string, maxTokens: number): Promise<string>;
+  /** 卸载模型 */
+  dispose(): void;
+  /** 后端名称 */
+  readonly name: string;
+}
+
+/**
+ * Transformers.js 推理后端（动态导入）。
+ *
+ * 通过 `import('@xenova/transformers')` 加载，不增加硬依赖。
+ * 用户需自行安装：`npm install @xenova/transformers`
+ */
+export class TransformersBackend implements InferenceBackend {
+  readonly name = 'transformers.js';
+  private pipeline: any = null;
+  private modelId = '';
+
+  async load(modelId: string, config: InferenceConfig): Promise<void> {
+    // 动态导入 @xenova/transformers
+    let transformers: any;
+    try {
+      transformers = await import(/* @vite-ignore */ '@xenova/transformers');
+    } catch {
+      throw new Error(
+        '推理后端 @xenova/transformers 未安装。请运行: npm install @xenova/transformers'
+      );
+    }
+
+    this.modelId = modelId;
+    // 创建 text-generation pipeline，启用 WebGPU 设备
+    this.pipeline = await transformers.pipeline('text-generation', modelId, {
+      device: 'webgpu',
+      dtype: 'q4',
+    });
+  }
+
+  async generate(prompt: string, maxTokens: number): Promise<string> {
+    if (!this.pipeline) {
+      throw new Error('Model not loaded. Call load() first.');
+    }
+
+    const output = await this.pipeline(prompt, {
+      max_new_tokens: maxTokens,
+      return_full_text: false,
+    });
+
+    if (Array.isArray(output) && output.length > 0) {
+      return output[0].generated_text ?? '';
+    }
+    return '';
+  }
+
+  dispose(): void {
+    if (this.pipeline) {
+      this.pipeline.dispose?.();
+      this.pipeline = null;
+    }
+  }
+}
+
+/** 内置骨架后端（无外部依赖，用于测试和开发） */
+export class SkeletonBackend implements InferenceBackend {
+  readonly name = 'skeleton';
+
+  async load(_modelId: string, _config: InferenceConfig): Promise<void> {
+    // 骨架后端无需加载
+  }
+
+  async generate(prompt: string, _maxTokens: number): Promise<string> {
+    return `[skeleton] echo: ${prompt.slice(-100)}`;
+  }
+
+  dispose(): void {}
+}
+
+/** 自动检测可用推理后端（C-4） */
+export async function detectInferenceBackend(): Promise<InferenceBackend> {
+  try {
+    // 尝试动态导入 transformers.js
+    await import(/* @vite-ignore */ '@xenova/transformers');
+    return new TransformersBackend();
+  } catch {
+    // 未安装，回退到骨架后端
+    return new SkeletonBackend();
+  }
+}
+
 /** WebGPU 模型运行器配置 */
 export interface WebGPUModelRunnerConfig {
   /** 模型 ID（HuggingFace repo 或 URL） */
@@ -90,6 +188,7 @@ export class WebGPUModelRunner implements WebGPURuntime {
   private modelLoaded = false;
   private available = false;
   private capabilities?: WebGPUCapabilities;
+  private backend: InferenceBackend | null = null;
   private loadProgress: ModelLoadProgress = {
     state: 'idle',
     downloadProgress: 0,
@@ -142,6 +241,21 @@ export class WebGPUModelRunner implements WebGPURuntime {
     this.updateProgress({ state: 'downloading', downloadProgress: 0, bytesDownloaded: 0, totalBytes: 0 });
 
     try {
+      // C-4: 初始化推理后端（动态检测 transformers.js 可用性）
+      if (!this.backend) {
+        this.backend = await detectInferenceBackend();
+      }
+
+      // 如果后端支持直接加载模型（如 transformers.js），委托给后端
+      if (this.backend.name !== 'skeleton') {
+        this.updateProgress({ state: 'loading', downloadProgress: 0, bytesDownloaded: 0, totalBytes: 0 });
+        await this.backend.load(modelId, this.inferenceConfig);
+        this.modelLoaded = true;
+        this.updateProgress({ state: 'ready', downloadProgress: 1, bytesDownloaded: 0, totalBytes: 0 });
+        return;
+      }
+
+      // 骨架后端：走原始 GGUF 下载流程
       // 步骤 1: 尝试从缓存加载
       const cached = await this.loadFromCache(modelId);
       if (cached) {
@@ -176,6 +290,10 @@ export class WebGPUModelRunner implements WebGPURuntime {
   /** 卸载模型，释放 GPU 内存 */
   unloadModel(): void {
     this.modelLoaded = false;
+    // C-4: 释放推理后端资源
+    if (this.backend) {
+      this.backend.dispose();
+    }
     // GPU buffer 会在 GC 时释放
     this.updateProgress({ state: 'idle', downloadProgress: 0, bytesDownloaded: 0, totalBytes: 0 });
   }
@@ -363,16 +481,16 @@ export class WebGPUModelRunner implements WebGPURuntime {
     return tokens.map((t) => String.fromCharCode(t)).join('');
   }
 
-  /** 执行 token 生成（通过 GPU compute shader） */
+  /** 执行 token 生成（通过推理后端） */
   private async generate(inputTokens: number[], maxNewTokens: number): Promise<number[]> {
-    // 生产实现：
-    // 1. 将 inputTokens 编码为 embedding
-    // 2. 循环执行 transformer 层（attention + FFN）
-    // 3. 采样下一个 token
-    // 4. 重复直到 EOS 或达到 maxNewTokens
+    // 优先使用动态导入的推理后端（C-4）
+    if (this.backend && this.backend.name !== 'skeleton') {
+      const prompt = this.detokenize(inputTokens);
+      const output = await this.backend.generate(prompt, maxNewTokens);
+      return this.tokenize(output);
+    }
 
-    // 当前为框架实现，返回空（等待真实 compute shader 集成）
-    // TODO: 集成 WGSL compute shader 进行矩阵乘法
+    // 骨架回退：返回空（等待真实 compute shader 集成）
     return [];
   }
 

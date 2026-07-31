@@ -5,33 +5,40 @@
  * Stability: Experimental
  */
 
-import type { FaultInjector, FaultResult } from './faults.js';
+import type { CleanupFunc, FaultResult } from './faults.js';
 import type { SteadyState, SteadyStateResult } from './steady-state.js';
 
 /** 实验状态 */
-export type ExperimentStatus = 'pending' | 'running' | 'completed' | 'failed' | 'aborted';
+export type ExperimentStatus = 'pending' | 'running' | 'completed' | 'aborted' | 'failed';
 
-/** 混沌实验定义 */
+/** 混沌实验定义（对齐 Go Experiment） */
 export interface Experiment {
+  /** 实验名称 */
   name: string;
+  /** 实验描述 */
   description?: string;
+  /** 假设（预期系统行为） */
   hypothesis: string;
-  faults: FaultInjector[];
+  /** 要注入的故障列表 */
+  faults: { type(): string; description(): string; inject(): Promise<CleanupFunc> }[];
+  /** 稳态条件（实验前后必须满足） */
   steadyState?: SteadyState;
+  /** 实验持续时间（ms），默认 30000 */
+  durationMs?: number;
+  /** 实验标签 */
   tags?: string[];
-  timeoutMs?: number;
 }
 
-/** 实验执行结果 */
+/** 实验执行结果（对齐 Go ExperimentResult） */
 export interface ExperimentResult {
   experiment: Experiment;
   status: ExperimentStatus;
   startTime: Date;
   endTime: Date;
   durationMs: number;
-  faultResults: FaultResult[];
   preSteadyState?: SteadyStateResult;
   postSteadyState?: SteadyStateResult;
+  faultResults: FaultResult[];
   hypothesisValidated: boolean;
   error?: Error;
 }
@@ -40,30 +47,18 @@ export interface ExperimentResult {
 export interface EngineOptions {
   /** 最大并发实验数（默认 1） */
   maxConcurrency?: number;
-  /** 稳态检查失败时中止（默认 false） */
-  abortOnSteadyStateFailure?: boolean;
-  /** 故障清理超时（默认 5000ms） */
-  cleanupTimeoutMs?: number;
 }
 
-/** 混沌工程引擎（对齐 Go ChaosEngine 接口） */
+/** 混沌实验引擎（对齐 Go ChaosEngine） */
 export class ChaosEngine {
-  private readonly options: Required<EngineOptions>;
+  private active = new Map<string, () => void>();
 
-  constructor(options: EngineOptions = {}) {
-    this.options = {
-      maxConcurrency: options.maxConcurrency ?? 1,
-      abortOnSteadyStateFailure: options.abortOnSteadyStateFailure ?? false,
-      cleanupTimeoutMs: options.cleanupTimeoutMs ?? 5000,
-    };
-  }
-
-  /** 执行单个实验 */
+  /** 运行一个混沌实验 */
   async run(exp: Experiment): Promise<ExperimentResult> {
     const startTime = new Date();
     const result: ExperimentResult = {
       experiment: exp,
-      status: 'running',
+      status: 'pending',
       startTime,
       endTime: startTime,
       durationMs: 0,
@@ -71,22 +66,38 @@ export class ChaosEngine {
       hypothesisValidated: false,
     };
 
+    const durationMs = exp.durationMs ?? 30000;
+
+    // 注册活跃实验
+    let cancelFn!: () => void;
+    const cancelPromise = new Promise<never>((_, reject) => {
+      cancelFn = () => reject(new Error('experiment aborted'));
+    });
+    this.active.set(exp.name, cancelFn);
+
+    result.status = 'running';
+
+    // cleanups 需在 try 外声明以便 catch 中清理
+    const cleanups: CleanupFunc[] = [];
+
     try {
       // 1. 实验前稳态检查
       if (exp.steadyState) {
-        result.preSteadyState = await exp.steadyState.check();
-        if (!result.preSteadyState.met && this.options.abortOnSteadyStateFailure) {
-          result.status = 'aborted';
-          result.error = new Error(`实验前稳态检查未通过: ${result.preSteadyState.message}`);
+        const pre = await exp.steadyState.check();
+        result.preSteadyState = pre;
+        if (!pre.met) {
+          result.status = 'failed';
+          result.error = new Error(`实验前稳态不满足: ${pre.message}`);
           result.endTime = new Date();
           result.durationMs = result.endTime.getTime() - startTime.getTime();
+          this.active.delete(exp.name);
           return result;
         }
       }
 
-      // 2. 注入故障
+      // 2. 注入所有故障
       for (const fault of exp.faults) {
-        const faultResult: FaultResult = {
+        const fr: FaultResult = {
           faultType: fault.type(),
           description: fault.description(),
           injected: false,
@@ -94,64 +105,105 @@ export class ChaosEngine {
         };
 
         try {
-          await fault.inject();
-          faultResult.injected = true;
+          const cleanup = await fault.inject();
+          fr.injected = true;
+          cleanups.push(cleanup);
         } catch (err) {
-          faultResult.error = err instanceof Error ? err : new Error(String(err));
+          fr.error = err instanceof Error ? err : new Error(String(err));
+          // 清理已注入的故障
+          for (const c of cleanups) {
+            try { await c(); } catch { /* ignore */ }
+          }
+          result.faultResults.push(fr);
+          result.status = 'failed';
+          result.error = new Error(`故障 ${fault.type()} 注入失败: ${fr.error.message}`);
+          result.endTime = new Date();
+          result.durationMs = result.endTime.getTime() - startTime.getTime();
+          this.active.delete(exp.name);
+          return result;
         }
 
-        result.faultResults.push(faultResult);
+        result.faultResults.push(fr);
       }
 
-      // 3. 等待观察期（使用 timeout 或默认 100ms）
-      const observeMs = exp.timeoutMs ?? 100;
-      await new Promise(resolve => setTimeout(resolve, Math.min(observeMs, 1000)));
-
-      // 4. 清理故障
-      for (const fault of exp.faults) {
-        try {
-          await fault.cleanup();
-        } catch {
-          // 清理失败不中断实验
-        }
-      }
-
-      // 5. 实验后稳态检查
-      if (exp.steadyState) {
-        result.postSteadyState = await exp.steadyState.check();
-        result.hypothesisValidated = result.postSteadyState.met;
-      } else {
-        // 无稳态检查时，假设验证通过（所有故障成功注入即为通过）
-        result.hypothesisValidated = result.faultResults.every(r => r.injected);
-      }
-
-      result.status = 'completed';
+      // 3. 等待实验持续时间
+      await Promise.race([
+        new Promise<void>(resolve => setTimeout(resolve, durationMs)),
+        cancelPromise,
+      ]);
     } catch (err) {
-      result.status = 'failed';
-      result.error = err instanceof Error ? err : new Error(String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'experiment aborted') {
+        result.status = 'aborted';
+      } else {
+        result.status = 'failed';
+        result.error = err instanceof Error ? err : new Error(msg);
+      }
 
-      // 尝试清理已注入的故障
-      for (const fault of exp.faults) {
-        try { await fault.cleanup(); } catch { /* ignore */ }
+      // 清理已注入的故障
+      for (let i = cleanups.length - 1; i >= 0; i--) {
+        try { await cleanups[i](); } catch { /* ignore */ }
+      }
+
+      result.endTime = new Date();
+      result.durationMs = result.endTime.getTime() - startTime.getTime();
+      this.active.delete(exp.name);
+      return result;
+    }
+
+    // 4. 清理所有故障（逆序清理）
+    for (let i = cleanups.length - 1; i >= 0; i--) {
+      result.faultResults[i].cleanupTime = new Date();
+      try {
+        await cleanups[i]();
+      } catch (err) {
+        result.faultResults[i].error = err instanceof Error ? err : new Error(String(err));
       }
     }
 
+    // 5. 实验后稳态检查
+    if (exp.steadyState) {
+      try {
+        const post = await exp.steadyState.check();
+        result.postSteadyState = post;
+      } catch (err) {
+        result.postSteadyState = {
+          met: false,
+          message: `稳态检查错误: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+    }
+
+    // 6. 判定假设
+    result.hypothesisValidated = result.postSteadyState?.met ?? true;
+    result.status = 'completed';
     result.endTime = new Date();
     result.durationMs = result.endTime.getTime() - startTime.getTime();
+
+    this.active.delete(exp.name);
     return result;
+  }
+
+  /** 中止一个活跃实验 */
+  abort(experimentName: string): boolean {
+    const cancel = this.active.get(experimentName);
+    if (!cancel) return false;
+    cancel();
+    this.active.delete(experimentName);
+    return true;
+  }
+
+  /** 列出活跃实验名称 */
+  listActive(): string[] {
+    return Array.from(this.active.keys());
   }
 
   /** 批量执行实验 */
   async runBatch(experiments: Experiment[]): Promise<ExperimentResult[]> {
     const results: ExperimentResult[] = [];
-    const concurrency = this.options.maxConcurrency;
-
-    for (let i = 0; i < experiments.length; i += concurrency) {
-      const batch = experiments.slice(i, i + concurrency);
-      const batchResults = await Promise.all(batch.map(exp => this.run(exp)));
-      results.push(...batchResults);
+    for (const exp of experiments) {
+      results.push(await this.run(exp));
     }
-
     return results;
   }
 }

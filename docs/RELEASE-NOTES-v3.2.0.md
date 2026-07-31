@@ -1,0 +1,132 @@
+# AgentPrimordia v3.2.0 — 架构解耦与双语言对齐
+
+> **发布日期**: 2026-07-31
+> **代号**: Decoupled Engine
+> **影响范围**: ReAct 循环引擎接口化拆分 + WebGPU 可插拔推理 + 双语言版本对齐 + 跨语言规范扩展
+> **向后兼容**: ✅ 完全向后兼容，v3.1.0 代码无需修改
+
+## 主题：架构解耦与双语言对齐
+
+v3.2.0 聚焦于核心引擎的架构解耦和双语言 SDK 的完全对齐。ReAct 循环引擎从 `internal/agent` 包提取为独立的接口驱动子包，WebGPU 推理引入可插拔后端机制，跨语言行为规范从 11 个套件扩展至 15 个，Go 和 TypeScript SDK 版本号统一为 3.2.0。
+
+## 版本统一
+
+| 组件 | 旧版本 | 新版本 |
+|------|--------|--------|
+| Go SDK (`VERSION`) | 3.1.0 | **3.2.0** |
+| TypeScript SDK (`package.json`) | 3.1.0 | **3.2.0** |
+| 跨语言规范 (`cross-language-spec.json`) | 3.0.0 | **3.1.0** |
+
+## 核心变更
+
+### ReAct 循环引擎接口化拆分（B-3）
+
+- **新子包** `internal/agent/react/`：接口驱动的循环状态机引擎
+  - `react.Engine`：纯状态机，通过 `Delegate` 接口解耦所有副作用
+  - `react.Delegate`：CallLLM / ExecuteTools / OnTurnStart / OnTurnEnd / EmitStream
+  - `react.Config` / `react.LoopResult` / `react.TurnResult`：独立类型定义
+- **桥接层** `internal/agent/react_bridge.go`：`ReActAgent` 实现 `Delegate` 接口
+- **公共 API** `ReActAgent.ReactEngine()`：暴露引擎实例供外部自定义执行策略
+- 依赖方向：`react/` → `core/`（无循环依赖）
+- 5 个引擎测试覆盖：直接回答 / 工具调用 / 轮次上限 / LLM 错误 / 上下文取消
+
+### WebGPU 可插拔推理后端（C-4）
+
+- **新接口** `InferenceBackend`：load / generate / dispose 三方法抽象
+- **TransformersBackend**：通过 `import('@xenova/transformers')` 动态导入，启用 WebGPU 设备推理
+- **SkeletonBackend**：无依赖骨架回退（开发/测试用）
+- **detectInferenceBackend()**：运行时自动检测可用后端
+- `@xenova/transformers` 作为 **optional peer dependency**，不增加安装体积
+- 用户启用方式：`npm install @xenova/transformers`
+
+### 可视化编辑器异步编排（A-1）
+
+- `POST /api/editor/execution` 返回 202 后实际启动 goroutine 执行编排
+- `buildOrchestrator()`：从 EditorConfig 构建 orchestration.Orchestrator
+- `RegisterAgent(nodeID, agent)`：注册真实 Agent 实例
+- `echoAgent`：未注册 Agent 时的占位回显
+- 执行状态实时可查询（running → completed/failed）
+- 空步骤保护 + 步骤级错误提取
+
+### Bun 边缘适配器生产强化（C-3）
+
+- 从 44 行基础包装升级为 210 行生产级实现
+- 新增：指数退避重试 / 请求超时 / 滑动窗口限流 / 健康检查 / 定期清理
+- `BunRunResult`：详细执行结果（durationMs / retries）
+- `BunHealthStatus`：运行状态快照
+- 完全向后兼容原有 `BunEdgeAgent` 接口
+
+### 跨语言规范扩展（B-4）
+
+- 新增 4 个测试套件（11 → 15）：
+  - `governance_quota`：TokenBucket / QuotaManager 行为一致性
+  - `security_acl`：ACL 允许/拒绝/默认拒绝语义
+  - `guardrail_rules`：注入检测 / PII 检测触发一致性
+  - `persist_checkpoint`：检查点保存/恢复/覆盖/不存在错误
+- `cross-language-api-check.mjs` SUITE_SYMBOLS 同步更新
+
+### CRDT 协作持久化（D-2）
+
+- 新增 `CRDTPersistence` 接口：save / load / delete / list
+- `InMemoryCRDTPersistence`：内存实现（测试/开发）
+- `CRDTSnapshot<T>`：可序列化状态快照
+- `createSnapshot()`：从 CRDTDocument 创建快照
+
+### Agent 市场协议规范（D-1）
+
+- 发布 `docs/marketplace-protocol.md`：AgentTemplate JSON Schema + 注册表 API + 部署协议
+- 语义版本号管理（SemVer）
+- cosign 签名安全要求
+- 双语言实现对齐确认
+
+## 修复的问题
+
+- **TemplateRegistry 重复导出**：marketplace 的 `TemplateRegistry` 别名为 `MarketplaceTemplateRegistry`，消除 esbuild 构建失败
+- **Playground SSE 流解析**：修复测试数据中 `\\n`（字面量）→ `\n`（换行符）
+- **Windows symlink 测试**：添加 `skipIf(process.platform === 'win32')` 平台条件
+- **edge test mock 类型**：更新为当前 `CompletionResponse` / `ToolCallResponse` / `ModelInfo` 接口
+- **gofmt 格式**：统一格式化所有新增 Go 文件
+
+## API 变更
+
+### 新增（向后兼容）
+
+| 包/模块 | 新增 API | 说明 |
+|---------|---------|------|
+| `internal/agent/react` | `Engine` / `Delegate` / `Config` / `LoopResult` | 循环引擎子包 |
+| `internal/agent` | `ReActAgent.ReactEngine()` | 获取引擎实例 |
+| `internal/debugger` | `VisualEditor.RegisterAgent()` | 注册编排 Agent |
+| TS `src/llm` | `InferenceBackend` / `TransformersBackend` / `SkeletonBackend` / `detectInferenceBackend()` | WebGPU 推理后端 |
+| TS `src/edge` | `BunRunResult` / `BunHealthStatus` / `BunEdgeAgent.runDetailed()` / `.health()` / `.close()` | Bun 生产 API |
+| TS `src/collaboration` | `CRDTPersistence` / `InMemoryCRDTPersistence` / `CRDTSnapshot` / `createSnapshot()` | CRDT 持久化 |
+| TS `src/index.ts` | `MarketplaceTemplateRegistry`（别名） | 消除命名冲突 |
+
+### 破坏性变更
+
+**无。** v3.2.0 完全向后兼容 v3.1.0。
+
+## 测试与质量
+
+| 指标 | 数据 |
+|------|------|
+| Go 测试 | 40+ 包全绿，零失败 |
+| TS 测试 | 92 文件 / 2545 用例 / 0 失败 |
+| go vet | 零警告 |
+| tsc --noEmit | 零新增错误 |
+| 跨语言测试 | 15 套件 / 45 用例全通过 |
+| 版本同步 | Go 3.2.0 = TS 3.2.0 |
+
+## 升级指南
+
+```bash
+# Go SDK
+go get agentprimordia@v3.2.0
+
+# TypeScript SDK
+npm install @agentprimordia/sdk@3.2.0
+
+# 启用 WebGPU 真实推理（可选）
+npm install @xenova/transformers
+```
+
+无需修改任何现有代码。所有新 API 均为增量添加。

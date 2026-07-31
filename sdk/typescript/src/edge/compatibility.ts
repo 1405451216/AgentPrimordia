@@ -160,7 +160,7 @@ class VercelEdgeKVStore implements KVStore {
  * 3. Deno: 使用 Deno.openKv()
  * 4. 其他: 使用内存 KV（fallback）
  */
-export function createKVStore(): KVStore {
+export async function createKVStore(): Promise<KVStore> {
   const rt = detectRuntime();
 
   // Cloudflare Workers

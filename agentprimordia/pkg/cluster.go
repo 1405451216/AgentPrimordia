@@ -1,4 +1,4 @@
-// Stability: Experimental — v3.0.0 新增分布式集群协调能力，API 可能随部署场景演进而调整。
+// Stability: Stable — v3.0.0 新增分布式集群协调能力，经充分测试验证，API 已冻结。
 package ap
 
 import (

@@ -134,7 +134,7 @@ describe('resolvePathSafe', () => {
     expect(result.safe).toBe(true);
   });
 
-  it('should detect symlink escape', () => {
+  it.skipIf(process.platform === 'win32')('should detect symlink escape', () => {
     // Create a symlink to a directory outside root
     const outsideDir = path.join(os.tmpdir(), 'ap-outside');
     fs.mkdirSync(outsideDir, { recursive: true });
@@ -149,7 +149,7 @@ describe('resolvePathSafe', () => {
     }
   });
 
-  it('should allow symlink within root', () => {
+  it.skipIf(process.platform === 'win32')('should allow symlink within root', () => {
     const targetDir = path.join(tmpDir, 'target');
     fs.mkdirSync(targetDir);
     const linkPath = path.join(tmpDir, 'safe-link');

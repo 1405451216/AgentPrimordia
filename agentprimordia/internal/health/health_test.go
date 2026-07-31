@@ -3,9 +3,11 @@ package health
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -274,4 +276,61 @@ func TestPProfHandlerStrict_WithToken_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("期望 %d, 得到 %d", http.StatusOK, w.Code)
 	}
+}
+
+// ===== 并发注册测试 =====
+
+func TestHealthChecker_ConcurrentRegister(t *testing.T) {
+	h := NewChecker()
+
+	// 多个 goroutine 同时注册 checker
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			name := fmt.Sprintf("checker-%d", idx)
+			h.Register(&mockChecker{healthy: true, name: name})
+		}(i)
+	}
+	wg.Wait()
+
+	// 验证所有 checker 已注册
+	req := httptest.NewRequest("GET", "/healthz", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("并发注册后状态码 = %d, 期望 %d", w.Code, http.StatusOK)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, `"status":"ok"`) {
+		t.Errorf("并发注册后响应应包含 ok, body = %q", body)
+	}
+}
+
+// TestHealthChecker_SetReadyRace 验证 SetReady 并发读写无竞态
+func TestHealthChecker_SetReadyRace(t *testing.T) {
+	h := NewChecker()
+
+	var wg sync.WaitGroup
+	// 并发调用 SetReady
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			h.SetReady()
+		}()
+	}
+	// 并发读取 readyz
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			req := httptest.NewRequest("GET", "/readyz", nil)
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, req)
+		}()
+	}
+	wg.Wait()
 }

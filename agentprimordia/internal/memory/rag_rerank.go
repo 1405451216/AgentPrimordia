@@ -1,11 +1,12 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
 	"math"
-	"sort"
+	"slices"
 	"time"
 )
 
@@ -255,9 +256,8 @@ func (f *ScoreFusionReranker) Rerank(_ context.Context, _ string, results []*RAG
 		item.fusedScore -= f.Weights.Diversity * item.diversityPenalty
 	}
 
-	sort.Slice(scored, func(i, j int) bool {
-		return scored[i].fusedScore > scored[j].fusedScore
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(scored, func(a, b fusionItem) int { return cmp.Compare(b.fusedScore, a.fusedScore) })
 
 	reranked := make([]*RAGResult, n)
 	for i, item := range scored {

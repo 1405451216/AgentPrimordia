@@ -8,12 +8,13 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 )
@@ -273,9 +274,8 @@ func computeSemanticScorePrecomputed(queryTokens, contentTokens map[string]struc
 
 // sortSearchResults 按 CombinedScore 降序排序
 func sortSearchResults(results []*SearchResult) {
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].CombinedScore > results[j].CombinedScore
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(results, func(a, b *SearchResult) int { return cmp.Compare(b.CombinedScore, a.CombinedScore) })
 }
 
 // sanitizeFTSQuery 清洗 FTS5 全文搜索查询字符串

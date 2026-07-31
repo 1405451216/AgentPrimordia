@@ -1,135 +1,214 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AgentPrimordia API Contract",
-  "description": "Go 公共 API 签名契约，由 scripts/api-extract 自动生成。用于跨语言 API 漂移检测。",
+  "$id": "https://agentprimordia.dev/schemas/api-contract-schema.json",
+  "title": "AgentPrimordia Go API Contract",
+  "description": "Defines the output format of the Go public API extractor for AgentPrimordia. Each module corresponds to a Go source file under pkg/, containing exported types, functions, constants, and variables with optional stability annotations.",
   "type": "object",
-  "required": ["version", "modules"],
+  "required": ["version", "generated_at", "modules"],
+  "additionalProperties": false,
   "properties": {
     "version": {
       "type": "string",
-      "description": "Go SDK 版本号",
-      "pattern": "^\\d+\\.\\d+\\.\\d+"
+      "description": "The version string of the AgentPrimordia framework (e.g. '3.1.0'), matching the source code."
     },
-    "goVersion": {
+    "generated_at": {
       "type": "string",
-      "description": "Go 编译器版本"
-    },
-    "generated": {
-      "type": "string",
-      "description": "生成工具标识"
+      "format": "date-time",
+      "description": "ISO 8601 timestamp indicating when the API contract was generated, e.g. '2026-07-31T11:01:11Z'."
     },
     "modules": {
       "type": "array",
-      "description": "按文件分组的 API 模块列表",
+      "description": "List of Go source modules (one entry per file under pkg/) that contain exported API symbols.",
+      "minItems": 1,
       "items": {
-        "$ref": "#/definitions/ModuleAPI"
+        "$ref": "#/$defs/Module"
       }
     }
   },
-  "definitions": {
-    "ModuleAPI": {
+  "$defs": {
+    "Module": {
       "type": "object",
-      "required": ["file"],
-      "properties": {
-        "file": {
-          "type": "string",
-          "description": "源文件相对路径（如 pkg/agent.go）"
-        },
-        "stability": {
-          "type": "string",
-          "enum": ["Stable", "Experimental", "Internal", "Deprecated"],
-          "description": "模块稳定性标注（从文件头注释提取）"
-        },
-        "types": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/TypeAPI" }
-        },
-        "functions": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/FuncAPI" }
-        },
-        "constants": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/ConstAPI" }
-        },
-        "variables": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VarAPI" }
-        }
-      }
-    },
-    "TypeAPI": {
-      "type": "object",
-      "required": ["name", "kind"],
+      "description": "Represents a single Go source file and all of its exported symbols.",
+      "required": ["name", "file"],
+      "additionalProperties": false,
       "properties": {
         "name": {
           "type": "string",
-          "description": "类型名称（如 ReActAgent, Pool）"
+          "minLength": 1,
+          "description": "Logical module name derived from the Go file (e.g. 'a2a', 'agent', 'chaos', 'memory')."
         },
-        "kind": {
+        "file": {
           "type": "string",
-          "enum": ["struct", "interface", "alias"],
-          "description": "类型种类"
+          "minLength": 1,
+          "description": "Relative path to the Go source file (e.g. 'agentprimordia/pkg/agent.go')."
         },
-        "fields": {
+        "stability": {
+          "$ref": "#/$defs/Stability",
+          "description": "Default stability level for this module. Present only when the file has a file-level Stability annotation."
+        },
+        "types": {
           "type": "array",
-          "description": "struct 字段列表",
-          "items": { "$ref": "#/definitions/FieldAPI" }
+          "description": "Exported type definitions (interfaces, structs, type aliases) in this file.",
+          "items": {
+            "$ref": "#/$defs/TypeDef"
+          }
         },
-        "methods": {
+        "functions": {
           "type": "array",
-          "description": "关联的方法名列表",
-          "items": { "type": "string" }
+          "description": "Exported top-level functions and standalone func declarations in this file.",
+          "items": {
+            "$ref": "#/$defs/FuncDef"
+          }
         },
-        "doc": {
-          "type": "string",
-          "description": "文档摘要（首行）"
+        "constants": {
+          "type": "array",
+          "description": "Exported constants (individual or grouped via const blocks) in this file.",
+          "items": {
+            "$ref": "#/$defs/ConstDef"
+          }
+        },
+        "variables": {
+          "type": "array",
+          "description": "Exported package-level variables (including var-assigned functions) in this file.",
+          "items": {
+            "$ref": "#/$defs/VarDef"
+          }
         }
       }
     },
-    "FieldAPI": {
+    "Stability": {
+      "type": "string",
+      "description": "API stability level following the AgentPrimordia four-tier stability policy.",
+      "enum": ["Stable", "Experimental", "Deprecated", "Internal"]
+    },
+    "TypeKind": {
+      "type": "string",
+      "description": "Classification of the Go type definition.",
+      "enum": ["interface", "struct", "alias"]
+    },
+    "TypeDef": {
       "type": "object",
-      "required": ["name", "type"],
+      "description": "An exported Go type definition. kind='alias' covers type aliases (e.g. 'type Agent = agent.Agent').",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "type": { "type": "string", "description": "Go 类型表达式" },
-        "tag": { "type": "string", "description": "struct tag（如 json:\"name\"）" }
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exported type name (e.g. 'ReActAgent', 'Agent', 'Memory')."
+        },
+        "kind": {
+          "$ref": "#/$defs/TypeKind",
+          "description": "Whether this type is an interface, struct, or type alias."
+        },
+        "stability": {
+          "$ref": "#/$defs/Stability",
+          "description": "Stability level of this individual type. Only present when the type has an explicit Stability annotation that differs from or supplements the module default."
+        },
+        "doc": {
+          "type": "string",
+          "description": "Godoc comment text for this type."
+        },
+        "fields": {
+          "type": "array",
+          "description": "Struct fields. Only present when kind='struct' and the struct has exported fields. Each entry is an object with 'name' and 'type'.",
+          "items": {
+            "$ref": "#/$defs/FieldDef"
+          }
+        },
+        "methods": {
+          "type": "array",
+          "description": "Exported method names defined on or associated with this type. Only present when kind='struct' or kind='interface' and methods exist.",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
-    "FuncAPI": {
+    "FieldDef": {
       "type": "object",
-      "required": ["name"],
+      "description": "A single exported field within a Go struct definition.",
+      "required": ["name", "type"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exported field name (e.g. 'Code', 'Message', 'Tracker')."
+        },
+        "type": {
+          "type": "string",
+          "description": "Go type expression for this field (e.g. 'string', '*agent.CostTracker')."
+        }
+      }
+    },
+    "FuncDef": {
+      "type": "object",
+      "description": "An exported top-level function declaration (not var-assigned; those appear in variables).",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exported function name (e.g. 'ShouldResume', 'NewA2AAgentCard')."
+        },
         "params": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "参数列表（格式: name type）"
+          "description": "Ordered list of function parameter signatures as strings (e.g. ['agentID string', 'name string']). Absent when the function has no parameters.",
+          "items": {
+            "type": "string"
+          }
         },
         "returns": {
           "type": "array",
-          "items": { "type": "string" },
-          "description": "返回值类型列表"
+          "description": "Ordered list of return type strings (e.g. ['bool'], ['*A2AAgentCard']). Absent when the function has no return values.",
+          "items": {
+            "type": "string"
+          }
         },
-        "doc": { "type": "string" }
+        "doc": {
+          "type": "string",
+          "description": "Godoc comment text for this function."
+        }
       }
     },
-    "ConstAPI": {
+    "ConstDef": {
       "type": "object",
-      "required": ["name"],
+      "description": "An exported constant definition.",
+      "required": ["name", "value"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "value": { "type": "string" },
-        "doc": { "type": "string" }
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exported constant name (e.g. 'Version', 'RoleSystem')."
+        },
+        "value": {
+          "type": "string",
+          "description": "String representation of the constant's right-hand side expression (e.g. 'agent.RoleSystem', '\"3.1.0\"')."
+        },
+        "doc": {
+          "type": "string",
+          "description": "Inline godoc comment for this constant."
+        }
       }
     },
-    "VarAPI": {
+    "VarDef": {
       "type": "object",
+      "description": "An exported package-level variable definition (var-assigned functions, error sentinels, etc.).",
       "required": ["name"],
+      "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "type": { "type": "string" },
-        "doc": { "type": "string" }
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The exported variable name (e.g. 'NewAgent', 'DefaultSystemPrompt', 'ErrAgentStopped')."
+        },
+        "doc": {
+          "type": "string",
+          "description": "Godoc comment text for this variable."
+        }
       }
     }
   }

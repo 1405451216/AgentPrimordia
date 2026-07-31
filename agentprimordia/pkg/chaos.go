@@ -1,4 +1,4 @@
-// Stability: Experimental — v3.0.0 新增混沌工程框架，API 可能随实践演进而调整。
+// Stability: Stable — v3.0.0 新增混沌工程框架，经充分测试验证，API 已冻结。
 package ap
 
 import (

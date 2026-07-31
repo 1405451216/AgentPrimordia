@@ -1,6 +1,8 @@
 /**
  * Edge Runtime 适配层 — 检测运行时环境并提供统一 API。
  *
+ * Stability: Stable
+ *
  * 支持：Node.js / Cloudflare Workers / Deno / Bun
  * 与 Go 端不同，TS SDK 可以跑在 Edge Runtime 上（V8 isolates），
  * 这是 TS 相对 Go 的核心优势之一。

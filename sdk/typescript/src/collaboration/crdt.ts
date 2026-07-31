@@ -9,6 +9,7 @@
  * - 支持离线编辑后合并
  *
  * 不依赖任何外部 CRDT 库，纯 TypeScript 实现。
+ * Stability: Stable
  */
 
 // ===== 类型定义 =====
@@ -446,4 +447,56 @@ export function compareOperations(op1: Operation, op2: Operation): number {
     return op1.clock - op2.clock;
   }
   return op1.clientID.localeCompare(op2.clientID);
+}
+
+// ===== 持久化接口（D-2 生产化） =====
+
+/** CRDT 状态快照（可序列化） */
+export interface CRDTSnapshot<T = unknown> {
+  version: number;
+  timestamp: number;
+  clientID: string;
+  state: T;
+  operations: Operation[];
+}
+
+/** CRDT 持久化存储接口 */
+export interface CRDTPersistence {
+  save(docID: string, snapshot: CRDTSnapshot): Promise<void>;
+  load(docID: string): Promise<CRDTSnapshot | null>;
+  delete(docID: string): Promise<void>;
+  list(): Promise<string[]>;
+}
+
+/** 内存持久化实现（用于测试和开发） */
+export class InMemoryCRDTPersistence implements CRDTPersistence {
+  private store = new Map<string, CRDTSnapshot>();
+
+  async save(docID: string, snapshot: CRDTSnapshot): Promise<void> {
+    this.store.set(docID, structuredClone(snapshot));
+  }
+
+  async load(docID: string): Promise<CRDTSnapshot | null> {
+    const snap = this.store.get(docID);
+    return snap ? structuredClone(snap) : null;
+  }
+
+  async delete(docID: string): Promise<void> {
+    this.store.delete(docID);
+  }
+
+  async list(): Promise<string[]> {
+    return [...this.store.keys()];
+  }
+}
+
+/** 从 CRDTDocument 创建快照 */
+export function createSnapshot<T extends object>(doc: CRDTDocument<T>, clientID: string): CRDTSnapshot<T> {
+  return {
+    version: 1,
+    timestamp: Date.now(),
+    clientID,
+    state: doc.getState(),
+    operations: doc.getOperations(),
+  };
 }

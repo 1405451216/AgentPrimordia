@@ -14,6 +14,9 @@
 | [自定义 Provider](./custom-provider.md) | 接入非内置 LLM | LLM Provider 接口 |
 | [自定义工具](./custom-tool.md) | 实现 ap.Tool 接口 | Tools 系统、Sandbox |
 | [K8s 部署](./k8s-deployment.md) | 用 Operator 部署 AgentPool | Operator、Pool、Metrics |
+| [混沌工程实验](./chaos-engineering.md) | 故障注入验证系统韧性 | Chaos Engine、LLM Faults、Soak |
+| [WASM 沙箱执行](./wasm-sandbox.md) | 安全执行第三方工具代码 | WASM Runtime、VirtualFS、WASI |
+| [集群协调部署](./cluster-coordination.md) | 多节点 Agent 集群部署 | Cluster、ConsistentHash、Election |
 
 ## 如何阅读
 

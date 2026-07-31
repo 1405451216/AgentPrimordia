@@ -72,9 +72,9 @@ describe('PlaygroundClient', () => {
 
   it('streams chat with SSE token events', async () => {
     const sseData = [
-      'event: token\\ndata: {"content":"Hello"}\\n\\n',
-      'event: token\\ndata: {"content":" world"}\\n\\n',
-      'event: done\\ndata: [DONE]\\n\\n',
+      'event: token\ndata: {"content":"Hello"}\n\n',
+      'event: token\ndata: {"content":" world"}\n\n',
+      'event: done\ndata: [DONE]\n\n',
     ];
     mockFetch({
       '/stream': new Response(sseStream(sseData) as any, { status: 200 }),
@@ -93,10 +93,10 @@ describe('PlaygroundClient', () => {
 
   it('streams chat with tool_call events', async () => {
     const sseData = [
-      'event: token\\ndata: {"content":"Let me check"}\\n\\n',
-      'event: tool_call\\ndata: {"tool":"shell","args":{"cmd":"ls"}}\\n\\n',
-      'event: tool_call\\ndata: {"tool":"filesystem","args":{"path":"/tmp"}}\\n\\n',
-      'event: done\\ndata: [DONE]\\n\\n',
+      'event: token\ndata: {"content":"Let me check"}\n\n',
+      'event: tool_call\ndata: {"tool":"shell","args":{"cmd":"ls"}}\n\n',
+      'event: tool_call\ndata: {"tool":"filesystem","args":{"path":"/tmp"}}\n\n',
+      'event: done\ndata: [DONE]\n\n',
     ];
     mockFetch({
       '/stream': new Response(sseStream(sseData) as any, { status: 200 }),
@@ -112,9 +112,9 @@ describe('PlaygroundClient', () => {
 
   it('streamEvents subscribes to Agent events', async () => {
     const sseData = [
-      'event: token\\ndata: {"content":"thinking..."}\\n\\n',
-      'event: error\\ndata: {"message":"timeout"}\\n\\n',
-      'event: done\\ndata: [DONE]\\n\\n',
+      'event: token\ndata: {"content":"thinking..."}\n\n',
+      'event: error\ndata: {"message":"timeout"}\n\n',
+      'event: done\ndata: [DONE]\n\n',
     ];
     mockFetch({
       '/events': new Response(sseStream(sseData) as any, { status: 200 }),

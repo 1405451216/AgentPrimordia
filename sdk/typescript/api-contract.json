@@ -1,10 +1,10 @@
 {
   "version": "3.1.0",
-  "goVersion": "1.26",
-  "generated": "api-extract v1.0",
+  "generated_at": "2026-07-31T11:01:11Z",
   "modules": [
     {
-      "file": "pkg/a2a.go",
+      "name": "a2a",
+      "file": "agentprimordia/pkg/a2a.go",
       "types": [
         {
           "name": "A2AAgentCard",
@@ -740,7 +740,8 @@
       ]
     },
     {
-      "file": "pkg/adapters.go",
+      "name": "adapters",
+      "file": "agentprimordia/pkg/adapters.go",
       "functions": [
         {
           "name": "NewEventBusAdapter",
@@ -807,7 +808,8 @@
       ]
     },
     {
-      "file": "pkg/agent.go",
+      "name": "agent",
+      "file": "agentprimordia/pkg/agent.go",
       "types": [
         {
           "name": "Agent",
@@ -822,6 +824,7 @@
         {
           "name": "ReActConfig",
           "kind": "alias",
+          "stability": "Stable",
           "doc": "ReActConfig 是 ReActAgent 的配置结构，包含模型、系统提示词、温度等核心参数"
         },
         {
@@ -1323,154 +1326,231 @@
       ],
       "constants": [
         {
-          "name": "RoleSystem"
+          "name": "RoleSystem",
+          "value": "agent.RoleSystem",
+          "doc": "RoleSystem 表示系统角色消息"
         },
         {
-          "name": "RoleUser"
+          "name": "RoleUser",
+          "value": "agent.RoleUser",
+          "doc": "RoleUser 表示用户角色消息"
         },
         {
-          "name": "RoleAssistant"
+          "name": "RoleAssistant",
+          "value": "agent.RoleAssistant",
+          "doc": "RoleAssistant 表示助手角色消息"
         },
         {
-          "name": "RoleTool"
+          "name": "RoleTool",
+          "value": "agent.RoleTool",
+          "doc": "RoleTool 表示工具角色消息"
         },
         {
-          "name": "StatusIdle"
+          "name": "StatusIdle",
+          "value": "agent.StatusIdle",
+          "doc": "StatusIdle 表示 Agent 处于空闲状态"
         },
         {
-          "name": "StatusRunning"
+          "name": "StatusRunning",
+          "value": "agent.StatusRunning",
+          "doc": "StatusRunning 表示 Agent 正在运行"
         },
         {
-          "name": "StatusPaused"
+          "name": "StatusPaused",
+          "value": "agent.StatusPaused",
+          "doc": "StatusPaused 表示 Agent 已暂停"
         },
         {
-          "name": "StatusCompleted"
+          "name": "StatusCompleted",
+          "value": "agent.StatusCompleted",
+          "doc": "StatusCompleted 表示 Agent 已完成"
         },
         {
-          "name": "StatusFailed"
+          "name": "StatusFailed",
+          "value": "agent.StatusFailed",
+          "doc": "StatusFailed 表示 Agent 执行失败"
         },
         {
-          "name": "StatusCancelled"
+          "name": "StatusCancelled",
+          "value": "agent.StatusCancelled",
+          "doc": "StatusCancelled 表示 Agent 已取消"
         },
         {
-          "name": "StreamEventToken"
+          "name": "StreamEventToken",
+          "value": "agent.StreamEventToken",
+          "doc": "StreamEventToken 表示逐 token 输出事件"
         },
         {
-          "name": "StreamEventThought"
+          "name": "StreamEventThought",
+          "value": "agent.StreamEventThought",
+          "doc": "StreamEventThought 表示推理/思考事件"
         },
         {
-          "name": "StreamEventToolCall"
+          "name": "StreamEventToolCall",
+          "value": "agent.StreamEventToolCall",
+          "doc": "StreamEventToolCall 表示工具调用开始事件"
         },
         {
-          "name": "StreamEventToolResult"
+          "name": "StreamEventToolResult",
+          "value": "agent.StreamEventToolResult",
+          "doc": "StreamEventToolResult 表示工具执行结果事件"
         },
         {
-          "name": "StreamEventComplete"
+          "name": "StreamEventComplete",
+          "value": "agent.StreamEventComplete",
+          "doc": "StreamEventComplete 表示运行完成事件"
         },
         {
-          "name": "StreamEventError"
+          "name": "StreamEventError",
+          "value": "agent.StreamEventError",
+          "doc": "StreamEventError 表示错误事件"
         },
         {
-          "name": "RAGModeAuto"
+          "name": "RAGModeAuto",
+          "value": "agent.RAGModeAuto",
+          "doc": "RAGModeAuto 在每轮推理前自动查询知识库并注入上下文"
         },
         {
-          "name": "RAGModeFirst"
+          "name": "RAGModeFirst",
+          "value": "agent.RAGModeFirst",
+          "doc": "RAGModeFirst 仅在第一轮推理前查询知识库"
         },
         {
-          "name": "RAGModeOnDemand"
+          "name": "RAGModeOnDemand",
+          "value": "agent.RAGModeOnDemand",
+          "doc": "RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search 工具时查询"
         },
         {
-          "name": "BusMsgTaskRequest"
+          "name": "BusMsgTaskRequest",
+          "value": "agent.BusMsgTaskRequest",
+          "doc": "BusMsgTaskRequest 表示任务请求消息"
         },
         {
-          "name": "BusMsgTaskResult"
+          "name": "BusMsgTaskResult",
+          "value": "agent.BusMsgTaskResult",
+          "doc": "BusMsgTaskResult 表示任务结果消息"
         },
         {
-          "name": "BusMsgQuery"
+          "name": "BusMsgQuery",
+          "value": "agent.BusMsgQuery",
+          "doc": "BusMsgQuery 表示查询消息"
         },
         {
-          "name": "BusMsgResponse"
+          "name": "BusMsgResponse",
+          "value": "agent.BusMsgResponse",
+          "doc": "BusMsgResponse 表示查询响应消息"
         },
         {
-          "name": "BusMsgHandoff"
+          "name": "BusMsgHandoff",
+          "value": "agent.BusMsgHandoff",
+          "doc": "BusMsgHandoff 表示 Agent 交接消息"
         },
         {
-          "name": "BusMsgBroadcast"
+          "name": "BusMsgBroadcast",
+          "value": "agent.BusMsgBroadcast",
+          "doc": "BusMsgBroadcast 表示广播消息"
         },
         {
-          "name": "BusMsgStatusUpdate"
+          "name": "BusMsgStatusUpdate",
+          "value": "agent.BusMsgStatusUpdate",
+          "doc": "BusMsgStatusUpdate 表示状态更新消息"
         },
         {
-          "name": "BusMsgNotify"
+          "name": "BusMsgNotify",
+          "value": "agent.BusMsgNotify",
+          "doc": "BusMsgNotify 表示通知消息"
         },
         {
-          "name": "LinearWorkflow"
+          "name": "LinearWorkflow",
+          "value": "agent.LinearWorkflow"
         },
         {
-          "name": "ConditionalWorkflow"
+          "name": "ConditionalWorkflow",
+          "value": "agent.ConditionalWorkflow"
         },
         {
-          "name": "LoopWorkflow"
+          "name": "LoopWorkflow",
+          "value": "agent.LoopWorkflow"
         },
         {
-          "name": "ParallelForkJoinWf"
+          "name": "ParallelForkJoinWf",
+          "value": "agent.ParallelForkJoin"
         },
         {
-          "name": "StateMachineWf"
+          "name": "StateMachineWf",
+          "value": "agent.StateMachine"
         },
         {
-          "name": "WfStatusPending"
+          "name": "WfStatusPending",
+          "value": "agent.WfStatusPending"
         },
         {
-          "name": "WfStatusRunning"
+          "name": "WfStatusRunning",
+          "value": "agent.WfStatusRunning"
         },
         {
-          "name": "WfStatusPaused"
+          "name": "WfStatusPaused",
+          "value": "agent.WfStatusPaused"
         },
         {
-          "name": "WfStatusCompleted"
+          "name": "WfStatusCompleted",
+          "value": "agent.WfStatusCompleted"
         },
         {
-          "name": "WfStatusFailed"
+          "name": "WfStatusFailed",
+          "value": "agent.WfStatusFailed"
         },
         {
-          "name": "WfStatusCancelled"
+          "name": "WfStatusCancelled",
+          "value": "agent.WfStatusCancelled"
         },
         {
-          "name": "TaskNode"
+          "name": "TaskNode",
+          "value": "agent.TaskNode"
         },
         {
-          "name": "ConditionNode"
+          "name": "ConditionNode",
+          "value": "agent.ConditionNode"
         },
         {
-          "name": "ParallelNode"
+          "name": "ParallelNode",
+          "value": "agent.ParallelNode"
         },
         {
-          "name": "LoopStartNode"
+          "name": "LoopStartNode",
+          "value": "agent.LoopStartNode"
         },
         {
-          "name": "LoopEndNode"
+          "name": "LoopEndNode",
+          "value": "agent.LoopEndNode"
         },
         {
-          "name": "FallbackNode"
+          "name": "FallbackNode",
+          "value": "agent.FallbackNode"
         },
         {
-          "name": "SubWfNode"
+          "name": "SubWfNode",
+          "value": "agent.SubWfNode"
         },
         {
-          "name": "NodePending"
+          "name": "NodePending",
+          "value": "agent.NodePending"
         },
         {
-          "name": "NodeRunning"
+          "name": "NodeRunning",
+          "value": "agent.NodeRunning"
         },
         {
-          "name": "NodeCompleted"
+          "name": "NodeCompleted",
+          "value": "agent.NodeCompleted"
         },
         {
-          "name": "NodeSkipped"
+          "name": "NodeSkipped",
+          "value": "agent.NodeSkipped"
         },
         {
-          "name": "NodeFailed"
+          "name": "NodeFailed",
+          "value": "agent.NodeFailed"
         },
         {
           "name": "Version",
@@ -1480,112 +1560,148 @@
       ],
       "variables": [
         {
-          "name": "NewPromptTemplate"
+          "name": "NewPromptTemplate",
+          "doc": "NewPromptTemplate 创建支持变量注入的提示词模板"
         },
         {
-          "name": "DefaultSystemPrompt"
+          "name": "DefaultSystemPrompt",
+          "doc": "DefaultSystemPrompt 返回默认系统提示词模板，包含 Agent 名称和权限规则占位符"
         },
         {
-          "name": "UserMessage"
+          "name": "UserMessage",
+          "doc": "UserMessage 创建用户角色的消息快捷函数"
         },
         {
-          "name": "SystemMessage"
+          "name": "SystemMessage",
+          "doc": "SystemMessage 创建系统角色的消息快捷函数"
         },
         {
-          "name": "FormatRAGDocuments"
+          "name": "FormatRAGDocuments",
+          "doc": "FormatRAGDocuments 将 RAG 文档列表格式化为可注入 Prompt 的上下文字符串"
         },
         {
-          "name": "NewSummarizer"
+          "name": "NewSummarizer",
+          "doc": "NewSummarizer 创建基于 LLM 的摘要提取器（接受 SummarizerLLM 接口）"
         },
         {
-          "name": "DefaultCleanupConfig"
+          "name": "DefaultCleanupConfig",
+          "doc": "DefaultCleanupConfig 返回记忆自动清理的默认配置（30 天过期、24 小时间隔、保留 tool 角色）"
         },
         {
-          "name": "NewLocalMessageBus"
+          "name": "NewLocalMessageBus",
+          "doc": "NewLocalMessageBus 创建本地进程内消息总线实例"
         },
         {
-          "name": "NewHTTPTransport"
+          "name": "NewHTTPTransport",
+          "doc": "NewHTTPTransport 创建基于 HTTP 的跨进程传输层实例"
         },
         {
-          "name": "NewRequestID"
+          "name": "NewRequestID",
+          "doc": "NewRequestID 生成唯一的请求 ID（32 字符 hex）"
         },
         {
-          "name": "WithRequestID"
+          "name": "WithRequestID",
+          "doc": "WithRequestID 将请求 ID 注入 context"
         },
         {
-          "name": "RequestIDFromCtx"
+          "name": "RequestIDFromCtx",
+          "doc": "RequestIDFromCtx 从 context 中提取请求 ID"
         },
         {
-          "name": "NewAgent"
+          "name": "NewAgent",
+          "doc": "NewAgent 是创建 Agent 的推荐入口（v0.7.0 起）。"
         },
         {
-          "name": "WithMaxTurns"
+          "name": "WithMaxTurns",
+          "doc": "WithMaxTurns 设置 ReAct 循环的最大迭代次数（默认 50）"
         },
         {
-          "name": "WithTemperature"
+          "name": "WithTemperature",
+          "doc": "WithTemperature 设置 LLM 温度参数（默认 0.0）"
         },
         {
-          "name": "WithSessionID"
+          "name": "WithSessionID",
+          "doc": "WithSessionID 设置会话 ID，用于跨轮记忆关联"
         },
         {
-          "name": "WithPromptTemplate"
+          "name": "WithPromptTemplate",
+          "doc": "WithPromptTemplate 设置自定义提示词模板"
         },
         {
-          "name": "WithMemory"
+          "name": "WithMemory",
+          "doc": "WithMemory 注入记忆存储"
         },
         {
-          "name": "WithToolkit"
+          "name": "WithToolkit",
+          "doc": "WithToolkit 注入工具注册表"
         },
         {
-          "name": "WithHooks"
+          "name": "WithHooks",
+          "doc": "WithHooks 注入生命周期钩子"
         },
         {
-          "name": "WithRAG"
+          "name": "WithRAG",
+          "doc": "WithRAG 注入检索增强配置"
         },
         {
-          "name": "WithTracer"
+          "name": "WithTracer",
+          "doc": "WithTracer 注入追踪器"
         },
         {
-          "name": "WithCostTracker"
+          "name": "WithCostTracker",
+          "doc": "WithCostTracker 注入成本追踪器"
         },
         {
-          "name": "WithContextWindow"
+          "name": "WithContextWindow",
+          "doc": "WithContextWindow 注入上下文窗口裁剪策略"
         },
         {
-          "name": "WithEvents"
+          "name": "WithEvents",
+          "doc": "WithEvents 注入事件发布器"
         },
         {
-          "name": "WithMetrics"
+          "name": "WithMetrics",
+          "doc": "WithMetrics 注入指标记录器"
         },
         {
-          "name": "WithCheckpointStore"
+          "name": "WithCheckpointStore",
+          "doc": "WithCheckpointStore 注入检查点存储"
         },
         {
-          "name": "WithSummarizer"
+          "name": "WithSummarizer",
+          "doc": "WithSummarizer 注入摘要提取器"
         },
         {
-          "name": "WithFileScope"
+          "name": "WithFileScope",
+          "doc": "WithFileScope 注入文件访问范围"
         },
         {
-          "name": "WithCache"
+          "name": "WithCache",
+          "doc": "WithCache 注入 LLM 缓存"
         },
         {
-          "name": "WithHITL"
+          "name": "WithHITL",
+          "doc": "WithHITL 注入 Human-in-the-Loop 配置"
         },
         {
-          "name": "WithLearning"
+          "name": "WithLearning",
+          "doc": "WithLearning 注入自适应学习配置（知识蒸馏/能力进化/反馈学习）"
         },
         {
-          "name": "WithMemoryConfig"
+          "name": "WithMemoryConfig",
+          "doc": "WithMemoryConfig 一次性注入记忆相关配置"
         },
         {
-          "name": "WithObservability"
+          "name": "WithObservability",
+          "doc": "WithObservability 一次性注入可观测性配置"
         },
         {
-          "name": "WithResilience"
+          "name": "WithResilience",
+          "doc": "WithResilience 一次性注入容错配置"
         },
         {
-          "name": "WithToolsConfig"
+          "name": "WithToolsConfig",
+          "doc": "WithToolsConfig 一次性注入工具配置"
         },
         {
           "name": "SessWithID",
@@ -1635,19 +1751,24 @@
           "name": "NewWorkflowExecution"
         },
         {
-          "name": "NewCostTracker"
+          "name": "NewCostTracker",
+          "doc": "NewCostTracker creates a cost tracker with pricing table and optional budget config"
         },
         {
-          "name": "NewSummaryEngine"
+          "name": "NewSummaryEngine",
+          "doc": "NewSummaryEngine creates a summary engine with strategy, summarizer, and memory store"
         },
         {
-          "name": "NewWindowSummaryStrategy"
+          "name": "NewWindowSummaryStrategy",
+          "doc": "NewWindowSummaryStrategy creates a window-based summary strategy"
         },
         {
-          "name": "NewLifecycle"
+          "name": "NewLifecycle",
+          "doc": "NewLifecycle 创建 Agent 生命周期管理器实例"
         },
         {
-          "name": "NewDefaultStrategy"
+          "name": "NewDefaultStrategy",
+          "doc": "NewDefaultStrategy 创建默认上下文窗口裁剪策略"
         },
         {
           "name": "NewHealthChecker",
@@ -1688,7 +1809,8 @@
       ]
     },
     {
-      "file": "pkg/chaos.go",
+      "name": "chaos",
+      "file": "agentprimordia/pkg/chaos.go",
       "stability": "Experimental",
       "types": [
         {
@@ -1829,98 +1951,133 @@
       ],
       "constants": [
         {
-          "name": "ChaosStatusPending"
+          "name": "ChaosStatusPending",
+          "value": "chaos.StatusPending",
+          "doc": "ChaosStatusPending 实验待执行"
         },
         {
-          "name": "ChaosStatusRunning"
+          "name": "ChaosStatusRunning",
+          "value": "chaos.StatusRunning",
+          "doc": "ChaosStatusRunning 实验执行中"
         },
         {
-          "name": "ChaosStatusCompleted"
+          "name": "ChaosStatusCompleted",
+          "value": "chaos.StatusCompleted",
+          "doc": "ChaosStatusCompleted 实验已完成"
         },
         {
-          "name": "ChaosStatusAborted"
+          "name": "ChaosStatusAborted",
+          "value": "chaos.StatusAborted",
+          "doc": "ChaosStatusAborted 实验已中止"
         },
         {
-          "name": "ChaosStatusFailed"
+          "name": "ChaosStatusFailed",
+          "value": "chaos.StatusFailed",
+          "doc": "ChaosStatusFailed 实验失败"
         }
       ],
       "variables": [
         {
-          "name": "NewChaosEngine"
+          "name": "NewChaosEngine",
+          "doc": "NewChaosEngine 创建混沌实验引擎"
         },
         {
-          "name": "ChaosFormatReport"
+          "name": "ChaosFormatReport",
+          "doc": "ChaosFormatReport 将实验结果格式化为 Markdown 报告"
         },
         {
-          "name": "ChaosSummarize"
+          "name": "ChaosSummarize",
+          "doc": "ChaosSummarize 生成实验摘要"
         },
         {
-          "name": "ChaosFormatSummaryTable"
+          "name": "ChaosFormatSummaryTable",
+          "doc": "ChaosFormatSummaryTable 将多个实验摘要格式化为表格"
         },
         {
-          "name": "NewChaosNetworkDelayFault"
+          "name": "NewChaosNetworkDelayFault",
+          "doc": "NewChaosNetworkDelayFault 创建网络延迟故障"
         },
         {
-          "name": "NewChaosNetworkPartitionFault"
+          "name": "NewChaosNetworkPartitionFault",
+          "doc": "NewChaosNetworkPartitionFault 创建网络分区故障"
         },
         {
-          "name": "NewChaosConnectionRefusedFault"
+          "name": "NewChaosConnectionRefusedFault",
+          "doc": "NewChaosConnectionRefusedFault 创建连接拒绝故障"
         },
         {
-          "name": "NewChaosCPUStressFault"
+          "name": "NewChaosCPUStressFault",
+          "doc": "NewChaosCPUStressFault 创建 CPU 压力故障"
         },
         {
-          "name": "NewChaosMemoryStressFault"
+          "name": "NewChaosMemoryStressFault",
+          "doc": "NewChaosMemoryStressFault 创建内存压力故障"
         },
         {
-          "name": "NewChaosProcessKillFault"
+          "name": "NewChaosProcessKillFault",
+          "doc": "NewChaosProcessKillFault 创建进程杀死故障"
         },
         {
-          "name": "NewChaosCompositeFault"
+          "name": "NewChaosCompositeFault",
+          "doc": "NewChaosCompositeFault 创建组合故障"
         },
         {
-          "name": "NewChaosNoopFault"
+          "name": "NewChaosNoopFault",
+          "doc": "NewChaosNoopFault 创建空操作故障"
         },
         {
-          "name": "LLMHTTP503Fault"
+          "name": "LLMHTTP503Fault",
+          "doc": "LLMHTTP503Fault 创建 503 故障"
         },
         {
-          "name": "LLMHTTP429Fault"
+          "name": "LLMHTTP429Fault",
+          "doc": "LLMHTTP429Fault 创建 429 限流故障"
         },
         {
-          "name": "LLMHTTP500Fault"
+          "name": "LLMHTTP500Fault",
+          "doc": "LLMHTTP500Fault 创建 500 服务器错误"
         },
         {
-          "name": "NewLLMTimeoutFault"
+          "name": "NewLLMTimeoutFault",
+          "doc": "NewLLMTimeoutFault 创建超时故障"
         },
         {
-          "name": "NewLLMIntermittentFault"
+          "name": "NewLLMIntermittentFault",
+          "doc": "NewLLMIntermittentFault 创建间歇性故障"
         },
         {
-          "name": "NewLLMSlowResponseFault"
+          "name": "NewLLMSlowResponseFault",
+          "doc": "NewLLMSlowResponseFault 创建慢响应故障"
         },
         {
-          "name": "LLMFailoverScenario"
+          "name": "LLMFailoverScenario",
+          "doc": "LLMFailoverScenario 创建完整的 LLM 故障转移场景"
         },
         {
-          "name": "LLMChaosScenario"
+          "name": "LLMChaosScenario",
+          "doc": "LLMChaosScenario 创建 LLM 混沌场景"
         },
         {
-          "name": "NewSLOSteadyState"
+          "name": "NewSLOSteadyState",
+          "doc": "NewSLOSteadyState 创建基于 SLO 的稳态条件"
         },
         {
-          "name": "NewAvailabilitySteadyState"
+          "name": "NewAvailabilitySteadyState",
+          "doc": "NewAvailabilitySteadyState 创建可用性稳态条件"
         },
         {
-          "name": "NewLatencySteadyState"
+          "name": "NewLatencySteadyState",
+          "doc": "NewLatencySteadyState 创建延迟稳态条件"
         },
         {
-          "name": "NewCompositeSteadyState"
+          "name": "NewCompositeSteadyState",
+          "doc": "NewCompositeSteadyState 创建组合稳态条件"
         }
       ]
     },
     {
-      "file": "pkg/cluster.go",
+      "name": "cluster",
+      "file": "agentprimordia/pkg/cluster.go",
       "stability": "Experimental",
       "types": [
         {
@@ -2016,53 +2173,74 @@
       ],
       "constants": [
         {
-          "name": "ClusterRoleFollower"
+          "name": "ClusterRoleFollower",
+          "value": "cluster.RoleFollower",
+          "doc": "ClusterRoleFollower 跟随者角色"
         },
         {
-          "name": "ClusterRoleLeader"
+          "name": "ClusterRoleLeader",
+          "value": "cluster.RoleLeader",
+          "doc": "ClusterRoleLeader 领导者角色"
         },
         {
-          "name": "ClusterRoleCandidate"
+          "name": "ClusterRoleCandidate",
+          "value": "cluster.RoleCandidate",
+          "doc": "ClusterRoleCandidate 候选者角色"
         },
         {
-          "name": "ClusterStatusOnline"
+          "name": "ClusterStatusOnline",
+          "value": "cluster.StatusOnline",
+          "doc": "ClusterStatusOnline 节点在线"
         },
         {
-          "name": "ClusterStatusOffline"
+          "name": "ClusterStatusOffline",
+          "value": "cluster.StatusOffline",
+          "doc": "ClusterStatusOffline 节点离线"
         },
         {
-          "name": "ClusterStatusLeaving"
+          "name": "ClusterStatusLeaving",
+          "value": "cluster.StatusLeaving",
+          "doc": "ClusterStatusLeaving 节点正在离开"
         }
       ],
       "variables": [
         {
-          "name": "NewClusterManager"
+          "name": "NewClusterManager",
+          "doc": "NewClusterManager 创建集群管理器"
         },
         {
-          "name": "ClusterConfigWithDefaults"
+          "name": "ClusterConfigWithDefaults",
+          "doc": "ClusterConfigWithDefaults 填充集群配置默认值"
         },
         {
-          "name": "NewConsistentHash"
+          "name": "NewConsistentHash",
+          "doc": "NewConsistentHash 创建一致性哈希环"
         },
         {
-          "name": "NewDistributedState"
+          "name": "NewDistributedState",
+          "doc": "NewDistributedState 创建分布式状态存储"
         },
         {
-          "name": "NewMemKVStore"
+          "name": "NewMemKVStore",
+          "doc": "NewMemKVStore 创建内存 KV 存储"
         },
         {
-          "name": "NewDistributedDiscovery"
+          "name": "NewDistributedDiscovery",
+          "doc": "NewDistributedDiscovery 创建分布式服务发现"
         },
         {
-          "name": "NewRemoteNode"
+          "name": "NewRemoteNode",
+          "doc": "NewRemoteNode 创建远程节点"
         },
         {
-          "name": "NewRemoteMessageBus"
+          "name": "NewRemoteMessageBus",
+          "doc": "NewRemoteMessageBus 创建跨节点消息总线"
         }
       ]
     },
     {
-      "file": "pkg/debate.go",
+      "name": "debate",
+      "file": "agentprimordia/pkg/debate.go",
       "stability": "Experimental",
       "types": [
         {
@@ -2098,12 +2276,14 @@
       ],
       "variables": [
         {
-          "name": "NewDebate"
+          "name": "NewDebate",
+          "doc": "NewDebate 创建新的辩论实例"
         }
       ]
     },
     {
-      "file": "pkg/debugger.go",
+      "name": "debugger",
+      "file": "agentprimordia/pkg/debugger.go",
       "stability": "Experimental",
       "types": [
         {
@@ -2139,15 +2319,18 @@
       ],
       "variables": [
         {
-          "name": "NewDebugServer"
+          "name": "NewDebugServer",
+          "doc": "NewDebugServer 创建调试 HTTP 服务器实例"
         },
         {
-          "name": "NewVisualizer"
+          "name": "NewVisualizer",
+          "doc": "NewVisualizer 创建可视化工具实例"
         }
       ]
     },
     {
-      "file": "pkg/errors.go",
+      "name": "errors",
+      "file": "agentprimordia/pkg/errors.go",
       "stability": "Stable",
       "types": [
         {
@@ -2203,117 +2386,154 @@
       ],
       "variables": [
         {
-          "name": "ErrAgentStopped"
+          "name": "ErrAgentStopped",
+          "doc": "ErrAgentStopped 表示 Agent 已被停止"
         },
         {
-          "name": "ErrAgentRunning"
+          "name": "ErrAgentRunning",
+          "doc": "ErrAgentRunning 表示 Agent 已在运行中"
         },
         {
-          "name": "ErrMaxTurnsExceeded"
+          "name": "ErrMaxTurnsExceeded",
+          "doc": "ErrMaxTurnsExceeded 表示 Agent 超出最大推理轮次"
         },
         {
-          "name": "ErrNoToolkit"
+          "name": "ErrNoToolkit",
+          "doc": "ErrNoToolkit 表示 Agent 未配置工具包"
         },
         {
-          "name": "ErrToolNotFound"
+          "name": "ErrToolNotFound",
+          "doc": "ErrToolNotFound 表示请求的工具未注册"
         },
         {
-          "name": "ErrToolExecution"
+          "name": "ErrToolExecution",
+          "doc": "ErrToolExecution 表示工具执行失败"
         },
         {
-          "name": "ErrConfirmDenied"
+          "name": "ErrConfirmDenied",
+          "doc": "ErrConfirmDenied 表示工具确认被拒绝"
         },
         {
-          "name": "ErrInvalidConfig"
+          "name": "ErrInvalidConfig",
+          "doc": "ErrInvalidConfig 表示工具配置无效"
         },
         {
-          "name": "ErrLLMCallFailed"
+          "name": "ErrLLMCallFailed",
+          "doc": "ErrLLMCallFailed 表示 LLM 调用失败"
         },
         {
-          "name": "ErrNotSupported"
+          "name": "ErrNotSupported",
+          "doc": "ErrNotSupported 表示操作不被当前提供者支持"
         },
         {
-          "name": "ErrCircuitOpen"
+          "name": "ErrCircuitOpen",
+          "doc": "ErrCircuitOpen 表示熔断器已打开，请求被拒绝"
         },
         {
-          "name": "ErrAPIKeyRequired"
+          "name": "ErrAPIKeyRequired",
+          "doc": "ErrAPIKeyRequired 表示 API Key 未提供"
         },
         {
-          "name": "ErrEmptyResponse"
+          "name": "ErrEmptyResponse",
+          "doc": "ErrEmptyResponse 表示 LLM 返回空响应"
         },
         {
-          "name": "ErrResponseParseFailed"
+          "name": "ErrResponseParseFailed",
+          "doc": "ErrResponseParseFailed 表示 LLM 响应解析失败"
         },
         {
-          "name": "ErrRetriesExhausted"
+          "name": "ErrRetriesExhausted",
+          "doc": "ErrRetriesExhausted 表示所有重试已耗尽"
         },
         {
-          "name": "ErrFallbackFailed"
+          "name": "ErrFallbackFailed",
+          "doc": "ErrFallbackFailed 表示所有降级提供者均失败"
         },
         {
-          "name": "ErrPoolFull"
+          "name": "ErrPoolFull",
+          "doc": "ErrPoolFull 表示 Pool 已达最大容量"
         },
         {
-          "name": "ErrTaskNotFound"
+          "name": "ErrTaskNotFound",
+          "doc": "ErrTaskNotFound 表示任务未找到"
         },
         {
-          "name": "ErrTimeout"
+          "name": "ErrTimeout",
+          "doc": "ErrTimeout 表示操作超时"
         },
         {
-          "name": "ErrContextCanceled"
+          "name": "ErrContextCanceled",
+          "doc": "ErrContextCanceled 表示上下文已取消"
         },
         {
-          "name": "ErrEpisodeNotFound"
+          "name": "ErrEpisodeNotFound",
+          "doc": "ErrEpisodeNotFound 表示记忆片段未找到"
         },
         {
-          "name": "ErrInvalidImportance"
+          "name": "ErrInvalidImportance",
+          "doc": "ErrInvalidImportance 表示重要性值无效"
         },
         {
-          "name": "ErrEmptyEpisodeID"
+          "name": "ErrEmptyEpisodeID",
+          "doc": "ErrEmptyEpisodeID 表示记忆片段 ID 为空"
         },
         {
-          "name": "ErrEmptySessionID"
+          "name": "ErrEmptySessionID",
+          "doc": "ErrEmptySessionID 表示会话 ID 为空"
         },
         {
-          "name": "ErrEmptyRole"
+          "name": "ErrEmptyRole",
+          "doc": "ErrEmptyRole 表示角色为空"
         },
         {
-          "name": "ErrEmptyContent"
+          "name": "ErrEmptyContent",
+          "doc": "ErrEmptyContent 表示内容为空"
         },
         {
-          "name": "ErrDimensionMismatch"
+          "name": "ErrDimensionMismatch",
+          "doc": "ErrDimensionMismatch 表示向量维度不匹配"
         },
         {
-          "name": "ErrVectorNotFound"
+          "name": "ErrVectorNotFound",
+          "doc": "ErrVectorNotFound 表示向量记录未找到"
         },
         {
-          "name": "ErrCommandBlocked"
+          "name": "ErrCommandBlocked",
+          "doc": "ErrCommandBlocked 表示命令被安全策略阻止"
         },
         {
-          "name": "ErrCommandNotAllowed"
+          "name": "ErrCommandNotAllowed",
+          "doc": "ErrCommandNotAllowed 表示命令不在允许列表中"
         },
         {
-          "name": "ErrAccessDenied"
+          "name": "ErrAccessDenied",
+          "doc": "ErrAccessDenied 表示访问被拒绝"
         },
         {
-          "name": "ErrPathTraversal"
+          "name": "ErrPathTraversal",
+          "doc": "ErrPathTraversal 表示检测到路径遍历攻击"
         },
         {
-          "name": "ErrBusClosed"
+          "name": "ErrBusClosed",
+          "doc": "ErrBusClosed 表示事件总线已关闭"
         },
         {
-          "name": "ErrCheckpointNotFound"
+          "name": "ErrCheckpointNotFound",
+          "doc": "ErrCheckpointNotFound 表示检查点未找到"
         },
         {
-          "name": "ErrGlobalWriteConflict"
+          "name": "ErrGlobalWriteConflict",
+          "doc": "ErrGlobalWriteConflict 表示全局写入冲突"
         },
         {
-          "name": "ErrScopeOverlap"
+          "name": "ErrScopeOverlap",
+          "doc": "ErrScopeOverlap 表示作用域存在重叠"
         }
       ]
     },
     {
-      "file": "pkg/events.go",
+      "name": "events",
+      "file": "agentprimordia/pkg/events.go",
       "stability": "Stable",
       "types": [
         {
@@ -2339,43 +2559,69 @@
       ],
       "constants": [
         {
-          "name": "EventAgentStart"
+          "name": "EventAgentStart",
+          "value": "events.EventAgentStart",
+          "doc": "EventAgentStart 表示 Agent 启动事件"
         },
         {
-          "name": "EventAgentStop"
+          "name": "EventAgentStop",
+          "value": "events.EventAgentStop",
+          "doc": "EventAgentStop 表示 Agent 停止事件"
         },
         {
-          "name": "EventAgentPanic"
+          "name": "EventAgentPanic",
+          "value": "events.EventAgentPanic",
+          "doc": "EventAgentPanic 表示 Agent panic 恢复事件"
         },
         {
-          "name": "EventAgentError"
+          "name": "EventAgentError",
+          "value": "events.EventAgentError",
+          "doc": "EventAgentError 表示 Agent 错误事件"
         },
         {
-          "name": "EventAgentResume"
+          "name": "EventAgentResume",
+          "value": "events.EventAgentResume",
+          "doc": "EventAgentResume 表示 Agent 从检查点恢复事件"
         },
         {
-          "name": "EventTurnStart"
+          "name": "EventTurnStart",
+          "value": "events.EventTurnStart",
+          "doc": "EventTurnStart 表示推理轮次开始事件"
         },
         {
-          "name": "EventTurnEnd"
+          "name": "EventTurnEnd",
+          "value": "events.EventTurnEnd",
+          "doc": "EventTurnEnd 表示推理轮次结束事件"
         },
         {
-          "name": "EventToolCall"
+          "name": "EventToolCall",
+          "value": "events.EventToolCall",
+          "doc": "EventToolCall 表示工具调用事件"
         },
         {
-          "name": "EventToolResult"
+          "name": "EventToolResult",
+          "value": "events.EventToolResult",
+          "doc": "EventToolResult 表示工具结果事件"
         },
         {
-          "name": "EventLLMCall"
+          "name": "EventLLMCall",
+          "value": "events.EventLLMCall",
+          "doc": "EventLLMCall 表示 LLM 调用事件"
         },
         {
-          "name": "EventLLMResponse"
+          "name": "EventLLMResponse",
+          "value": "events.EventLLMResponse",
+          "doc": "EventLLMResponse 表示 LLM 响应事件"
         },
         {
-          "name": "EventPoolDispatch"
+          "name": "EventPoolDispatch",
+          "value": "events.EventPoolDispatch",
+          "doc": "EventPoolDispatch 表示 Pool 任务分发事件"
         },
         {
-          "name": "EventPoolComplete"
+          "name": "EventPoolComplete",
+          "value": "events.EventPoolComplete",
+          "doc": "EventPoolComplete 表示 Pool 任务完成事件"
         }
       ],
       "variables": [
@@ -2386,7 +2632,8 @@
       ]
     },
     {
-      "file": "pkg/guardrail.go",
+      "name": "guardrail",
+      "file": "agentprimordia/pkg/guardrail.go",
       "stability": "Stable",
       "types": [
         {
@@ -2480,52 +2727,68 @@
       ],
       "constants": [
         {
-          "name": "GuardrailPass"
+          "name": "GuardrailPass",
+          "value": "guardrail.ActionPass"
         },
         {
-          "name": "GuardrailReject"
+          "name": "GuardrailReject",
+          "value": "guardrail.ActionReject"
         },
         {
-          "name": "GuardrailSanitize"
+          "name": "GuardrailSanitize",
+          "value": "guardrail.ActionSanitize"
         },
         {
-          "name": "GuardrailFlag"
+          "name": "GuardrailFlag",
+          "value": "guardrail.ActionFlag"
         },
         {
-          "name": "SeverityLow"
+          "name": "SeverityLow",
+          "value": "guardrail.SeverityLow"
         },
         {
-          "name": "SeverityMedium"
+          "name": "SeverityMedium",
+          "value": "guardrail.SeverityMedium"
         },
         {
-          "name": "SeverityHigh"
+          "name": "SeverityHigh",
+          "value": "guardrail.SeverityHigh"
         },
         {
-          "name": "SeverityCritical"
+          "name": "SeverityCritical",
+          "value": "guardrail.SeverityCritical"
         },
         {
-          "name": "CheckInput"
+          "name": "CheckInput",
+          "value": "guardrail.CheckInput"
         },
         {
-          "name": "CheckOutput"
+          "name": "CheckOutput",
+          "value": "guardrail.CheckOutput"
         },
         {
-          "name": "StrategyMask"
+          "name": "StrategyMask",
+          "value": "guardrail.StrategyMask"
         },
         {
-          "name": "StrategyRedact"
+          "name": "StrategyRedact",
+          "value": "guardrail.StrategyRedact"
         },
         {
-          "name": "StrategyReplace"
+          "name": "StrategyReplace",
+          "value": "guardrail.StrategyReplace"
         },
         {
-          "name": "StrategyHash"
+          "name": "StrategyHash",
+          "value": "guardrail.StrategyHash"
         },
         {
-          "name": "TopicModeAllowlist"
+          "name": "TopicModeAllowlist",
+          "value": "guardrail.TopicModeAllowlist"
         },
         {
-          "name": "TopicModeDenylist"
+          "name": "TopicModeDenylist",
+          "value": "guardrail.TopicModeDenylist"
         }
       ],
       "variables": [
@@ -2559,7 +2822,8 @@
       ]
     },
     {
-      "file": "pkg/hooks.go",
+      "name": "hooks",
+      "file": "agentprimordia/pkg/hooks.go",
       "stability": "Stable",
       "types": [
         {
@@ -2599,70 +2863,110 @@
       ],
       "constants": [
         {
-          "name": "HookBeforeRun"
+          "name": "HookBeforeRun",
+          "value": "agent.HookBeforeRun",
+          "doc": "HookBeforeRun 在 Agent 运行前触发"
         },
         {
-          "name": "HookAfterRun"
+          "name": "HookAfterRun",
+          "value": "agent.HookAfterRun",
+          "doc": "HookAfterRun 在 Agent 运行后触发"
         },
         {
-          "name": "HookBeforeTurn"
+          "name": "HookBeforeTurn",
+          "value": "agent.HookBeforeTurn",
+          "doc": "HookBeforeTurn 在每轮推理前触发"
         },
         {
-          "name": "HookAfterTurn"
+          "name": "HookAfterTurn",
+          "value": "agent.HookAfterTurn",
+          "doc": "HookAfterTurn 在每轮推理后触发"
         },
         {
-          "name": "HookBeforeLLM"
+          "name": "HookBeforeLLM",
+          "value": "agent.HookBeforeLLM",
+          "doc": "HookBeforeLLM 在调用 LLM 前触发"
         },
         {
-          "name": "HookAfterLLM"
+          "name": "HookAfterLLM",
+          "value": "agent.HookAfterLLM",
+          "doc": "HookAfterLLM 在 LLM 响应后触发"
         },
         {
-          "name": "HookBeforeTool"
+          "name": "HookBeforeTool",
+          "value": "agent.HookBeforeTool",
+          "doc": "HookBeforeTool 在工具执行前触发"
         },
         {
-          "name": "HookAfterTool"
+          "name": "HookAfterTool",
+          "value": "agent.HookAfterTool",
+          "doc": "HookAfterTool 在工具执行后触发"
         },
         {
-          "name": "HookOnError"
+          "name": "HookOnError",
+          "value": "agent.HookOnError",
+          "doc": "HookOnError 在发生错误时触发"
         },
         {
-          "name": "HookOnComplete"
+          "name": "HookOnComplete",
+          "value": "agent.HookOnComplete",
+          "doc": "HookOnComplete 在 Agent 完成时触发"
         },
         {
-          "name": "HookBeforeRAG"
+          "name": "HookBeforeRAG",
+          "value": "agent.HookBeforeRAG",
+          "doc": "HookBeforeRAG 在 RAG 检索前触发"
         },
         {
-          "name": "HookAfterRAG"
+          "name": "HookAfterRAG",
+          "value": "agent.HookAfterRAG",
+          "doc": "HookAfterRAG 在 RAG 检索后触发"
         },
         {
-          "name": "HookBeforePipelineStep"
+          "name": "HookBeforePipelineStep",
+          "value": "agent.HookBeforePipelineStep",
+          "doc": "HookBeforePipelineStep 在 Pipeline 步骤执行前触发"
         },
         {
-          "name": "HookAfterPipelineStep"
+          "name": "HookAfterPipelineStep",
+          "value": "agent.HookAfterPipelineStep",
+          "doc": "HookAfterPipelineStep 在 Pipeline 步骤执行后触发"
         },
         {
-          "name": "HookBeforeHandoff"
+          "name": "HookBeforeHandoff",
+          "value": "agent.HookBeforeHandoff",
+          "doc": "HookBeforeHandoff 在 Agent 交接前触发"
         },
         {
-          "name": "HookAfterHandoff"
+          "name": "HookAfterHandoff",
+          "value": "agent.HookAfterHandoff",
+          "doc": "HookAfterHandoff 在 Agent 交接后触发"
         },
         {
-          "name": "HookBeforeParallelAgent"
+          "name": "HookBeforeParallelAgent",
+          "value": "agent.HookBeforeParallelAgent",
+          "doc": "HookBeforeParallelAgent 在并行 Agent 执行前触发"
         },
         {
-          "name": "HookAfterParallelAgent"
+          "name": "HookAfterParallelAgent",
+          "value": "agent.HookAfterParallelAgent",
+          "doc": "HookAfterParallelAgent 在并行 Agent 执行后触发"
         },
         {
-          "name": "PhaseValidation"
+          "name": "PhaseValidation",
+          "value": "agent.PhaseValidation"
         },
         {
-          "name": "PhasePreProcessing"
+          "name": "PhasePreProcessing",
+          "value": "agent.PhasePreProcessing"
         },
         {
-          "name": "PhaseExecution"
+          "name": "PhaseExecution",
+          "value": "agent.PhaseExecution"
         },
         {
-          "name": "PhasePostProcessing"
+          "name": "PhasePostProcessing",
+          "value": "agent.PhasePostProcessing"
         }
       ],
       "variables": [
@@ -2673,7 +2977,8 @@
       ]
     },
     {
-      "file": "pkg/learning.go",
+      "name": "learning",
+      "file": "agentprimordia/pkg/learning.go",
       "stability": "Experimental",
       "types": [
         {
@@ -2729,18 +3034,22 @@
       ],
       "variables": [
         {
-          "name": "NewKnowledgeDistiller"
+          "name": "NewKnowledgeDistiller",
+          "doc": "NewKnowledgeDistiller 创建知识蒸馏器"
         },
         {
-          "name": "NewCapabilityEvolver"
+          "name": "NewCapabilityEvolver",
+          "doc": "NewCapabilityEvolver 创建能力进化器"
         },
         {
-          "name": "NewFeedbackLearner"
+          "name": "NewFeedbackLearner",
+          "doc": "NewFeedbackLearner 创建反馈学习器"
         }
       ]
     },
     {
-      "file": "pkg/llm.go",
+      "name": "llm",
+      "file": "agentprimordia/pkg/llm.go",
       "types": [
         {
           "name": "Provider",
@@ -2870,6 +3179,7 @@
         {
           "name": "LLMCache",
           "kind": "alias",
+          "stability": "Experimental",
           "doc": "LLMCache 是 LLM 响应缓存接口，支持 Get/Set/Stats/Clear/Invalidate"
         },
         {
@@ -3056,111 +3366,149 @@
       ],
       "constants": [
         {
-          "name": "CapText"
+          "name": "CapText",
+          "value": "llm.CapText"
         },
         {
-          "name": "CapVision"
+          "name": "CapVision",
+          "value": "llm.CapVision"
         },
         {
-          "name": "CapAudio"
+          "name": "CapAudio",
+          "value": "llm.CapAudio"
         },
         {
-          "name": "CapVideo"
+          "name": "CapVideo",
+          "value": "llm.CapVideo"
         },
         {
-          "name": "ContentTypeText"
+          "name": "ContentTypeText",
+          "value": "llm.ContentTypeText"
         },
         {
-          "name": "ContentTypeImageURL"
+          "name": "ContentTypeImageURL",
+          "value": "llm.ContentTypeImageURL"
         },
         {
-          "name": "ContentTypeImageB64"
+          "name": "ContentTypeImageB64",
+          "value": "llm.ContentTypeImageB64"
         },
         {
-          "name": "ContentTypeAudio"
+          "name": "ContentTypeAudio",
+          "value": "llm.ContentTypeAudio"
         },
         {
-          "name": "ContentTypeVideo"
+          "name": "ContentTypeVideo",
+          "value": "llm.ContentTypeVideo"
         },
         {
-          "name": "CircuitClosed"
+          "name": "CircuitClosed",
+          "value": "resilience.StateClosed",
+          "doc": "CircuitClosed 断路器关闭（正常）"
         },
         {
-          "name": "CircuitOpen"
+          "name": "CircuitOpen",
+          "value": "resilience.StateOpen",
+          "doc": "CircuitOpen 断路器打开（断路）"
         },
         {
-          "name": "CircuitHalfOpen"
+          "name": "CircuitHalfOpen",
+          "value": "resilience.StateHalfOpen",
+          "doc": "CircuitHalfOpen 断路器半开（试探）"
         }
       ],
       "variables": [
         {
-          "name": "NewOpenAIProvider"
+          "name": "NewOpenAIProvider",
+          "doc": "NewOpenAIProvider 创建 OpenAI 提供者实例"
         },
         {
-          "name": "NewAnthropicProvider"
+          "name": "NewAnthropicProvider",
+          "doc": "NewAnthropicProvider 创建 Anthropic 提供者实例"
         },
         {
-          "name": "NewGeminiProvider"
+          "name": "NewGeminiProvider",
+          "doc": "NewGeminiProvider 创建 Gemini 提供者实例"
         },
         {
-          "name": "NewGeminiMultimodalProvider"
+          "name": "NewGeminiMultimodalProvider",
+          "doc": "NewGeminiMultimodalProvider 创建 Gemini 多模态提供者实例"
         },
         {
-          "name": "NewOpenAIMultimodalProvider"
+          "name": "NewOpenAIMultimodalProvider",
+          "doc": "NewOpenAIMultimodalProvider 创建 OpenAI 多模态提供者实例（支持图片/音频输入）"
         },
         {
-          "name": "NewAnthropicVisionProvider"
+          "name": "NewAnthropicVisionProvider",
+          "doc": "NewAnthropicVisionProvider 创建 Anthropic 视觉提供者实例（支持图片输入）"
         },
         {
-          "name": "NewOllamaProvider"
+          "name": "NewOllamaProvider",
+          "doc": "NewOllamaProvider 创建 Ollama 提供者实例"
         },
         {
-          "name": "NewAzureOpenAIProvider"
+          "name": "NewAzureOpenAIProvider",
+          "doc": "NewAzureOpenAIProvider 创建 Azure OpenAI 提供者实例"
         },
         {
-          "name": "NewResilientProvider"
+          "name": "NewResilientProvider",
+          "doc": "NewResilientProvider 创建弹性提供者实例，包装主提供者并支持降级"
         },
         {
-          "name": "DefaultResilientConfig"
+          "name": "DefaultResilientConfig",
+          "doc": "DefaultResilientConfig 返回弹性提供者的默认配置（3 次重试、500ms 退避、5 次熔断阈值）"
         },
         {
-          "name": "NewCohereProvider"
+          "name": "NewCohereProvider",
+          "doc": "NewCohereProvider 创建 Cohere 提供者实例"
         },
         {
-          "name": "NewMistralProvider"
+          "name": "NewMistralProvider",
+          "doc": "NewMistralProvider 创建 Mistral 提供者实例"
         },
         {
-          "name": "NewQwenProvider"
+          "name": "NewQwenProvider",
+          "doc": "NewQwenProvider 创建通义千问提供者实例（DashScope OpenAI 兼容模式）"
         },
         {
-          "name": "NewGLMProvider"
+          "name": "NewGLMProvider",
+          "doc": "NewGLMProvider 创建智谱 GLM 提供者实例（OpenAI 兼容模式）"
         },
         {
-          "name": "ConfigFromEnv"
+          "name": "ConfigFromEnv",
+          "doc": "ConfigFromEnv 从环境变量读取 LLM 配置（AP_LLM_API_KEY, AP_LLM_BASE_URL, AP_LLM_MODEL 等）"
         },
         {
-          "name": "NewInMemoryCache"
+          "name": "NewInMemoryCache",
+          "doc": "NewInMemoryCache 创建内存缓存实例"
         },
         {
-          "name": "NewInMemoryCacheWithFullConfig"
+          "name": "NewInMemoryCacheWithFullConfig",
+          "doc": "NewInMemoryCacheWithFullConfig 创建带完整配置的内存缓存实例"
         },
         {
-          "name": "NewCachedProvider"
+          "name": "NewCachedProvider",
+          "doc": "NewCachedProvider 创建带缓存的 Provider 装饰器"
         },
         {
-          "name": "NewCachedProviderWithManager"
+          "name": "NewCachedProviderWithManager",
+          "doc": "NewCachedProviderWithManager 创建带 CacheManager 的缓存 Provider"
         },
         {
-          "name": "NewFingerprintCache"
+          "name": "NewFingerprintCache",
+          "doc": "NewFingerprintCache 创建指纹缓存实例"
         },
         {
-          "name": "NewHybridCache"
+          "name": "NewHybridCache",
+          "doc": "NewHybridCache 创建混合缓存实例"
         },
         {
-          "name": "NewCacheManager"
+          "name": "NewCacheManager",
+          "doc": "NewCacheManager 创建缓存管理器实例"
         },
         {
-          "name": "PromptFingerprint"
+          "name": "PromptFingerprint",
+          "doc": "PromptFingerprint 生成 Prompt 的指纹哈希"
         },
         {
           "name": "ResponseFormatText"
@@ -3172,25 +3520,32 @@
           "name": "ResponseFormatJSONSchema"
         },
         {
-          "name": "NewStructuredExtractor"
+          "name": "NewStructuredExtractor",
+          "doc": "NewStructuredExtractor 创建结构化提取器"
         },
         {
-          "name": "NewStructuredExtractorWithConfig"
+          "name": "NewStructuredExtractorWithConfig",
+          "doc": "NewStructuredExtractorWithConfig 创建带配置的结构化提取器"
         },
         {
-          "name": "SchemaFromStruct"
+          "name": "SchemaFromStruct",
+          "doc": "SchemaFromStruct 从 Go struct 生成 JSON Schema"
         },
         {
-          "name": "WithSchemaName"
+          "name": "WithSchemaName",
+          "doc": "WithSchemaName 设置 Schema 名称"
         },
         {
-          "name": "WithStrictMode"
+          "name": "WithStrictMode",
+          "doc": "WithStrictMode 启用严格模式"
         },
         {
-          "name": "ValidateAgainstSchema"
+          "name": "ValidateAgainstSchema",
+          "doc": "ValidateAgainstSchema 验证 JSON 数据是否符合 Schema"
         },
         {
-          "name": "SentimentSchema"
+          "name": "SentimentSchema",
+          "doc": "预定义 Schema 模板"
         },
         {
           "name": "SentimentDetailSchema"
@@ -3247,10 +3602,12 @@
           "name": "NewUserMultimodalMessage"
         },
         {
-          "name": "DefaultPricingTable"
+          "name": "DefaultPricingTable",
+          "doc": "DefaultPricingTable 返回主流模型的默认价格表"
         },
         {
-          "name": "EstimateCost"
+          "name": "EstimateCost",
+          "doc": "EstimateCost 估算单次 LLM 调用的成本"
         },
         {
           "name": "NewCircuitBreaker",
@@ -3259,7 +3616,8 @@
       ]
     },
     {
-      "file": "pkg/logger.go",
+      "name": "logger",
+      "file": "agentprimordia/pkg/logger.go",
       "stability": "Stable",
       "types": [
         {
@@ -3275,22 +3633,34 @@
       ],
       "constants": [
         {
-          "name": "LogLevelDebug"
+          "name": "LogLevelDebug",
+          "value": "logger.LevelDebug",
+          "doc": "LogLevelDebug 调试级别"
         },
         {
-          "name": "LogLevelInfo"
+          "name": "LogLevelInfo",
+          "value": "logger.LevelInfo",
+          "doc": "LogLevelInfo 信息级别"
         },
         {
-          "name": "LogLevelWarn"
+          "name": "LogLevelWarn",
+          "value": "logger.LevelWarn",
+          "doc": "LogLevelWarn 警告级别"
         },
         {
-          "name": "LogLevelError"
+          "name": "LogLevelError",
+          "value": "logger.LevelError",
+          "doc": "LogLevelError 错误级别"
         },
         {
-          "name": "LogFormatJSON"
+          "name": "LogFormatJSON",
+          "value": "logger.FormatJSON",
+          "doc": "LogFormatJSON JSON 格式"
         },
         {
-          "name": "LogFormatText"
+          "name": "LogFormatText",
+          "value": "logger.FormatText",
+          "doc": "LogFormatText 文本格式"
         }
       ],
       "variables": [
@@ -3301,7 +3671,8 @@
       ]
     },
     {
-      "file": "pkg/logger/logger.go",
+      "name": "logger",
+      "file": "agentprimordia/pkg/logger/logger.go",
       "functions": [
         {
           "name": "SetLevel",
@@ -3330,7 +3701,8 @@
       ]
     },
     {
-      "file": "pkg/marketplace.go",
+      "name": "marketplace",
+      "file": "agentprimordia/pkg/marketplace.go",
       "stability": "Experimental",
       "types": [
         {
@@ -3366,15 +3738,18 @@
       ],
       "variables": [
         {
-          "name": "NewTemplateRegistry"
+          "name": "NewTemplateRegistry",
+          "doc": "NewTemplateRegistry 创建模板注册表"
         },
         {
-          "name": "NewTemplateDeployer"
+          "name": "NewTemplateDeployer",
+          "doc": "NewTemplateDeployer 创建模板部署器"
         }
       ]
     },
     {
-      "file": "pkg/memory.go",
+      "name": "memory",
+      "file": "agentprimordia/pkg/memory.go",
       "stability": "Stable",
       "types": [
         {
@@ -3540,6 +3915,7 @@
         {
           "name": "PgVectorVectorStore",
           "kind": "alias",
+          "stability": "Experimental",
           "doc": "PgVectorVectorStore 基于 PostgreSQL + pgvector 的向量存储实现"
         },
         {
@@ -3565,48 +3941,66 @@
       ],
       "constants": [
         {
-          "name": "FusionLinear"
+          "name": "FusionLinear",
+          "value": "memory.FusionLinear",
+          "doc": "FusionLinear 线性加权融合（默认）"
         },
         {
-          "name": "FusionRRF"
+          "name": "FusionRRF",
+          "value": "memory.FusionRRF",
+          "doc": "FusionRRF Reciprocal Rank Fusion（推荐用于生产）"
         },
         {
-          "name": "BackendSQLite"
+          "name": "BackendSQLite",
+          "value": "memory.BackendSQLite",
+          "doc": "BackendSQLite 表示 SQLite 持久化后端"
         },
         {
-          "name": "BackendMemory"
+          "name": "BackendMemory",
+          "value": "memory.BackendMemory",
+          "doc": "BackendMemory 表示纯内存后端"
         }
       ],
       "variables": [
         {
-          "name": "NewRAGStoreWithFusionConfig"
+          "name": "NewRAGStoreWithFusionConfig",
+          "doc": "NewRAGStoreWithFusionConfig 创建带融合配置的 RAG 存储实例"
         },
         {
-          "name": "DefaultRAGFusionConfig"
+          "name": "DefaultRAGFusionConfig",
+          "doc": "DefaultRAGFusionConfig 返回默认融合配置"
         },
         {
-          "name": "NewSQLiteStore"
+          "name": "NewSQLiteStore",
+          "doc": "NewSQLiteStore 创建基于 SQLite 的记忆存储实例，参数为数据库文件路径"
         },
         {
-          "name": "WithInMemory"
+          "name": "WithInMemory",
+          "doc": "WithInMemory 创建内存模式的 SQLite 记忆存储，适用于测试"
         },
         {
-          "name": "NewInMemoryStore"
+          "name": "NewInMemoryStore",
+          "doc": "NewInMemoryStore 创建纯内存记忆存储实例（无持久化）"
         },
         {
-          "name": "NewMemory"
+          "name": "NewMemory",
+          "doc": "NewMemory 通过工厂函数创建记忆存储实例，根据 Config.Type 选择后端"
         },
         {
-          "name": "NewVectorStore"
+          "name": "NewVectorStore",
+          "doc": "NewVectorStore 创建内存向量存储实例，参数为向量维度"
         },
         {
-          "name": "NewVectorStoreWithHNSW"
+          "name": "NewVectorStoreWithHNSW",
+          "doc": "NewVectorStoreWithHNSW 创建带 HNSW 索引的向量存储"
         },
         {
-          "name": "NewHNSWIndex"
+          "name": "NewHNSWIndex",
+          "doc": "NewHNSWIndex 创建 HNSW 向量索引"
         },
         {
-          "name": "FormatRAGContext"
+          "name": "FormatRAGContext",
+          "doc": "FormatRAGContext 将 RAG 检索结果格式化为可注入 Prompt 的上下文字符串"
         },
         {
           "name": "NewRetrievalAugmentedGenerator"
@@ -3618,12 +4012,14 @@
           "name": "NewCompressor"
         },
         {
-          "name": "NewPgVectorVectorStore"
+          "name": "NewPgVectorVectorStore",
+          "doc": "NewPgVectorVectorStore 创建 pgvector 向量存储实例"
         }
       ]
     },
     {
-      "file": "pkg/metrics.go",
+      "name": "metrics",
+      "file": "agentprimordia/pkg/metrics.go",
       "stability": "Stable",
       "types": [
         {
@@ -3741,55 +4137,66 @@
       ],
       "variables": [
         {
-          "name": "NewMetrics"
+          "name": "NewMetrics",
+          "doc": "NewMetrics 创建指标收集器实例"
         },
         {
-          "name": "NewHistogram"
+          "name": "NewHistogram",
+          "doc": "NewHistogram 创建直方图指标，参数为桶边界列表"
         },
         {
-          "name": "NewPrometheusHandler"
+          "name": "NewPrometheusHandler",
+          "doc": "NewPrometheusHandler 创建 Prometheus 格式的 HTTP 处理器"
         },
         {
-          "name": "NewHandler"
+          "name": "NewHandler",
+          "doc": "NewHandler 创建可组合的 Prometheus /metrics HTTP handler"
         },
         {
-          "name": "NewMultiExporter"
+          "name": "NewMultiExporter",
+          "doc": "NewMultiExporter 创建多目标导出器"
         },
         {
-          "name": "NewLogExporter"
+          "name": "NewLogExporter",
+          "doc": "NewLogExporter 创建日志格式导出器"
         },
         {
-          "name": "NewJSONExporter"
+          "name": "NewJSONExporter",
+          "doc": "NewJSONExporter 创建 JSON 格式导出器"
         },
         {
-          "name": "NewMetricsExporter"
+          "name": "NewMetricsExporter",
+          "doc": "NewMetricsExporter 创建通用指标导出器"
         },
         {
-          "name": "NewCostExporter"
+          "name": "NewCostExporter",
+          "doc": "NewCostExporter 创建成本导出器，将 agent.CostTracker 数据导出到 Prometheus"
         },
         {
-          "name": "DefaultMetrics"
+          "name": "DefaultMetrics",
+          "doc": "DefaultMetrics 返回默认的指标收集器实例"
         },
         {
           "name": "RecordCostUSD",
-          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+          "doc": "RecordCostUSD 向默认 metrics 记录累计成本（USD）"
         },
         {
           "name": "RecordCostCalls",
-          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+          "doc": "RecordCostCalls 向默认 metrics 记录 LLM 调用次数"
         },
         {
           "name": "RecordCostTokens",
-          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+          "doc": "RecordCostTokens 向默认 metrics 记录 token 数（按 kind 拆分）"
         },
         {
           "name": "SetLastCostUSD",
-          "doc": "成本相关包级 helper（操作默认 metrics 实例）"
+          "doc": "SetLastCostUSD 向默认 metrics 设置最近一次调用成本（gauge）"
         }
       ]
     },
     {
-      "file": "pkg/options.go",
+      "name": "options",
+      "file": "agentprimordia/pkg/options.go",
       "stability": "Stable",
       "types": [
         {
@@ -3877,7 +4284,8 @@
       ]
     },
     {
-      "file": "pkg/otel.go",
+      "name": "otel",
+      "file": "agentprimordia/pkg/otel.go",
       "types": [
         {
           "name": "Tracer",
@@ -3921,7 +4329,8 @@
       ]
     },
     {
-      "file": "pkg/persist.go",
+      "name": "persist",
+      "file": "agentprimordia/pkg/persist.go",
       "stability": "Stable",
       "types": [
         {
@@ -3942,18 +4351,22 @@
       ],
       "variables": [
         {
-          "name": "NewSQLiteCheckpointStore"
+          "name": "NewSQLiteCheckpointStore",
+          "doc": "NewSQLiteCheckpointStore 创建基于 SQLite 的检查点存储实例"
         },
         {
-          "name": "InMemoryCheckpointStore"
+          "name": "InMemoryCheckpointStore",
+          "doc": "InMemoryCheckpointStore 创建内存模式的检查点存储，适用于测试"
         },
         {
-          "name": "UnmarshalAgentState"
+          "name": "UnmarshalAgentState",
+          "doc": "UnmarshalAgentState 从 JSON 字节反序列化 Agent 状态"
         }
       ]
     },
     {
-      "file": "pkg/pipeline.go",
+      "name": "pipeline",
+      "file": "agentprimordia/pkg/pipeline.go",
       "stability": "Stable",
       "types": [
         {
@@ -4069,39 +4482,50 @@
       ],
       "variables": [
         {
-          "name": "NewPipeline"
+          "name": "NewPipeline",
+          "doc": "NewPipeline 创建顺序 Pipeline 编排器"
         },
         {
-          "name": "NewHandoff"
+          "name": "NewHandoff",
+          "doc": "NewHandoff 创建动态交接编排器"
         },
         {
-          "name": "ParallelRun"
+          "name": "ParallelRun",
+          "doc": "ParallelRun 并行执行多个 Agent 并汇总结果"
         },
         {
-          "name": "NewGroupChat"
+          "name": "NewGroupChat",
+          "doc": "NewGroupChat 创建群组讨论实例"
         },
         {
-          "name": "NewTextFileLoader"
+          "name": "NewTextFileLoader",
+          "doc": "NewTextFileLoader 创建文本文件加载器"
         },
         {
-          "name": "NewReaderLoader"
+          "name": "NewReaderLoader",
+          "doc": "NewReaderLoader 创建 Reader 加载器"
         },
         {
-          "name": "NewCharacterSplitter"
+          "name": "NewCharacterSplitter",
+          "doc": "NewCharacterSplitter 创建字符切分器，参数为块大小和重叠大小"
         },
         {
-          "name": "NewRecursiveSplitter"
+          "name": "NewRecursiveSplitter",
+          "doc": "NewRecursiveSplitter 创建递归切分器，参数为块大小和重叠大小"
         },
         {
-          "name": "NewLineSplitter"
+          "name": "NewLineSplitter",
+          "doc": "NewLineSplitter 创建行切分器，参数为每块的行数"
         },
         {
-          "name": "NewDocumentPipeline"
+          "name": "NewDocumentPipeline",
+          "doc": "NewDocumentPipeline 创建文档处理管道，串联加载器和切分器"
         }
       ]
     },
     {
-      "file": "pkg/planning.go",
+      "name": "planning",
+      "file": "agentprimordia/pkg/planning.go",
       "stability": "Experimental",
       "types": [
         {
@@ -4132,26 +4556,36 @@
       ],
       "constants": [
         {
-          "name": "TaskPending"
+          "name": "TaskPending",
+          "value": "planning.TaskPending",
+          "doc": "TaskPending 任务等待中"
         },
         {
-          "name": "TaskRunning"
+          "name": "TaskRunning",
+          "value": "planning.TaskRunning",
+          "doc": "TaskRunning 任务运行中"
         },
         {
-          "name": "TaskCompleted"
+          "name": "TaskCompleted",
+          "value": "planning.TaskCompleted",
+          "doc": "TaskCompleted 任务已完成"
         },
         {
-          "name": "TaskFailed"
+          "name": "TaskFailed",
+          "value": "planning.TaskFailed",
+          "doc": "TaskFailed 任务失败"
         }
       ],
       "variables": [
         {
-          "name": "NewLLMPlanner"
+          "name": "NewLLMPlanner",
+          "doc": "NewLLMPlanner 创建 LLMPlanner 实例"
         }
       ]
     },
     {
-      "file": "pkg/pool.go",
+      "name": "pool",
+      "file": "agentprimordia/pkg/pool.go",
       "stability": "Stable",
       "types": [
         {
@@ -4212,19 +4646,29 @@
       ],
       "constants": [
         {
-          "name": "PoolTaskQueued"
+          "name": "PoolTaskQueued",
+          "value": "pool.PoolTaskQueued",
+          "doc": "PoolTaskQueued 表示任务已排队等待执行"
         },
         {
-          "name": "PoolTaskRunning"
+          "name": "PoolTaskRunning",
+          "value": "pool.PoolTaskRunning",
+          "doc": "PoolTaskRunning 表示任务正在执行"
         },
         {
-          "name": "PoolTaskCompleted"
+          "name": "PoolTaskCompleted",
+          "value": "pool.PoolTaskCompleted",
+          "doc": "PoolTaskCompleted 表示任务已完成"
         },
         {
-          "name": "PoolTaskFailed"
+          "name": "PoolTaskFailed",
+          "value": "pool.PoolTaskFailed",
+          "doc": "PoolTaskFailed 表示任务执行失败"
         },
         {
-          "name": "PoolTaskCancelled"
+          "name": "PoolTaskCancelled",
+          "value": "pool.PoolTaskCancelled",
+          "doc": "PoolTaskCancelled 表示任务已取消"
         }
       ],
       "variables": [
@@ -4235,7 +4679,8 @@
       ]
     },
     {
-      "file": "pkg/reflection.go",
+      "name": "reflection",
+      "file": "agentprimordia/pkg/reflection.go",
       "stability": "Experimental",
       "types": [
         {
@@ -4276,26 +4721,36 @@
       ],
       "constants": [
         {
-          "name": "ReflectSeverityLow"
+          "name": "ReflectSeverityLow",
+          "value": "reflection.SeverityLow",
+          "doc": "ReflectSeverityLow 低严重程度"
         },
         {
-          "name": "ReflectSeverityMedium"
+          "name": "ReflectSeverityMedium",
+          "value": "reflection.SeverityMedium",
+          "doc": "ReflectSeverityMedium 中等严重程度"
         },
         {
-          "name": "ReflectSeverityHigh"
+          "name": "ReflectSeverityHigh",
+          "value": "reflection.SeverityHigh",
+          "doc": "ReflectSeverityHigh 高严重程度"
         },
         {
-          "name": "ReflectSeverityCritical"
+          "name": "ReflectSeverityCritical",
+          "value": "reflection.SeverityCritical",
+          "doc": "ReflectSeverityCritical 严重级别"
         }
       ],
       "variables": [
         {
-          "name": "NewLLMReflector"
+          "name": "NewLLMReflector",
+          "doc": "NewLLMReflector 创建 LLMReflector 实例"
         }
       ]
     },
     {
-      "file": "pkg/security.go",
+      "name": "security",
+      "file": "agentprimordia/pkg/security.go",
       "stability": "Stable",
       "types": [
         {
@@ -4346,34 +4801,54 @@
       ],
       "constants": [
         {
-          "name": "AccessNone"
+          "name": "AccessNone",
+          "value": "security.AccessNone",
+          "doc": "AccessNone 表示无访问权限"
         },
         {
-          "name": "AccessRead"
+          "name": "AccessRead",
+          "value": "security.AccessRead",
+          "doc": "AccessRead 表示只读权限"
         },
         {
-          "name": "AccessWrite"
+          "name": "AccessWrite",
+          "value": "security.AccessWrite",
+          "doc": "AccessWrite 表示读写权限"
         },
         {
-          "name": "AccessExecute"
+          "name": "AccessExecute",
+          "value": "security.AccessExecute",
+          "doc": "AccessExecute 表示执行权限"
         },
         {
-          "name": "AccessAll"
+          "name": "AccessAll",
+          "value": "security.AccessAll",
+          "doc": "AccessAll 表示全部权限"
         },
         {
-          "name": "PermNone"
+          "name": "PermNone",
+          "value": "security.PermNone",
+          "doc": "PermNone 无权限"
         },
         {
-          "name": "PermRead"
+          "name": "PermRead",
+          "value": "security.PermRead",
+          "doc": "PermRead 只读权限"
         },
         {
-          "name": "PermWrite"
+          "name": "PermWrite",
+          "value": "security.PermWrite",
+          "doc": "PermWrite 写权限"
         },
         {
-          "name": "PermExecute"
+          "name": "PermExecute",
+          "value": "security.PermExecute",
+          "doc": "PermExecute 执行权限"
         },
         {
-          "name": "PermAdmin"
+          "name": "PermAdmin",
+          "value": "security.PermAdmin",
+          "doc": "PermAdmin 管理员权限"
         }
       ],
       "variables": [
@@ -4404,7 +4879,8 @@
       ]
     },
     {
-      "file": "pkg/soak.go",
+      "name": "soak",
+      "file": "agentprimordia/pkg/soak.go",
       "stability": "Experimental",
       "types": [
         {
@@ -4480,50 +4956,67 @@
       ],
       "constants": [
         {
-          "name": "TrendStable"
+          "name": "TrendStable",
+          "value": "soak.TrendStable",
+          "doc": "TrendStable 稳定"
         },
         {
-          "name": "TrendImproving"
+          "name": "TrendImproving",
+          "value": "soak.TrendImproving",
+          "doc": "TrendImproving 改善"
         },
         {
-          "name": "TrendDegrading"
+          "name": "TrendDegrading",
+          "value": "soak.TrendDegrading",
+          "doc": "TrendDegrading 退化"
         }
       ],
       "variables": [
         {
-          "name": "NewSoakRunner"
+          "name": "NewSoakRunner",
+          "doc": "NewSoakRunner 创建 Soak Test 运行器"
         },
         {
-          "name": "SoakRunnerConfigWithDefaults"
+          "name": "SoakRunnerConfigWithDefaults",
+          "doc": "SoakRunnerConfigWithDefaults 填充运行器配置默认值"
         },
         {
-          "name": "SoakFormatReport"
+          "name": "SoakFormatReport",
+          "doc": "SoakFormatReport 将 Soak Test 结果格式化为 Markdown 报告"
         },
         {
-          "name": "ConstantPattern"
+          "name": "ConstantPattern",
+          "doc": "ConstantPattern 创建恒定负载模式"
         },
         {
-          "name": "StepPattern"
+          "name": "StepPattern",
+          "doc": "StepPattern 创建阶梯负载模式"
         },
         {
-          "name": "BurstPattern"
+          "name": "BurstPattern",
+          "doc": "BurstPattern 创建突发负载模式"
         },
         {
-          "name": "RandomPattern"
+          "name": "RandomPattern",
+          "doc": "RandomPattern 创建随机负载模式"
         },
         {
-          "name": "RampPattern"
+          "name": "RampPattern",
+          "doc": "RampPattern 创建渐进负载模式"
         },
         {
-          "name": "AnalyzeDegradation"
+          "name": "AnalyzeDegradation",
+          "doc": "AnalyzeDegradation 分析采样数据，检测退化趋势"
         },
         {
-          "name": "DefaultDegradationThreshold"
+          "name": "DefaultDegradationThreshold",
+          "doc": "DefaultDegradationThreshold 默认退化检测阈值"
         }
       ]
     },
     {
-      "file": "pkg/supervisor.go",
+      "name": "supervisor",
+      "file": "agentprimordia/pkg/supervisor.go",
       "stability": "Experimental",
       "types": [
         {
@@ -4549,30 +5042,38 @@
       ],
       "variables": [
         {
-          "name": "NewOrchestrationNoopTracer"
+          "name": "NewOrchestrationNoopTracer",
+          "doc": "NewOrchestrationNoopTracer 创建不记录任何 span 的 tracer（默认）"
         },
         {
-          "name": "NewOrchestrationTracingStepExecutor"
+          "name": "NewOrchestrationTracingStepExecutor",
+          "doc": "NewOrchestrationTracingStepExecutor 创建追踪 StepExecutor 装饰器"
         },
         {
-          "name": "NewOrchestrationTracingPipeline"
+          "name": "NewOrchestrationTracingPipeline",
+          "doc": "NewOrchestrationTracingPipeline 创建追踪 Pipeline 装饰器"
         },
         {
-          "name": "OrchestrationWithTracer"
+          "name": "OrchestrationWithTracer",
+          "doc": "OrchestrationWithTracer 构造启用追踪的 TracingConfig"
         },
         {
-          "name": "OrchestrationFromAgentTracer"
+          "name": "OrchestrationFromAgentTracer",
+          "doc": "OrchestrationFromAgentTracer 把 agent.Tracer 适配为 orchestration.Tracer"
         },
         {
-          "name": "OrchestrationDefaultTracingConfig"
+          "name": "OrchestrationDefaultTracingConfig",
+          "doc": "OrchestrationDefaultTracingConfig 返回关闭追踪的默认配置"
         },
         {
-          "name": "OrchestrationConfigureTracing"
+          "name": "OrchestrationConfigureTracing",
+          "doc": "OrchestrationConfigureTracing 在 Orchestrator 上启用追踪（接口预留）"
         }
       ]
     },
     {
-      "file": "pkg/tool_learning.go",
+      "name": "tool_learning",
+      "file": "agentprimordia/pkg/tool_learning.go",
       "stability": "Experimental",
       "types": [
         {
@@ -4613,12 +5114,14 @@
       ],
       "variables": [
         {
-          "name": "NewMemoryToolLearner"
+          "name": "NewMemoryToolLearner",
+          "doc": "NewMemoryToolLearner 创建 MemoryToolLearner 实例"
         }
       ]
     },
     {
-      "file": "pkg/tools.go",
+      "name": "tools",
+      "file": "agentprimordia/pkg/tools.go",
       "types": [
         {
           "name": "Tool",
@@ -4698,6 +5201,7 @@
         {
           "name": "MCPClient",
           "kind": "alias",
+          "stability": "Experimental",
           "doc": "MCPClient 是 MCP 协议客户端，用于连接外部 MCP Server"
         },
         {
@@ -4718,6 +5222,7 @@
         {
           "name": "ToolPlugin",
           "kind": "alias",
+          "stability": "Experimental",
           "doc": "ToolPlugin 是工具插件接口，支持批量注册工具"
         },
         {
@@ -4783,93 +5288,122 @@
       ],
       "variables": [
         {
-          "name": "NewToolRegistry"
+          "name": "NewToolRegistry",
+          "doc": "NewToolRegistry 创建工具注册中心实例"
         },
         {
-          "name": "NewToolExecutor"
+          "name": "NewToolExecutor",
+          "doc": "NewToolExecutor 创建工具执行器实例"
         },
         {
-          "name": "NewToolResult"
+          "name": "NewToolResult",
+          "doc": "NewToolResult 创建工具执行成功结果"
         },
         {
-          "name": "NewToolErrorResult"
+          "name": "NewToolErrorResult",
+          "doc": "NewToolErrorResult 创建工具执行错误结果"
         },
         {
-          "name": "NewFileScopePolicy"
+          "name": "NewFileScopePolicy",
+          "doc": "NewFileScopePolicy 创建基于文件路径的作用域权限策略"
         },
         {
-          "name": "NewScopeDeniedError"
+          "name": "NewScopeDeniedError",
+          "doc": "NewScopeDeniedError 创建作用域拒绝错误"
         },
         {
-          "name": "NewFileSystem"
+          "name": "NewFileSystem",
+          "doc": "NewFileSystem 创建文件系统操作工具"
         },
         {
-          "name": "NewShell"
+          "name": "NewShell",
+          "doc": "NewShell 创建命令行执行工具"
         },
         {
-          "name": "NewWeb"
+          "name": "NewWeb",
+          "doc": "NewWeb 创建 HTTP 请求工具"
         },
         {
-          "name": "NewKnowledgeSearch"
+          "name": "NewKnowledgeSearch",
+          "doc": "NewKnowledgeSearch 创建知识库搜索工具"
         },
         {
-          "name": "DefaultToolkit"
+          "name": "DefaultToolkit",
+          "doc": "DefaultToolkit 创建默认工具包（文件系统 + Shell + Web），需指定根目录"
         },
         {
-          "name": "MinimalToolkit"
+          "name": "MinimalToolkit",
+          "doc": "MinimalToolkit 创建最小工具包（文件系统 + Shell），需指定根目录"
         },
         {
-          "name": "NewMCPClient"
+          "name": "NewMCPClient",
+          "doc": "NewMCPClient 创建 MCP 客户端"
         },
         {
-          "name": "NewMCPRegistry"
+          "name": "NewMCPRegistry",
+          "doc": "NewMCPRegistry 创建 MCP Server 注册中心"
         },
         {
-          "name": "NewPluginLoader"
+          "name": "NewPluginLoader",
+          "doc": "NewPluginLoader 创建插件加载器"
         },
         {
-          "name": "NewJSONTool"
+          "name": "NewJSONTool",
+          "doc": "NewJSONTool 创建 JSON 数据处理工具"
         },
         {
-          "name": "NewCSVTool"
+          "name": "NewCSVTool",
+          "doc": "NewCSVTool 创建 CSV 数据处理工具"
         },
         {
-          "name": "NewSQLiteTool"
+          "name": "NewSQLiteTool",
+          "doc": "NewSQLiteTool 创建 SQLite 数据库工具"
         },
         {
-          "name": "NewCalculator"
+          "name": "NewCalculator",
+          "doc": "NewCalculator 创建计算器工具"
         },
         {
-          "name": "NewDateTime"
+          "name": "NewDateTime",
+          "doc": "NewDateTime 创建日期时间工具"
         },
         {
-          "name": "NewAPI"
+          "name": "NewAPI",
+          "doc": "NewAPI 创建新的 API 工具实例"
         },
         {
-          "name": "NewCodeExecution"
+          "name": "NewCodeExecution",
+          "doc": "NewCodeExecution 创建代码执行工具实例"
         },
         {
-          "name": "NewDatabase"
+          "name": "NewDatabase",
+          "doc": "NewDatabase 创建 SQLite 数据库工具"
         },
         {
-          "name": "WithReadOnly"
+          "name": "WithReadOnly",
+          "doc": "WithReadOnly 设置数据库只读模式"
         },
         {
-          "name": "WithMaxRows"
+          "name": "WithMaxRows",
+          "doc": "WithMaxRows 设置数据库查询结果最大行数"
         },
         {
-          "name": "WithQueryTimeout"
+          "name": "WithQueryTimeout",
+          "doc": "WithQueryTimeout 设置数据库查询超时时间"
         },
         {
-          "name": "NewFileLockManager"
+          "name": "NewFileLockManager",
+          "doc": "NewFileLockManager 创建文件锁管理器实例"
         },
         {
-          "name": "ValidateScopes"
+          "name": "ValidateScopes",
+          "doc": "ValidateScopes 验证 Agent 的文件作用域是否存在重叠冲突"
         }
       ]
     },
     {
-      "file": "pkg/wasm.go",
+      "name": "wasm",
+      "file": "agentprimordia/pkg/wasm.go",
       "stability": "Experimental",
       "types": [
         {
@@ -4910,25 +5444,32 @@
       ],
       "variables": [
         {
-          "name": "NewWASMSandbox"
+          "name": "NewWASMSandbox",
+          "doc": "NewWASMSandbox 创建 WASM 沙箱"
         },
         {
-          "name": "DefaultWASMSandboxConfig"
+          "name": "DefaultWASMSandboxConfig",
+          "doc": "DefaultWASMSandboxConfig 返回默认沙箱配置"
         },
         {
-          "name": "NewWASMToolAdapter"
+          "name": "NewWASMToolAdapter",
+          "doc": "NewWASMToolAdapter 创建 WASM 工具适配器"
         },
         {
-          "name": "WASMVerifySignature"
+          "name": "WASMVerifySignature",
+          "doc": "WASMVerifySignature 验证 WASM 字节码的 Ed25519 签名"
         },
         {
-          "name": "WASMSignWASM"
+          "name": "WASMSignWASM",
+          "doc": "WASMSignWASM 使用 Ed25519 私钥对 WASM 字节码签名"
         },
         {
-          "name": "WASMGenerateKeyPair"
+          "name": "WASMGenerateKeyPair",
+          "doc": "WASMGenerateKeyPair 生成 Ed25519 密钥对"
         },
         {
-          "name": "WASMKeyFingerprint"
+          "name": "WASMKeyFingerprint",
+          "doc": "WASMKeyFingerprint 计算公钥的指纹"
         }
       ]
     }

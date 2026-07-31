@@ -1,6 +1,8 @@
 /**
  * React Hooks 子包入口（Phase 5 Task 8）。
  *
+ * Stability: Stable
+ *
  * 通过懒加载 react，让 import 该模块时不强制安装 react 依赖。
  * 用户需要：
  * 1. 安装 react: `npm install react@>=18`

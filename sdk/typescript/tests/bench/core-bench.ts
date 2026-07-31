@@ -12,10 +12,10 @@
  */
 
 import { describe, bench, expect } from 'vitest';
-import { HookManager, ReActAgent, type HookContext } from '../src/agent/react-loop.js';
-import { ObjectPool } from '../src/jsonutil/pool.js';
-import { RAGStore, defaultFusionConfig } from '../src/memory/rag.js';
-import { detectRuntime } from '../src/edge/runtime.js';
+import { HookManager, ReActAgent, type HookContext } from '../../src/agent/react-loop.js';
+import { ObjectPool } from '../../src/jsonutil/pool.js';
+import { RAGStore, defaultFusionConfig } from '../../src/memory/rag.js';
+import { detectRuntime } from '../../src/edge/runtime.js';
 
 // ===== P0-6: HookManager 对象池 vs 直接创建 =====
 

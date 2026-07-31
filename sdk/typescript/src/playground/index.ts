@@ -199,7 +199,7 @@ async function* parseSSE(stream: ReadableStream<Uint8Array>): AsyncGenerator<Str
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const blocks = buffer.split('\\n\\n');
+      const blocks = buffer.split('\n\n');
       buffer = blocks.pop() ?? '';
 
       for (const block of blocks) {
@@ -222,7 +222,7 @@ function parseSSENode(block: string): StreamEvent | null {
   let eventType = 'message';
   const dataLines: string[] = [];
 
-  for (const rawLine of block.split('\\n')) {
+  for (const rawLine of block.split('\n')) {
     const line = rawLine.trimEnd();
     if (line.startsWith('event:')) {
       eventType = line.slice(6).trim();
@@ -232,7 +232,7 @@ function parseSSENode(block: string): StreamEvent | null {
   }
 
   if (dataLines.length === 0) return null;
-  const dataStr = dataLines.join('\\n');
+  const dataStr = dataLines.join('\n');
   if (dataStr === '[DONE]') return { type: 'done' };
 
   let payload: unknown;

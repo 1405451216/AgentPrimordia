@@ -5,11 +5,10 @@
 //   - 公开 func（含参数和返回值签名）
 //   - 公开 var/const
 //
-// 输出格式见 sdk/typescript/api-contract-schema.json
+// 输出格式供跨语言 SDK 漂移检测使用。
 //
 // 用法：
 //
-//	go run ./scripts/api-extract/ > ../sdk/typescript/api-contract.json
 //	go run ./scripts/api-extract/ -output ../sdk/typescript/api-contract.json
 package main
 
@@ -25,33 +24,35 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // APIContract 顶层契约结构
 type APIContract struct {
-	Version   string       `json:"version"`
-	GoVersion string       `json:"goVersion"`
-	Generated string       `json:"generated"`
-	Modules   []ModuleAPI  `json:"modules"`
+	Version    string      `json:"version"`
+	GeneratedAt string     `json:"generated_at"`
+	Modules    []ModuleAPI `json:"modules"`
 }
 
 // ModuleAPI 单个文件的 API 摘要
 type ModuleAPI struct {
-	File       string       `json:"file"`
-	Stability  string       `json:"stability,omitempty"`
-	Types      []TypeAPI    `json:"types,omitempty"`
-	Functions  []FuncAPI    `json:"functions,omitempty"`
-	Constants  []ConstAPI   `json:"constants,omitempty"`
-	Variables  []VarAPI     `json:"variables,omitempty"`
+	Name      string    `json:"name"`
+	File      string    `json:"file"`
+	Stability string    `json:"stability,omitempty"`
+	Types     []TypeAPI `json:"types,omitempty"`
+	Functions []FuncAPI `json:"functions,omitempty"`
+	Constants []ConstAPI `json:"constants,omitempty"`
+	Variables []VarAPI  `json:"variables,omitempty"`
 }
 
 // TypeAPI 公开类型
 type TypeAPI struct {
-	Name       string       `json:"name"`
-	Kind       string       `json:"kind"` // struct, interface, alias
-	Fields     []FieldAPI   `json:"fields,omitempty"`
-	Methods    []string     `json:"methods,omitempty"`
-	Doc        string       `json:"doc,omitempty"`
+	Name      string   `json:"name"`
+	Kind      string   `json:"kind"` // struct, interface, alias
+	Stability string   `json:"stability,omitempty"`
+	Fields    []FieldAPI `json:"fields,omitempty"`
+	Methods   []string `json:"methods,omitempty"`
+	Doc       string   `json:"doc,omitempty"`
 }
 
 // FieldAPI 结构体字段
@@ -63,28 +64,31 @@ type FieldAPI struct {
 
 // FuncAPI 公开函数
 type FuncAPI struct {
-	Name    string   `json:"name"`
-	Params  []string `json:"params,omitempty"`
-	Returns []string `json:"returns,omitempty"`
-	Doc     string   `json:"doc,omitempty"`
+	Name      string   `json:"name"`
+	Params    []string `json:"params,omitempty"`
+	Returns   []string `json:"returns,omitempty"`
+	Stability string   `json:"stability,omitempty"`
+	Doc       string   `json:"doc,omitempty"`
 }
 
 // ConstAPI 公开常量
 type ConstAPI struct {
-	Name  string `json:"name"`
-	Value string `json:"value,omitempty"`
-	Doc   string `json:"doc,omitempty"`
+	Name      string `json:"name"`
+	Value     string `json:"value,omitempty"`
+	Stability string `json:"stability,omitempty"`
+	Doc       string `json:"doc,omitempty"`
 }
 
 // VarAPI 公开变量
 type VarAPI struct {
-	Name string `json:"name"`
-	Type string `json:"type,omitempty"`
-	Doc  string `json:"doc,omitempty"`
+	Name      string `json:"name"`
+	Type      string `json:"type,omitempty"`
+	Stability string `json:"stability,omitempty"`
+	Doc       string `json:"doc,omitempty"`
 }
 
-// stabilityRegexp 匹配 Stability 注解
-var stabilityRegexp = regexp.MustCompile(`Stability:\s*(\w+)`)
+// stabilityRegexp 匹配 Stability 注解（如 "Stability: Stable" 或 "Stability: Experimental"）
+var stabilityRegexp = regexp.MustCompile(`Stability:\s*(Stable|Experimental|Deprecated|Internal)`)
 
 func main() {
 	output := flag.String("output", "", "输出文件路径（默认 stdout）")
@@ -162,14 +166,13 @@ func extractAPI(pkgDir string) (*APIContract, error) {
 	})
 
 	return &APIContract{
-		Version:   "3.1.0",
-		GoVersion: "1.26",
-		Generated: "api-extract v1.0",
-		Modules:   modules,
+		Version:     "3.1.0",
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		Modules:     modules,
 	}, nil
 }
 
-// parseFile 解析单个 Go 文件
+// parseFile 解析单个 Go 文件，提取公开 API 签名
 func parseFile(fset *token.FileSet, path string) (*ModuleAPI, error) {
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -181,7 +184,12 @@ func parseFile(fset *token.FileSet, path string) (*ModuleAPI, error) {
 		return nil, err
 	}
 
+	// 模块名取自文件名（去掉 .go 后缀）
+	baseName := filepath.Base(path)
+	moduleName := strings.TrimSuffix(baseName, ".go")
+
 	mod := &ModuleAPI{
+		Name: moduleName,
 		File: filepath.ToSlash(path),
 	}
 
@@ -207,10 +215,11 @@ func parseFile(fset *token.FileSet, path string) (*ModuleAPI, error) {
 			} else if d.Name.IsExported() {
 				// 公开函数
 				mod.Functions = append(mod.Functions, FuncAPI{
-					Name:    d.Name.Name,
-					Params:  formatFieldList(d.Type.Params),
-					Returns: formatFieldList(d.Type.Results),
-					Doc:     docSummary(d.Doc),
+					Name:      d.Name.Name,
+					Params:    formatFieldList(d.Type.Params),
+					Returns:   formatFieldList(d.Type.Results),
+					Stability: extractStability(d.Doc),
+					Doc:       docSummary(d.Doc),
 				})
 			}
 
@@ -221,9 +230,15 @@ func parseFile(fset *token.FileSet, path string) (*ModuleAPI, error) {
 					if !s.Name.IsExported() {
 						continue
 					}
+					// 优先使用类型自身的注释，否则回退到 GenDecl 的注释
+					doc := s.Doc
+					if doc == nil {
+						doc = d.Doc
+					}
 					t := TypeAPI{
-						Name: s.Name.Name,
-						Doc:  docSummary(d.Doc),
+						Name:      s.Name.Name,
+						Stability: extractStability(doc),
+						Doc:       docSummary(doc),
 					}
 					switch st := s.Type.(type) {
 					case *ast.StructType:
@@ -242,17 +257,25 @@ func parseFile(fset *token.FileSet, path string) (*ModuleAPI, error) {
 						if !name.IsExported() {
 							continue
 						}
+						// 优先使用 ValueSpec 自身的注释
+						doc := s.Doc
+						if doc == nil {
+							doc = d.Doc
+						}
+						stability := extractStability(doc)
 						if d.Tok == token.CONST {
 							mod.Constants = append(mod.Constants, ConstAPI{
-								Name:  name.Name,
-								Value: valueString(s.Values),
-								Doc:   docSummary(d.Doc),
+								Name:      name.Name,
+								Value:     valueString(s.Values),
+								Stability: stability,
+								Doc:       docSummary(doc),
 							})
 						} else {
 							mod.Variables = append(mod.Variables, VarAPI{
-								Name: name.Name,
-								Type: typeString(s.Type),
-								Doc:  docSummary(d.Doc),
+								Name:      name.Name,
+								Type:      typeString(s.Type),
+								Stability: stability,
+								Doc:       docSummary(doc),
 							})
 						}
 					}
@@ -279,6 +302,18 @@ func parseFile(fset *token.FileSet, path string) (*ModuleAPI, error) {
 
 // ===== 辅助函数 =====
 
+// extractStability 从注释组中提取 Stability 注解，返回空字符串表示无注解
+func extractStability(doc *ast.CommentGroup) string {
+	if doc == nil {
+		return ""
+	}
+	if m := stabilityRegexp.FindStringSubmatch(doc.Text()); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+// receiverTypeName 提取方法接收器的类型名
 func receiverTypeName(recv *ast.FieldList) string {
 	if recv == nil || len(recv.List) == 0 {
 		return ""
@@ -294,6 +329,7 @@ func receiverTypeName(recv *ast.FieldList) string {
 	return ""
 }
 
+// formatFieldList 将函数字段列表格式化为字符串切片
 func formatFieldList(fl *ast.FieldList) []string {
 	if fl == nil {
 		return nil
@@ -312,6 +348,7 @@ func formatFieldList(fl *ast.FieldList) []string {
 	return result
 }
 
+// extractFields 提取结构体的公开字段
 func extractFields(st *ast.StructType) []FieldAPI {
 	var fields []FieldAPI
 	if st.Fields == nil {
@@ -337,6 +374,7 @@ func extractFields(st *ast.StructType) []FieldAPI {
 	return fields
 }
 
+// extractInterfaceMethods 提取接口的公开方法名
 func extractInterfaceMethods(it *ast.InterfaceType) []string {
 	var methods []string
 	if it.Methods == nil {
@@ -352,6 +390,7 @@ func extractInterfaceMethods(it *ast.InterfaceType) []string {
 	return methods
 }
 
+// typeString 将 AST 表达式转换为可读的类型字符串
 func typeString(expr ast.Expr) string {
 	if expr == nil {
 		return ""
@@ -376,11 +415,21 @@ func typeString(expr ast.Expr) string {
 		return "func(...)"
 	case *ast.Ellipsis:
 		return "..." + typeString(t.Elt)
+	case *ast.ChanType:
+		switch t.Dir {
+		case ast.SEND:
+			return "chan<- " + typeString(t.Value)
+		case ast.RECV:
+			return "<-chan " + typeString(t.Value)
+		default:
+			return "chan " + typeString(t.Value)
+		}
 	default:
 		return fmt.Sprintf("%T", expr)
 	}
 }
 
+// valueString 提取常量/变量的值字符串表示
 func valueString(values []ast.Expr) string {
 	if len(values) == 0 {
 		return ""
@@ -390,11 +439,18 @@ func valueString(values []ast.Expr) string {
 		return v.Value
 	case *ast.Ident:
 		return v.Name
+	case *ast.SelectorExpr:
+		return typeString(v.X) + "." + v.Sel.Name
+	case *ast.UnaryExpr:
+		return v.Op.String() + valueString([]ast.Expr{v.X})
+	case *ast.CallExpr:
+		return typeString(v.Fun) + "(...)"
 	default:
 		return ""
 	}
 }
 
+// docSummary 提取注释的第一行作为摘要，限制 120 字符
 func docSummary(doc *ast.CommentGroup) string {
 	if doc == nil {
 		return ""

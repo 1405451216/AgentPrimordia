@@ -7,8 +7,9 @@
 package memory
 
 import (
+	"cmp"
 	"errors"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -273,9 +274,8 @@ func (c *semanticClusterer) agglomerative(docs []*memoryDoc) ([]*MemoryCluster, 
 			pairs = append(pairs, pair{i, j, simFunc(i, j)})
 		}
 	}
-	sort.Slice(pairs, func(a, b int) bool {
-		return pairs[a].sim > pairs[b].sim
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(pairs, func(a, b pair) int { return cmp.Compare(b.sim, a.sim) })
 
 	find := func(x int) int {
 		root := x
@@ -346,9 +346,8 @@ func (c *MemoryCluster) extractTopic() string {
 	for k, v := range freq {
 		sorted = append(sorted, kv{k, v})
 	}
-	sort.Slice(sorted, func(a, b int) bool {
-		return sorted[a].val > sorted[b].val
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(sorted, func(a, b kv) int { return cmp.Compare(b.val, a.val) })
 
 	top := 3
 	if len(sorted) < top {

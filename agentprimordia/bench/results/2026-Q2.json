@@ -2,10 +2,10 @@
   "date": "2026-Q2",
   "version": "3.1.0",
   "environment": {
-    "go": "1.26.3",
+    "go": "1.26.5",
     "os": "windows/amd64",
-    "cpu": "Intel Core Ultra 5 250K Plus (18 threads)",
-    "memory": "32GB",
+    "cpu": "Intel(R) Core(TM) Ultra 5 250K Plus",
+    "memory": "24GB",
     "note": "开发机基准；生产标准化环境应为 4C/8GB/linux/amd64"
   },
   "status": "completed",
@@ -14,38 +14,40 @@
     "tool_calling_accuracy": {
       "description": "工具调用准确率（50个场景）",
       "unit": "%",
-      "value": null,
-      "note": "需配置真实 LLM API Key 后运行: go test -bench=BenchmarkToolCalling ./bench/suite/"
+      "value": 0,
+      "status": "skipped",
+      "note": "需配置真实 LLM API Key 后运行: go test -bench=BenchmarkToolCalling ./bench/suite/；MockLLM 无法测量真实工具调用准确率"
     },
     "rag_recall_at_5": {
       "description": "RAG 检索 Recall@5",
       "unit": "%",
-      "value": null,
-      "note": "需配置真实 LLM API Key 后运行"
+      "value": 0,
+      "status": "skipped",
+      "note": "需配置真实 LLM API Key 及向量数据库后运行；当前无对应自动化基准"
     },
     "agent_run_throughput": {
       "description": "单 Agent 运行吞吐量（MockLLM）",
       "unit": "ns/op",
-      "value": 1556612,
-      "note": "BenchmarkConcurrent: ~1.56ms/op（含 MockLLM 响应），约 640 ops/sec"
+      "value": 4782,
+      "note": "BenchmarkAgentRun: 4782 ns/op, 3971 B/op, 24 allocs/op（MockLLM）"
     },
     "pool_10_concurrent": {
       "description": "10 并发 Agent 吞吐量",
       "unit": "ns/op",
-      "value": 1699055,
-      "note": "BenchmarkConcurrent 10 并发: ~1.7ms/op，约 590 ops/sec"
+      "value": 2701,
+      "note": "BenchmarkConcurrent: 2701 ns/op, 7321 B/op, 39 allocs/op（MockLLM, 10 并发 Dispatch）"
     },
     "vector_search_10k": {
       "description": "10K 向量搜索延迟",
       "unit": "ms",
-      "value": 2.18,
-      "note": "BenchmarkVectorSearch: 2183764 ns/op, 881976 B/op, 20003 allocs/op"
+      "value": 1.84,
+      "note": "BenchmarkVectorSearch: 1840170 ns/op, 881976 B/op, 20003 allocs/op"
     },
     "memory_search_1k": {
       "description": "1K 记忆搜索延迟",
       "unit": "ms",
       "value": 0.029,
-      "note": "BenchmarkMemoryLatency/Search_1K: 28822 ns/op, 1337 B/op, 31 allocs/op"
+      "note": "BenchmarkMemoryLatency/Search_1K: 29484 ns/op, 1345 B/op, 31 allocs/op"
     }
   },
   "v31_suites": {
@@ -53,37 +55,37 @@
       "description": "容量规划基准（Pool 并发上限 / 内存增长曲线）",
       "file": "bench/suite/capacity_test.go",
       "value": "PASS",
-      "details": "MemoryStore Add: 49.18 ns/op; Search: 30353 ns/op"
+      "details": "MemoryStore Add: 46.28 ns/op; Search: 30019 ns/op; AgentRun: 4782 ns/op"
     },
     "cluster": {
       "description": "集群消息总线延迟与吞吐",
       "file": "bench/suite/cluster_bench_test.go",
       "value": "PASS",
-      "details": "ConsistentHash GetNode(10): 21.38 ns/op; DistributedState SetGet: 73.14 ns/op"
+      "details": "ConsistentHash GetNode(10): 25.65 ns/op; GetNode(50): 34.31 ns/op; DistributedState SetGet: 89.22/52.17 ns/op"
     },
     "latency": {
       "description": "端到端延迟分布（P50/P95/P99）",
       "file": "bench/suite/latency_test.go",
       "value": "PASS",
-      "details": "Agent 单轮延迟 < 1ms（MockLLM）; FirstToken 流式延迟 < 2ms"
+      "details": "Agent 单轮延迟: 5392 ns/op（MockLLM）; FirstToken 流式延迟: 18305 ns/op"
     },
     "learning": {
       "description": "知识蒸馏管道吞吐量",
       "file": "bench/suite/learning_bench_test.go",
       "value": "PASS",
-      "details": "Distill: ~1.2ms/op; Pipeline: ~2.4ms/op; CapabilityEvolver: ~2ms/op"
+      "details": "Distill: 2642 ns/op; Pipeline: 14777 ns/op; BuildSystemPrompt: 8871 ns/op; FeedbackLearner: 1865 ns/op; CapabilityEvolver: 2146 ns/op"
     },
     "privacy": {
       "description": "PII 检测 + 路由延迟",
       "file": "bench/suite/privacy_bench_test.go",
       "value": "PASS",
-      "details": "Route(NoPII): 74.82 ns/op; Route(WithPII): ~1.2ms/op; RegisterCapability: 77.96 ns/op"
+      "details": "Route(NoPII): 57.39 ns/op; Route(WithPII): 2007 ns/op; RegisterCapability: 66.31 ns/op; NodeScale(3-20): ~2.0-2.4µs/op"
     },
     "tool_calling": {
       "description": "工具调用端到端延迟",
       "file": "bench/suite/tool_calling_test.go",
       "value": "PASS",
-      "details": "需 LLM API Key 获取准确率数据；延迟基准已通过"
+      "details": "ToolCalling(MockLLM): 5824 ns/op, 5195 B/op, 34 allocs/op; 准确率需 LLM API Key"
     }
   }
 }

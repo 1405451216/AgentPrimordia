@@ -2,7 +2,7 @@
 
 > 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v2.0.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
+**版本**: v3.2.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
 
 ---
 
@@ -42,6 +42,7 @@
   - [4.28 debugger — 断点与时间旅行](#428-debugger--断点与时间旅行)
   - [4.29 audit — 合规报告](#429-audit--合规报告)
   - [4.30 wasm — 增强沙箱](#430-wasm--增强沙箱)
+  - [4.31 chaos — 混沌工程](#431-chaos--混沌工程)
 - [5. 协议式微内核架构](#5-协议式微内核架构)
 - [6. 插件生态](#6-插件生态)
 - [7. 公共 API 层 (pkg/)](#7-公共-api-层-pkg)
@@ -60,6 +61,7 @@
   - [19.1 v0.7 → v0.8 迁移](#191-v07--v08-迁移)
   - [19.2 v0.6 → v0.7 迁移](#192-v06--v07-迁移)
   - [19.3 v1.0 → v2.0 迁移](#193-v10--v20-迁移)
+  - [19.4 v2.0 → v3.0 迁移](#194-v20--v30-迁移)
 - [20. pgvector 适配器](#20-pgvector-适配器)
 - [21. 相关文档](#21-相关文档)
 - [22. 设计哲学](#22-设计哲学)
@@ -323,6 +325,7 @@ agentprimordia/
 │   ├── health/                   # /healthz /readyz /livez + pprof (v2.0)
 │   ├── logger/                   # 结构化日志 + Shipper (v2.0)
 │   ├── eval/                     # Agent 评估框架 (v2.0)
+│   ├── chaos/                  # 混沌工程 (v3.0)
 │   ├── edgeruntime/              # WASM Edge 运行时 (v2.0)
 │   ├── mcp/                      # MCP Server 端实现 (v2.0)
 │   ├── protocol/                 # 通用协议定义
@@ -1334,6 +1337,38 @@ result, err := sandbox.Execute(ctx, wasmModule, "func_name", args)
 
 ---
 
+### 4.31 chaos — 混沌工程
+
+**位置：** `internal/chaos/`
+
+**核心职责：** 混沌实验编排、故障注入、稳态验证、报告生成
+
+#### 核心组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `ChaosEngine` | `engine.go` | 实验编排器（定义→执行→验证→报告） |
+| `SteadyStateVerifier` | `verifier.go` | 稳态假设验证（SLO 指标比对） |
+| `ReportGenerator` | `report.go` | Markdown 实验报告生成 |
+| `FaultAgent` | `fault_agent.go` | LLM 驱动的智能故障代理 |
+| `RealInjector` | `real_injector_linux.go` | iptables/tc 真实网络故障注入（Linux） |
+
+#### 实验流程
+
+```
+定义实验 (Hypothesis + Fault + SteadyState)
+    ↓
+ChaosEngine.Run()
+    ↓
+1. 记录基线指标
+2. 注入故障 (网络延迟/丢包/分区 / Pod Kill / 资源耗尽)
+3. 观察系统行为
+4. 稳态验证 (SLO 是否违反)
+5. 生成 Markdown 报告
+```
+
+---
+
 ## 5. 协议式微内核架构
 
 **位置：** `internal/agent/capabilities.go`
@@ -2204,6 +2239,23 @@ npm install @agentprimordia/sdk@2.0.0
 ap version   # 验证: v2.0.0
 ```
 
+### 19.4 v2.0 → v3.0 迁移
+
+**完全向后兼容**，v2.x 代码无需修改。v3.0/v3.1 新增功能均为可选增强：
+
+1. **混沌工程**（可选）— `internal/chaos/` 实验编排 + 故障注入
+2. **分布式集群**（可选）— `internal/agent/cluster/` KVStore + 跨节点消息总线
+3. **Agent 市场**（可选）— `internal/agent/marketplace/` 模板注册 + 一键部署
+4. **WASM 自定义工具**（可选）— `wasm/` WASM→Tool 适配器 + Ed25519 签名
+5. **自适应学习**（可选）— `internal/agent/learning/` 知识蒸馏 + 能力进化
+6. **隐私混合推理**（可选）— PrivacyRouter PII 检测 + 本地/云端路由
+
+```bash
+# 升级依赖
+go get agentprimordia@v3.1.0
+ap version   # 验证: v3.1.0
+```
+
 ### 迁移检查清单
 
 - [ ] 更新 `ReActConfig` 使用链式 API
@@ -2299,5 +2351,5 @@ agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
 
 ---
 
-*文档更新时间：2026-07-12*
-*版本：v2.0.0 (Go + TypeScript 100% Parity)*
+*文档更新时间：2026-07-29*
+*版本：v3.1.0 (Go SDK) / v2.0.0 (TypeScript SDK)*

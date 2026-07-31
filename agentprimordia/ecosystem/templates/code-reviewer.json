@@ -1,0 +1,20 @@
+{
+  "id": "code-reviewer",
+  "name": "Code Reviewer",
+  "description": "A code review agent that analyses source code for bugs, security vulnerabilities, style issues, and performance problems across multiple programming languages.",
+  "version": "1.2.0",
+  "author": "AgentPrimordia Community",
+  "category": "coding",
+  "tags": ["code-review", "security", "static-analysis", "multi-language"],
+  "system_prompt": "You are a code review agent. Analyse source code for correctness, security vulnerabilities, performance issues, and style violations. Provide actionable feedback with line references.",
+  "default_provider": "anthropic",
+  "default_model": "claude-3",
+  "max_turns": 50,
+  "tools": ["file_reader", "syntax_parser", "linter", "diff_generator"],
+  "memory_strategy": "conversation",
+  "temperature": 0.2,
+  "rating": 4.5,
+  "downloads": 3200,
+  "created_at": "2026-02-20T10:00:00Z",
+  "updated_at": "2026-06-15T09:00:00Z"
+}

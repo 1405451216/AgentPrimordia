@@ -1,0 +1,155 @@
+# Cookbook: 集群协调与多节点部署
+
+本指南演示如何使用 AgentPrimordia 的集群协调能力实现多节点 Agent 部署。
+
+## 核心概念
+
+集群协调提供以下能力：
+
+- **服务发现**：节点自动注册与发现
+- **一致性哈希**：Agent 在节点间均匀分布
+- **领导者选举**：集群中的协调者选举
+- **Agent 迁移**：节点离开时自动迁移 Agent
+- **跨节点消息总线**：Agent 间跨节点通信
+
+## 快速开始
+
+### 创建集群节点
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "time"
+
+    ap "agentprimordia/pkg"
+    "agentprimordia/internal/agent/cluster"
+)
+
+func main() {
+    // 创建集群管理器
+    mgr, err := cluster.NewManager(cluster.Config{
+        NodeID:      "node-1",
+        ListenAddr:  ":9001",
+        SeedNodes:   []string{"localhost:9001", "localhost:9002", "localhost:9003"},
+        SyncInterval: 5 * time.Second,
+    })
+    if err != nil {
+        panic(err)
+    }
+    defer mgr.Stop()
+
+    // 启动集群
+    if err := mgr.Start(context.Background()); err != nil {
+        panic(err)
+    }
+
+    // 注册 Agent
+    mgr.RegisterAgent("my-agent", cluster.AgentMeta{
+        Name:     "Assistant",
+        Model:    "gpt-4",
+        Capabilities: []string{"chat", "code"},
+    })
+
+    // 查看集群状态
+    status := mgr.Status()
+    fmt.Printf("节点数: %d, Agent 数: %d\n", status.NodeCount, status.AgentCount)
+}
+```
+
+### 一致性哈希分配
+
+```go
+// 根据 Agent ID 确定负责节点
+nodeID := mgr.ConsistentHash().GetNode("agent-123")
+fmt.Printf("agent-123 由 %s 负责\n", nodeID)
+
+// 查看分布情况
+distribution := mgr.ConsistentHash().Distribution()
+for node, count := range distribution {
+    fmt.Printf("  %s: %d agents\n", node, count)
+}
+```
+
+### 跨节点消息传递
+
+```go
+// 向其他节点的 Agent 发送消息
+reply, err := mgr.SendToAgent(ctx, "agent-456", cluster.Message{
+    Type:    "task",
+    Content: "分析这份数据",
+})
+if err != nil {
+    panic(err)
+}
+fmt.Printf("回复: %s\n", reply.Content)
+```
+
+### 领导者选举
+
+```go
+// 参与领导者选举
+election := mgr.Election()
+if election.IsLeader() {
+    fmt.Println("本节点是领导者")
+    // 执行协调任务...
+} else {
+    leader := election.Leader()
+    fmt.Printf("当前领导者: %s\n", leader)
+}
+
+// 监听领导者变更
+election.OnLeaderChange(func(newLeader string) {
+    fmt.Printf("领导者变更为: %s\n", newLeader)
+})
+```
+
+## 多节点部署（Docker Compose）
+
+```yaml
+# deploy/compose/cluster.yml
+services:
+  node-1:
+    image: agentprimordia:latest
+    environment:
+      - AP_NODE_ID=node-1
+      - AP_CLUSTER_SEEDS=node-1:9000,node-2:9000,node-3:9000
+    ports:
+      - "9001:9000"
+
+  node-2:
+    image: agentprimordia:latest
+    environment:
+      - AP_NODE_ID=node-2
+      - AP_CLUSTER_SEEDS=node-1:9000,node-2:9000,node-3:9000
+    ports:
+      - "9002:9000"
+
+  node-3:
+    image: agentprimordia:latest
+    environment:
+      - AP_NODE_ID=node-3
+      - AP_CLUSTER_SEEDS=node-1:9000,node-2:9000,node-3:9000
+    ports:
+      - "9003:9000"
+```
+
+## 运行 E2E 测试
+
+```bash
+# 10 节点规模测试
+go test -tags=e2e -run TestE2E_Cluster_10Node -v -timeout=5m ./internal/agent/cluster/
+
+# 24h Soak 测试（CI 可缩短）
+SOAK_DURATION=1h go test -tags='e2e soak' -run TestE2E_Cluster_24hSoak -v ./internal/agent/cluster/
+```
+
+## 最佳实践
+
+- 生产环境至少部署 3 个节点（容错 1 节点故障）
+- 使用 etcd 作为服务发现后端（`etcd_discovery.go`）实现跨数据中心部署
+- 监控一致性哈希的分布均匀性，偏差 > 20% 时考虑增加虚拟节点
+- Agent 迁移期间会有短暂不可用，客户端应实现重试逻辑
+- 领导者选举收敛时间通常 < 5s，期间集群仍可正常服务

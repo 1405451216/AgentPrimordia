@@ -4,15 +4,32 @@
 
 ## [Unreleased]
 
-### Added
+## [v3.2.0] - 2026-07-31
 
-- **pprof 生产强制鉴权** (`internal/health/pprof.go`): 新增 `RegisterPProfStrict` / `PProfHandlerStrict`，强制要求 PPROF_TOKEN 已设置，否则返回 `ErrPProfTokenRequired`（fail-fast）
-- **Pool 背压告警结构化日志**: `emitEvent` 节流告警从 `fmt.Printf` 迁移至 `slog.Warn`，接入统一日志管道
-- **Python/Rust 客户端定位明确**: SDK README 明确“轻量级远程 HTTP 客户端”定位
+### Added — 架构解耦与双语言对齐
+
+- **ReAct 循环引擎接口化拆分** (`internal/agent/react/`): Engine + Delegate 接口驱动状态机，解耦循环逻辑与 Agent 内部实现
+- **WebGPU 可插拔推理后端** (`sdk/typescript/src/llm/webgpu-model-runner.ts`): InferenceBackend 接口 + TransformersBackend 动态导入 + SkeletonBackend 回退
+- **可视化编辑器异步编排** (`internal/debugger/visual_editor.go`): goroutine 实际执行 + RegisterAgent + 状态实时查询
+- **Bun 边缘适配器生产强化** (`sdk/typescript/src/edge/bun-agent.ts`): 重试/超时/限流/健康检查 (44→210 行)
+- **跨语言规范扩展** (`cross-language-spec.json`): 11→15 套件 (governance_quota / security_acl / guardrail_rules / persist_checkpoint)
+- **CRDT 持久化接口** (`sdk/typescript/src/collaboration/crdt.ts`): CRDTPersistence + InMemoryCRDTPersistence + createSnapshot
+- **Agent 市场协议规范** (`docs/marketplace-protocol.md`): AgentTemplate JSON Schema + 注册表 API + 部署协议
+- **Playground 部署配置** (`sdk/typescript/playground/wrangler.toml`): Cloudflare Pages 部署配置
+- **@xenova/transformers 可选 peer 依赖**: 用户自行安装即可启用 WebGPU 真实推理
+
+### Fixed
+
+- **TemplateRegistry 重复导出**: marketplace 别名为 MarketplaceTemplateRegistry，消除 esbuild 构建失败
+- **Playground SSE 流解析**: 修复测试数据中 `\\n` → `\n`
+- **Windows symlink 测试**: 添加 skipIf(win32) 平台条件
+- **edge test mock 类型**: 更新为当前 CompletionResponse/ToolCallResponse/ModelInfo 接口
+- **gofmt 格式统一**: 所有新增 Go 文件已格式化
 
 ### Changed
 
-- **RegisterPProf 标记 Deprecated**: 无鉴权版本仅适用于本地开发，生产环境应使用 `RegisterPProfSecure` 或 `RegisterPProfStrict`
+- **TS SDK 版本对齐**: 3.1.0 → 3.2.0，与 Go SDK 同步
+- **tsconfig.json**: 排除 src/react/stories（Storybook 未安装）
 
 ## [v3.1.0] - 2026-07-26
 

@@ -1,10 +1,11 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -185,9 +186,8 @@ func (r *RAGStore) Query(ctx context.Context, query string, topK int) ([]*RAGRes
 	}
 
 	// 按相关度降序排列
-	sort.Slice(ragResults, func(i, j int) bool {
-		return ragResults[i].Score > ragResults[j].Score
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(ragResults, func(a, b *RAGResult) int { return cmp.Compare(b.Score, a.Score) })
 
 	return ragResults, nil
 }
@@ -259,9 +259,8 @@ func (r *RAGStore) hybridSearchLinear(ctx context.Context, query string, ftsResu
 	for _, v := range resultMap {
 		results = append(results, v)
 	}
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Score > results[j].Score
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(results, func(a, b *RAGResult) int { return cmp.Compare(b.Score, a.Score) })
 	if len(results) > topK {
 		results = results[:topK]
 	}
@@ -345,9 +344,8 @@ func (r *RAGStore) hybridSearchRRF(ctx context.Context, query string, ftsResults
 		})
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Score > results[j].Score
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(results, func(a, b *RAGResult) int { return cmp.Compare(b.Score, a.Score) })
 	if len(results) > topK {
 		results = results[:topK]
 	}

@@ -1,10 +1,11 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"math/rand"
-	"sort"
+	"slices"
 	"testing"
 )
 
@@ -136,7 +137,8 @@ func bruteForceSearch(vectors [][]float32, query []float32, k int) []string {
 		d := hnswCosineDistance(v, query)
 		all = append(all, scored{fmt.Sprintf("vec-%d", i), d})
 	}
-	sort.Slice(all, func(i, j int) bool { return all[i].dist < all[j].dist })
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(all, func(a, b scored) int { return cmp.Compare(a.dist, b.dist) })
 	ids := make([]string, k)
 	for i := 0; i < k && i < len(all); i++ {
 		ids[i] = all[i].id

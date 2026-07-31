@@ -1,0 +1,20 @@
+{
+  "id": "data-analyst",
+  "name": "Data Analyst",
+  "description": "A data analysis agent that processes structured and unstructured data, generates statistical summaries, creates visualisations, and identifies trends.",
+  "version": "1.1.0",
+  "author": "AgentPrimordia Community",
+  "category": "analysis",
+  "tags": ["data-analysis", "statistics", "visualisation", "csv", "sql"],
+  "system_prompt": "You are a data analysis agent. Help users explore datasets, compute statistics, generate charts, and uncover insights. Always explain your methodology and assumptions.",
+  "default_provider": "openai",
+  "default_model": "gpt-4",
+  "max_turns": 80,
+  "tools": ["csv_reader", "sql_executor", "chart_generator", "statistics_engine"],
+  "memory_strategy": "hybrid",
+  "temperature": 0.4,
+  "rating": 4.3,
+  "downloads": 1800,
+  "created_at": "2026-04-05T12:00:00Z",
+  "updated_at": "2026-07-10T16:00:00Z"
+}

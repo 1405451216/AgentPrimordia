@@ -13,9 +13,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.ts', 'src/**/__tests__/**/*.test.ts'],
     benchmark: {
-      include: ['tests/bench/**/*.bench.ts'],
+      include: ['tests/bench/**/*.bench.ts', 'tests/bench/**/*-bench.ts'],
       reporter: 'default',
     },
     coverage: {

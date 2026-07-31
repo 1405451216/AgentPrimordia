@@ -1,11 +1,12 @@
 package memory
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"math"
-	"sort"
+	"slices"
 	"sync"
 )
 
@@ -135,9 +136,8 @@ func (s *SimpleVectorStore) Search(ctx context.Context, query []float32, topK in
 		})
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Score > results[j].Score
-	})
+	// 优化（Task 19）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
+	slices.SortFunc(results, func(a, b *VectorSearchResult) int { return cmp.Compare(b.Score, a.Score) })
 
 	if topK > len(results) {
 		topK = len(results)

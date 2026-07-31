@@ -446,29 +446,53 @@ export type { EnhancedWSOptions, ConnectionStatus } from './a2a/enhanced-websock
 // ===== 集群协调（对齐 Go internal/agent/cluster/） =====
 export {
   MemKVStore, DistributedDiscovery, ClusterCoordinator,
+  ClusterManager, ConsistentHash, clusterConfigWithDefaults,
 } from './cluster/index.js';
 export type {
   KVStore, KVEvent, KVEventType,
   DistributedDiscoveryConfig,
   ClusterMessage, ClusterReply, RemoteNode, CoordinationConfig,
+  NodeInfo, NodeRole, NodeStatus, AgentDiscovery as ClusterAgentDiscovery,
+  ClusterConfig,
 } from './cluster/index.js';
 // 注: AgentInfo / Discovery 已从 agent 模块导出，避免重复
 
 // ===== 混沌工程（对齐 Go internal/chaos/） =====
 export {
   ChaosEngine,
-  LatencyFault, ErrorFault, ResourceFault, NoopFault,
-  LLMTimeoutFault, LLMErrorFault, LLMRateLimitFault,
-  SLOSteadyState, AvailabilitySteadyState, LatencySteadyState, CustomSteadyState,
+  // 基础故障
+  NetworkDelayFault, PartitionFault, ConnectionRefusedFault,
+  CPUStressFault, MemoryStressFault, ProcessKillFault,
+  CompositeFault, NoopFault,
+  // 向后兼容
+  LatencyFault, ErrorFault, ResourceFault,
+  // LLM 故障
+  LLMHTTPStatusFault, LLMTimeoutFault, LLMIntermittentFault, LLMSlowResponseFault,
+  llmHTTP503Fault, llmHTTP429Fault, llmHTTP500Fault,
+  llmFailoverScenario, llmChaosScenario,
+  LLMErrorFault, LLMRateLimitFault,
+  // 稳态
+  SLOSteadyState, AvailabilitySteadyState, LatencySteadyState,
+  CompositeSteadyState, CustomSteadyState,
+  // 报告
   summarize, formatReport, formatSummaryTable,
 } from './chaos/index.js';
 export type {
   ExperimentStatus, EngineOptions,
-  FaultInjector, FaultResult, LLMFault,
-  SteadyState, SteadyStateResult, ExperimentSummary,
+  Fault, FaultInjector, CleanupFunc, FaultResult,
+  SteadyState, SteadyStateResult,
+  LLMFaultScenario, ExperimentSummary,
 } from './chaos/index.js';
 // 注: Experiment / ExperimentResult 类型从 './chaos/index.js' 直接导入，
 // 避免与 A/B 测试模块的同名类型冲突
+
+// ===== Agent Marketplace（对齐 Go internal/agent/marketplace/） =====
+export { TemplateRegistry as MarketplaceTemplateRegistry, Deployer, validateTemplate } from './marketplace/index.js';
+export type { AgentTemplate as MarketplaceTemplate, ValidationResult as TemplateValidationResult, DeployConfig, DeployResult, TemplateCategory, MemoryStrategy } from './marketplace/index.js';
+
+// ===== Governance 多租户治理（对齐 Go internal/governance/） =====
+export { TenantManager, TokenBucket, QuotaManager, ResourceManager, PolicyEnforcer, PolicyViolationError, InMemoryAuditLogger, defaultQuota } from './governance/index.js';
+export type { Tenant, TenantPlan, TenantStatus, TenantQuota, Policy, PolicySpec, EnforcerSnapshot, AuditEvent as GovernanceAuditEvent, AuditLogger as GovernanceAuditLogger } from './governance/index.js';
 
 // Tree-shakeable 标记
 export { __treeShakeable, __bundlerMarker } from './internal/tree-shakeable.js';

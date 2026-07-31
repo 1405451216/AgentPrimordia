@@ -1,0 +1,20 @@
+{
+  "id": "research-assistant",
+  "name": "Research Assistant",
+  "description": "An intelligent research agent that helps users find, summarise, and synthesise information from academic papers, documentation, and web sources.",
+  "version": "1.0.0",
+  "author": "AgentPrimordia Community",
+  "category": "research",
+  "tags": ["research", "academic", "summarisation", "web-search"],
+  "system_prompt": "You are a research assistant agent. Help users find and synthesise information from multiple sources. Always cite your references and provide balanced, evidence-based analysis.",
+  "default_provider": "openai",
+  "default_model": "gpt-4",
+  "max_turns": 100,
+  "tools": ["web_search", "document_reader", "summariser", "citation_manager"],
+  "memory_strategy": "semantic",
+  "temperature": 0.3,
+  "rating": 4.7,
+  "downloads": 2500,
+  "created_at": "2026-03-10T08:00:00Z",
+  "updated_at": "2026-07-01T14:30:00Z"
+}

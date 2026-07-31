@@ -196,7 +196,7 @@ export class WasmSimdVectorSearch {
 
     if (wasmBytes) {
       try {
-        const module = await WebAssembly.compile(wasmBytes);
+        const module = await WebAssembly.compile(wasmBytes as unknown as BufferSource);
         this.wasmInstance = await WebAssembly.instantiate(module, {
           env: { memory: new WebAssembly.Memory({ initial: 16, maximum: 256 }) },
         });

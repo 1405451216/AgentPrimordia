@@ -1,0 +1,46 @@
+# AgentPrimordia Playground — Docker Compose 部署
+#
+# 用法：
+#   docker compose up -d
+#
+# 环境变量（通过 .env 文件或系统环境传入）：
+#   AP_LLM_API_KEY  — LLM API Key（必填）
+#   AP_LLM_MODEL    — 默认模型（可选，默认 gpt-4）
+#   AP_PLAYGROUND_PORT — 服务端口（可选，默认 8080）
+
+services:
+  playground:
+    build:
+      context: ../../..
+      dockerfile: sdk/typescript/playground/Dockerfile
+    container_name: ap-playground
+    ports:
+      - "${AP_PLAYGROUND_PORT:-8080}:8080"
+    environment:
+      - NODE_ENV=production
+      - AP_PLAYGROUND_PORT=8080
+      - AP_LLM_PROVIDER=${AP_LLM_PROVIDER:-openai}
+      - AP_LLM_MODEL=${AP_LLM_MODEL:-gpt-4}
+      - AP_LLM_API_KEY=${AP_LLM_API_KEY:?AP_LLM_API_KEY is required}
+      - AP_MAX_AGENTS=${AP_MAX_AGENTS:-50}
+      - AP_LOG_LEVEL=${AP_LOG_LEVEL:-info}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

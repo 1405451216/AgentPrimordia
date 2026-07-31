@@ -2,10 +2,39 @@
  * discovery.ts — Agent 服务发现接口与实现
  *
  * 对齐 Go 端 internal/agent/cluster/discovery_distributed.go
+ * 以及 pkg/cluster.go 中 NodeInfo / NodeStatus / NodeRole 等类型。
  * Stability: Experimental
  */
 
-/** Agent 注册信息 */
+/** 节点角色（对齐 Go cluster.NodeRole） */
+export type NodeRole = 'follower' | 'leader' | 'candidate';
+
+/** 节点状态（对齐 Go cluster.NodeStatus） */
+export type NodeStatus = 'online' | 'offline' | 'leaving';
+
+/** 节点信息（对齐 Go cluster.NodeInfo） */
+export interface NodeInfo {
+  id: string;
+  address: string;
+  role: NodeRole;
+  status: NodeStatus;
+  capabilities?: string[];
+  metadata?: Record<string, string>;
+  joinTime: Date;
+  lastSeen: Date;
+}
+
+/** Agent 发现接口（对齐 Go discovery.Discovery，使用 NodeInfo） */
+export interface AgentDiscovery {
+  register(info: NodeInfo): Promise<void>;
+  unregister(nodeId: string): Promise<void>;
+  discover(nodeId: string): Promise<NodeInfo | null>;
+  listNodes(): Promise<NodeInfo[]>;
+  heartbeat(nodeId: string): Promise<void>;
+  close(): Promise<void>;
+}
+
+/** Agent 注册信息（兼容旧接口） */
 export interface AgentInfo {
   id: string;
   name: string;

@@ -29,6 +29,40 @@
 - **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
 - **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite（modernc.org/sqlite）+ YAML（gopkg.in/yaml.v3）；可选 gRPC/Protobuf（A2A 传输）、Redis（缓存后端）、etcd（服务发现）、wazero（WASM 沙箱）按需引入
 
+## v3.2.0 Highlights — 架构解耦与双语言对齐
+
+- **ReAct 循环引擎接口化拆分** — `internal/agent/react/` 子包，Engine + Delegate 接口驱动状态机
+- **WebGPU 可插拔推理后端** — InferenceBackend 接口 + @xenova/transformers 动态导入（optional peer dep）
+- **可视化编辑器异步编排** — goroutine 实际执行 + 状态实时查询 + RegisterAgent
+- **Bun 边缘适配器生产强化** — 重试/超时/限流/健康检查 (44→210 行)
+- **跨语言规范 15 套件** — 新增 governance_quota / security_acl / guardrail_rules / persist_checkpoint
+- **CRDT 持久化接口** — CRDTPersistence + InMemoryCRDTPersistence + createSnapshot
+- **Agent 市场协议规范** — AgentTemplate JSON Schema + 注册表 API + 部署协议
+- **全量测试零失败** — Go 40+ 包 / TS 2545 用例 / tsc 零错误 / 跨语言 15 套件
+
+## v3.1.0 Highlights — From Framework to Production
+
+- **etcd 服务发现** — Lease + KeepAlive 节点注册 + Watch 事件（build tag 门控）
+- **gRPC 跨节点消息总线** — 复用 A2A gRPC 基础设施，cluster.proto 消息定义
+- **WASM 真实 ABI 执行** — wazero 内存 API 传参/读结果，替代桩实现
+- **LLM 知识蒸馏** — LLM 提取事实 → SemanticMemory 写入
+- **混沌真实注入** — iptables/tc 网络延迟/丢包/分区（Linux）
+- **集群×市场×学习×隐私×混沌 跨组件联动**
+- **CLI 集群/市场/Edge 命令** — `ap cluster` / `ap market` / `ap create-edge-agent`
+- **Studio UI 四面板** — ChaosLab / ClusterDashboard / LearningMonitor / MarketplacePage
+- **6 个基准套件** — capacity / cluster / latency / learning / privacy / tool_calling
+
+## v3.0.0 Highlights — 八大方向框架落地
+
+- **混沌工程** — ChaosEngine 实验编排器 + 稳态验证器 + Markdown 报告 + LLM 故障代理
+- **WASM 自定义工具** — WASM→Tool 适配器 + 上传 API + Ed25519 签名验证
+- **分布式集群** — KVStore 接口 + MemKVStore + DistributedDiscovery + RemoteMessageBus
+- **Agent 市场** — TemplateRegistry + 评分 + 一键部署 + cosign 验签
+- **Edge Agent 模板** — 开箱即用模板 + 脚手架生成
+- **隐私混合推理** — PrivacyRouter PII 检测 + 路由策略（敏感→本地 WebGPU）
+- **CRDT 协作** — Lamport Clock + LWW + CRDTDocument + AgentCRDTClient
+- **自适应学习** — KnowledgeDistiller + 能力进化框架 + 记忆集成
+
 ## v2.0.0 Highlights
 
 - **多租户 SaaS 隔离** — `TenantManager` + `QuotaManager` + 令牌桶限流，context 级数据隔离
@@ -58,7 +92,7 @@
 - **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试
 - **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
 - **向后兼容** — Stable API 向后兼容，链式 API 仍可用
-- **版本统一** — Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0，API 稳定性承诺锁定
+- **版本统一** — Go SDK / CLI 当前 v3.1.0，TypeScript SDK v2.0.0；API 稳定性承诺锁定（详见 [VERSIONING.md](agentprimordia/docs/VERSIONING.md)）
 
 ## v0.7.0 Highlights
 
@@ -458,8 +492,8 @@ agentprimordia/
 │   ├── security/             # ACL + Sandbox + 密钥管理 + AES-GCM
 │   ├── resilience/           # 熔断器 + 重试 + 降级包装器
 │   ├── logger/               # 结构化日志 + Shipper (v2.0)
+│   ├── chaos/                # 混沌工程 (v3.0)
 │   ├── eval/                 # Agent 评估框架 (v2.0)
-│   ├── edgeruntime/          # WASM Edge 运行时 (v2.0)
 │   ├── mcp/                  # MCP Server 端实现
 │   ├── protocol/             # 通用协议定义
 │   ├── registry/             # 服务注册中心
@@ -594,6 +628,7 @@ golangci-lint run
 ## 文档
 
 - [CHANGELOG](docs/CHANGELOG.md)
+- [版本策略与兼容性承诺](agentprimordia/docs/VERSIONING.md)
 - [v2.0.0 发布说明](docs/RELEASE-NOTES-v2.0.0.md)
 - [v1.0.0 发布说明](docs/RELEASE-NOTES-v1.0.0.md)
 - [v0.8.0 发布说明](docs/RELEASE-NOTES-v0.8.0.md)

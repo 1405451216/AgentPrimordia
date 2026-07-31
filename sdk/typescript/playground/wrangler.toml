@@ -1,0 +1,36 @@
+# AgentPrimordia Playground 部署配置
+# 目标平台：Cloudflare Pages（静态站点 + Serverless Functions）
+#
+# 部署步骤：
+#   1. cd sdk/typescript && npm run build
+#   2. npx wrangler pages deploy dist/playground --project-name=ap-playground
+#
+# 或使用 GitHub Actions 自动部署（见 .github/workflows/ 扩展）
+
+name = "ap-playground"
+compatibility_date = "2026-07-01"
+
+[build]
+command = "cd sdk/typescript && npm ci && npm run build"
+output_directory = "sdk/typescript/dist/playground"
+
+[env.production]
+# Playground 使用模拟 LLM（无需真实 API Key）
+AP_PLAYGROUND_MOCK_LLM = "true"
+AP_PLAYGROUND_MAX_TURNS = "10"
+
+[env.preview]
+AP_PLAYGROUND_MOCK_LLM = "true"
+AP_PLAYGROUND_MAX_TURNS = "5"
+
+# 静态资源缓存策略
+[[headers]]
+for = "/assets/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*"
+[headers.values]
+X-Content-Type-Options = "nosniff"
+X-Frame-Options = "DENY"

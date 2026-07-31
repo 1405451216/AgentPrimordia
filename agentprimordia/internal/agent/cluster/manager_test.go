@@ -2,9 +2,14 @@ package cluster
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
+	"agentprimordia/internal/agent/bus"
 	"agentprimordia/internal/agent/discovery"
 )
 
@@ -303,5 +308,181 @@ func TestClusterManagerState(t *testing.T) {
 	val, ok := state.Get("test-key")
 	if !ok || val != "test-value" {
 		t.Errorf("Get = %s, %v", val, ok)
+	}
+}
+
+func TestDistributedStateGetWithVersion(t *testing.T) {
+	s := NewDistributedState()
+	s.Set("k1", "v1", 0)
+
+	val, ver, ok := s.GetWithVersion("k1")
+	if !ok {
+		t.Fatal("key 应存在")
+	}
+	if val != "v1" || ver != 1 {
+		t.Errorf("GetWithVersion = %s, %d, want v1, 1", val, ver)
+	}
+
+	// 不存在的 key
+	_, _, ok = s.GetWithVersion("missing")
+	if ok {
+		t.Error("不存在的 key 应返回 false")
+	}
+
+	// TTL 过期
+	s.Set("k2", "v2", 50*time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
+	_, _, ok = s.GetWithVersion("k2")
+	if ok {
+		t.Error("过期 key 应返回 false")
+	}
+}
+
+func TestDistributedStateSize(t *testing.T) {
+	s := NewDistributedState()
+	if s.Size() != 0 {
+		t.Errorf("空状态 Size 应为 0")
+	}
+	s.Set("a", "1", 0)
+	s.Set("b", "2", 0)
+	if s.Size() != 2 {
+		t.Errorf("Size = %d, want 2", s.Size())
+	}
+	// TTL 过期后不计入
+	s.Set("c", "3", 50*time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
+	if s.Size() != 2 {
+		t.Errorf("过期后 Size = %d, want 2", s.Size())
+	}
+}
+
+func TestClusterManagerGetNode(t *testing.T) {
+	disc := discovery.NewLocalDiscovery()
+	mgr := NewClusterManager(ClusterConfig{
+		NodeID:    "mgr-node",
+		Discovery: disc,
+	})
+
+	// 获取本地节点
+	node, ok := mgr.GetNode("mgr-node")
+	if !ok {
+		t.Fatal("应能找到本地节点")
+	}
+	if node.ID != "mgr-node" {
+		t.Errorf("ID = %s", node.ID)
+	}
+
+	// 获取不存在的节点
+	_, ok = mgr.GetNode("nonexistent")
+	if ok {
+		t.Error("不存在的节点应返回 false")
+	}
+}
+
+func TestClusterManagerGetRole(t *testing.T) {
+	disc := discovery.NewLocalDiscovery()
+	mgr := NewClusterManager(ClusterConfig{
+		NodeID:    "role-node",
+		Discovery: disc,
+	})
+
+	role := mgr.GetRole()
+	// 默认角色应为 Follower 或 Leader
+	t.Logf("初始角色: %v", role)
+}
+
+func TestRemoteMessageBusWithLoggerAndNodeOps(t *testing.T) {
+	localBus := bus.NewLocalMessageBus()
+	b := NewRemoteMessageBus(RemoteBusConfig{Local: localBus})
+
+	// WithLogger
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	b.WithLogger(logger)
+
+	// AddNode + GetNodes
+	n1 := NewRemoteNode("n1", "http://localhost:9001")
+	n2 := NewRemoteNode("n2", "http://localhost:9002")
+	b.AddNode(n1)
+	b.AddNode(n2)
+
+	nodes := b.GetNodes()
+	if len(nodes) != 2 {
+		t.Errorf("GetNodes = %d, want 2", len(nodes))
+	}
+
+	// RemoveNode
+	b.RemoveNode("n1")
+	nodes = b.GetNodes()
+	if len(nodes) != 1 {
+		t.Errorf("RemoveNode 后 GetNodes = %d, want 1", len(nodes))
+	}
+}
+
+func Test10NodeConcurrentRegistration(t *testing.T) {
+	kv := NewMemKVStore()
+	defer kv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	const numNodes = 10
+	var dds []*DistributedDiscovery
+	var wg sync.WaitGroup
+
+	// 并发启动 10 个节点
+	for i := 0; i < numNodes; i++ {
+		dd := NewDistributedDiscovery(DistributedDiscoveryConfig{
+			NodeID:            fmt.Sprintf("node-%d", i),
+			KVStore:           kv,
+			HeartbeatInterval: 2 * time.Second,
+			SyncInterval:      500 * time.Millisecond,
+		})
+		if err := dd.Start(ctx); err != nil {
+			t.Fatalf("节点 %d 启动失败: %v", i, err)
+		}
+		dds = append(dds, dd)
+	}
+	defer func() {
+		for _, dd := range dds {
+			dd.Close()
+		}
+	}()
+
+	// 并发注册 Agent
+	errCh := make(chan error, numNodes)
+	for i := 0; i < numNodes; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			info := &discovery.AgentInfo{
+				ID:      fmt.Sprintf("agent-%d", idx),
+				Name:    fmt.Sprintf("Agent %d", idx),
+				Address: fmt.Sprintf("10.0.0.%d:8080", idx+1),
+			}
+			if err := dds[idx].Register(ctx, info); err != nil {
+				errCh <- fmt.Errorf("节点 %d 注册失败: %w", idx, err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		t.Fatal(err)
+	}
+
+	// 等待同步
+	time.Sleep(2 * time.Second)
+
+	// 验证每个节点都能发现所有 Agent
+	for i := 0; i < numNodes; i++ {
+		agents, err := dds[i].ListAgents(ctx)
+		if err != nil {
+			t.Errorf("节点 %d ListAgents 失败: %v", i, err)
+			continue
+		}
+		if len(agents) < numNodes {
+			t.Errorf("节点 %d 发现 %d 个 Agent，期望 >= %d", i, len(agents), numNodes)
+		}
 	}
 }

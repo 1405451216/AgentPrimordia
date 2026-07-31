@@ -1,5 +1,7 @@
 // Package marketplace 提供 Agent 模板市场。
 //
+// Stability: Stable
+//
 // 在现有 plugin_market.go 的基础上，扩展为 Agent 模板生态：
 //   - AgentTemplate：Agent 模板定义（配置+工具集+系统提示+记忆策略）
 //   - TemplateRegistry：模板注册表 + 搜索 + 评分

@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { SIMDVectorSearch, randomVector, normalize } from '../../src/edge/simd-search.js';
+import { WasmSimdSearchEngine, createOptimalSearch } from '../../src/edge/simd-search-wasm.js';
 
 describe('SIMDVectorSearch', () => {
   const search = new SIMDVectorSearch();
@@ -190,6 +191,104 @@ describe('SIMDVectorSearch', () => {
       const n = normalize(v);
       const len = Math.sqrt(n[0]! * n[0]! + n[1]! * n[1]!);
       expect(len).toBeCloseTo(1.0, 5);
+    });
+  });
+});
+
+describe('WasmSimdSearchEngine', () => {
+  const jsSearch = new SIMDVectorSearch();
+
+  describe('cosineSimilarity consistency with JS path', () => {
+    it('should return same results as SIMDVectorSearch for identical vectors', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const a = new Float32Array([1, 2, 3, 4]);
+      const b = new Float32Array([1, 2, 3, 4]);
+      const wasmResult = wasm.cosineSimilarity(a, b);
+      const jsResult = jsSearch.cosineSimilarity(a, b);
+      expect(wasmResult).toBeCloseTo(jsResult, 5);
+    });
+
+    it('should return same results for orthogonal vectors', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const a = new Float32Array([1, 0, 0]);
+      const b = new Float32Array([0, 1, 0]);
+      expect(wasm.cosineSimilarity(a, b)).toBeCloseTo(jsSearch.cosineSimilarity(a, b), 5);
+    });
+
+    it('should return same results for random 128-dim vectors', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const a = randomVector(128);
+      const b = randomVector(128);
+      const wasmResult = wasm.cosineSimilarity(a, b);
+      const jsResult = jsSearch.cosineSimilarity(a, b);
+      expect(wasmResult).toBeCloseTo(jsResult, 4);
+    });
+
+    it('should handle zero vectors', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const a = new Float32Array([0, 0, 0]);
+      const b = new Float32Array([1, 2, 3]);
+      expect(wasm.cosineSimilarity(a, b)).toBe(0);
+    });
+
+    it('should throw on dimension mismatch', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const a = new Float32Array([1, 2, 3]);
+      const b = new Float32Array([1, 2]);
+      expect(() => wasm.cosineSimilarity(a, b)).toThrow('Dimension mismatch');
+    });
+  });
+
+  describe('batchSearch consistency', () => {
+    it('should return same topK results as JS implementation', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const query = randomVector(64);
+      const vectors: Float32Array[] = [];
+      for (let i = 0; i < 50; i++) vectors.push(randomVector(64));
+
+      const wasmResults = wasm.batchSearch(query, vectors, 5);
+      const jsResults = jsSearch.batchSearch(query, vectors, 5);
+
+      expect(wasmResults.length).toBe(jsResults.length);
+      for (let i = 0; i < wasmResults.length; i++) {
+        expect(wasmResults[i]!.index).toBe(jsResults[i]!.index);
+        expect(wasmResults[i]!.score).toBeCloseTo(jsResults[i]!.score, 4);
+      }
+    });
+
+    it('should handle empty vectors array', async () => {
+      const wasm = new WasmSimdSearchEngine();
+      await wasm.init();
+
+      const query = new Float32Array([1, 0, 0]);
+      expect(wasm.batchSearch(query, [], 3)).toEqual([]);
+    });
+  });
+
+  describe('createOptimalSearch', () => {
+    it('should return a valid search engine with backend info', async () => {
+      const { engine, backend } = await createOptimalSearch();
+      expect(engine).toBeDefined();
+      expect(['wasm-simd', 'wasm-scalar', 'js-typedarray']).toContain(backend);
+
+      // Verify it can perform search
+      const query = new Float32Array([1, 0, 0]);
+      const vectors = [new Float32Array([1, 0, 0]), new Float32Array([0, 1, 0])];
+      const results = engine.batchSearch(query, vectors, 1);
+      expect(results.length).toBe(1);
+      expect(results[0]!.index).toBe(0);
     });
   });
 });
