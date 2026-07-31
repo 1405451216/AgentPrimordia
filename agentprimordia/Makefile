@@ -1,7 +1,7 @@
 .PHONY: build test test-race test-short test-integration lint lint-all lint-go lint-ts cover cover-html cover-check \
         deprecation-check benchmark api-diff api-extract cover-trend clean run-hello run-multi run-production \
         docker-build docker-run docker-clean \
-        pgo-profile pgo-build pgo-clean test-ts
+        pgo-profile pgo-build pgo-clean test-ts test-affected
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS = -ldflags="-X main.Version=$(VERSION)"
@@ -167,6 +167,21 @@ docker-run:
 
 docker-clean:
 	docker compose down --rmi local --volumes --remove-orphans
+
+# 按变更范围运行测试：仅对 git diff 涉及的 Go 包执行 go test
+# 用法: make test-affected [BASE=origin/main]
+BASE ?= origin/main
+test-affected:
+	@echo "=== 按变更范围运行 Go 测试 (base: $(BASE)) ==="
+	@pkgs=$$(git diff --name-only $(BASE) -- '*.go' | grep -v '_test.go' | xargs -r -n1 dirname | sort -u | sed 's|^agentprimordia/||' | sed 's|^|./|'); \
+	if [ -z "$$pkgs" ]; then \
+		echo "无 Go 源码变更，跳过测试"; \
+	else \
+		echo "受影响包:"; \
+		echo "$$pkgs" | tr ' ' '\n'; \
+		echo ""; \
+		go test -v -count=1 $$pkgs; \
+	fi
 
 # Protocol Buffers generation
 .PHONY: proto

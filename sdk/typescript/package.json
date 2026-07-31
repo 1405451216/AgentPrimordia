@@ -14,6 +14,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
+        "test:affected": "vitest --changed origin/main --run",
         "bench": "vitest bench",
         "lint": "eslint src/",
         "lint:fix": "eslint src/ --fix",
