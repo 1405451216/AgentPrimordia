@@ -85,7 +85,7 @@ jobs:
           go list -u -m -json all 2>/dev/null | go-mod-outdated -update -direct || true
 
       - name: npm audit (TypeScript SDK)
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: |
           npm ci
           npm audit --audit-level=high || echo "::warning::npm audit 发现问题"

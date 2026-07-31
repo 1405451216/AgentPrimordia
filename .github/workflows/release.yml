@@ -75,10 +75,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: ../sdk/typescript/package-lock.json
+          cache-dependency-path: sdk/typescript/package-lock.json
 
       - name: Generate Node SBOM with syft
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: |
           npm ci
         # syft will scan the directory for both Go and Node dependencies
@@ -196,13 +196,13 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install and build
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: |
           npm ci
           npm run build
 
       - name: Publish
-        working-directory: ../sdk/typescript
+        working-directory: sdk/typescript
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
