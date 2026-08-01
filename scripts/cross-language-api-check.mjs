@@ -43,8 +43,8 @@ const SUITE_SYMBOLS = {
     tsSearchPaths: ['sdk/typescript/src'],
   },
   error_handling: {
-    go: ['AgentError', 'ErrorCode'],
-    ts: ['ErrorCode', 'AgentError'],
+    go: ['CodeError', 'GetErrorCode'],
+    ts: ['CodeError', 'getErrorCode'],
     tsSearchPaths: ['sdk/typescript/src'],
   },
   json_serialization: {
@@ -53,8 +53,10 @@ const SUITE_SYMBOLS = {
     tsSearchPaths: ['sdk/typescript/src'],
   },
   error_code_mapping: {
-    go: ['ErrorCode', 'AGENT_', 'TOOL_', 'LLM_', 'POOL_', 'MEM_', 'SEC_'],
-    ts: ['ErrorCode'],
+    // 错误码前缀以 sentinel 错误常量形式暴露（如 ErrAgentStopped -> AGENT_001），
+    // 检查两侧均存在的 sentinel 错误符号 + 提取函数
+    go: ['ErrAgentStopped', 'ErrToolNotFound', 'ErrLLMCallFailed', 'ErrPoolFull', 'ErrEpisodeNotFound', 'ErrCommandBlocked', 'GetErrorCode'],
+    ts: ['ErrAgentStopped', 'ErrToolNotFound', 'ErrLLMCallFailed', 'ErrPoolFull', 'ErrEpisodeNotFound', 'ErrCommandBlocked', 'getErrorCode'],
     tsSearchPaths: ['sdk/typescript/src'],
   },
   memory_store: {
@@ -73,13 +75,13 @@ const SUITE_SYMBOLS = {
     tsSearchPaths: ['sdk/typescript/src'],
   },
   chaos_config: {
-    go: ['ChaosExperiment', 'FaultConfig'],
-    ts: ['ChaosExperiment', 'FaultConfig'],
-    tsSearchPaths: ['sdk/typescript/src'],
+    go: ['ChaosEngine', 'ChaosExperiment'],
+    ts: ['ChaosEngine', 'Experiment'],
+    tsSearchPaths: ['sdk/typescript/src/chaos'],
   },
   orchestration: {
-    go: ['Pipeline', 'DAG', 'NewPipeline'],
-    ts: ['Pipeline', 'DAG', 'orchestrate'],
+    go: ['Pipeline', 'DAGWorkflow', 'NewPipeline'],
+    ts: ['Pipeline', 'DAGWorkflow', 'DAGBuilder'],
     tsSearchPaths: ['sdk/typescript/src/orchestration'],
   },
   governance_quota: {

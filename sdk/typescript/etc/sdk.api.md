@@ -2530,6 +2530,9 @@ export const defaultLogger: StructuredLogger;
 export function defaultPricingTable(): Map<string, ModelPricingInfo>;
 
 // @public
+export function defaultQuota(plan: TenantPlan): TenantQuota;
+
+// @public
 export function defaultSystemPrompt(): PromptTemplate;
 
 // @public
@@ -2537,6 +2540,38 @@ export function defaultToolkit(config: ToolkitConfig): ToolRegistry;
 
 // @public
 export function definePlugin(name: string, version: string, setup: (api: PluginAPI) => void): AgentPlugin;
+
+// @public
+export interface DeployConfig {
+    // (undocumented)
+    config_override?: unknown;
+    // (undocumented)
+    max_turns_override?: number;
+    // (undocumented)
+    model_override?: string;
+    // (undocumented)
+    provider_override?: string;
+    // (undocumented)
+    template_id: string;
+}
+
+// @public
+export class Deployer {
+    constructor(registry: MarketplaceTemplateRegistry);
+    deploy(cfg: DeployConfig): DeployResult;
+}
+
+// @public
+export interface DeployResult {
+    // (undocumented)
+    agent_config?: Record<string, unknown>;
+    // (undocumented)
+    message: string;
+    // (undocumented)
+    success: boolean;
+    // (undocumented)
+    template_id: string;
+}
 
 // @public
 export function detectRuntime(): RuntimeInfo;
@@ -2829,6 +2864,16 @@ export interface EditorState {
     history: EditorAction[];
     // (undocumented)
     workflow: VizWorkflow;
+}
+
+// @public
+export interface EnforcerSnapshot {
+    // (undocumented)
+    toolCalls: Record<string, number>;
+    // (undocumented)
+    totalCost: number;
+    // (undocumented)
+    totalToolCalls: number;
 }
 
 // @public
@@ -3456,6 +3501,36 @@ export class GLMProvider extends OpenAICompatibleProvider {
     protected supportsTools(): boolean;
 }
 
+// @public
+export interface GovernanceAuditEvent {
+    // (undocumented)
+    agentId: string;
+    // (undocumented)
+    detail?: unknown;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    reason: string;
+    // (undocumented)
+    severity: 'info' | 'warning' | 'critical';
+    // (undocumented)
+    timestamp: string;
+    // (undocumented)
+    toolName?: string;
+    // Warning: (ae-forgotten-export) The symbol "AuditEventType" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    type: AuditEventType;
+}
+
+// @public
+export interface GovernanceAuditLogger {
+    // (undocumented)
+    close(): void;
+    // (undocumented)
+    log(event: GovernanceAuditEvent): void;
+}
+
 // @public (undocumented)
 export class GroupChat {
     constructor(config: GroupChatConfig);
@@ -3934,6 +4009,16 @@ export class InjectionDetector {
     }[]);
     // (undocumented)
     detect(text: string): InjectionDetectionResult;
+}
+
+// @public
+export class InMemoryAuditLogger implements GovernanceAuditLogger {
+    // (undocumented)
+    close(): void;
+    // (undocumented)
+    events: GovernanceAuditEvent[];
+    // (undocumented)
+    log(event: GovernanceAuditEvent): void;
 }
 
 // @public (undocumented)
@@ -4770,6 +4855,61 @@ export class MarkdownParser implements OutputParser {
 }
 
 // @public
+export interface MarketplaceTemplate {
+    // (undocumented)
+    author: string;
+    category: string;
+    // (undocumented)
+    config?: unknown;
+    // (undocumented)
+    created_at: string;
+    // (undocumented)
+    default_model?: string;
+    // (undocumented)
+    default_provider?: string;
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    downloads: number;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    max_turns?: number;
+    memory_strategy?: string;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    rating: number;
+    // (undocumented)
+    system_prompt: string;
+    // (undocumented)
+    tags?: string[];
+    // (undocumented)
+    temperature?: number;
+    // (undocumented)
+    tools?: string[];
+    // (undocumented)
+    updated_at: string;
+    // (undocumented)
+    version: string;
+}
+
+// @public
+export class MarketplaceTemplateRegistry {
+    get(id: string): MarketplaceTemplate | undefined;
+    incrementDownloads(id: string): void;
+    list(): MarketplaceTemplate[];
+    rateTemplate(id: string, rating: number): void;
+    register(tmpl: MarketplaceTemplate): void;
+    search(query: string, category?: string, tags?: string[]): MarketplaceTemplate[];
+    get size(): number;
+    topByDownloads(n: number): MarketplaceTemplate[];
+    topByRating(n: number): MarketplaceTemplate[];
+    unregister(id: string): void;
+    update(tmpl: MarketplaceTemplate): void;
+}
+
+// @public
 export function Marshal(v: unknown): string;
 
 // @public
@@ -5056,6 +5196,9 @@ export interface MemoryStats {
     // (undocumented)
     totalSessions: number;
 }
+
+// @public
+export type MemoryStrategy = 'none' | 'conversation' | 'semantic' | 'hybrid';
 
 // @public
 export class MemoryStressFault implements Fault {
@@ -6276,6 +6419,62 @@ export interface PluginSandboxOptions {
 }
 
 // @public
+export interface Policy {
+    // (undocumented)
+    apiVersion: string;
+    // (undocumented)
+    kind: string;
+    // Warning: (ae-forgotten-export) The symbol "PolicyMetadata" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    metadata: PolicyMetadata;
+    // (undocumented)
+    spec: PolicySpec;
+}
+
+// @public
+export class PolicyEnforcer {
+    constructor(policy: Policy, opts?: {
+        auditLog?: GovernanceAuditLogger;
+        agentId?: string;
+    });
+    checkCost(cost: number): void;
+    checkOutput(output: string): void;
+    checkToolCall(toolName: string, args: string): void;
+    hotSwap(newPolicy: Policy): void;
+    recordCost(cost: number): void;
+    recordToolCall(toolName: string): void;
+    snapshot(): EnforcerSnapshot;
+}
+
+// @public
+export interface PolicySpec {
+    // Warning: (ae-forgotten-export) The symbol "BehaviorConstraints" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    behaviorConstraints?: BehaviorConstraints;
+    // Warning: (ae-forgotten-export) The symbol "CostLimits" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    costLimits?: CostLimits;
+    // Warning: (ae-forgotten-export) The symbol "OutputGuardrail_2" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    outputGuardrail?: OutputGuardrail_2;
+    // Warning: (ae-forgotten-export) The symbol "ToolRestriction" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    toolRestrictions?: ToolRestriction[];
+}
+
+// @public
+export class PolicyViolationError extends Error {
+    constructor(code: string, message: string);
+    // (undocumented)
+    readonly code: string;
+}
+
+// @public
 export interface PoolResult {
     // (undocumented)
     error?: Error;
@@ -6545,6 +6744,25 @@ export interface QueryFilter {
     resource?: string;
     // (undocumented)
     start?: string;
+}
+
+// @public
+export class QuotaManager {
+    constructor(tenantId: string, quotas: TenantQuota);
+    addAgent(): boolean;
+    addSession(): boolean;
+    checkQPS(): boolean;
+    recordTokens(count: number): boolean;
+    removeAgent(): void;
+    removeSession(): void;
+    snapshot(): {
+        agentCount: number;
+        sessionCount: number;
+        dayTokens: number;
+        qpsAvailable: number;
+    };
+    // (undocumented)
+    readonly tenantId: string;
 }
 
 // @public
@@ -7019,6 +7237,14 @@ export class ResourceFault implements FaultInjector {
     readonly target: string;
     // (undocumented)
     type(): string;
+}
+
+// @public
+export class ResourceManager {
+    get(tenantId: string): QuotaManager | undefined;
+    listTenants(): string[];
+    register(tenantId: string, quotas: TenantQuota): QuotaManager;
+    remove(tenantId: string): boolean;
 }
 
 // @public (undocumented)
@@ -8002,6 +8228,9 @@ export interface TCPTransportConfig {
 }
 
 // @public
+export type TemplateCategory = 'research' | 'coding' | 'analysis' | 'chat' | 'automation';
+
+// @public
 export class TemplateRegistry {
     get(name: string): PromptTemplate | null;
     has(name: string): boolean;
@@ -8010,6 +8239,69 @@ export class TemplateRegistry {
     render(name: string, vars: Record<string, string>): string;
     unregister(name: string): boolean;
 }
+
+// @public
+export interface TemplateValidationResult {
+    // (undocumented)
+    errors?: string[];
+    // (undocumented)
+    security_warnings?: string[];
+    // (undocumented)
+    valid: boolean;
+}
+
+// @public
+export interface Tenant {
+    // (undocumented)
+    createdAt: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    metadata?: Record<string, string>;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    plan: TenantPlan;
+    // (undocumented)
+    quotas: TenantQuota;
+    // (undocumented)
+    status: TenantStatus;
+}
+
+// @public
+export class TenantManager {
+    authenticate(apiKey: string): Tenant | undefined;
+    createTenant(name: string, plan?: TenantPlan, quotas?: TenantQuota): {
+        tenant: Tenant;
+        apiKey: string;
+    };
+    deleteTenant(tenantId: string): boolean;
+    getTenant(tenantId: string): Tenant | undefined;
+    listTenants(): Tenant[];
+    get size(): number;
+    updateQuotas(tenantId: string, quotas: TenantQuota): boolean;
+    updateStatus(tenantId: string, status: TenantStatus): boolean;
+}
+
+// @public
+export type TenantPlan = 'free' | 'pro' | 'enterprise';
+
+// @public
+export interface TenantQuota {
+    // (undocumented)
+    maxAgents: number;
+    // (undocumented)
+    maxQPS: number;
+    // (undocumented)
+    maxSessions: number;
+    // (undocumented)
+    maxStorageGB: number;
+    // (undocumented)
+    maxTokensPerDay: number;
+}
+
+// @public
+export type TenantStatus = 'active' | 'disabled' | 'archived';
 
 // @public (undocumented)
 export function textContent(text: string): MultimodalContent;
@@ -8060,6 +8352,13 @@ export class TokenAuthenticator {
     constructor(secret: string);
     authenticate(token: string): AgentIdentity;
     generateToken(identity: AgentIdentity): string;
+}
+
+// @public
+export class TokenBucket {
+    constructor(rate: number, burst?: number);
+    available(): number;
+    take(n?: number): boolean;
 }
 
 // @public
@@ -8516,6 +8815,9 @@ export function validatePathTraversal(path: string): {
 
 // @public
 export function validateTemperature(temp: number | undefined): void;
+
+// @public
+export function validateTemplate(t: MarketplaceTemplate): TemplateValidationResult;
 
 // @public
 export function validateToolName(name: string): void;
