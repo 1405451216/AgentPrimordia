@@ -21,7 +21,7 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 
 - `modernc.org/sqlite` — 纯 Go SQLite 驱动（无 CGO），用于 `internal/memory` 与 `ecosystem/plugins/kv` 等需要持久化的场景
 - `gopkg.in/yaml.v3` — 仅用于 `cmd/ap` 脚手架子命令的 YAML 模板渲染（agent.yaml 等），不作为通用配置库
-- `google.golang.org/grpc` + `google.golang.org/protobuf` + 间接依赖 `google.golang.org/genproto/googleapis/rpc` — **仅限 `internal/agent/a2a/` 及其子包** 使用，用于实现 Agent2Agent 协议（gRPC + protobuf 是该协议的事实标准）
+- `google.golang.org/grpc` + `google.golang.org/protobuf` + 间接依赖 `google.golang.org/genproto/googleapis/rpc` — **仅限 `internal/agent/a2a/` 及其子包，以及 `internal/agent/cluster/`（`grpc_bus.go`，跨节点消息复用 A2A gRPC 基础设施，见 V3.1 计划 3.2）与 `internal/agent/transport/`（`grpc.go`）** 使用。用于实现 Agent2Agent 协议与跨节点传输（gRPC + protobuf 是该协议的事实标准）。
 - `go.etcd.io/etcd/client/v3` — etcd 客户端（G2-3 分布式检查点后端）。**仅限 `internal/persist/` 下带 `etcd` build tag 的文件** 使用。etcd 是分布式强一致协调的行业标准协议，其客户端无 Go 标准库等价实现，符合 §2.2 硬性需求豁免。
 - `github.com/redis/go-redis/v9` — Redis 客户端（G2-3 分布式检查点后端）。**仅限 `internal/persist/` 下带 `redis` build tag 的文件** 使用。Redis 线协议客户端属行业标准实现，无法用标准库合理复现，符合 §2.2 硬性需求豁免。
 - `github.com/tetratelabs/wazero` — 纯 Go（CGO-free）WebAssembly 运行时（G3-3 WASM 执行）。**仅限 `wasm/` 模块** 使用。WASM 运行时无标准库等价实现，wazero 为 CGO-free 纯 Go 实现，符合 §2.2 硬性需求豁免。
