@@ -38,7 +38,7 @@ func (a *ReActAgent) WithMemory(m MemoryStore) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, memory: m})
 }
 
-// WithToolkit 注入工具注册表，返回可链式调用的 CapabilityAgent
+// WithToolkit 注入tool注册表，返回可链式调用的 CapabilityAgent
 func (a *ReActAgent) WithToolkit(t *tools.Registry) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, toolkit: t})
 }
@@ -120,7 +120,7 @@ func (a *ReActAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
 }
 
 // WithAuditLogger 注入审计日志器，返回可链式调用的 CapabilityAgent
-// LLM 调用、工具调用、Agent 启动/停止等关键路径会自动写入审计事件
+// LLM 调用、tool调用、Agent 启动/停止等关键路径会自动写入审计事件
 func (a *ReActAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, auditLogger: l})
 }

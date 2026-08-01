@@ -25,7 +25,7 @@ func (r *Registry) Register(name string, tmpl *Template) error {
 	defer r.mu.Unlock()
 
 	if _, exists := r.templates[name]; exists {
-		return fmt.Errorf("模板 %q 已存在", name)
+		return fmt.Errorf("template %q already exists", name)
 	}
 	r.templates[name] = tmpl
 	return nil
@@ -47,7 +47,7 @@ func (r *Registry) Get(name string) (*Template, error) {
 
 	tmpl, ok := r.templates[name]
 	if !ok {
-		return nil, fmt.Errorf("模板 %q 不存在", name)
+		return nil, fmt.Errorf("template %q not found", name)
 	}
 	// 返回克隆副本，避免修改原始模板
 	return tmpl.Clone(), nil
@@ -83,7 +83,7 @@ func (r *Registry) Delete(name string) error {
 	defer r.mu.Unlock()
 
 	if _, ok := r.templates[name]; !ok {
-		return fmt.Errorf("模板 %q 不存在", name)
+		return fmt.Errorf("template %q not found", name)
 	}
 	delete(r.templates, name)
 	return nil
@@ -174,7 +174,7 @@ func (mt *MessageTemplates) RenderAll(vars map[string]any) (map[MessageRole]stri
 	if mt.registry.Has("__system__") {
 		s, err := mt.RenderSystem(vars)
 		if err != nil {
-			return nil, fmt.Errorf("渲染系统消息失败: %w", err)
+			return nil, fmt.Errorf("failed to render system message: %w", err)
 		}
 		result[RoleSystem] = s
 	}
@@ -182,7 +182,7 @@ func (mt *MessageTemplates) RenderAll(vars map[string]any) (map[MessageRole]stri
 	if mt.registry.Has("__user__") {
 		s, err := mt.RenderUser(vars)
 		if err != nil {
-			return nil, fmt.Errorf("渲染用户消息失败: %w", err)
+			return nil, fmt.Errorf("failed to render user message: %w", err)
 		}
 		result[RoleUser] = s
 	}
@@ -190,7 +190,7 @@ func (mt *MessageTemplates) RenderAll(vars map[string]any) (map[MessageRole]stri
 	if mt.registry.Has("__assistant__") {
 		s, err := mt.RenderAssistant(vars)
 		if err != nil {
-			return nil, fmt.Errorf("渲染助手消息失败: %w", err)
+			return nil, fmt.Errorf("failed to render assistant message: %w", err)
 		}
 		result[RoleAssistant] = s
 	}
@@ -235,18 +235,18 @@ func DefaultRegistry() *Registry {
 - 不要编造不存在的信息`,
 	))
 
-	// 工具调用模板
+	// tool调用模板
 	r.MustRegister("tool.system", NewTemplate(
-		`你是一个可以使用工具的助手。当需要执行操作时，请调用合适的工具。
+		`你是一个可以使用tool的助手。当需要执行操作时，请调用合适的tool。
 
 可用工具：
 {{range .tools}}- {{.name}}: {{.description}}
 {{end}}
 
 使用规则：
-1. 只使用上述列出的工具
-2. 调用工具前先思考是否必要
-3. 将工具返回的结果整合到回答中`,
+1. 只使用上述列出的tool
+2. 调用tool前先思考是否必要
+3. 将tool返回的结果整合到回答中`,
 	))
 
 	// 代码生成模板

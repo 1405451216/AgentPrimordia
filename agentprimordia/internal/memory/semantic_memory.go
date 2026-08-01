@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Pattern 结构化工具使用模式（从 Episodic 蒸馏得到）。
+// Pattern 结构化tool使用模式（从 Episodic 蒸馏得到）。
 type Pattern struct {
 	Pattern     string
 	Description string
@@ -43,7 +43,7 @@ func NewSemanticMemory() *SemanticMemory {
 	}
 }
 
-// AddPattern 记录/更新一个工具使用模式。
+// AddPattern 记录/更新一个tool使用模式。
 func (s *SemanticMemory) AddPattern(ctx context.Context, p Pattern) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -95,7 +95,7 @@ func (s *SemanticMemory) InjectPrompt() string {
 		}
 	}
 	if len(s.patterns) > 0 {
-		b.WriteString("## 工具使用模式\n")
+		b.WriteString("## tool使用模式\n")
 		for _, p := range s.patterns {
 			fmt.Fprintf(&b, "- %s: %s（成功率 %.2f）\n", p.Pattern, p.Description, p.SuccessRate)
 		}

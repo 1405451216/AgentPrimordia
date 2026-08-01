@@ -1,9 +1,9 @@
 // Package ap 提供 AgentPrimordia 框架的公共 API。
 //
 // AgentPrimordia 是一个通用 Go Agent 开发框架，核心能力包括：
-//   - ReAct 循环引擎（Agent 推理 + 工具调用）
+//   - ReAct 循环引擎（Agent 推理 + tool调用）
 //   - 多 Agent 编排（Pipeline / Handoff / Parallel / DAG）
-//   - 工具系统（注册、权限、作用域）
+//   - tool系统（注册、权限、作用域）
 //   - 记忆存储（SQLite + FTS5 + 向量检索）
 //   - LLM 抽象层（OpenAI / Anthropic / Gemini / Ollama / Azure / Cohere / Mistral）
 //   - Pool 调度（并发任务分发、重试、会话管理）
@@ -59,10 +59,10 @@ type PromptTemplate = agent.PromptTemplate
 // AgentStatus 表示 Agent 的当前运行状态
 type AgentStatus = agent.AgentStatus
 
-// AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、工具调用次数等
+// AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、tool调用次数等
 type AgentStats = agent.AgentStats
 
-// Message 表示对话中的一条消息，包含角色、内容和可选的工具调用
+// Message 表示对话中的一条消息，包含角色、内容和可选的tool调用
 type Message = agent.Message
 
 // Role 表示消息发送者的角色（system / user / assistant / tool）
@@ -71,19 +71,19 @@ type Role = agent.Role
 // ContentPart 是多模态消息的内容片段（文本/图片URL/Base64图片/音频/视频）
 type ContentPart = agent.ContentPart
 
-// ToolCall 表示 LLM 发起的工具调用请求，包含调用 ID、工具名称和 JSON 参数
+// ToolCall 表示 LLM 发起的tool调用请求，包含调用 ID、tool名称和 JSON 参数
 type ToolCall = agent.ToolCall
 
-// Thought 表示 LLM 的推理输出，包含文本内容和可选的工具调用列表
+// Thought 表示 LLM 的推理输出，包含文本内容和可选的tool调用列表
 type Thought = agent.Thought
 
-// Response 表示 Agent 的最终响应，包含内容、工具调用、用量和指标
+// Response 表示 Agent 的最终响应，包含内容、tool调用、用量和指标
 type Response = agent.Response
 
 // AgentUsage 表示 LLM 调用的 Token 用量统计
 type AgentUsage = agent.Usage
 
-// AgentMetrics 表示 Agent 运行期间的性能指标，包括轮次、工具数、延迟等
+// AgentMetrics 表示 Agent 运行期间的性能指标，包括轮次、tool数、延迟等
 type AgentMetrics = agent.Metrics
 
 // MemoryStore 是 Agent 所需的记忆存储接口，由 memory.Memory 通过适配器实现
@@ -101,7 +101,7 @@ type Summarizer = memory.Summarizer
 // EventPublisher 是 Agent 所需的事件发布接口，用于异步发布生命周期事件
 type EventPublisher = agent.EventPublisher
 
-// MetricsRecorder 是 Agent 所需的指标记录接口，用于收集 LLM 调用、工具调用等指标
+// MetricsRecorder 是 Agent 所需的指标记录接口，用于收集 LLM 调用、tool调用等指标
 type MetricsRecorder = agent.MetricsRecorder
 
 // StreamEvent 是流式输出的事件，包含事件类型、内容和附加数据
@@ -150,7 +150,7 @@ const (
 	RoleUser = agent.RoleUser
 	// RoleAssistant 表示助手角色消息
 	RoleAssistant = agent.RoleAssistant
-	// RoleTool 表示工具角色消息
+	// RoleTool 表示tool角色消息
 	RoleTool = agent.RoleTool
 
 	// StatusIdle 表示 Agent 处于空闲状态
@@ -170,9 +170,9 @@ const (
 	StreamEventToken = agent.StreamEventToken
 	// StreamEventThought 表示推理/思考事件
 	StreamEventThought = agent.StreamEventThought
-	// StreamEventToolCall 表示工具调用开始事件
+	// StreamEventToolCall 表示tool调用开始事件
 	StreamEventToolCall = agent.StreamEventToolCall
-	// StreamEventToolResult 表示工具执行结果事件
+	// StreamEventToolResult 表示tool执行结果事件
 	StreamEventToolResult = agent.StreamEventToolResult
 	// StreamEventComplete 表示运行完成事件
 	StreamEventComplete = agent.StreamEventComplete
@@ -183,7 +183,7 @@ const (
 	RAGModeAuto = agent.RAGModeAuto
 	// RAGModeFirst 仅在第一轮推理前查询知识库
 	RAGModeFirst = agent.RAGModeFirst
-	// RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search 工具时查询
+	// RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search tool时查询
 	RAGModeOnDemand = agent.RAGModeOnDemand
 
 	// BusMsgTaskRequest 表示任务请求消息
@@ -256,7 +256,7 @@ var (
 
 	// WithMemory 注入记忆存储
 	WithMemory = agent.WithMemory
-	// WithToolkit 注入工具注册表
+	// WithToolkit 注入tool注册表
 	WithToolkit = agent.WithToolkit
 	// WithHooks 注入生命周期钩子
 	WithHooks = agent.WithHooks
@@ -293,7 +293,7 @@ var (
 	WithObservability = agent.WithObservability
 	// WithResilience 一次性注入容错配置
 	WithResilience = agent.WithResilience
-	// WithToolsConfig 一次性注入工具配置
+	// WithToolsConfig 一次性注入tool配置
 	WithToolsConfig = agent.WithToolsConfig
 )
 
@@ -318,7 +318,7 @@ type ObservabilityConfig = agent.ObservabilityConfig
 // ResilienceConfig 容错分组配置（CheckpointStore / HITL / Cache / ContextWindow）
 type ResilienceConfig = agent.ResilienceConfig
 
-// ToolsConfig 工具系统分组配置（Registry）
+// ToolsConfig tool系统分组配置（Registry）
 type ToolsConfig = agent.ToolsConfig
 
 // HITLConfig 人机协作配置
@@ -363,7 +363,7 @@ type MemoryCapable = agent.MemoryCapable
 // RAGCapable 标识 Agent 具备 RAG 检索能力，引擎自动注入知识库上下文
 type RAGCapable = agent.RAGCapable
 
-// HITLCapable 标识 Agent 具备人机协作能力，工具执行前自动检查人类确认
+// HITLCapable 标识 Agent 具备人机协作能力，tool执行前自动检查人类确认
 type HITLCapable = agent.HITLCapable
 
 // HookCapable 标识 Agent 具备 Hook 能力，引擎自动触发注册的 Hook 函数

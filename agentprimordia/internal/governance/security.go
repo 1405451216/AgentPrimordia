@@ -1,7 +1,7 @@
 // security.go — 安全审计强化（生产集成深度）
 //
 // 1. maskSecret — 审计日志中的 Secret 脱敏（API Key / Token / Password / Connection String）
-// 2. detectPromptInjection — 工具参数中的 prompt injection 攻击检测（中英文双语）
+// 2. detectPromptInjection — tool参数中的 prompt injection 攻击检测（中英文双语）
 // 3. ValidateInput — 输入长度和字符集校验，防止日志注入和缓冲区溢出
 package governance
 
@@ -87,7 +87,7 @@ var injectionPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)你是(一个|一个没有|没有任何)(限制|约束|道德|安全限制)(的)?(AI|人工智能|助手|模型)`),
 }
 
-// detectPromptInjection 检测工具参数中的 prompt injection 攻击。
+// detectPromptInjection 检测tool参数中的 prompt injection 攻击。
 // 返回匹配到的模式描述（空字符串表示未检测到）。
 func detectPromptInjection(input string) string {
 	for _, p := range injectionPatterns {
@@ -100,13 +100,13 @@ func detectPromptInjection(input string) string {
 
 // ===== 输入校验 =====
 
-// maxInputLength 工具参数最大长度（1MB），防止缓冲区溢出。
+// maxInputLength tool参数最大长度（1MB），防止缓冲区溢出。
 const maxInputLength = 1 << 20
 
-// ValidateInput 校验工具调用输入。
+// ValidateInput 校验tool调用输入。
 // 返回 sanitized 输入和可能的错误。
 func ValidateInput(toolName, args string) (string, string, error) {
-	// 工具名校验
+	// tool名校验
 	if len(toolName) == 0 || len(toolName) > 256 {
 		return toolName, args, fmt.Errorf("tool name length invalid: %d", len(toolName))
 	}

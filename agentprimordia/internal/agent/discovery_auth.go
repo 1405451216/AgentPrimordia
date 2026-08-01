@@ -37,12 +37,12 @@ func NewTokenAuthenticator(secret string) *TokenAuthenticator {
 // GenerateToken 为 Agent 身份生成签名 token
 func (a *TokenAuthenticator) GenerateToken(identity *AgentIdentity) (string, error) {
 	if identity == nil {
-		return "", errors.New("identity 不能为空")
+		return "", errors.New("identity must not be empty")
 	}
 
 	payload, err := json.Marshal(identity)
 	if err != nil {
-		return "", fmt.Errorf("序列化身份失败: %w", err)
+		return "", fmt.Errorf("failed to serialize identity: %w", err)
 	}
 
 	mac := hmac.New(sha256.New, a.secret)
@@ -59,29 +59,29 @@ func (a *TokenAuthenticator) GenerateToken(identity *AgentIdentity) (string, err
 func (a *TokenAuthenticator) Authenticate(token string) (*AgentIdentity, error) {
 	parts := strings.SplitN(token, ".", 2)
 	if len(parts) != 2 {
-		return nil, errors.New("token 格式无效")
+		return nil, errors.New("invalid token format")
 	}
 
 	payload, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
-		return nil, fmt.Errorf("解码 payload 失败: %w", err)
+		return nil, fmt.Errorf("failed to decode payload: %w", err)
 	}
 
 	signature, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
-		return nil, fmt.Errorf("解码签名失败: %w", err)
+		return nil, fmt.Errorf("failed to decode signature: %w", err)
 	}
 
 	// 验证签名
 	mac := hmac.New(sha256.New, a.secret)
 	mac.Write(payload)
 	if !hmac.Equal(mac.Sum(nil), signature) {
-		return nil, errors.New("token 签名无效")
+		return nil, errors.New("invalid token signature")
 	}
 
 	var identity AgentIdentity
 	if err := json.Unmarshal(payload, &identity); err != nil {
-		return nil, fmt.Errorf("反序列化身份失败: %w", err)
+		return nil, fmt.Errorf("failed to deserialize identity: %w", err)
 	}
 
 	return &identity, nil
@@ -109,11 +109,11 @@ func NewAuthenticatedDiscovery(inner Discovery, auth *TokenAuthenticator) *Authe
 func (d *AuthenticatedDiscovery) Register(ctx context.Context, info *AgentInfo, token string) error {
 	identity, err := d.auth.Authenticate(token)
 	if err != nil {
-		return fmt.Errorf("认证失败: %w", err)
+		return fmt.Errorf("authentication failed: %w", err)
 	}
 
 	if identity.ID != info.ID {
-		return errors.New("token 身份与注册信息不匹配")
+		return errors.New("token identity does not match registration")
 	}
 
 	// 将 identity 的角色同步到 info.Capabilities，确保 ListAgentsByRole 可按角色过滤
@@ -141,7 +141,7 @@ func (d *AuthenticatedDiscovery) Discover(ctx context.Context, id string) (*Agen
 func (d *AuthenticatedDiscovery) Unregister(ctx context.Context, id string, token string) error {
 	_, err := d.auth.Authenticate(token)
 	if err != nil {
-		return fmt.Errorf("认证失败: %w", err)
+		return fmt.Errorf("authentication failed: %w", err)
 	}
 
 	d.mu.Lock()

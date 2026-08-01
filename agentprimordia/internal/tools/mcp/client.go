@@ -19,10 +19,10 @@ const (
 	// mcpProtocolVersion 支持的 MCP 协议版本
 	mcpProtocolVersion = "2024-11-05"
 
-	// defaultTimeout 默认请求超时时间
+	// defaultTimeout 默认request timeout时间
 	defaultTimeout = 30 * time.Second
 
-	// maxToolResultLen 单个 MCP 工具结果文本最大长度
+	// maxToolResultLen 单个 MCP tool结果文本最大长度
 	maxToolResultLen = 100 * 1024
 )
 
@@ -37,14 +37,14 @@ type Client struct {
 	pending   map[int64]chan *jsonRPCResponse // 等待响应的回调通道
 	pendingMu sync.Mutex                      // 保护 pending map
 
-	tools      []ToolDefinition   // 已发现的工具列表
+	tools      []ToolDefinition   // 已发现的tool列表
 	resources  []Resource         // 已发现的资源列表
 	prompts    []PromptDefinition // 已发现的提示词列表
 	serverInfo ServerInfo         // 服务器信息
 	dataMu     sync.RWMutex       // 保护 tools/resources/prompts/serverInfo
 
 	logger  *slog.Logger  // 日志记录器
-	timeout time.Duration // 请求超时时间
+	timeout time.Duration // request timeout时间
 	done    chan struct{} // 关闭信号
 	closed  bool          // 是否已关闭
 }
@@ -54,7 +54,7 @@ type Config struct {
 	Command string            // 要启动的 MCP 服务器命令
 	Args    []string          // 命令参数
 	Env     map[string]string // 环境变量
-	Timeout time.Duration     // 请求超时，0 使用默认值
+	Timeout time.Duration     // request timeout，0 使用默认值
 }
 
 // NewClient 创建并启动 MCP 服务器子进程，返回客户端实例。
@@ -66,7 +66,7 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 
 	if strings.TrimSpace(cfg.Command) == "" {
-		return nil, fmt.Errorf("MCP 客户端配置错误: Command 不能为空")
+		return nil, fmt.Errorf("MCP client config error: Command must not be empty")
 	}
 
 	cmd := exec.Command(cfg.Command, cfg.Args...)
@@ -82,12 +82,12 @@ func NewClient(cfg Config) (*Client, error) {
 	// 创建 stdin/stdout 管道
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("创建 stdin 管道失败: %w", err)
+		return nil, fmt.Errorf("failed to create stdin pipe: %w", err)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		stdin.Close()
-		return nil, fmt.Errorf("创建 stdout 管道失败: %w", err)
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
 	// stderr 丢弃，避免泄露敏感信息
@@ -96,7 +96,7 @@ func NewClient(cfg Config) (*Client, error) {
 	if err := cmd.Start(); err != nil {
 		stdin.Close()
 		stdout.Close()
-		return nil, fmt.Errorf("启动 MCP 服务器失败: %w", err)
+		return nil, fmt.Errorf("failed to start MCP server: %w", err)
 	}
 
 	c := &Client{
@@ -136,13 +136,13 @@ func (c *Client) Initialize(ctx context.Context) error {
 
 	result, err := c.sendRequest(ctx, "initialize", params)
 	if err != nil {
-		return fmt.Errorf("MCP initialize 失败: %w", err)
+		return fmt.Errorf("MCP initialize failed: %w", err)
 	}
 
 	// 解析 initialize 结果
 	var initResult initializeResult
 	if err := json.Unmarshal(result, &initResult); err != nil {
-		return fmt.Errorf("解析 initialize 响应失败: %w", err)
+		return fmt.Errorf("failed to parse initialize response: %w", err)
 	}
 
 	c.dataMu.Lock()
@@ -154,9 +154,9 @@ func (c *Client) Initialize(ctx context.Context) error {
 		c.logger.Warn("发送 initialized 通知失败", "error", err)
 	}
 
-	// 3. 获取工具列表
+	// 3. 获取tool列表
 	if err := c.fetchTools(ctx); err != nil {
-		c.logger.Warn("获取工具列表失败", "error", err)
+		c.logger.Warn("获取tool列表失败", "error", err)
 	}
 
 	// 4. 获取资源列表（忽略错误，服务器可能不支持）
@@ -174,16 +174,16 @@ func (c *Client) Initialize(ctx context.Context) error {
 	return nil
 }
 
-// ListTools 列出 MCP 服务器提供的工具
+// ListTools 列出 MCP 服务器提供的tool
 func (c *Client) ListTools(ctx context.Context) ([]ToolDefinition, error) {
 	result, err := c.sendRequest(ctx, "tools/list", nil)
 	if err != nil {
-		return nil, fmt.Errorf("tools/list 请求失败: %w", err)
+		return nil, fmt.Errorf("tools/list request failed: %w", err)
 	}
 
 	var listResult listToolsResult
 	if err := json.Unmarshal(result, &listResult); err != nil {
-		return nil, fmt.Errorf("解析 tools/list 响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse tools/list response: %w", err)
 	}
 
 	c.dataMu.Lock()
@@ -193,7 +193,7 @@ func (c *Client) ListTools(ctx context.Context) ([]ToolDefinition, error) {
 	return listResult.Tools, nil
 }
 
-// CallTool 调用 MCP 服务器上的工具
+// CallTool 调用 MCP 服务器上的tool
 func (c *Client) CallTool(ctx context.Context, name string, args map[string]any) (*ToolCallResult, error) {
 	params := callToolParams{
 		Name:      name,
@@ -202,12 +202,12 @@ func (c *Client) CallTool(ctx context.Context, name string, args map[string]any)
 
 	result, err := c.sendRequest(ctx, "tools/call", params)
 	if err != nil {
-		return nil, fmt.Errorf("tools/call 请求失败: %w", err)
+		return nil, fmt.Errorf("tools/call request failed: %w", err)
 	}
 
 	var callResult ToolCallResult
 	if err := json.Unmarshal(result, &callResult); err != nil {
-		return nil, fmt.Errorf("解析 tools/call 响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse tools/call response: %w", err)
 	}
 
 	return &callResult, nil
@@ -217,12 +217,12 @@ func (c *Client) CallTool(ctx context.Context, name string, args map[string]any)
 func (c *Client) ListResources(ctx context.Context) ([]Resource, error) {
 	result, err := c.sendRequest(ctx, "resources/list", nil)
 	if err != nil {
-		return nil, fmt.Errorf("resources/list 请求失败: %w", err)
+		return nil, fmt.Errorf("resources/list request failed: %w", err)
 	}
 
 	var listResult listResourcesResult
 	if err := json.Unmarshal(result, &listResult); err != nil {
-		return nil, fmt.Errorf("解析 resources/list 响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse resources/list response: %w", err)
 	}
 
 	return listResult.Resources, nil
@@ -234,12 +234,12 @@ func (c *Client) ReadResource(ctx context.Context, uri string) (string, error) {
 
 	result, err := c.sendRequest(ctx, "resources/read", params)
 	if err != nil {
-		return "", fmt.Errorf("resources/read 请求失败: %w", err)
+		return "", fmt.Errorf("resources/read request failed: %w", err)
 	}
 
 	var readResult readResourceResult
 	if err := json.Unmarshal(result, &readResult); err != nil {
-		return "", fmt.Errorf("解析 resources/read 响应失败: %w", err)
+		return "", fmt.Errorf("failed to parse resources/read response: %w", err)
 	}
 
 	// 合并所有文本内容
@@ -257,12 +257,12 @@ func (c *Client) ReadResource(ctx context.Context, uri string) (string, error) {
 func (c *Client) ListPrompts(ctx context.Context) ([]PromptDefinition, error) {
 	result, err := c.sendRequest(ctx, "prompts/list", nil)
 	if err != nil {
-		return nil, fmt.Errorf("prompts/list 请求失败: %w", err)
+		return nil, fmt.Errorf("prompts/list request failed: %w", err)
 	}
 
 	var listResult listPromptsResult
 	if err := json.Unmarshal(result, &listResult); err != nil {
-		return nil, fmt.Errorf("解析 prompts/list 响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse prompts/list response: %w", err)
 	}
 
 	return listResult.Prompts, nil
@@ -277,12 +277,12 @@ func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]any
 
 	result, err := c.sendRequest(ctx, "prompts/get", params)
 	if err != nil {
-		return "", fmt.Errorf("prompts/get 请求失败: %w", err)
+		return "", fmt.Errorf("prompts/get request failed: %w", err)
 	}
 
 	var getResult getPromptResult
 	if err := json.Unmarshal(result, &getResult); err != nil {
-		return "", fmt.Errorf("解析 prompts/get 响应失败: %w", err)
+		return "", fmt.Errorf("failed to parse prompts/get response: %w", err)
 	}
 
 	// 合并所有消息文本
@@ -296,7 +296,7 @@ func (c *Client) GetPrompt(ctx context.Context, name string, args map[string]any
 	return strings.Join(texts, "\n"), nil
 }
 
-// Tools 返回已发现的工具列表
+// Tools 返回已发现的tool列表
 func (c *Client) Tools() []ToolDefinition {
 	c.dataMu.RLock()
 	defer c.dataMu.RUnlock()
@@ -439,7 +439,7 @@ func (c *Client) sendRequest(ctx context.Context, method string, params any) (js
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("序列化请求失败: %w", err)
+		return nil, fmt.Errorf("failed to serialize request: %w", err)
 	}
 
 	// 注册等待通道
@@ -457,7 +457,7 @@ func (c *Client) sendRequest(ctx context.Context, method string, params any) (js
 		c.pendingMu.Lock()
 		delete(c.pending, id)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("写入请求失败: %w", err)
+		return nil, fmt.Errorf("write request failed: %w", err)
 	}
 
 	// 等待响应或超时
@@ -471,14 +471,14 @@ func (c *Client) sendRequest(ctx context.Context, method string, params any) (js
 	select {
 	case resp := <-respCh:
 		if resp.Error != nil {
-			return nil, fmt.Errorf("MCP 错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+			return nil, fmt.Errorf("MCP error [%d]: %s", resp.Error.Code, resp.Error.Message)
 		}
 		return resp.Result, nil
 	case <-time.After(timeout):
 		c.pendingMu.Lock()
 		delete(c.pending, id)
 		c.pendingMu.Unlock()
-		return nil, fmt.Errorf("请求 %q 超时 (%v)", method, timeout)
+		return nil, fmt.Errorf("request %q timed out (%v)", method, timeout)
 	case <-ctx.Done():
 		c.pendingMu.Lock()
 		delete(c.pending, id)
@@ -497,7 +497,7 @@ func (c *Client) sendNotification(ctx context.Context, method string, params any
 
 	body, err := json.Marshal(notif)
 	if err != nil {
-		return fmt.Errorf("序列化通知失败: %w", err)
+		return fmt.Errorf("failed to serialize notification: %w", err)
 	}
 
 	c.mu.Lock()
@@ -507,7 +507,7 @@ func (c *Client) sendNotification(ctx context.Context, method string, params any
 	return err
 }
 
-// fetchTools 获取并缓存工具列表
+// fetchTools 获取并缓存tool列表
 func (c *Client) fetchTools(ctx context.Context) error {
 	tools, err := c.ListTools(ctx)
 	if err != nil {

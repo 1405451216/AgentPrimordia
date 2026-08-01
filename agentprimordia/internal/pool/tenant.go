@@ -50,13 +50,13 @@ func DefaultTenantQuota() TenantQuota {
 // Validate 检查配额合法性。
 func (q TenantQuota) Validate() error {
 	if q.MaxConcurrency < 0 {
-		return fmt.Errorf("pool: TenantQuota.MaxConcurrency 不能为负")
+		return fmt.Errorf("pool: TenantQuota.MaxConcurrency must not be negative")
 	}
 	if q.MaxTasksPerMinute < 0 {
-		return fmt.Errorf("pool: TenantQuota.MaxTasksPerMinute 不能为负")
+		return fmt.Errorf("pool: TenantQuota.MaxTasksPerMinute must not be negative")
 	}
 	if q.Burst < 0 {
-		return fmt.Errorf("pool: TenantQuota.Burst 不能为负")
+		return fmt.Errorf("pool: TenantQuota.Burst must not be negative")
 	}
 	return nil
 }
@@ -123,7 +123,7 @@ func (e *TenantEntry) tryAcquire(now time.Time) error {
 		cur := e.concurrency.Add(1)
 		if cur > int64(e.quota.MaxConcurrency) {
 			e.concurrency.Add(-1)
-			return fmt.Errorf("%w: tenant 并发已满 (cur=%d max=%d)", ErrTenantQuotaExceeded, cur-1, e.quota.MaxConcurrency)
+			return fmt.Errorf("%w: tenant concurrency full (cur=%d max=%d)", ErrTenantQuotaExceeded, cur-1, e.quota.MaxConcurrency)
 		}
 	}
 
@@ -135,7 +135,7 @@ func (e *TenantEntry) tryAcquire(now time.Time) error {
 			if e.quota.MaxConcurrency > 0 {
 				e.concurrency.Add(-1) // 回滚并发槽
 			}
-			return fmt.Errorf("%w: tenant 速率已满 (burst=%d)", ErrTenantQuotaExceeded, e.quota.Burst)
+			return fmt.Errorf("%w: tenant rate limit full (burst=%d)", ErrTenantQuotaExceeded, e.quota.Burst)
 		}
 	}
 
@@ -149,8 +149,8 @@ func (e *TenantEntry) release() {
 	}
 }
 
-// ErrTenantQuotaExceeded 表示 tenant 配额耗尽（并发或速率）。
-var ErrTenantQuotaExceeded = errors.New("pool: tenant 配额耗尽")
+// ErrTenantQuotaExceeded 表示 tenant quota exhausted（并发或速率）。
+var ErrTenantQuotaExceeded = errors.New("pool: tenant quota exhausted")
 
 // TenantRegistry 集中管理 tenant 配额。
 type TenantRegistry struct {
@@ -175,7 +175,7 @@ func NewTenantRegistry(factory func(tenantID string) (TenantQuota, error), defau
 // GetOrCreate 返回指定 tenant 的 entry；不存在则按 factory/defaultQ 创建。
 func (r *TenantRegistry) GetOrCreate(tenantID string) (*TenantEntry, error) {
 	if tenantID == "" {
-		return nil, fmt.Errorf("pool: tenantID 不能为空")
+		return nil, fmt.Errorf("pool: tenantID must not be empty")
 	}
 	r.mu.RLock()
 	entry, ok := r.entries[tenantID]
@@ -195,7 +195,7 @@ func (r *TenantRegistry) GetOrCreate(tenantID string) (*TenantEntry, error) {
 		var err error
 		q, err = r.factory(tenantID)
 		if err != nil {
-			return nil, fmt.Errorf("pool: 查询 tenant %s 配额失败：%w", tenantID, err)
+			return nil, fmt.Errorf("pool: failed to query tenant %s quota: %w", tenantID, err)
 		}
 	}
 	if q.MaxConcurrency == 0 && q.MaxTasksPerMinute == 0 {
@@ -309,7 +309,7 @@ func (p *Pool) SubmitForTenant(ctx context.Context, tenantID string, task TaskCo
 		return nil, err
 	}
 	if len(results) == 0 {
-		return nil, fmt.Errorf("pool: Dispatch 返回空结果")
+		return nil, fmt.Errorf("pool: Dispatch returned empty result")
 	}
 	return results[0], nil
 }

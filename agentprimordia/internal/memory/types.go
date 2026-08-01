@@ -54,7 +54,7 @@ type MemoryQuery interface {
 	GetMemoryTimeline(ctx context.Context, days int) ([]*MemoryTimelineGroup, error)
 }
 
-// MemoryToolUse 工具使用记录接口
+// MemoryToolUse tool使用记录接口
 type MemoryToolUse interface {
 	RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error
 }

@@ -249,7 +249,7 @@ func (f *CompositeFault) Inject(ctx context.Context) (CleanupFunc, error) {
 			for _, c := range cleanups {
 				_ = c(ctx)
 			}
-			return nil, fmt.Errorf("组合故障注入失败: %w", err)
+			return nil, fmt.Errorf("combined fault injection failed: %w", err)
 		}
 		cleanups = append(cleanups, cleanup)
 	}

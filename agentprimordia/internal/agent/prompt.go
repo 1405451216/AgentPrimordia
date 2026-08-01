@@ -55,12 +55,12 @@ func (t *PromptTemplate) Render() (string, error) {
 
 	tmpl, err := template.New("prompt").Option("missingkey=zero").Parse(t.template)
 	if err != nil {
-		return "", fmt.Errorf("解析模板失败: %w", err)
+		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, t.vars); err != nil {
-		return "", fmt.Errorf("渲染模板失败: %w", err)
+		return "", fmt.Errorf("failed to render template: %w", err)
 	}
 
 	return strings.TrimSpace(buf.String()), nil
@@ -80,7 +80,7 @@ func DefaultSystemPrompt() *PromptTemplate {
 ## 任务描述
 {{.TaskDescription}}
 {{end}}
-请逐步思考和行动，使用可用的工具来完成任务。`)
+请逐步思考和行动，使用可用的tool来完成任务。`)
 }
 
 // ===== 预定义模板工厂函数 =====
@@ -98,7 +98,7 @@ func CodeAssistantTemplate(taskPrompt string, fileScope []string) *PromptTemplat
 ## 规则
 
 1. 专注于分配给你的任务，不要偏离主题。
-2. 使用提供的工具完成任务，每次只调用必要的工具。
+2. 使用提供的tool完成任务，每次只调用必要的tool。
 3. 完成任务后，输出简洁的结果摘要。
 4. 如果遇到无法解决的错误，清晰地描述问题并停止。
 5. 不要请求用户输入，你需要独立完成任务。
@@ -213,11 +213,11 @@ func MultiAgentCoordinatorTemplate(agents []string, goal string) *PromptTemplate
 	return NewPromptTemplate(tmpl)
 }
 
-// ===== 工具函数 =====
+// ===== tool函数 =====
 
-// FormatToolDescriptions 格式化工具描述列表
+// FormatToolDescriptions 格式化tool描述列表
 //
-// 将工具注册表中的工具转换为可读的描述文本，用于注入系统提示词。
+// 将tool注册表中的tool转换为可读的描述文本，用于注入系统提示词。
 func FormatToolDescriptions(toolNames []string, descriptions map[string]string) string {
 	if len(toolNames) == 0 {
 		return ""

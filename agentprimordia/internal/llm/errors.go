@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	ErrHTTPError     = errors.New("llm: HTTP 请求错误")
-	ErrInvalidConfig = errors.New("llm: 配置验证失败")
+	ErrHTTPError     = errors.New("llm: HTTP request error")
+	ErrInvalidConfig = errors.New("llm: config validation failed")
 )
 
 // ErrorKind 错误类别
@@ -29,7 +29,7 @@ const (
 	KindServerError
 	// KindClientError 客户端错误（HTTP 4xx 除 429）。不可重试
 	KindClientError
-	// KindAuthError 认证错误（HTTP 401/403）。不可重试
+	// KindAuthError authentication error（HTTP 401/403）。不可重试
 	KindAuthError
 	// KindNetworkError 网络错误（连接失败、超时等）。可重试
 	KindNetworkError

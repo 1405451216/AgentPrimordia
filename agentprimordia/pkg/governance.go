@@ -74,10 +74,10 @@ type Policy = governance.Policy
 // PolicyMetadata 策略元信息
 type PolicyMetadata = governance.PolicyMetadata
 
-// PolicySpec 策略规约（工具限制/成本限制/输出护栏/行为约束）
+// PolicySpec 策略规约（tool限制/成本限制/输出护栏/行为约束）
 type PolicySpec = governance.PolicySpec
 
-// ToolRestriction 单工具限制规则
+// ToolRestriction 单tool限制规则
 type ToolRestriction = governance.ToolRestriction
 
 // CostLimits 成本限制（美元）
@@ -134,7 +134,7 @@ type AlertCallback = governance.AlertCallback
 type FileAuditLogger = governance.FileAuditLogger
 
 const (
-	// AuditToolCallBlocked 工具调用被拦截
+	// AuditToolCallBlocked tool调用被拦截
 	AuditToolCallBlocked = governance.AuditToolCallBlocked
 	// AuditCostExceeded 成本超限
 	AuditCostExceeded = governance.AuditCostExceeded
@@ -175,11 +175,11 @@ var RequireTenant = governance.RequireTenant
 // ===== 错误变量 =====
 
 var (
-	// ErrToolCallLimitExceeded 工具调用次数超过上限
+	// ErrToolCallLimitExceeded tool调用次数超过上限
 	ErrToolCallLimitExceeded = governance.ErrToolCallLimitExceeded
 	// ErrCostLimitExceeded 成本超过策略上限
 	ErrCostLimitExceeded = governance.ErrCostLimitExceeded
-	// ErrBlockedArgument 工具参数命中禁止模式
+	// ErrBlockedArgument tool参数命中禁止模式
 	ErrBlockedArgument = governance.ErrBlockedArgument
 	// ErrOutputTooLong 输出长度超过策略上限
 	ErrOutputTooLong = governance.ErrOutputTooLong

@@ -50,7 +50,7 @@ type SignatureEnvelope struct {
 func (e *SignatureEnvelope) KeyFingerprint() (string, error) {
 	block, _ := pem.Decode([]byte(e.PublicKey))
 	if block == nil {
-		return "", errors.New("public_key 不是合法 PEM")
+		return "", errors.New("public_key is not valid PEM")
 	}
 	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -58,7 +58,7 @@ func (e *SignatureEnvelope) KeyFingerprint() (string, error) {
 	}
 	ecPub, ok := pub.(*ecdsa.PublicKey)
 	if !ok {
-		return "", errors.New("public_key 不是 ECDSA")
+		return "", errors.New("public_key is not ECDSA")
 	}
 	// 用未压缩椭圆曲线点（elliptic.Marshal）作为指纹输入
 	raw := elliptic.Marshal(ecPub.Curve, ecPub.X, ecPub.Y)
@@ -86,7 +86,7 @@ func (e *SignatureEnvelope) Verify() error {
 
 	block, _ := pem.Decode([]byte(e.PublicKey))
 	if block == nil {
-		return errors.New("public_key 不是合法 PEM")
+		return errors.New("public_key is not valid PEM")
 	}
 	pubAny, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -94,10 +94,10 @@ func (e *SignatureEnvelope) Verify() error {
 	}
 	pub, ok := pubAny.(*ecdsa.PublicKey)
 	if !ok {
-		return errors.New("public_key 不是 ECDSA")
+		return errors.New("public_key is not ECDSA")
 	}
 	if pub.Curve != elliptic.P256() {
-		return fmt.Errorf("仅支持 P-256 曲线，实际: %s", pub.Curve.Params().Name)
+		return fmt.Errorf("only P-256 curve supported, got: %s", pub.Curve.Params().Name)
 	}
 
 	digest := sha256.Sum256(payload)

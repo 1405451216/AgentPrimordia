@@ -1,4 +1,4 @@
-// Package bufferpool 提供 bytes.Buffer sync.Pool 工具。
+// Package bufferpool 提供 bytes.Buffer sync.Pool tool。
 // 优化（perf-v11 stage-2）：复用 buffer 可减少 LLM 请求体构造、SSE chunk 解析等热路径上的内存分配。
 package bufferpool
 

@@ -23,13 +23,13 @@ type KnowledgeDoc struct {
 	Source  string  `json:"source,omitempty"`
 }
 
-// KnowledgeSearch 是一个内置工具，允许 Agent 主动搜索知识库
+// KnowledgeSearch 是一个内置tool，允许 Agent 主动搜索知识库
 type KnowledgeSearch struct {
 	searcher KnowledgeSearcher
 	topK     int
 }
 
-// NewKnowledgeSearch 创建知识库搜索工具
+// NewKnowledgeSearch 创建知识库搜索tool
 func NewKnowledgeSearch(searcher KnowledgeSearcher) *KnowledgeSearch {
 	return &KnowledgeSearch{
 		searcher: searcher,

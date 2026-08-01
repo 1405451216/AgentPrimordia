@@ -82,7 +82,7 @@ func (d *LocalDiscovery) Deregister(agentID string) error {
 	defer d.mu.Unlock()
 
 	if _, exists := d.agents[agentID]; !exists {
-		return fmt.Errorf("Agent 未注册: %s", agentID)
+		return fmt.Errorf("agent not registered: %s", agentID)
 	}
 
 	delete(d.agents, agentID)
@@ -99,7 +99,7 @@ func (d *LocalDiscovery) Resolve(agentID string) (*AgentRegistry, error) {
 
 	reg, exists := d.agents[agentID]
 	if !exists {
-		return nil, fmt.Errorf("Agent 未找到: %s", agentID)
+		return nil, fmt.Errorf("agent not found: %s", agentID)
 	}
 	return reg, nil
 }

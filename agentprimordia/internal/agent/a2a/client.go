@@ -50,7 +50,7 @@ type A2AClient struct {
 	nextID      int
 }
 
-// defaultA2AHTTPTimeout 是 A2A 客户端默认的总请求超时。
+// defaultA2AHTTPTimeout 是 A2A 客户端默认的总request timeout。
 const defaultA2AHTTPTimeout = 30 * time.Second
 
 // NewA2AClient 创建基于 JSON-RPC over HTTP 的 A2A 协议客户端（兼容旧 API）。
@@ -74,23 +74,23 @@ func NewA2AClient(baseURL string, opts ...ClientOption) *A2AClient {
 func (c *A2AClient) FetchAgentCard() (*AgentCard, error) {
 	req, err := http.NewRequest("GET", c.baseURL+"/", nil)
 	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	c.setAuthHeaders(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("请求失败: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("获取 AgentCard 失败, 状态码: %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to get AgentCard, status code: %d", resp.StatusCode)
 	}
 
 	var card AgentCard
 	if err := json.NewDecoder(resp.Body).Decode(&card); err != nil {
-		return nil, fmt.Errorf("解析 AgentCard 失败: %w", err)
+		return nil, fmt.Errorf("failed to parse AgentCard: %w", err)
 	}
 	return &card, nil
 }
@@ -108,12 +108,12 @@ func (c *A2AClient) CreateTask(message *A2AMessage, taskID string) (*Task, error
 		return nil, err
 	}
 	if resp.Error != nil {
-		return nil, fmt.Errorf("创建任务错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+		return nil, fmt.Errorf("create task error [%d]: %s", resp.Error.Code, resp.Error.Message)
 	}
 
 	var task Task
 	if err := json.Unmarshal(resp.Result, &task); err != nil {
-		return nil, fmt.Errorf("解析任务结果失败: %w", err)
+		return nil, fmt.Errorf("failed to parse task result: %w", err)
 	}
 	return &task, nil
 }
@@ -124,12 +124,12 @@ func (c *A2AClient) GetTask(taskID string) (*Task, error) {
 		return nil, err
 	}
 	if resp.Error != nil {
-		return nil, fmt.Errorf("获取任务错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+		return nil, fmt.Errorf("get task error [%d]: %s", resp.Error.Code, resp.Error.Message)
 	}
 
 	var task Task
 	if err := json.Unmarshal(resp.Result, &task); err != nil {
-		return nil, fmt.Errorf("解析任务结果失败: %w", err)
+		return nil, fmt.Errorf("failed to parse task result: %w", err)
 	}
 	return &task, nil
 }
@@ -140,7 +140,7 @@ func (c *A2AClient) CancelTask(taskID string) error {
 		return err
 	}
 	if resp.Error != nil {
-		return fmt.Errorf("取消任务错误 [%d]: %s", resp.Error.Code, resp.Error.Message)
+		return fmt.Errorf("cancel task error [%d]: %s", resp.Error.Code, resp.Error.Message)
 	}
 	return nil
 }
@@ -149,19 +149,19 @@ func (c *A2AClient) StreamEvents(taskID string) (<-chan *TaskEvent, error) {
 	url := fmt.Sprintf("%s/tasks/%s/events", c.baseURL, taskID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("创建 SSE 请求失败: %w", err)
+		return nil, fmt.Errorf("failed to create SSE request: %w", err)
 	}
 	c.setAuthHeaders(req)
 	req.Header.Set("Accept", "text/event-stream")
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("SSE 连接失败: %w", err)
+		return nil, fmt.Errorf("SSE connection failed: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("SSE 连接失败, 状态码: %d", resp.StatusCode)
+		defer resp.Body.Close()
+		return nil, fmt.Errorf("SSE connection failed, status code: %d", resp.StatusCode)
 	}
 
 	ch := make(chan *TaskEvent, 64)
@@ -178,7 +178,7 @@ func (c *A2AClient) call(method string, params any) (*JSONRPCResponse, error) {
 	c.nextID++
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
-		return nil, fmt.Errorf("序列化参数失败: %w", err)
+		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
 	}
 
 	reqBody := JSONRPCRequest{
@@ -190,30 +190,30 @@ func (c *A2AClient) call(method string, params any) (*JSONRPCResponse, error) {
 
 	body, err := json.Marshal(reqBody)
 	if err != nil {
-		return nil, fmt.Errorf("序列化请求失败: %w", err)
+		return nil, fmt.Errorf("failed to serialize request: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", c.baseURL+"/", bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	c.setAuthHeaders(req)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("请求失败: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %w", err)
+		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	var rpcResp JSONRPCResponse
 	if err := json.Unmarshal(respBody, &rpcResp); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return &rpcResp, nil
 }

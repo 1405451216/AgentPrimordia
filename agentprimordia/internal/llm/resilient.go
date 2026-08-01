@@ -225,7 +225,7 @@ func (r *ResilientProvider) recordSuccess() {
 }
 
 func (r *ResilientProvider) recordFailure(err error) {
-	// perf-v6 round 8 Task 3：客户端错误（4xx 除 429）和认证错误不计入熔断失败计数
+	// perf-v6 round 8 Task 3：客户端错误（4xx 除 429）和authentication error不计入熔断失败计数
 	// 因为这些错误不会因 provider 不健康而恢复，触发熔断无意义
 	if re := AsRetryableError(err); re != nil && !re.CountsAsFailure() {
 		return

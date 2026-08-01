@@ -531,8 +531,8 @@ func (s *InMemoryStore) Stats(ctx context.Context) (*MemoryStats, error) {
 	}, nil
 }
 
-// RecordToolUse 将工具调用记录为一条 Episode 存储，便于后续检索。
-// role 使用 "tool_use"，topics 存工具名，content 包含完整调用信息。
+// RecordToolUse 将tool调用记录为一条 Episode 存储，便于后续检索。
+// role 使用 "tool_use"，topics 存tool名，content 包含完整调用信息。
 func (s *InMemoryStore) RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error {
 	content := fmt.Sprintf("[ToolUse] agent=%s tool=%s args=%s result=%s", agentName, toolName, args, result)
 	ep, err := NewEpisode(sessionID, "tool_use", content)

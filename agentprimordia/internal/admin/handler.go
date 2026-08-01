@@ -57,7 +57,7 @@ func NewAdminHandler(p *pool.Pool, r *tools.Registry, opts ...AdminOption) *Admi
 	h.mux.HandleFunc("GET /api/tasks", h.requireAuth(h.tasks))
 	h.mux.HandleFunc("GET /api/system", h.requireAuth(h.systemInfo))
 
-	// 新增工具管理端点
+	// 新增tool管理端点
 	h.mux.HandleFunc("GET /api/tools", h.requireAuth(h.listTools))
 	h.mux.HandleFunc("GET /api/tools/{name}", h.requireAuth(h.getTool))
 	h.mux.HandleFunc("GET /api/tools/categories", h.requireAuth(h.toolCategories))
@@ -176,7 +176,7 @@ func (h *AdminHandler) systemInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// listTools 列出所有已注册工具
+// listTools 列出所有已注册tool
 func (h *AdminHandler) listTools(w http.ResponseWriter, r *http.Request) {
 	if h.registry == nil {
 		writeJSON(w, http.StatusOK, []any{})
@@ -198,20 +198,20 @@ func (h *AdminHandler) listTools(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
-// getTool 获取单个工具详情
+// getTool 获取单个tool详情
 func (h *AdminHandler) getTool(w http.ResponseWriter, r *http.Request) {
 	if h.registry == nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "工具注册表为空"})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "tool注册表为空"})
 		return
 	}
 	name := r.PathValue("name")
 	if name == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "缺少工具名称"})
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "缺少tool名称"})
 		return
 	}
 	tool, ok := h.registry.Get(name)
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "工具不存在"})
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "tool不存在"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -221,7 +221,7 @@ func (h *AdminHandler) getTool(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// toolCategories 按类别列出工具
+// toolCategories 按类别列出tool
 func (h *AdminHandler) toolCategories(w http.ResponseWriter, r *http.Request) {
 	if h.registry == nil {
 		writeJSON(w, http.StatusOK, map[string]any{})

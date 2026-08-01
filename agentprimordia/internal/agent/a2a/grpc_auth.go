@@ -81,7 +81,7 @@ func APIKeyAuthFunc(keys map[string]string, headerName string) GRPCAuthFunc {
 		}
 		principalID, ok := keys[values[0]]
 		if !ok {
-			return nil, errors.New("无效 API Key")
+			return nil, errors.New("invalid API key")
 		}
 		return &Principal{ID: principalID, Scopes: []string{"*"}}, nil
 	}

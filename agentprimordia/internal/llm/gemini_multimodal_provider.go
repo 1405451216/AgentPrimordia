@@ -484,14 +484,14 @@ func (p *GeminiMultimodalProvider) Stream(ctx context.Context, req *CompletionRe
 	return p.StreamMultimodal(ctx, extReq)
 }
 
-// CallTools 工具调用
+// CallTools tool调用
 func (p *GeminiMultimodalProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	model := p.resolveModel(req.Model)
 
 	// 转换消息为 Gemini 格式
 	contents, systemParts := p.buildChatContents(req.Messages)
 
-	// 构建工具声明
+	// 构建tool声明
 	var tools map[string]any
 	if len(req.Tools) > 0 {
 		functions := make([]map[string]any, len(req.Tools))
@@ -547,7 +547,7 @@ func (p *GeminiMultimodalProvider) CallTools(ctx context.Context, req *ToolCallR
 	}
 
 	if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
-		// 解析内容和工具调用
+		// 解析内容和tool调用
 		for _, part := range resp.Candidates[0].Content.Parts {
 			if part.Text != "" {
 				result.Content += part.Text
@@ -584,13 +584,13 @@ func (p *GeminiMultimodalProvider) buildChatContents(msgs []ChatMessage) ([]map[
 			{"text": m.Content},
 		}
 
-		// 处理工具调用和工具响应
+		// 处理tool调用和tool响应
 		if m.Role == "assistant" && len(m.ToolCalls) > 0 {
 			// Gemini 的 function call 处理
 			for _, tc := range m.ToolCalls {
 				args := map[string]any{}
 				if err := json.Unmarshal([]byte(tc.Arguments), &args); err != nil {
-					// 工具调用参数解析失败，使用原始字符串作为参数
+					// tool调用参数解析失败，使用原始字符串作为参数
 					args = map[string]any{"raw": tc.Arguments}
 				}
 				parts = append(parts, map[string]any{
@@ -603,7 +603,7 @@ func (p *GeminiMultimodalProvider) buildChatContents(msgs []ChatMessage) ([]map[
 		}
 
 		if m.Role == "tool" && m.ToolCallID != "" {
-			// 工具响应
+			// tool响应
 			var respData any
 			err := json.Unmarshal([]byte(m.Content), &respData)
 			if err != nil {

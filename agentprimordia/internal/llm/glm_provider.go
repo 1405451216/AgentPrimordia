@@ -397,7 +397,7 @@ func (p *GLMProvider) Stream(ctx context.Context, req *CompletionRequest) (<-cha
 	return p.StreamMultimodal(ctx, extReq)
 }
 
-// CallTools 工具调用（暂不支持）
+// CallTools tool调用（暂不支持）
 func (p *GLMProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	return nil, ErrNotSupported
 }

@@ -76,11 +76,11 @@ func (r *resourceRegistry) Read(ctx context.Context, uri string) (*ResourceConte
 	entry, ok := r.resources[uri]
 	r.mu.RUnlock()
 	if !ok {
-		return nil, fmt.Errorf("资源 URI 未找到: %s", uri)
+		return nil, fmt.Errorf("resource URI not found: %s", uri)
 	}
 	data, err := entry.handler(ctx, uri)
 	if err != nil {
-		return nil, fmt.Errorf("读取资源 %q 失败: %w", uri, err)
+		return nil, fmt.Errorf("failed to read resource %q: %w", uri, err)
 	}
 	return &ResourceContent{
 		URI:      uri,
@@ -153,11 +153,11 @@ func sessionResourceHandler(getSession func(ctx context.Context, sid string) ([]
 	return func(ctx context.Context, uri string) ([]byte, error) {
 		const prefix = "agent://session/"
 		if !strings.HasPrefix(uri, prefix) {
-			return nil, fmt.Errorf("资源 URI 格式错误: %s", uri)
+			return nil, fmt.Errorf("invalid resource URI format: %s", uri)
 		}
 		sid := strings.TrimPrefix(uri, prefix)
 		if sid == "" {
-			return nil, fmt.Errorf("缺少 session id")
+			return nil, fmt.Errorf("missing session id")
 		}
 		return getSession(ctx, sid)
 	}

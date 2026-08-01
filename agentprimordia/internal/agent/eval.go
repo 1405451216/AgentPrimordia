@@ -32,7 +32,7 @@ type ExactMatchEvaluator = eval.ExactMatchEvaluator
 // ContainsEvaluator 包含关键词评估器
 type ContainsEvaluator = eval.ContainsEvaluator
 
-// ToolUsageEvaluator 工具使用评估器
+// ToolUsageEvaluator tool使用评估器
 type ToolUsageEvaluator = eval.ToolUsageEvaluator
 
 // CompositeMode 组合模式

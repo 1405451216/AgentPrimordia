@@ -169,7 +169,7 @@ func (s *A2AServer) handleTaskCreate(req *JSONRPCRequest) *JSONRPCResponse {
 	}
 
 	if params.Message == nil {
-		return NewJSONRPCError(req.ID, ErrCodeInvalidParams, "缺少 message 参数", "")
+		return NewJSONRPCError(req.ID, ErrCodeInvalidParams, "missing message parameter", "")
 	}
 
 	created, err := s.service.CreateTask(context.Background(), &CreateTaskRequest{
@@ -202,7 +202,7 @@ func (s *A2AServer) handleTaskGet(req *JSONRPCRequest) *JSONRPCResponse {
 		if errors.Is(err, ErrTaskConflict) {
 			code = ErrCodeTaskConflict
 		}
-		return NewJSONRPCError(req.ID, code, "任务不存在", err.Error())
+		return NewJSONRPCError(req.ID, code, "task not found", err.Error())
 	}
 
 	result, _ := json.Marshal(task)

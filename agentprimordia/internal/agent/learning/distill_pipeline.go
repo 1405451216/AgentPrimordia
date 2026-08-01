@@ -32,7 +32,7 @@ import (
 type SemanticMemorySink interface {
 	// AddFact 写入结构化事实
 	AddFact(ctx context.Context, key, value string, confidence float64, source string)
-	// AddPattern 写入工具使用模式
+	// AddPattern 写入tool使用模式
 	AddPattern(ctx context.Context, pattern, description string, successRate float64, examples []string)
 	// InjectPrompt 获取语义记忆的 system prompt 片段
 	InjectPrompt() string

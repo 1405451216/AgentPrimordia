@@ -84,7 +84,7 @@ func (s *Summarizer) ExtractSummary(ctx context.Context, content string) (*Summa
 
 	resp, err := s.provider.Complete(ctx, messages, s.model)
 	if err != nil {
-		return nil, fmt.Errorf("摘要提取失败: %w", err)
+		return nil, fmt.Errorf("summary extraction failed: %w", err)
 	}
 
 	summary, topics := parseSummaryResponse(resp)
@@ -222,13 +222,13 @@ func (s *SQLiteStore) ExtractSummaryAsync(ctx context.Context, id string, summar
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				errCh <- fmt.Errorf("摘要提取 panic: %v", r)
+				errCh <- fmt.Errorf("summary extraction panic: %v", r)
 			}
 		}()
 
 		ep, err := s.Get(ctx, id)
 		if err != nil {
-			errCh <- fmt.Errorf("获取 Episode 失败: %w", err)
+			errCh <- fmt.Errorf("failed to get Episode: %w", err)
 			return
 		}
 
@@ -443,7 +443,7 @@ func NewSummaryEngine(strategy SummaryStrategy, summarizer *Summarizer, store Me
 func (e *SummaryEngine) Run(ctx context.Context, sessionID string) (*SummaryResult, error) {
 	should, err := e.strategy.ShouldSummarize(ctx, e.store, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("检查是否需要摘要失败: %w", err)
+		return nil, fmt.Errorf("failed to check if summarization needed: %w", err)
 	}
 	if !should {
 		return nil, nil
@@ -451,7 +451,7 @@ func (e *SummaryEngine) Run(ctx context.Context, sessionID string) (*SummaryResu
 
 	episodes, err := e.strategy.SelectEpisodes(ctx, e.store, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("选择记忆条目失败: %w", err)
+		return nil, fmt.Errorf("failed to select memory episodes: %w", err)
 	}
 	if len(episodes) == 0 {
 		return nil, nil
@@ -465,7 +465,7 @@ func (e *SummaryEngine) Run(ctx context.Context, sessionID string) (*SummaryResu
 
 	result, err := e.summarizer.ExtractSummary(ctx, combined)
 	if err != nil {
-		return nil, fmt.Errorf("提取摘要失败: %w", err)
+		return nil, fmt.Errorf("failed to extract summary: %w", err)
 	}
 
 	return result, nil

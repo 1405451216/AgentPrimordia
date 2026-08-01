@@ -315,7 +315,7 @@ func (le *LeaderElector) ForceTakeover(ctx context.Context) error {
 	le.resigned.Store(false) // 重置
 	lease, err := le.coord.Acquire(ctx, le.config.ElectionKey)
 	if err != nil {
-		return fmt.Errorf("强制接管失败: %w", err)
+		return fmt.Errorf("forced takeover failed: %w", err)
 	}
 	le.lease.Store(&lease)
 	le.leaderSince.Store(time.Now().UnixNano())

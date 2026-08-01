@@ -1,3 +1,5 @@
+//go:build ignore_template
+
 // Package llm 包含 LLM Provider 抽象层。
 //
 // ⚠️ DO NOT USE — TEMPLATE ONLY ⚠️
@@ -90,7 +92,7 @@ func (p *TemplateProvider) Complete(ctx context.Context, req *CompletionRequest)
 	// 4. 发送 HTTP 请求（使用 p.doRequest 辅助方法）
 	// 5. 解析响应
 	// 6. 返回 CompletionResponse
-	return nil, fmt.Errorf("TemplateProvider.Complete: TODO: 未实现")
+	return nil, fmt.Errorf("TemplateProvider.Complete: not implemented")
 }
 
 // Stream 执行流式补全
@@ -109,21 +111,21 @@ func (p *TemplateProvider) Stream(ctx context.Context, req *CompletionRequest) (
 	//    e. 流结束时发送 Chunk{Done: true}
 	//    f. close(ch) 和 resp.Body.Close()
 	// 参考 openai_provider.go 的 Stream 方法
-	return nil, fmt.Errorf("TemplateProvider.Stream: TODO: 未实现")
+	return nil, fmt.Errorf("TemplateProvider.Stream: not implemented")
 }
 
-// CallTools 执行工具调用
+// CallTools 执行tool调用
 func (p *TemplateProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
-	// TODO: 实现工具调用
-	// 大多数 Provider 的工具调用与 Complete 共享同一 API
+	// TODO: 实现tool调用
+	// 大多数 Provider 的tool调用与 Complete 共享同一 API
 	// 区别在于请求中包含 tools 定义，响应中包含 tool_calls
 	//
-	// 如果 Provider 不支持工具调用，返回 ErrNotSupported：
+	// 如果 Provider 不支持tool调用，返回 ErrNotSupported：
 	//   return nil, ErrNotSupported
 	//
 	// OpenAI 兼容 API 可复用 BuildOpenAIMessages 构建消息
 	// 参考 openai_provider.go 的 CallTools 方法
-	return nil, fmt.Errorf("TemplateProvider.CallTools: TODO: 未实现")
+	return nil, fmt.Errorf("TemplateProvider.CallTools: not implemented")
 }
 
 // Info 返回模型信息

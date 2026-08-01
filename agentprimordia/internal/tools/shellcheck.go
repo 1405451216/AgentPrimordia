@@ -1,7 +1,7 @@
-// Package tools 内置工具系统
+// Package tools 内置tool系统
 //
 // shellcheck.go 提供 shell 元字符检测等纯函数安全检查，
-// 供 builtin 工具（shell/filesystem）和 security 包复用，
+// 供 builtin tool（shell/filesystem）和 security 包复用，
 // 避免下层包反向依赖横向支撑层。
 package tools
 
@@ -21,7 +21,7 @@ import "strings"
 var dangerousChars = []string{";", "|", "&", "$", "`", ">", "<", "\n", "\r", "(", ")"}
 
 // ContainsShellMetacharacter 检查命令字符串是否包含 shell 元字符。
-// 返回 (true, 元字符) 或 (false, "")。用于 Shell 工具和安全沙箱的统一校验。
+// 返回 (true, 元字符) 或 (false, "")。用于 Shell tool和安全沙箱的统一校验。
 func ContainsShellMetacharacter(cmd string) (bool, string) {
 	for _, ch := range dangerousChars {
 		if strings.Contains(cmd, ch) {

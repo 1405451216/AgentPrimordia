@@ -6,7 +6,7 @@ package audit
 type AuditAction string
 
 // 完整的审计事件类型枚举。
-// 涵盖 Agent 生命周期、LLM 调用、工具调用、文件操作、网络请求、
+// 涵盖 Agent 生命周期、LLM 调用、tool调用、文件操作、网络请求、
 // 权限变更、配置变更、Guardrail 拦截等所有合规相关事件。
 const (
 	// ===== Agent 生命周期 =====
@@ -31,15 +31,15 @@ const (
 	// ActionLLMError LLM 调用错误
 	ActionLLMError AuditAction = "llm.error"
 
-	// ===== 工具调用 =====
+	// ===== tool调用 =====
 
-	// ActionToolCall 工具调用
+	// ActionToolCall tool调用
 	ActionToolCall AuditAction = "tool.call"
-	// ActionToolResult 工具调用结果
+	// ActionToolResult tool调用结果
 	ActionToolResult AuditAction = "tool.result"
-	// ActionToolError 工具调用错误
+	// ActionToolError tool调用错误
 	ActionToolError AuditAction = "tool.error"
-	// ActionToolDenied 工具调用被拒绝（权限不足）
+	// ActionToolDenied tool调用被拒绝（权限不足）
 	ActionToolDenied AuditAction = "tool.denied"
 
 	// ===== 文件操作 =====

@@ -1,5 +1,5 @@
-// react_llm.go — LLM 调用 + 工具执行
-// 包含工具执行、LLM 调用重试、错误处理等底层操作
+// react_llm.go — LLM 调用 + tool执行
+// 包含tool执行、LLM 调用重试、错误处理等底层操作
 package agent
 
 import (
@@ -19,7 +19,7 @@ var ErrBudgetExceeded = errors.New("budget exceeded")
 
 var ErrNoToolkit = errors.New("no toolkit configured")
 
-// getOrInitExecutor 懒加载返回缓存的 Executor。优化（Task 1.5）：避免每轮工具调用都 NewExecutor。
+// getOrInitExecutor 懒加载返回缓存的 Executor。优化（Task 1.5）：避免每轮tool调用都 NewExecutor。
 func (a *ReActAgent) getOrInitExecutor() *tools.Executor {
 	a.toolExecutorOnce.Do(func() {
 		tk := a.getToolkit()
@@ -32,7 +32,7 @@ func (a *ReActAgent) getOrInitExecutor() *tools.Executor {
 }
 
 // executeTool runs a single tool call
-// 优化（perf-v3）：优先使用 capCache 缓存的 toolkit，避免每次工具调用都做类型断言
+// 优化（perf-v3）：优先使用 capCache 缓存的 toolkit，避免每次tool调用都做类型断言
 func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult, error) {
 	var tk *tools.Registry
 	if a.capCache != nil {

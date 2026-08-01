@@ -136,23 +136,23 @@ func NewHTTPDiscoveryClient(baseURL string) *HTTPDiscoveryClient {
 func (c *HTTPDiscoveryClient) Register(ctx context.Context, info *AgentInfo) error {
 	body, err := json.Marshal(info)
 	if err != nil {
-		return fmt.Errorf("序列化 AgentInfo 失败: %w", err)
+		return fmt.Errorf("failed to serialize AgentInfo: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/discovery/register", strings.NewReader(string(body)))
 	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("注册请求失败: %w", err)
+		return fmt.Errorf("registration request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("注册失败，状态码: %d", resp.StatusCode)
+		return fmt.Errorf("registration failed, status code: %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -161,17 +161,17 @@ func (c *HTTPDiscoveryClient) Register(ctx context.Context, info *AgentInfo) err
 func (c *HTTPDiscoveryClient) Unregister(ctx context.Context, agentID string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/api/discovery/"+agentID, nil)
 	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("注销请求失败: %w", err)
+		return fmt.Errorf("deregistration request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("注销失败，状态码: %d", resp.StatusCode)
+		return fmt.Errorf("deregistration failed, status code: %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -180,12 +180,12 @@ func (c *HTTPDiscoveryClient) Unregister(ctx context.Context, agentID string) er
 func (c *HTTPDiscoveryClient) Discover(ctx context.Context, agentID string) (*AgentInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/discovery/"+agentID, nil)
 	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("发现请求失败: %w", err)
+		return nil, fmt.Errorf("discovery request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -193,12 +193,12 @@ func (c *HTTPDiscoveryClient) Discover(ctx context.Context, agentID string) (*Ag
 		return nil, fmt.Errorf("agent not found: %s", agentID)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("发现失败，状态码: %d", resp.StatusCode)
+		return nil, fmt.Errorf("discovery failed, status code: %d", resp.StatusCode)
 	}
 
 	var info AgentInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return &info, nil
 }
@@ -207,22 +207,22 @@ func (c *HTTPDiscoveryClient) Discover(ctx context.Context, agentID string) (*Ag
 func (c *HTTPDiscoveryClient) ListAgents(ctx context.Context) ([]*AgentInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/discovery/agents", nil)
 	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("列表请求失败: %w", err)
+		return nil, fmt.Errorf("list request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("列表请求失败，状态码: %d", resp.StatusCode)
+		return nil, fmt.Errorf("list request failed, status code: %d", resp.StatusCode)
 	}
 
 	var agents []*AgentInfo
 	if err := json.NewDecoder(resp.Body).Decode(&agents); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return agents, nil
 }
@@ -231,17 +231,17 @@ func (c *HTTPDiscoveryClient) ListAgents(ctx context.Context) ([]*AgentInfo, err
 func (c *HTTPDiscoveryClient) Heartbeat(ctx context.Context, agentID string) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/discovery/"+agentID+"/heartbeat", nil)
 	if err != nil {
-		return fmt.Errorf("创建请求失败: %w", err)
+		return fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("心跳请求失败: %w", err)
+		return fmt.Errorf("heartbeat request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("心跳失败，状态码: %d", resp.StatusCode)
+		return fmt.Errorf("heartbeat failed, status code: %d", resp.StatusCode)
 	}
 	return nil
 }

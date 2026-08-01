@@ -89,7 +89,7 @@ func (w *WatchablePolicy) Swap(newPolicy *Policy, source string) error {
 			IsValid:   false,
 			LastError: err.Error(),
 		})
-		return fmt.Errorf("策略验证失败，保持旧策略: %w", err)
+		return fmt.Errorf("policy validation failed, keeping old policy: %w", err)
 	}
 
 	oldVersion := w.version.Load()
@@ -120,7 +120,7 @@ func (w *WatchablePolicy) Swap(newPolicy *Policy, source string) error {
 // Rollback 回滚到上一个有效策略。
 func (w *WatchablePolicy) Rollback(previous *Policy, source string) error {
 	if previous == nil {
-		return fmt.Errorf("无可回滚的策略")
+		return fmt.Errorf("no policy to rollback")
 	}
 	oldVersion := w.version.Load()
 	w.current.Store(previous)
@@ -269,23 +269,23 @@ func (w *PolicyWatcher) GetPolicy() *WatchablePolicy {
 // ValidatePolicy 验证策略有效性。
 func ValidatePolicy(p *Policy) error {
 	if p == nil {
-		return fmt.Errorf("策略为空")
+		return fmt.Errorf("policy is empty")
 	}
 	if p.Spec.CostLimits.PerRequest < 0 {
-		return fmt.Errorf("perRequest 成本限制不能为负")
+		return fmt.Errorf("perRequest cost limit must not be negative")
 	}
 	if p.Spec.CostLimits.PerDay < 0 {
-		return fmt.Errorf("perDay 成本限制不能为负")
+		return fmt.Errorf("perDay cost limit must not be negative")
 	}
 	if p.Spec.OutputGuardrail.MaxLength < 0 {
-		return fmt.Errorf("maxLength 不能为负")
+		return fmt.Errorf("maxLength must not be negative")
 	}
 	if p.Spec.BehaviorConstraints.MaxTurns < 0 {
-		return fmt.Errorf("maxTurns 不能为负")
+		return fmt.Errorf("maxTurns must not be negative")
 	}
 	for _, tr := range p.Spec.ToolRestrictions {
 		if tr.MaxCallsPerRun < 0 {
-			return fmt.Errorf("工具 %s 的 maxCallsPerRun 不能为负", tr.Tool)
+			return fmt.Errorf("tool %s  maxCallsPerRun must not be negative", tr.Tool)
 		}
 	}
 	return nil

@@ -41,7 +41,7 @@ func LLMHTTP429Fault(provider string) *LLMHTTPStatusFault {
 	}
 }
 
-// LLMHTTP500Fault 创建 500 服务器错误
+// LLMHTTP500Fault 创建 500 server error
 func LLMHTTP500Fault(provider string) *LLMHTTPStatusFault {
 	return &LLMHTTPStatusFault{
 		Provider:   provider,
@@ -119,7 +119,7 @@ func (f *LLMTimeoutFault) Description() string {
 func (f *LLMTimeoutFault) Inject(ctx context.Context) (CleanupFunc, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
-		// 模拟超时：等待比请求超时更长的时间
+		// 模拟超时：等待比request timeout更长的时间
 		select {
 		case <-time.After(f.Timeout + 5*time.Second):
 			w.WriteHeader(http.StatusOK)

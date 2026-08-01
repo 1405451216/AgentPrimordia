@@ -258,7 +258,7 @@ func (p *AzureOpenAIProvider) Stream(ctx context.Context, req *CompletionRequest
 	return ch, nil
 }
 
-// CallTools 执行工具调用请求
+// CallTools 执行tool调用请求
 func (p *AzureOpenAIProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	tools := make([]openaiTool, len(req.Tools))
 	for i, t := range req.Tools {

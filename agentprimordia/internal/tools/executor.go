@@ -21,32 +21,32 @@ const (
 
 // ExecutorConfig 执行器配置
 type ExecutorConfig struct {
-	DefaultTimeout time.Duration            // 默认工具超时
-	PerToolTimeout map[string]time.Duration // 按工具名设置超时（覆盖默认值）
+	DefaultTimeout time.Duration            // 默认tool超时
+	PerToolTimeout map[string]time.Duration // 按tool名设置超时（覆盖默认值）
 	CacheConfig    *CacheConfig             // 缓存配置，nil 表示不启用缓存
 }
 
-// FunctionCall 表示执行工具函数的请求
+// FunctionCall 表示执行tool函数的请求
 type FunctionCall struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Args string `json:"args"`
 }
 
-// Executor 处理工具执行，包含日志、计时和错误处理
+// Executor 处理tool执行，包含日志、计时和错误处理
 // slog logger 使用 internal/logger.FieldTool/FieldDuration 等统一字段常量。
 type Executor struct {
 	registry       *Registry
 	slogger        *slog.Logger // 结构化日志（slog），Phase 4 Task 10 起强制唯一日志通道
 	timeout        time.Duration
-	perToolTimeout map[string]time.Duration // 按工具名设置超时（覆盖默认值）
+	perToolTimeout map[string]time.Duration // 按tool名设置超时（覆盖默认值）
 	scopePolicy    ScopePolicy
 	scopeAgent     string
 	fileLock       *concurrency.FileLockManager
-	cache          *Cache // 工具结果缓存，nil 表示不启用
+	cache          *Cache // tool结果缓存，nil 表示不启用
 }
 
-// NewExecutor 创建新的工具执行器
+// NewExecutor 创建新的tool执行器
 func NewExecutor(registry *Registry) *Executor {
 	return &Executor{
 		registry: registry,
@@ -55,7 +55,7 @@ func NewExecutor(registry *Registry) *Executor {
 	}
 }
 
-// NewExecutorWithConfig 使用配置创建工具执行器
+// NewExecutorWithConfig 使用配置创建tool执行器
 func NewExecutorWithConfig(registry *Registry, cfg ExecutorConfig) *Executor {
 	timeout := defaultToolTimeout
 	if cfg.DefaultTimeout > 0 {
@@ -80,14 +80,14 @@ func (e *Executor) WithSlogLogger(l *slog.Logger) *Executor {
 	return e
 }
 
-// WithTimeout 设置所有工具的执行超时
+// WithTimeout 设置所有tool的execution timeout
 func (e *Executor) WithTimeout(d time.Duration) *Executor {
 	e.timeout = d
 	return e
 }
 
 // WithScopePolicy 注入权限策略，agentID 标识当前 Agent
-// 执行工具前会检查 Agent 是否有权限操作指定资源
+// 执行tool前会检查 Agent 是否有权限操作指定资源
 func (e *Executor) WithScopePolicy(policy ScopePolicy, agentID string) *Executor {
 	e.scopePolicy = policy
 	e.scopeAgent = agentID
@@ -101,7 +101,7 @@ func (e *Executor) WithFileLock(fl *concurrency.FileLockManager) *Executor {
 	return e
 }
 
-// Execute 按名称执行工具调用
+// Execute 按名称执行tool调用
 func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, error) {
 	start := time.Now()
 
@@ -133,7 +133,7 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 
 	var args json.RawMessage = json.RawMessage(tc.Args)
 
-	// 权限检查：需要确认的工具必须通过确认回调
+	// 权限检查：需要确认的tool必须通过确认回调
 	// 优化：合并两次 GetPermission 调用为一次，避免冗余的 sync.Map.Load
 	if perm, ok := e.registry.GetPermission(tc.Name); ok {
 		if perm.RequireConfirmation {
@@ -168,7 +168,7 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 		}
 	}
 
-	// 按工具名查找专属超时，未配置则使用默认超时
+	// 按tool名查找专属超时，未配置则使用默认超时
 	timeout := e.timeout
 	if perTool, ok := e.perToolTimeout[tc.Name]; ok {
 		timeout = perTool
@@ -176,7 +176,7 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	execCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	// perf-v5 Task 1：工具 panic recover，避免任意工具 panic 杀死整个 agent 进程
+	// perf-v5 Task 1：tool panic recover，避免任意tool panic 杀死整个 agent 进程
 	result, err := e.safeExecute(execCtx, tool, args)
 
 	duration := time.Since(start)
@@ -214,13 +214,13 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 
 // buildCacheKey 构建缓存键
 func (e *Executor) buildCacheKey(toolName, args string) string {
-	// 使用工具名 + 参数哈希作为缓存键
+	// 使用tool名 + 参数哈希作为缓存键
 	// 简单实现：直接拼接，实际可根据需要添加哈希
 	return toolName + ":" + args
 }
 
-// safeExecute 包装工具调用并捕获 panic（perf-v5 Task 1）
-// 任意工具 panic 转为 error 返回，避免杀死 agent 进程
+// safeExecute 包装tool调用并捕获 panic（perf-v5 Task 1）
+// 任意tool panic 转为 error 返回，避免杀死 agent 进程
 func (e *Executor) safeExecute(ctx context.Context, tool Tool, args json.RawMessage) (result *Result, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -239,7 +239,7 @@ func (e *Executor) safeExecute(ctx context.Context, tool Tool, args json.RawMess
 	return tool.Execute(ctx, args)
 }
 
-// ExecuteBatch 并发执行多个工具调用
+// ExecuteBatch 并发执行多个tool调用
 func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*Result, error) {
 	if len(calls) == 0 {
 		return nil, nil
@@ -294,7 +294,7 @@ func (e *Executor) ExecuteBatch(ctx context.Context, calls []*FunctionCall) ([]*
 	return results, firstErr
 }
 
-// extractPathFromArgs 从工具调用参数中提取 path 字段
+// extractPathFromArgs 从tool调用参数中提取 path 字段
 // 用于 ScopePolicy 权限检查
 // 优化（Task 9）：使用 json.Decoder 替代 Unmarshal，按需查找常见路径字段；
 // 第一个匹配字段后立即返回，减少 JSON 解析开销。

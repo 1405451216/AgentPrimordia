@@ -28,7 +28,7 @@ var tokenCacheEntries atomic.Int64
 var tokenCache sync.Map
 
 // EstimateTokensCached 缓存版的单条消息 token 估算。
-// 优化（perf-v11 stage-3）：同一消息文本在多轮对话中重复出现时（如工具调用结果），
+// 优化（perf-v11 stage-3）：同一消息文本在多轮对话中重复出现时（如tool调用结果），
 // 可直接命中缓存，省去 O(N) 字符长度计算。
 func EstimateTokensCached(text string) int {
 	if len(text) == 0 {

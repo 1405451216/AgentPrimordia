@@ -122,7 +122,7 @@ func (a *MultimodalAdapter) Stream(ctx context.Context, req *CompletionRequest) 
 	return nil, ErrUnsupportedMultimodalProvider
 }
 
-// CallTools 工具调用（委托给底层 Provider）
+// CallTools tool调用（委托给底层 Provider）
 func (a *MultimodalAdapter) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	if p, ok := a.provider.(Provider); ok {
 		return p.CallTools(ctx, req)
@@ -248,7 +248,7 @@ func NewMultimodalProvider(cfg Config) (MultimodalProvider, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("创建多模态 Provider 失败: %w", err)
+		return nil, fmt.Errorf("failed to create multimodal provider: %w", err)
 	}
 
 	return NewMultimodalAdapter(raw)

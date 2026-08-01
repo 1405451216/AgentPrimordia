@@ -108,7 +108,7 @@ func (a *ReActAgent) executePlan(ctx context.Context, history []Message, plan *p
 // executeSubTask 执行单个子任务（复用 runLoop 的核心逻辑）
 //
 // 实现：把子任务描述追加为新的 UserMessage，然后递归调用 runLoop。
-// 这样每个子任务都可以独立调用工具、产生 ReAct 循环。
+// 这样每个子任务都可以独立调用tool、产生 ReAct 循环。
 func (a *ReActAgent) executeSubTask(ctx context.Context, task planning.SubTask, history []Message, cfg loopConfig) (*Response, error) {
 	taskHistory := make([]Message, 0, len(history)+1)
 	taskHistory = append(taskHistory, history...)

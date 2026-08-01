@@ -16,7 +16,7 @@ func (a *ReActAgent) shouldRAG(turn int) bool {
 	case RAGModeFirst:
 		return turn == 0
 	case RAGModeOnDemand:
-		return false // 由 knowledge_search 工具主动触发
+		return false // 由 knowledge_search tool主动触发
 	case RAGModeAuto:
 		fallthrough
 	default:

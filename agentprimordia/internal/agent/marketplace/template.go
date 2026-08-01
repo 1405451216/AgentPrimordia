@@ -3,7 +3,7 @@
 // Stability: Stable
 //
 // 在现有 plugin_market.go 的基础上，扩展为 Agent 模板生态：
-//   - AgentTemplate：Agent 模板定义（配置+工具集+系统提示+记忆策略）
+//   - AgentTemplate：Agent 模板定义（配置+tool集+系统提示+记忆策略）
 //   - TemplateRegistry：模板注册表 + 搜索 + 评分
 //   - Deployer：一键从模板部署运行 Agent
 //   - Validator：模板配置校验 + 安全扫描
@@ -41,7 +41,7 @@ type AgentTemplate struct {
 	DefaultModel string `json:"default_model,omitempty"`
 	// MaxTurns 最大轮次
 	MaxTurns int `json:"max_turns,omitempty"`
-	// Tools 绑定的工具集
+	// Tools 绑定的tool集
 	Tools []string `json:"tools,omitempty"`
 	// MemoryStrategy 记忆策略（"none"/"conversation"/"semantic"/"hybrid"）
 	MemoryStrategy string `json:"memory_strategy,omitempty"`

@@ -27,7 +27,7 @@ type cacheEntry struct {
 	expiresAt time.Time
 }
 
-// Cache 工具结果缓存（LRU + TTL）
+// Cache tool结果缓存（LRU + TTL）
 type Cache struct {
 	mu        sync.RWMutex
 	cfg       CacheConfig
@@ -39,7 +39,7 @@ type Cache struct {
 	closeOnce sync.Once     // 防止重复 Close 导致 panic
 }
 
-// NewCache 创建工具结果缓存
+// NewCache 创建tool结果缓存
 func NewCache(cfg CacheConfig) *Cache {
 	if cfg.MaxSize <= 0 {
 		cfg.MaxSize = 100
@@ -61,7 +61,7 @@ func NewCache(cfg CacheConfig) *Cache {
 	return c
 }
 
-// Get 获取缓存的工具结果
+// Get 获取缓存的tool结果
 func (c *Cache) Get(key string) (*Result, bool) {
 	c.mu.RLock()
 	elem, exists := c.items[key]

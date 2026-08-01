@@ -1,4 +1,4 @@
-// react_loop_tools.go — 工具执行与 HITL 处理
+// react_loop_tools.go — tool执行与 HITL 处理
 // 包含 executeToolCalls 和 handleHITL 函数
 package agent
 
@@ -12,34 +12,34 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 )
 
-// executeToolCalls 执行一组工具调用，处理 HITL 确认、追踪、Hook 等。
-// 返回更新后的 history、累计工具延迟和工具调用计数。
+// executeToolCalls 执行一组tool调用，处理 HITL 确认、追踪、Hook 等。
+// 返回更新后的 history、累计tool延迟和tool调用计数。
 //
-// R1.6：当 config.ParallelToolExecution 为 true 且工具数 > 1 时，并行执行
-// 工具调用本身（executeTool），但 hooks/事件/history 仍按原始顺序串行处理，
+// R1.6：当 config.ParallelToolExecution 为 true 且tool数 > 1 时，并行执行
+// tool调用本身（executeTool），但 hooks/事件/history 仍按原始顺序串行处理，
 // 保证下游消费者（事件订阅者、memory、stream）的消息顺序与原实现一致。
 func (a *ReActAgent) executeToolCalls(ctx context.Context, history []Message, toolCalls []ToolCall, turn int, cfg loopConfig, tracer Tracer, turnSpan Span, totalToolLatency time.Duration, toolCount int) ([]Message, time.Duration, int) {
 	// 串行模式：保持向后兼容（默认）
 	if !a.config.ParallelToolExecution || len(toolCalls) <= 1 {
 		return a.executeToolCallsSerial(ctx, history, toolCalls, turn, cfg, tracer, turnSpan, totalToolLatency, toolCount)
 	}
-	// 并行模式：先并行执行工具，再串行处理结果
+	// 并行模式：先并行执行tool，再串行处理结果
 	return a.executeToolCallsParallel(ctx, history, toolCalls, turn, cfg, tracer, turnSpan, totalToolLatency, toolCount)
 }
 
-// executeToolCallsSerial 串行执行工具（原始实现，保持 100% 行为兼容）
+// executeToolCallsSerial 串行执行tool（原始实现，保持 100% 行为兼容）
 func (a *ReActAgent) executeToolCallsSerial(ctx context.Context, history []Message, toolCalls []ToolCall, turn int, cfg loopConfig, tracer Tracer, turnSpan Span, totalToolLatency time.Duration, toolCount int) ([]Message, time.Duration, int) {
 	for _, tc := range toolCalls {
 		result, err, latency := a.executeSingleTool(ctx, &tc, turn, cfg, tracer, turnSpan)
 		totalToolLatency += latency
-		toolCount = a.processToolResult(ctx, history, &tc, result, err, latency, turn, cfg, toolCount)
+		toolCount = a.processToolResult(ctx, &tc, result, err, latency, turn, cfg, toolCount)
 		history = append(history, result.ToMessage())
 		a.saveMemory(ctx, result.ToMessage())
 	}
 	return history, totalToolLatency, toolCount
 }
 
-// executeToolCallsParallel 并行执行工具（Phase 1 G1-4）
+// executeToolCallsParallel 并行执行tool（Phase 1 G1-4）
 // 仅并行 executeTool() 本身（最重 I/O），其它副作用（hooks/events/history/memory）仍串行。
 //
 // 实现说明：
@@ -84,14 +84,14 @@ func (a *ReActAgent) executeToolCallsParallel(ctx context.Context, history []Mes
 	for i := range toolCalls {
 		r := results[i]
 		totalToolLatency += r.latency
-		toolCount = a.processToolResult(ctx, history, &toolCalls[i], r.result, r.err, r.latency, turn, cfg, toolCount)
+		toolCount = a.processToolResult(ctx, &toolCalls[i], r.result, r.err, r.latency, turn, cfg, toolCount)
 		history = append(history, r.result.ToMessage())
 		a.saveMemory(ctx, r.result.ToMessage())
 	}
 	return history, totalToolLatency, toolCount
 }
 
-// executeSingleTool 执行单个工具（含 HITL 处理）。返回 result、err、本次 latency。
+// executeSingleTool 执行单个tool（含 HITL 处理）。返回 result、err、本次 latency。
 // 提取自原 executeToolCalls 循环体，便于串行/并行复用。
 // R1.5：在 HITL 通过后注入 ToolLearning 参数建议（confidence > threshold 时替换 args）。
 func (a *ReActAgent) executeSingleTool(ctx context.Context, tc *ToolCall, turn int, cfg loopConfig, tracer Tracer, turnSpan Span) (*ToolResult, error, time.Duration) {
@@ -148,11 +148,9 @@ func (a *ReActAgent) executeSingleTool(ctx context.Context, tc *ToolCall, turn i
 	return result, err, latency
 }
 
-// processToolResult 处理单个工具的结果（hooks/事件/统计）。返回更新后的 toolCount。
+// processToolResult 处理单个tool的结果（hooks/事件/统计）。返回更新后的 toolCount。
 // R1.5：在此阶段根据执行结果记录 ToolLearning 经验。
-func (a *ReActAgent) processToolResult(ctx context.Context, history []Message, tc *ToolCall, result *ToolResult, err error, latency time.Duration, turn int, cfg loopConfig, toolCount int) int {
-	_ = ctx
-	_ = history
+func (a *ReActAgent) processToolResult(ctx context.Context, tc *ToolCall, result *ToolResult, err error, latency time.Duration, turn int, cfg loopConfig, toolCount int) int {
 	if err != nil {
 		a.emitStream(cfg, StreamEvent{Type: StreamEventError, Content: fmt.Sprintf("tool %s error: %v", tc.Name, err)})
 		_ = a.fireHook(HookOnError, &HookContext{Error: err, Turn: turn})
@@ -215,12 +213,12 @@ func (a *ReActAgent) handleHITL(ctx context.Context, tc *ToolCall, turn int, cfg
 		return *tc, false
 	}
 
-	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] 工具 %s 需要人类确认", tc.Name)})
-	_ = a.lifecycle.WaitForInput(fmt.Sprintf("工具 %s 需确认", tc.Name))
+	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] tool %s 需要人类确认", tc.Name)})
+	_ = a.lifecycle.WaitForInput(fmt.Sprintf("tool %s 需确认", tc.Name))
 
 	humanResp, hitlErr := a.hitlMgr.RequestInterrupt(ctx, &InterruptRequest{
 		Reason:  InterruptToolConfirm,
-		Message: fmt.Sprintf("Agent 请求执行工具 %s，参数: %s", tc.Name, tc.Args),
+		Message: fmt.Sprintf("Agent 请求执行tool %s，参数: %s", tc.Name, tc.Args),
 		Data:    map[string]any{"tool": tc.Name, "args": tc.Args},
 		Turn:    turn,
 	})
@@ -234,7 +232,7 @@ func (a *ReActAgent) handleHITL(ctx context.Context, tc *ToolCall, turn int, cfg
 	}
 
 	if !humanResp.Approved {
-		a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] 人类拒绝执行工具 %s", tc.Name)})
+		a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] 人类拒绝执行tool %s", tc.Name)})
 		return *tc, true
 	}
 
@@ -244,6 +242,6 @@ func (a *ReActAgent) handleHITL(ctx context.Context, tc *ToolCall, turn int, cfg
 		}
 	}
 
-	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] 人类已确认执行工具 %s", tc.Name)})
+	a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[HITL] 人类已确认执行tool %s", tc.Name)})
 	return *tc, false
 }

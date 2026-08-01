@@ -6,7 +6,7 @@ import (
 	"agentprimordia/internal/metrics"
 )
 
-// AgentMetricsCollector 是 Agent 指标收集器，记录 LLM 调用、工具调用和轮次等指标
+// AgentMetricsCollector 是 Agent 指标收集器，记录 LLM 调用、tool调用和轮次等指标
 type AgentMetricsCollector = metrics.AgentMetrics
 
 // Histogram 是直方图指标，用于统计值分布（如延迟、Token 用量）

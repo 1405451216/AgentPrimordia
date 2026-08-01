@@ -104,7 +104,7 @@ func (b *EnhancedBridge) RecordLLMMetrics(provider, model string, duration time.
 	}
 }
 
-// RecordToolMetrics 记录工具调用指标
+// RecordToolMetrics 记录tool调用指标
 func (b *EnhancedBridge) RecordToolMetrics(tool string, duration time.Duration, err error) {
 	labels := map[string]string{
 		"tool": tool,

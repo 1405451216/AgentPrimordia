@@ -41,7 +41,7 @@ type Metadata struct {
 	Extra     map[string]string `json:"extra,omitempty"`
 }
 
-// ToolCall 工具调用
+// ToolCall tool调用
 type ToolCall struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

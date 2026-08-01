@@ -66,7 +66,7 @@ func (p *AnthropicProvider) Complete(ctx context.Context, req *CompletionRequest
 		anthReq.Temperature = &f32
 	}
 
-	// 结构化输出：Anthropic 通过 tool_choice + 单工具注入实现
+	// 结构化输出：Anthropic 通过 tool_choice + 单tool注入实现
 	if req.ResponseFormat != nil {
 		tool, choice := p.buildStructuredOutput(req.ResponseFormat)
 		anthReq.Tools = append(anthReq.Tools, tool)
@@ -375,7 +375,7 @@ func (p *AnthropicProvider) resolveMaxTokens(req *CompletionRequest) int {
 }
 
 // injectStructuredOutput 将结构化输出要求注入 Anthropic 请求体
-// Anthropic 不支持 response_format，通过 tool_choice + 单工具注入实现等效效果
+// Anthropic 不支持 response_format，通过 tool_choice + 单tool注入实现等效效果
 func (p *AnthropicProvider) injectStructuredOutput(body map[string]any, rf *ResponseFormat) {
 	if rf.JSONSchema == nil {
 		return
@@ -401,7 +401,7 @@ func (p *AnthropicProvider) injectStructuredOutput(body map[string]any, rf *Resp
 	}
 }
 
-// buildStructuredOutput 构建结构化输出工具（perf-v6 round 4 Task 1）
+// buildStructuredOutput 构建结构化输出tool（perf-v6 round 4 Task 1）
 // 替代 injectStructuredOutput 直接操作 map 的做法
 func (p *AnthropicProvider) buildStructuredOutput(rf *ResponseFormat) (anthropicTool, anthropicToolChoice) {
 	schemaName := rf.JSONSchema.Name

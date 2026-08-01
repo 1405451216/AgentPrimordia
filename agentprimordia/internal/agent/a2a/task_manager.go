@@ -48,7 +48,7 @@ func (tm *TaskManagerImpl) Create(task *Task) (*Task, error) {
 	defer tm.mu.Unlock()
 
 	if _, exists := tm.tasks[task.ID]; exists {
-		return nil, fmt.Errorf("任务已存在: %s", task.ID)
+		return nil, fmt.Errorf("%w: %s", ErrTaskConflict, task.ID)
 	}
 
 	now := time.Now()
@@ -66,7 +66,7 @@ func (tm *TaskManagerImpl) Get(taskID string) (*Task, error) {
 
 	task, exists := tm.tasks[taskID]
 	if !exists {
-		return nil, fmt.Errorf("任务不存在: %s", taskID)
+		return nil, fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
 	}
 	return deepCopyTask(task), nil
 }
@@ -77,11 +77,11 @@ func (tm *TaskManagerImpl) Update(taskID string, state TaskState, status *TaskSt
 
 	task, exists := tm.tasks[taskID]
 	if !exists {
-		return fmt.Errorf("任务不存在: %s", taskID)
+		return fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
 	}
 
 	if !IsValidTransition(task.State, state) {
-		return fmt.Errorf("非法状态转换: %s → %s", task.State, state)
+		return fmt.Errorf("%w: %s -> %s", ErrTaskConflict, task.State, state)
 	}
 
 	task.State = state
@@ -106,7 +106,7 @@ func (tm *TaskManagerImpl) AddArtifact(taskID string, artifact Artifact) error {
 
 	task, exists := tm.tasks[taskID]
 	if !exists {
-		return fmt.Errorf("任务不存在: %s", taskID)
+		return fmt.Errorf("%w: %s", ErrTaskNotFound, taskID)
 	}
 
 	task.Artifacts = append(task.Artifacts, artifact)

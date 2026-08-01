@@ -224,7 +224,7 @@ func (m *TenantManager) ValidateAPIKey(ctx context.Context, apiKeyPlain string) 
 	return &cp, nil
 }
 
-// --- 内部工具 ---
+// --- 内部tool ---
 
 // generateTenantID 生成租户唯一 ID（格式: t_<16字节hex>）。
 func generateTenantID() string {

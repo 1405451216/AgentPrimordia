@@ -65,7 +65,7 @@ func TestJSONRPCRequest_InvalidVersion(t *testing.T) {
 	if err == nil {
 		t.Fatal("非 2.0 版本应返回错误")
 	}
-	if !strings.Contains(err.Error(), "不支持的 JSON-RPC 版本") {
+	if !strings.Contains(err.Error(), "unsupported JSON-RPC version") {
 		t.Errorf("错误信息不符合预期: %v", err)
 	}
 }

@@ -129,7 +129,7 @@ func (bp *BatchProcessor) Stream(ctx context.Context, req *CompletionRequest) (<
 	return bp.provider.Stream(ctx, req)
 }
 
-// CallTools 批量处理器不支持工具调用的批量，直接委托给底层 Provider
+// CallTools 批量处理器不支持tool调用的批量，直接委托给底层 Provider
 func (bp *BatchProcessor) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	return bp.provider.CallTools(ctx, req)
 }

@@ -17,7 +17,7 @@ import (
 func LoadPolicy(data []byte) (*Policy, error) {
 	var p Policy
 	if err := yaml.Unmarshal(data, &p); err != nil {
-		return nil, fmt.Errorf("解析策略 YAML: %w", err)
+		return nil, fmt.Errorf("failed to parse policy YAML: %w", err)
 	}
 	if p.Spec.ToolRestrictions == nil {
 		p.Spec.ToolRestrictions = []ToolRestriction{}
@@ -29,7 +29,7 @@ func LoadPolicy(data []byte) (*Policy, error) {
 func LoadPolicyFile(path string) (*Policy, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("读取策略文件 %s: %w", path, err)
+		return nil, fmt.Errorf("failed to read policy file %s: %w", path, err)
 	}
 	return LoadPolicy(data)
 }

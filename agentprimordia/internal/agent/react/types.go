@@ -29,9 +29,9 @@ type Config struct {
 	MaxTurns int
 	// SessionID 会话标识
 	SessionID string
-	// ParallelToolExecution 是否启用工具并行执行
+	// ParallelToolExecution 是否启用tool并行执行
 	ParallelToolExecution bool
-	// MaxParallelTools 单批并行工具数上限（0=无限制）
+	// MaxParallelTools 单批并行tool数上限（0=无限制）
 	MaxParallelTools int
 	// Logger 结构化日志
 	Logger *slog.Logger
@@ -43,9 +43,9 @@ type TurnResult struct {
 	Turn int
 	// Content LLM 输出内容
 	Content string
-	// ToolCalls 本轮工具调用（若有）
+	// ToolCalls 本轮tool调用（若有）
 	ToolCalls []core.ToolCall
-	// ToolResults 工具执行结果
+	// ToolResults tool执行结果
 	ToolResults []ToolResult
 	// Finished 是否产生最终答案（循环应终止）
 	Finished bool
@@ -53,7 +53,7 @@ type TurnResult struct {
 	Duration time.Duration
 }
 
-// ToolResult 工具执行结果
+// ToolResult tool执行结果
 type ToolResult struct {
 	ToolName string
 	Output   string
@@ -69,7 +69,7 @@ type LoopResult struct {
 	TotalTurns int
 	// TotalDuration 总耗时
 	TotalDuration time.Duration
-	// ToolCallCount 工具调用总次数
+	// ToolCallCount tool调用总次数
 	ToolCallCount int
 	// RequestID 请求标识
 	RequestID string
@@ -80,16 +80,16 @@ type LoopResult struct {
 //
 // 引擎通过 Delegate 完成：
 //   - LLM 调用（CallLLM）
-//   - 工具执行（ExecuteTools）
+//   - tool执行（ExecuteTools）
 //   - 生命周期通知（OnTurnStart / OnTurnEnd / OnComplete / OnError）
 //   - 流式输出（EmitStream）
 //   - 中断检测（IsCancelled）
 type Delegate interface {
-	// CallLLM 执行单轮 LLM 调用，返回内容 + 工具调用（若有）
-	// history 包含完整的对话历史（系统提示词 + 用户输入 + 工具结果）
+	// CallLLM 执行单轮 LLM 调用，返回内容 + tool调用（若有）
+	// history 包含完整的对话历史（系统提示词 + 用户输入 + tool结果）
 	CallLLM(ctx context.Context, turn int, history []core.Message) (content string, toolCalls []core.ToolCall, err error)
 
-	// ExecuteTools 执行工具调用并返回结果
+	// ExecuteTools 执行tool调用并返回结果
 	ExecuteTools(ctx context.Context, calls []core.ToolCall) []ToolResult
 
 	// IsCancelled 检测循环是否应中断（Agent 停止或 ctx 取消）

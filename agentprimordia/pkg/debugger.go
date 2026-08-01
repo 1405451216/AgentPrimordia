@@ -1,4 +1,4 @@
-// Stability: Experimental — 调试器与可视化工具，API 可能随使用场景调整。
+// Stability: Experimental — 调试器与可视化tool，API 可能随使用场景调整。
 package ap
 
 import (
@@ -8,7 +8,7 @@ import (
 // DebugServer 是调试 HTTP 服务器，提供实时事件记录和查询
 type DebugServer = debugger.DebugServer
 
-// Visualizer 是调试可视化工具，支持渲染 Memory 快照和 Agent 生命周期
+// Visualizer 是调试可视化tool，支持渲染 Memory 快照和 Agent 生命周期
 type Visualizer = debugger.Visualizer
 
 // MemorySnapshot 是 Memory 状态快照，包含总条目数、热门会话和最近事件
@@ -26,6 +26,6 @@ type LifecycleStep = debugger.LifecycleStep
 var (
 	// NewDebugServer 创建调试 HTTP 服务器实例
 	NewDebugServer = debugger.NewDebugServer
-	// NewVisualizer 创建可视化工具实例
+	// NewVisualizer 创建可视化tool实例
 	NewVisualizer = debugger.NewVisualizer
 )

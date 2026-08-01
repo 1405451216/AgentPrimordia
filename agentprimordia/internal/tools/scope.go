@@ -55,12 +55,12 @@ func (p *FileScopePolicy) Allow(agentID, resource string) bool {
 
 	scope, exists := p.agentScopes[agentID]
 	if !exists {
-		// 未注册的 Agent 默认拒绝访问
+		// 未注册的 Agent 默认access denied
 		return false
 	}
 
 	if len(scope) == 0 {
-		// 已注册但未设置路径限制的 Agent 默认拒绝访问
+		// 已注册但未设置路径限制的 Agent 默认access denied
 		// 如需全局权限，请显式设置 scope 为 ["/"] 或具体路径
 		return false
 	}

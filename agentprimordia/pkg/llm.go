@@ -12,7 +12,7 @@ import (
 	"agentprimordia/internal/resilience"
 )
 
-// Provider 是 LLM 提供者的核心接口，定义补全、流式、工具调用和嵌入等方法
+// Provider 是 LLM 提供者的核心接口，定义补全、流式、tool调用和嵌入等方法
 type Provider = llm.Provider
 
 // Config 是 LLM 提供者的通用配置，包含 API Key、Base URL、模型名、温度和最大 Token 数
@@ -24,13 +24,13 @@ type CompletionRequest = llm.CompletionRequest
 // CompletionResponse 是补全响应，包含 ID、内容、角色和用量
 type CompletionResponse = llm.CompletionResponse
 
-// ChatMessage 是对话消息，包含角色、内容、工具调用和工具调用 ID
+// ChatMessage 是对话消息，包含角色、内容、tool调用和tool调用 ID
 type ChatMessage = llm.ChatMessage
 
-// ToolCallRequest 是工具调用请求，包含消息列表和工具定义列表
+// ToolCallRequest 是tool调用请求，包含消息列表和tool定义列表
 type ToolCallRequest = llm.ToolCallRequest
 
-// ToolCallResponse 是工具调用响应，包含内容、工具调用列表和用量
+// ToolCallResponse 是tool调用响应，包含内容、tool调用列表和用量
 type ToolCallResponse = llm.ToolCallResponse
 
 // Chunk 是流式输出的一个片段，包含内容和完成标记
@@ -48,7 +48,7 @@ type FunctionCall = llm.FunctionCall
 // FunctionDefinition 是函数定义，包含名称、描述和参数 JSON Schema
 type FunctionDefinition = llm.FunctionDefinition
 
-// ToolDefinition 是工具定义，包含类型和函数定义
+// ToolDefinition 是tool定义，包含类型和函数定义
 type ToolDefinition = llm.ToolDefinition
 
 // APIError 是 LLM API 返回的错误，包含错误码、消息和类型
@@ -117,7 +117,7 @@ var (
 	// NewGLMProvider 创建智谱 GLM 提供者实例（OpenAI 兼容模式）
 	//
 	// 注意: GLMProvider 的 CallTools 当前返回 ErrNotSupported（智谱 OpenAI 兼容层对 tool_calls
-	// 协议支持有限）。如需工具调用，请使用 OpenAI/Anthropic/Gemini/Qwen。
+	// 协议支持有限）。如需tool调用，请使用 OpenAI/Anthropic/Gemini/Qwen。
 	NewGLMProvider = llm.NewGLMProvider
 	// ConfigFromEnv 从环境变量读取 LLM 配置（AP_LLM_API_KEY, AP_LLM_BASE_URL, AP_LLM_MODEL 等）
 	ConfigFromEnv = llm.ConfigFromEnv

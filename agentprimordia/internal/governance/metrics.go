@@ -56,7 +56,7 @@ func NewGovernanceMetrics() *GovernanceMetrics {
 	}
 }
 
-// RecordToolCall 记录一次工具调用检查（通过或拒绝均计）。
+// RecordToolCall 记录一次tool调用检查（通过或拒绝均计）。
 func (m *GovernanceMetrics) RecordToolCall(agentID, toolName string) {
 	if m == nil {
 		return
@@ -77,7 +77,7 @@ func (m *GovernanceMetrics) RecordToolCall(agentID, toolName string) {
 	c.count.Add(1)
 }
 
-// RecordToolBlocked 记录一次工具调用被策略拒绝。
+// RecordToolBlocked 记录一次tool调用被策略拒绝。
 func (m *GovernanceMetrics) RecordToolBlocked(agentID, toolName, reason string) {
 	if m == nil {
 		return
@@ -168,7 +168,7 @@ func (m *GovernanceMetrics) RecordAuditLogWrite() {
 	m.auditLogWritesTotal.Add(1)
 }
 
-// RecordAuditLogError 记录一次审计日志写入失败。
+// RecordAuditLogError 记录一次failed to write audit log。
 func (m *GovernanceMetrics) RecordAuditLogError() {
 	if m == nil {
 		return

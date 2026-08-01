@@ -328,7 +328,11 @@ func (p *Pipeline) executeStage(ctx context.Context, stage *Stage, input string)
 
 				// 重试前等待一小段时间（指数退避）
 				backoff := time.Duration(retry+1) * 100 * time.Millisecond
-				time.Sleep(backoff)
+				select {
+				case <-time.After(backoff):
+				case <-ctx.Done():
+					return StageResult{Error: ctx.Err()}
+				}
 
 				// 优化（perf-v2）：复用同一个 resultCh，排空后重用
 				select {

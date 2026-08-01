@@ -369,7 +369,7 @@ func (b *RemoteMessageBus) SyncState(ctx context.Context) error {
 			lastErr = err
 			continue
 		}
-		resp.Body.Close()
+		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
 			lastErr = fmt.Errorf("node %s returned %d", node.ID, resp.StatusCode)

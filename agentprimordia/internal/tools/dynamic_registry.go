@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-// ToolChangeEvent 动态工具变更事件
+// ToolChangeEvent 动态tool变更事件
 type ToolChangeEvent struct {
 	Action ActionType `json:"action"`
 	Tool   ToolInfo   `json:"tool"`
@@ -18,7 +18,7 @@ const (
 	ActionUnregister ActionType = "unregister"
 )
 
-// ToolInfo 工具元信息
+// ToolInfo tool元信息
 type ToolInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -34,7 +34,7 @@ type ToolRegistry interface {
 	Definitions() []map[string]any
 }
 
-// DynamicRegistry 动态工具注册接口
+// DynamicRegistry 动态tool注册接口
 type DynamicRegistry interface {
 	ToolRegistry
 	Register(tool Tool) error
@@ -60,7 +60,7 @@ func NewDynamicRegistry() *DynamicRegistryImpl {
 	}
 }
 
-// Register 注册工具（同时写入底层 Registry）
+// Register 注册tool（同时写入底层 Registry）
 func (r *DynamicRegistryImpl) Register(tool Tool) error {
 	name := tool.Name()
 	if name == "" {
@@ -82,7 +82,7 @@ func (r *DynamicRegistryImpl) Register(tool Tool) error {
 	return nil
 }
 
-// Unregister 注销工具
+// Unregister 注销tool
 func (r *DynamicRegistryImpl) Unregister(name string) error {
 	r.mu.Lock()
 	tool, exists := r.dynamic[name]
@@ -99,7 +99,7 @@ func (r *DynamicRegistryImpl) Unregister(name string) error {
 	return ErrToolNotFound
 }
 
-// ListDynamic 列出动态注册的工具
+// ListDynamic 列出动态注册的tool
 func (r *DynamicRegistryImpl) ListDynamic() []ToolInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -128,17 +128,17 @@ func (r *DynamicRegistryImpl) notify(event ToolChangeEvent) {
 	}
 }
 
-// Get 从底层 Registry 获取工具
+// Get 从底层 Registry 获取tool
 func (r *DynamicRegistryImpl) Get(name string) (Tool, bool) {
 	return r.registry.Get(name)
 }
 
-// List 从底层 Registry 列出所有工具
+// List 从底层 Registry 列出所有tool
 func (r *DynamicRegistryImpl) List() []string {
 	return r.registry.List()
 }
 
-// Count 从底层 Registry 获取工具数量
+// Count 从底层 Registry 获取tool数量
 func (r *DynamicRegistryImpl) Count() int {
 	return r.registry.Count()
 }
@@ -148,7 +148,7 @@ func (r *DynamicRegistryImpl) Definitions() []map[string]any {
 	return r.registry.Definitions()
 }
 
-// toolInfo 提取工具元信息
+// toolInfo 提取tool元信息
 func toolInfo(tool Tool) ToolInfo {
 	info := ToolInfo{
 		Name:        tool.Name(),

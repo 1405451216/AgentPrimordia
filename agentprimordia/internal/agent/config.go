@@ -66,9 +66,9 @@ type ResilienceConfig struct {
 	ContextWindow ContextWindowStrategy
 }
 
-// ToolsConfig 工具系统分组配置
+// ToolsConfig tool系统分组配置
 type ToolsConfig struct {
-	// Registry 工具注册表
+	// Registry tool注册表
 	Registry *tools.Registry
 }
 

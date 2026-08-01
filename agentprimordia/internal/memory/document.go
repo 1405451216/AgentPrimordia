@@ -387,7 +387,7 @@ func (p *DocumentPipeline) Process(ctx context.Context, source string) ([]*Chunk
 
 	var allChunks []*Chunk
 	for _, doc := range docs {
-		texts := p.splitter.Split(context.Background(), doc.Content)
+		texts := p.splitter.Split(ctx, doc.Content)
 		for i, text := range texts {
 			metadata := make(map[string]string)
 			maps.Copy(metadata, doc.Metadata)

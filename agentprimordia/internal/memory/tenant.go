@@ -52,11 +52,11 @@ func TenantFromContext(ctx context.Context) string {
 	return v
 }
 
-// ErrTenantMismatch 表示跨租户访问被拒绝。
-var ErrTenantMismatch = errors.New("memory: 跨租户访问被拒绝")
+// ErrTenantMismatch 表示cross-tenant access denied。
+var ErrTenantMismatch = errors.New("memory: cross-tenant access denied")
 
 // ErrEmptyTenant 表示调用方未提供 tenantID。
-var ErrEmptyTenant = errors.New("memory: tenantID 不能为空")
+var ErrEmptyTenant = errors.New("memory: tenantID must not be empty")
 
 // TenantScoped 是按租户隔离的 Memory 装饰器。
 //
@@ -93,7 +93,7 @@ type TenantStats struct {
 //   - inner == nil   → panic
 func NewTenantScoped(inner Memory, tenantID string) (*TenantScoped, error) {
 	if inner == nil {
-		panic("memory: TenantScoped 要求非 nil inner")
+		panic("memory: TenantScoped requires non-nil inner")
 	}
 	if tenantID == "" {
 		return nil, ErrEmptyTenant
@@ -126,14 +126,14 @@ func (t *TenantScoped) TenantMetrics() TenantStats {
 // Add 自动注入 tenantID 到 Metadata（如缺失），然后写入底层存储。
 func (t *TenantScoped) Add(ctx context.Context, ep *Episode) error {
 	if ep == nil {
-		return fmt.Errorf("memory: episode 不能为 nil")
+		return fmt.Errorf("memory: episode must not be nil")
 	}
 	if ep.Metadata == nil {
 		ep.Metadata = make(map[string]string, 1)
 	}
 	if existing, ok := ep.Metadata[TenantMetadataKey]; ok && existing != t.tenantID {
 		t.stats.denied.Add(1)
-		return fmt.Errorf("%w: ep=%s 期望=%s 实际=%s", ErrTenantMismatch, ep.ID, t.tenantID, existing)
+		return fmt.Errorf("%w: ep=%s expected=%s actual=%s", ErrTenantMismatch, ep.ID, t.tenantID, existing)
 	}
 	ep.Metadata[TenantMetadataKey] = t.tenantID
 
@@ -158,7 +158,7 @@ func (t *TenantScoped) AddBatch(ctx context.Context, episodes []*Episode) error 
 		}
 		if existing, ok := ep.Metadata[TenantMetadataKey]; ok && existing != t.tenantID {
 			t.stats.denied.Add(1)
-			return fmt.Errorf("%w: ep=%s 期望=%s 实际=%s", ErrTenantMismatch, ep.ID, t.tenantID, existing)
+			return fmt.Errorf("%w: ep=%s expected=%s actual=%s", ErrTenantMismatch, ep.ID, t.tenantID, existing)
 		}
 		ep.Metadata[TenantMetadataKey] = t.tenantID
 	}
@@ -503,7 +503,7 @@ type TenantRegistry struct {
 // 对应的底层 Memory 实例（不同 tenant 可路由到不同物理后端）。
 func NewTenantRegistry(factory func(tenantID string) (Memory, error)) *TenantRegistry {
 	if factory == nil {
-		panic("memory: TenantRegistry.factory 不能为 nil")
+		panic("memory: TenantRegistry.factory must not be nil")
 	}
 	return &TenantRegistry{
 		scoped:  make(map[string]*TenantScoped),
@@ -527,7 +527,7 @@ func (r *TenantRegistry) Get(tenantID string) (*TenantScoped, error) {
 	// 在锁外调用 factory（避免持锁期间执行耗时操作）
 	inner, err := r.factory(tenantID)
 	if err != nil {
-		return nil, fmt.Errorf("memory: 创建 tenant %s 存储失败：%w", tenantID, err)
+		return nil, fmt.Errorf("memory: failed to create tenant %s store: %w", tenantID, err)
 	}
 
 	r.mu.Lock()

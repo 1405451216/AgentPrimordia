@@ -214,7 +214,7 @@ func handleRequest(req *request) *response {
 	}
 }
 
-// handleToolCall 处理工具调用请求
+// handleToolCall 处理tool调用请求
 func handleToolCall(req *request) *response {
 	// 解析参数
 	paramsBytes, err := json.Marshal(req.Params)
@@ -269,7 +269,7 @@ func handleToolCall(req *request) *response {
 	default:
 		result, _ := json.Marshal(map[string]any{
 			"content": []map[string]any{
-				{"type": "text", "text": fmt.Sprintf("工具 %q 不存在", params.Name)},
+				{"type": "text", "text": fmt.Sprintf("tool %q 不存在", params.Name)},
 			},
 			"isError": true,
 		})

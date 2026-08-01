@@ -470,7 +470,7 @@ type geminiFunctionDeclaration struct {
 	Parameters  map[string]any `json:"parameters,omitempty"`
 }
 
-// geminiToolContainer Gemini 工具容器（perf-v6 Task 4：typed struct 替代 map）
+// geminiToolContainer Gemini tool容器（perf-v6 Task 4：typed struct 替代 map）
 type geminiToolContainer struct {
 	FunctionDeclarations []geminiFunctionDeclaration `json:"function_declarations,omitempty"`
 }

@@ -224,7 +224,7 @@ func (m *AgentMetrics) RecordToolCall(duration time.Duration, err error) {
 	m.ToolLatencyMs.Record(duration.Milliseconds())
 }
 
-// RecordToolCallWithLabels 记录带标签维度的工具调用
+// RecordToolCallWithLabels 记录带标签维度的tool调用
 func (m *AgentMetrics) RecordToolCallWithLabels(duration time.Duration, err error, toolName string) {
 	m.RecordToolCall(duration, err)
 

@@ -1,5 +1,5 @@
 // model_router.go — Phase 2 G2-1 成本感知模型路由器
-// 根据消息复杂度、上下文长度、是否需要工具等指标，从多个注册的 LLM Provider
+// 根据消息复杂度、上下文长度、是否需要tool等指标，从多个注册的 LLM Provider
 // 中选择最优的一个。使用 atomic 无锁统计高频调用指标。
 //
 // 设计取舍：
@@ -178,7 +178,7 @@ func (r *ModelRouter) Route(ctx context.Context, messages []ChatMessage, hasTool
 	copy(candidates, r.models)
 	r.mu.RUnlock()
 
-	// 过滤：上下文 + 工具能力
+	// 过滤：上下文 + tool能力
 	filtered := make([]*modelEntry, 0, len(candidates))
 	for _, e := range candidates {
 		if e.config.MaxContext > 0 && contextLen > e.config.MaxContext {

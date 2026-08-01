@@ -8,8 +8,8 @@ import (
 	"sync"
 )
 
-// ErrHumanChannelClosed 人类输入通道已关闭错误
-var ErrHumanChannelClosed = errors.New("人类输入通道已关闭")
+// ErrHumanChannelClosed human input channel closed错误
+var ErrHumanChannelClosed = errors.New("human input channel closed")
 
 // InterruptReason 中断原因
 type InterruptReason string
@@ -88,7 +88,7 @@ func (m *HITLManager) ShouldInterrupt(toolName string, reason InterruptReason) b
 	return false
 }
 
-// isAutoApproved 检查工具是否在自动批准列表中
+// isAutoApproved 检查tool是否在自动批准列表中
 func (m *HITLManager) isAutoApproved(toolName string) bool {
 	for _, name := range m.config.AutoApproveTools {
 		if name == toolName {
@@ -118,14 +118,14 @@ func (m *HITLManager) RequestInterrupt(ctx context.Context, req *InterruptReques
 		resp = r
 	case r, ok := <-m.responseCh:
 		if !ok {
-			return nil, fmt.Errorf("响应通道已关闭")
+			return nil, fmt.Errorf("response channel closed")
 		}
 		resp = r
 	case <-ctx.Done():
 		m.mu.Lock()
 		m.pending = nil
 		m.mu.Unlock()
-		return nil, fmt.Errorf("等待人类响应超时: %w", ctx.Err())
+		return nil, fmt.Errorf("timed out waiting for human response: %w", ctx.Err())
 	}
 
 	m.mu.Lock()

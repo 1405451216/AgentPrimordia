@@ -33,7 +33,7 @@ func newReactDelegate(a *ReActAgent, cfg loopConfig) *reactDelegate {
 }
 
 // CallLLM 执行单轮 LLM 调用
-// 将 ReActAgent 内部的 LLM 调用逻辑（含工具定义注入、RAG 上下文）封装为统一接口
+// 将 ReActAgent 内部的 LLM 调用逻辑（含tool定义注入、RAG 上下文）封装为统一接口
 func (d *reactDelegate) CallLLM(ctx context.Context, turn int, history []core.Message) (string, []core.ToolCall, error) {
 	a := d.agent
 
@@ -46,13 +46,13 @@ func (d *reactDelegate) CallLLM(ctx context.Context, turn int, history []core.Me
 		}
 	}
 
-	// 获取工具定义
+	// 获取tool定义
 	var toolDefs []llm.ToolDefinition
 	if a.capCache != nil && len(a.capCache.toolDefinitions) > 0 {
 		toolDefs = a.capCache.toolDefinitions
 	}
 
-	// 调用 LLM（使用 CallTools 接口获取工具调用能力）
+	// 调用 LLM（使用 CallTools 接口获取tool调用能力）
 	if len(toolDefs) > 0 {
 		resp, err := a.config.Model.CallTools(ctx, &llm.ToolCallRequest{
 			Messages: messages,
@@ -62,7 +62,7 @@ func (d *reactDelegate) CallLLM(ctx context.Context, turn int, history []core.Me
 			return "", nil, err
 		}
 
-		// 转换工具调用
+		// 转换tool调用
 		var toolCalls []core.ToolCall
 		if len(resp.ToolCalls) > 0 {
 			toolCalls = make([]core.ToolCall, len(resp.ToolCalls))
@@ -77,7 +77,7 @@ func (d *reactDelegate) CallLLM(ctx context.Context, turn int, history []core.Me
 		return resp.Content, toolCalls, nil
 	}
 
-	// 无工具时走 Complete 接口
+	// 无tool时走 Complete 接口
 	resp, err := a.config.Model.Complete(ctx, &llm.CompletionRequest{
 		Messages: messages,
 	})
@@ -87,7 +87,7 @@ func (d *reactDelegate) CallLLM(ctx context.Context, turn int, history []core.Me
 	return resp.Content, nil, nil
 }
 
-// ExecuteTools 执行工具调用
+// ExecuteTools 执行tool调用
 func (d *reactDelegate) ExecuteTools(ctx context.Context, calls []core.ToolCall) []react.ToolResult {
 	a := d.agent
 	results := make([]react.ToolResult, len(calls))
@@ -110,14 +110,14 @@ func (d *reactDelegate) ExecuteTools(ctx context.Context, calls []core.ToolCall)
 	return results
 }
 
-// executeToolForDelegate 通过工具注册表执行单个工具（桥接层专用）
+// executeToolForDelegate 通过tool注册表执行单个tool（桥接层专用）
 func (a *ReActAgent) executeToolForDelegate(ctx context.Context, call core.ToolCall) (string, error) {
 	if a.capCache == nil || a.capCache.toolkit == nil {
-		return "", fmt.Errorf("工具注册表未配置")
+		return "", fmt.Errorf("tool registry not configured")
 	}
 	tool, ok := a.capCache.toolkit.Get(call.Name)
 	if !ok {
-		return "", fmt.Errorf("工具 %q 未找到", call.Name)
+		return "", fmt.Errorf("tool %q not found", call.Name)
 	}
 	result, err := tool.Execute(ctx, json.RawMessage(call.Args))
 	if err != nil {

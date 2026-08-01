@@ -24,7 +24,7 @@ var writeSQLKeywords = []string{
 	"INSERT", "UPDATE", "DELETE", "REPLACE", "DROP", "ALTER", "CREATE", "TRUNCATE", "ATTACH", "DETACH",
 }
 
-// Database 是 SQLite 数据库工具，支持 query 和 execute 操作
+// Database 是 SQLite 数据库tool，支持 query 和 execute 操作
 type Database struct {
 	db           *sql.DB
 	dbPath       string
@@ -59,7 +59,7 @@ func WithQueryTimeout(dur time.Duration) DatabaseOption {
 	}
 }
 
-// NewDatabase 创建 SQLite 数据库工具
+// NewDatabase 创建 SQLite 数据库tool
 // dbPath 为数据库文件路径，传 ":memory:" 使用内存数据库
 func NewDatabase(dbPath string, opts ...DatabaseOption) (*Database, error) {
 	if dbPath == "" {

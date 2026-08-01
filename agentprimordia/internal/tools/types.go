@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 )
 
-// Tool 是所有工具必须实现的接口
+// Tool 是所有tool必须实现的接口
 type Tool interface {
 	Name() string
 	Description() string
@@ -13,7 +13,7 @@ type Tool interface {
 	Execute(ctx context.Context, args json.RawMessage) (*Result, error)
 }
 
-// Result 表示工具执行的结果
+// Result 表示tool执行的结果
 type Result struct {
 	Content  string         `json:"content"`
 	IsError  bool           `json:"is_error"`
@@ -30,11 +30,11 @@ func NewErrorResult(content string) *Result {
 	return &Result{Content: content, IsError: true}
 }
 
-// ConfirmationFunc 是工具执行前的确认回调
+// ConfirmationFunc 是tool执行前的确认回调
 // 返回 true 表示允许执行，false 表示拒绝
 type ConfirmationFunc func(toolName string, args json.RawMessage) bool
 
-// Permission 定义工具的访问控制
+// Permission 定义tool的访问控制
 type Permission struct {
 	AllowedRoles        []string         `json:"allowed_roles,omitempty"`
 	BlockedPaths        []string         `json:"blocked_paths,omitempty"`

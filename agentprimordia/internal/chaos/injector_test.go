@@ -338,8 +338,8 @@ func TestCompositeFault_InjectFailure_Rollback(t *testing.T) {
 	if err == nil {
 		t.Fatal("组合故障应返回错误")
 	}
-	if !strings.Contains(err.Error(), "组合故障注入失败") {
-		t.Errorf("错误消息应包含'组合故障注入失败', 得到: %v", err)
+	if !strings.Contains(err.Error(), "combined fault injection failed") {
+		t.Errorf("错误消息应包含'combined fault injection failed', 得到: %v", err)
 	}
 }
 

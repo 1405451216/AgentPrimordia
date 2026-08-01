@@ -278,7 +278,7 @@ func TestStructuredExtractor_RetryExhausted(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error after retries exhausted")
 	}
-	if !strings.Contains(err.Error(), "重试") {
+	if !strings.Contains(err.Error(), "retried") {
 		t.Errorf("error should mention retry, got: %v", err)
 	}
 }

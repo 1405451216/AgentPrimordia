@@ -46,7 +46,7 @@ func NewA2AService(card *AgentCard, tm TaskManager, opts ...A2AServiceOption) *A
 // GetAgentCard 返回 AgentCard。
 func (s *A2AService) GetAgentCard(ctx context.Context) (*AgentCard, error) {
 	if s.card == nil {
-		return nil, fmt.Errorf("AgentCard 未配置")
+		return nil, fmt.Errorf("AgentCard not configured")
 	}
 	return s.card, nil
 }
@@ -98,7 +98,7 @@ func (s *A2AService) CreateTask(ctx context.Context, req *CreateTaskRequest) (*T
 // GetTask 获取任务。
 func (s *A2AService) GetTask(ctx context.Context, taskID string) (*Task, error) {
 	if taskID == "" {
-		return nil, fmt.Errorf("%w: 空 task_id", ErrTaskNotFound)
+		return nil, fmt.Errorf("%w: empty task_id", ErrTaskNotFound)
 	}
 	task, err := s.taskManager.Get(taskID)
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *A2AService) GetTask(ctx context.Context, taskID string) (*Task, error) 
 // CancelTask 取消任务。
 func (s *A2AService) CancelTask(ctx context.Context, taskID string) (*Task, error) {
 	if taskID == "" {
-		return nil, fmt.Errorf("%w: 空 task_id", ErrTaskNotFound)
+		return nil, fmt.Errorf("%w: empty task_id", ErrTaskNotFound)
 	}
 	if err := s.taskManager.Cancel(taskID); err != nil {
 		codeErr := ErrTaskNotFound
@@ -125,7 +125,7 @@ func (s *A2AService) CancelTask(ctx context.Context, taskID string) (*Task, erro
 // SubscribeTaskEvents 订阅任务事件。
 func (s *A2AService) SubscribeTaskEvents(ctx context.Context, taskID string) (<-chan *TaskEvent, error) {
 	if taskID == "" {
-		return nil, fmt.Errorf("%w: 空 task_id", ErrTaskNotFound)
+		return nil, fmt.Errorf("%w: empty task_id", ErrTaskNotFound)
 	}
 	// 验证任务存在
 	if _, err := s.taskManager.Get(taskID); err != nil {

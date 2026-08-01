@@ -1,5 +1,5 @@
 // react_reflect.go — R1.4 Reflection 接入（G1-2）
-// 在 ReAct Agent 完成路径（无工具调用）前，对最终输出进行反思与改进。
+// 在 ReAct Agent 完成路径（无tool调用）前，对最终输出进行反思与改进。
 package agent
 
 import (
@@ -25,7 +25,7 @@ var reflectionSeverityOrder = map[reflection.Severity]int{
 //   - 仅当 Critique.Severity >= ReflectionSeverityThreshold 时才触发 Improve
 //   - 任何一步出错都仅记录日志并返回原 content，不阻断 Agent 完成
 //
-// 这是 R1.4 G1-2 闭环的接入点。在 runLoop "无工具调用" 分支前调用。
+// 这是 R1.4 G1-2 闭环的接入点。在 runLoop "无tool调用" 分支前调用。
 func (a *ReActAgent) reflectAndImprove(ctx context.Context, content string) (string, error) {
 	reflector := a.getReflectorOrNil()
 	if reflector == nil || content == "" {

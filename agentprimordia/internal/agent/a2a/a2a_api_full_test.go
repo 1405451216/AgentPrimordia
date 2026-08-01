@@ -457,7 +457,7 @@ func TestServer_InvalidJSONRPCVersion(t *testing.T) {
 	if resp.Error == nil || resp.Error.Code != ErrCodeParseError {
 		t.Errorf("无效 JSON-RPC 版本应返回 ParseError, got: %+v", resp.Error)
 	}
-	if resp.Error != nil && !strings.Contains(resp.Error.Data, "版本") {
+	if resp.Error != nil && !strings.Contains(resp.Error.Data, "version") {
 		t.Errorf("错误详情应提及版本问题: %s", resp.Error.Data)
 	}
 }

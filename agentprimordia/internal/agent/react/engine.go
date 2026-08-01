@@ -7,8 +7,8 @@
 //	    2. OnTurnStart 回调
 //	    3. 构建 LLM 请求
 //	    4. 调用 LLM
-//	    5. 判断：工具调用 or 最终答案
-//	    6. 执行工具（若有）
+//	    5. 判断：tool调用 or 最终答案
+//	    6. 执行tool（若有）
 //	    7. OnTurnEnd 回调
 //	}
 //
@@ -45,7 +45,7 @@ func NewEngine(cfg Config) *Engine {
 // Run 执行 ReAct 循环
 //
 // 接受 Delegate 接口作为宿主 Agent 的抽象，执行 turn 迭代直到：
-//   - LLM 返回最终答案（无工具调用）
+//   - LLM 返回最终答案（无tool调用）
 //   - 达到 MaxTurns 上限
 //   - ctx 取消或 Delegate.IsCancelled 返回 true
 //   - 发生不可恢复错误
@@ -78,7 +78,7 @@ func (e *Engine) Run(ctx context.Context, delegate Delegate, history []core.Mess
 		// 步骤 2：OnTurnStart 回调
 		if err := delegate.OnTurnStart(ctx, turn); err != nil {
 			delegate.OnError(ctx, err)
-			return nil, fmt.Errorf("turn %d start 回调失败: %w", turn, err)
+			return nil, fmt.Errorf("turn %d start callback failed: %w", turn, err)
 		}
 
 		turnStart := time.Now()
@@ -87,7 +87,7 @@ func (e *Engine) Run(ctx context.Context, delegate Delegate, history []core.Mess
 		content, toolCalls, err := delegate.CallLLM(ctx, turn, history)
 		if err != nil {
 			delegate.OnError(ctx, err)
-			return nil, fmt.Errorf("turn %d LLM 调用失败: %w", turn, err)
+			return nil, fmt.Errorf("turn %d LLM call failed: %w", turn, err)
 		}
 
 		// 步骤 5：判断响应类型
@@ -99,7 +99,7 @@ func (e *Engine) Run(ctx context.Context, delegate Delegate, history []core.Mess
 		}
 
 		if len(toolCalls) == 0 {
-			// 最终答案：无工具调用，循环终止
+			// 最终答案：无tool调用，循环终止
 			turnResult.Finished = true
 
 			// 流式输出最终内容
@@ -122,12 +122,12 @@ func (e *Engine) Run(ctx context.Context, delegate Delegate, history []core.Mess
 			return result, nil
 		}
 
-		// 步骤 6：执行工具调用
+		// 步骤 6：执行tool调用
 		toolCallCount += len(toolCalls)
 		toolResults := delegate.ExecuteTools(ctx, toolCalls)
 		turnResult.ToolResults = toolResults
 
-		// 将工具结果追加到历史（供下一轮 LLM 调用使用）
+		// 将tool结果追加到历史（供下一轮 LLM 调用使用）
 		history = append(history, core.Message{
 			Role:      core.RoleAssistant,
 			Content:   content,
@@ -140,7 +140,7 @@ func (e *Engine) Run(ctx context.Context, delegate Delegate, history []core.Mess
 			})
 		}
 
-		// 流式输出工具执行事件
+		// 流式输出tool执行事件
 		if delegate.IsStream() {
 			for _, tr := range toolResults {
 				delegate.EmitStream(core.StreamEvent{

@@ -70,7 +70,7 @@ func PrincipalFromContext(ctx context.Context) (Principal, bool) {
 }
 
 // ErrUnauthenticated 是认证失败的统一错误。
-var ErrUnauthenticated = errors.New("admin: 认证失败")
+var ErrUnauthenticated = errors.New("admin: authentication failed")
 
 // Authenticator 是单一认证模式接口。
 //

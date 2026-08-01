@@ -402,7 +402,7 @@ func (c *ChainedReranker) Rerank(ctx context.Context, query string, results []*R
 		var err error
 		current, err = reranker.Rerank(ctx, query, current)
 		if err != nil {
-			return nil, fmt.Errorf("重排序器 %q 执行失败: %w", reranker.Name(), err)
+			return nil, fmt.Errorf("reranker %q execution failed: %w", reranker.Name(), err)
 		}
 	}
 	return current, nil

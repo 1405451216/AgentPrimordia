@@ -43,7 +43,7 @@ type MCPClientEntry struct {
 	Stdout io.ReadCloser  // stdio 模式下的 stdout 管道
 }
 
-// MCPRegistry 管理多个 MCP Server 的注册、启动和工具发现
+// MCPRegistry 管理多个 MCP Server 的注册、启动和tool发现
 type MCPRegistry struct {
 	mu      sync.RWMutex
 	servers map[string]*MCPClientEntry
@@ -73,7 +73,7 @@ func (r *MCPRegistry) Unregister(name string) error {
 
 	entry, ok := r.servers[name]
 	if !ok {
-		return fmt.Errorf("MCP Server %q 未注册", name)
+		return fmt.Errorf("MCP server %q not registered", name)
 	}
 
 	if entry.Cmd != nil && entry.Cmd.Process != nil {
@@ -90,7 +90,7 @@ func (r *MCPRegistry) Start(ctx context.Context, name string) error {
 	entry, ok := r.servers[name]
 	if !ok {
 		r.mu.Unlock()
-		return fmt.Errorf("MCP Server %q 未注册", name)
+		return fmt.Errorf("MCP server %q not registered", name)
 	}
 
 	if entry.Status == MCPClientRunning {
@@ -115,7 +115,7 @@ func (r *MCPRegistry) connectExisting(ctx context.Context, name string, entry *M
 		r.mu.Lock()
 		entry.Status = MCPClientFailed
 		r.mu.Unlock()
-		return fmt.Errorf("MCP Server %q 初始化失败: %w", name, err)
+		return fmt.Errorf("MCP server %q initialization failed: %w", name, err)
 	}
 
 	r.mu.Lock()
@@ -147,11 +147,11 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return fmt.Errorf("MCP Server %q stdin 管道创建失败: %w", name, err)
+		return fmt.Errorf("MCP server %q: failed to create stdin pipe: %w", name, err)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("MCP Server %q stdout 管道创建失败: %w", name, err)
+		return fmt.Errorf("MCP server %q: failed to create stdout pipe: %w", name, err)
 	}
 	// stderr 不再直接透传到进程 stderr，避免泄露敏感信息；改为丢弃。
 	cmd.Stderr = io.Discard
@@ -160,7 +160,7 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 		r.mu.Lock()
 		entry.Status = MCPClientFailed
 		r.mu.Unlock()
-		return fmt.Errorf("MCP Server %q 启动失败: %w", name, err)
+		return fmt.Errorf("MCP server %q: failed to start: %w", name, err)
 	}
 
 	// 启动后台 goroutine 收割子进程，避免僵尸进程并更新状态。
@@ -202,7 +202,11 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 		if initErr == nil {
 			break
 		}
-		time.Sleep(time.Duration(i+1) * time.Second)
+		select {
+	case <-time.After(time.Duration(i+1) * time.Second):
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 	}
 
 	if initErr != nil {
@@ -211,7 +215,7 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 		entry.Client = nil
 		r.mu.Unlock()
 		_ = cmd.Process.Signal(os.Interrupt)
-		return fmt.Errorf("MCP Server %q stdio 初始化失败: %w", name, initErr)
+		return fmt.Errorf("MCP server %q: stdio initialization failed: %w", name, initErr)
 	}
 
 	r.mu.Lock()
@@ -241,7 +245,7 @@ func (r *MCPRegistry) StartAll(ctx context.Context) error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("部分 MCP Server 启动失败: %v", errs)
+		return fmt.Errorf("some MCP servers failed to start: %v", errs)
 	}
 	return nil
 }
@@ -253,7 +257,7 @@ func (r *MCPRegistry) Stop(name string) error {
 
 	entry, ok := r.servers[name]
 	if !ok {
-		return fmt.Errorf("MCP Server %q 未注册", name)
+		return fmt.Errorf("MCP server %q not registered", name)
 	}
 
 	if entry.Client != nil {
@@ -294,7 +298,7 @@ func (r *MCPRegistry) StopAll() {
 	}
 }
 
-// RegisterIntoRegistry 将所有运行中的 MCP Server 工具注册到 ToolRegistry
+// RegisterIntoRegistry 将所有运行中的 MCP Server tool注册到 ToolRegistry
 func (r *MCPRegistry) RegisterIntoRegistry(registry *Registry) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -305,7 +309,7 @@ func (r *MCPRegistry) RegisterIntoRegistry(registry *Registry) error {
 		}
 
 		if err := entry.Client.RegisterIntoRegistry(registry); err != nil {
-			return fmt.Errorf("MCP Server %q 工具注册失败: %w", name, err)
+			return fmt.Errorf("MCP server %q: tool registration failed: %w", name, err)
 		}
 	}
 
@@ -343,11 +347,11 @@ func (r *MCPRegistry) Test(ctx context.Context, name string) error {
 	r.mu.RUnlock()
 
 	if !ok {
-		return fmt.Errorf("MCP Server %q 未注册", name)
+		return fmt.Errorf("MCP server %q not registered", name)
 	}
 
 	if entry.Client == nil {
-		return fmt.Errorf("MCP Server %q 未启动", name)
+		return fmt.Errorf("MCP server %q not started", name)
 	}
 
 	return entry.Client.Initialize(ctx)
@@ -357,7 +361,7 @@ func (r *MCPRegistry) Test(ctx context.Context, name string) error {
 func (r *MCPRegistry) LoadFromConfig(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("读取配置文件失败: %w", err)
+		return fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var cfg struct {
@@ -367,7 +371,7 @@ func (r *MCPRegistry) LoadFromConfig(path string) error {
 	}
 
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return fmt.Errorf("解析配置文件失败: %w", err)
+		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	for name, serverCfg := range cfg.MCP.Servers {

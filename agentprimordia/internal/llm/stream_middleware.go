@@ -110,7 +110,7 @@ func LoggingMiddleware() StreamMiddleware {
 	}
 }
 
-// RateLimitMiddleware 速率限制中间件
+// RateLimitMiddleware rate limited中间件
 // 限制每秒处理的 chunk 数量，使用令牌桶算法
 // chunksPerSecond 为每秒允许的最大 chunk 数
 func RateLimitMiddleware(chunksPerSecond float64) StreamMiddleware {

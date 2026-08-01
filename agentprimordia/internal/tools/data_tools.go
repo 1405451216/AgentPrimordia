@@ -13,19 +13,19 @@ import (
 	_ "modernc.org/sqlite" // 纯 Go SQLite 驱动
 )
 
-// ===== CSV 处理工具 =====
+// ===== CSV 处理tool =====
 
-// CSVTool 是 CSV 文件处理工具
+// CSVTool 是 CSV 文件处理tool
 type CSVTool struct {
 	name        string
 	description string
 }
 
-// NewCSVTool 创建新的 CSV 工具
+// NewCSVTool 创建新的 CSV tool
 func NewCSVTool() *CSVTool {
 	return &CSVTool{
 		name: "csv_processor",
-		description: `处理 CSV 文件的工具，支持读取、解析、查询、转换和写入操作。
+		description: `处理 CSV 文件的tool，支持读取、解析、查询、转换和写入操作。
 功能：
 - 读取 CSV 文件并解析为结构化数据
 - 按列名或索引筛选数据
@@ -301,19 +301,19 @@ func (t *CSVTool) writeCSV(params map[string]any) (*Result, error) {
 	}, nil
 }
 
-// ===== JSON 处理工具 =====
+// ===== JSON 处理tool =====
 
-// JSONTool 是 JSON 数据处理工具
+// JSONTool 是 JSON 数据处理tool
 type JSONTool struct {
 	name        string
 	description string
 }
 
-// NewJSONTool 创建新的 JSON 工具
+// NewJSONTool 创建新的 JSON tool
 func NewJSONTool() *JSONTool {
 	return &JSONTool{
 		name: "json_processor",
-		description: `处理 JSON 数据的工具，支持解析、查询、转换和验证。
+		description: `处理 JSON 数据的tool，支持解析、查询、转换和验证。
 功能：解析 JSON、路径查询、数据转换、Schema 验证、对象合并`,
 	}
 }
@@ -420,7 +420,7 @@ func (t *JSONTool) validateJSON(params map[string]any) (*Result, error) {
 	return &Result{Content: string(outputJSON)}, nil
 }
 
-// ===== SQLite 处理工具 =====
+// ===== SQLite 处理tool =====
 
 // dangerousSQLKeywords 危险 SQL 关键字列表
 var dangerousSQLKeywords = []string{
@@ -442,7 +442,7 @@ func validateSQLSafety(sql string) error {
 	return nil
 }
 
-// SQLiteTool 是 SQLite 数据库处理工具
+// SQLiteTool 是 SQLite 数据库处理tool
 type SQLiteTool struct {
 	name   string
 	desc   string
@@ -450,7 +450,7 @@ type SQLiteTool struct {
 	dbPath string
 }
 
-// NewSQLiteTool 创建新的 SQLite 工具
+// NewSQLiteTool 创建新的 SQLite tool
 func NewSQLiteTool(dbPath string) (*SQLiteTool, error) {
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -458,7 +458,7 @@ func NewSQLiteTool(dbPath string) (*SQLiteTool, error) {
 	}
 	return &SQLiteTool{
 		name:   "sqlite_processor",
-		desc:   `SQLite 数据库处理工具，支持 SQL 查询、表管理和数据操作`,
+		desc:   `SQLite 数据库处理tool，支持 SQL 查询、表管理和数据操作`,
 		db:     db,
 		dbPath: dbPath,
 	}, nil

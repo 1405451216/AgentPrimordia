@@ -397,7 +397,7 @@ func (p *QwenProvider) Stream(ctx context.Context, req *CompletionRequest) (<-ch
 	return p.StreamMultimodal(ctx, extReq)
 }
 
-// CallTools 工具调用
+// CallTools tool调用
 func (p *QwenProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	model := p.resolveModel(req.Model)
 

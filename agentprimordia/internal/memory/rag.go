@@ -149,7 +149,7 @@ func (r *RAGStore) Add(ctx context.Context, episode *Episode) error {
 // Query 执行 RAG 查询：将查询向量化，然后在向量索引中搜索最相似的 Episode
 func (r *RAGStore) Query(ctx context.Context, query string, topK int) ([]*RAGResult, error) {
 	if r.embedder == nil {
-		return nil, fmt.Errorf("RAG 查询需要 EmbeddingProvider")
+		return nil, fmt.Errorf("RAG query requires EmbeddingProvider")
 	}
 
 	if topK <= 0 {
@@ -159,16 +159,16 @@ func (r *RAGStore) Query(ctx context.Context, query string, topK int) ([]*RAGRes
 	// 生成查询向量
 	vecs, err := r.embedder.Embed(ctx, []string{query})
 	if err != nil {
-		return nil, fmt.Errorf("查询向量化失败: %w", err)
+		return nil, fmt.Errorf("query vectorization failed: %w", err)
 	}
 	if len(vecs) == 0 {
-		return nil, fmt.Errorf("查询向量化返回空结果")
+		return nil, fmt.Errorf("query vectorization returned empty result")
 	}
 
 	// 向量相似度搜索
 	results, err := r.vectors.Search(ctx, vecs[0], topK)
 	if err != nil {
-		return nil, fmt.Errorf("向量搜索失败: %w", err)
+		return nil, fmt.Errorf("vector search failed: %w", err)
 	}
 
 	// 将搜索结果与 Memory 中的 Episode 关联

@@ -1,6 +1,6 @@
 // stream_collector.go — 流式输出收集器
 // 将流式 Chunk 通道收集为完整的 CollectedResult
-// 支持并发安全收集、工具调用信息提取、Usage 聚合
+// 支持并发安全收集、tool调用信息提取、Usage 聚合
 package llm
 
 import (
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// ToolCallInfo 工具调用信息
+// ToolCallInfo tool调用信息
 type ToolCallInfo struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`

@@ -331,7 +331,7 @@ func (s *SQLiteStore) SetImportance(ctx context.Context, episodeID string, impor
 	return nil
 }
 
-// RecordToolUse 记录工具调用（特殊记忆类型）
+// RecordToolUse 记录tool调用（特殊记忆类型）
 func (s *SQLiteStore) RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error {
 	ep, err := NewEpisode(sessionID, "tool_use", args)
 	if err != nil {

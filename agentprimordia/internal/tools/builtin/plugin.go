@@ -7,8 +7,8 @@ import (
 	"agentprimordia/internal/tools"
 )
 
-// BuiltinPlugin 是内置工具插件，实现 tools.ToolPlugin 接口。
-// 它将 FileSystem、Shell、Web、Calculator、DateTime 等工具打包为插件。
+// BuiltinPlugin 是内置tool插件，实现 tools.ToolPlugin 接口。
+// 它将 FileSystem、Shell、Web、Calculator、DateTime 等tool打包为插件。
 type BuiltinPlugin struct {
 	tools []tools.Tool
 }

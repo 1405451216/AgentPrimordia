@@ -21,7 +21,7 @@ type options struct {
 // StreamingFunc 是流式输出时每个 chunk 的回调函数
 type StreamingFunc func(chunk string)
 
-// WithTimeout 设置执行超时时间
+// WithTimeout 设置execution timeout时间
 func WithTimeout(d time.Duration) Option {
 	return func(o *options) { o.timeout = d }
 }

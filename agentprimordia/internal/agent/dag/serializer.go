@@ -211,7 +211,7 @@ func DeserializeDAGFromJSON(data []byte) (*DAGWorkflow, error) {
 	return DeserializeDAG(&dagJSON)
 }
 
-// ===== 跨语言兼容工具 =====
+// ===== 跨语言兼容tool =====
 
 // CanonicalDAGJSON 返回紧凑、确定性的 JSON 字节。
 // 用于跨语言比对测试。

@@ -148,7 +148,7 @@ func (c *CapabilityAgent) GetFileScope() []string { return c.fileScope }
 // GetCache 返回 LLM 缓存（CacheCapable）
 func (c *CapabilityAgent) GetCache() llm.LLMCache { return c.cache }
 
-// GetToolkit 返回工具注册表（ToolkitCapable）
+// GetToolkit 返回tool注册表（ToolkitCapable）
 func (c *CapabilityAgent) GetToolkit() *tools.Registry { return c.toolkit }
 
 // ===== 链式 API =====
@@ -242,7 +242,7 @@ func (c *CapabilityAgent) WithCache(cache llm.LLMCache) *CapabilityAgent {
 	return c
 }
 
-// WithToolkit 注入工具注册表
+// WithToolkit 注入tool注册表
 func (c *CapabilityAgent) WithToolkit(t *tools.Registry) *CapabilityAgent {
 	c.toolkit = t
 	return c
@@ -270,13 +270,13 @@ func (c *CapabilityAgent) GetReflector() reflection.Reflector {
 	return c.reflector
 }
 
-// WithToolLearner 注入工具学习器
+// WithToolLearner 注入tool学习器
 func (c *CapabilityAgent) WithToolLearner(tl tool_learning.ToolLearner) *CapabilityAgent {
 	c.toolLearner = tl
 	return c
 }
 
-// GetToolLearner 返回工具学习器
+// GetToolLearner 返回tool学习器
 func (c *CapabilityAgent) GetToolLearner() tool_learning.ToolLearner {
 	return c.toolLearner
 }
@@ -294,7 +294,7 @@ func (c *CapabilityAgent) GetOutputGuard() OutputGuard {
 }
 
 // WithAuditLogger 注入审计日志器
-// LLM 调用、工具调用、Agent 启动/停止等关键路径会自动写入审计事件
+// LLM 调用、tool调用、Agent 启动/停止等关键路径会自动写入审计事件
 func (c *CapabilityAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
 	c.auditLogger = l
 	return c

@@ -26,7 +26,7 @@ const (
 )
 
 // runLoop ReAct 循环核心体，被 reactLoopEngine 和 ResumeFromCheckpoint 共享
-// 封装从 startTurn 开始的主循环逻辑，包括 LLM 调用、工具执行、checkpoint 保存等
+// 封装从 startTurn 开始的主循环逻辑，包括 LLM 调用、tool执行、checkpoint 保存等
 // rootSpanCtx 为根 Span 上下文（可为零值），用于将 turn span 链接到根 span
 func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn int, cfg loopConfig, totalLLMLatency time.Duration, totalToolLatency time.Duration, toolCount int, rootSpanCtx ...SpanContext) (*Response, error) {
 	// 优化（Task 2）：从 capCache 一次性取所有能力引用；capCache 由 reactLoopEngine 在 Run 入口处填充
@@ -261,7 +261,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			a.publishEvent(EventLLMResponse, map[string]int{"turn": turn})
 		}
 
-		// 无工具调用 → Agent 完成
+		// 无tool调用 → Agent 完成
 		if len(thought.ToolCalls) == 0 {
 			// R1.4 G1-2：Reflection 接入完成路径
 			// 对最终输出进行反思，必要时用 reflector 改进版本替换
@@ -313,7 +313,7 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 
 		history = append(history, assistantMsg)
 
-		// 执行所有工具调用
+		// 执行所有tool调用
 		history, totalToolLatency, toolCount = a.executeToolCalls(ctx, history, thought.ToolCalls, turn, cfg, tracer, turnSpan, totalToolLatency, toolCount)
 
 		turnSpan.End()

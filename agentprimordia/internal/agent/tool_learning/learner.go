@@ -1,4 +1,4 @@
-// Package tool_learning 提供工具使用经验学习能力
+// Package tool_learning 提供tool使用经验学习能力
 package tool_learning
 
 import (
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// MemoryStore 定义工具学习所需的最小记忆存储接口
+// MemoryStore 定义tool学习所需的最小记忆存储接口
 type MemoryStore interface {
 	Add(ctx context.Context, episode *Episode) error
 	// Query 按 sessionID + metadata 过滤查询 episodes
@@ -18,7 +18,7 @@ type MemoryStore interface {
 	Query(ctx context.Context, sessionID string, metadata map[string]string) ([]*Episode, error)
 }
 
-// Episode 是工具学习使用的记忆条目
+// Episode 是tool学习使用的记忆条目
 type Episode struct {
 	ID        string            `json:"id"`
 	SessionID string            `json:"session_id"`
@@ -28,13 +28,13 @@ type Episode struct {
 	CreatedAt string            `json:"created_at"`
 }
 
-// ToolLearner 定义工具学习能力接口
+// ToolLearner 定义tool学习能力接口
 type ToolLearner interface {
-	// RecordSuccess 记录工具成功使用经验
+	// RecordSuccess 记录tool成功使用经验
 	RecordSuccess(ctx context.Context, toolName string, args, result string) error
-	// RecordFailure 记录工具失败经验
+	// RecordFailure 记录tool失败经验
 	RecordFailure(ctx context.Context, toolName string, args, errorMsg string) error
-	// GetBestPractices 获取工具最佳实践
+	// GetBestPractices 获取tool最佳实践
 	GetBestPractices(ctx context.Context, toolName string) ([]BestPractice, error)
 	// SuggestImprovement 基于历史经验建议改进
 	SuggestImprovement(ctx context.Context, toolName string, args string) (*Suggestion, error)
@@ -58,7 +58,7 @@ type Suggestion struct {
 	Confidence   float64 `json:"confidence"`
 }
 
-// ToolUsageRecord 工具使用记录
+// ToolUsageRecord tool使用记录
 type ToolUsageRecord struct {
 	ToolName  string    `json:"tool_name"`
 	Args      string    `json:"args"`
@@ -68,7 +68,7 @@ type ToolUsageRecord struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-// MemoryToolLearner 基于 MemoryStore 的工具学习器
+// MemoryToolLearner 基于 MemoryStore 的tool学习器
 type MemoryToolLearner struct {
 	memory MemoryStore
 }
@@ -78,7 +78,7 @@ func NewMemoryToolLearner(mem MemoryStore) *MemoryToolLearner {
 	return &MemoryToolLearner{memory: mem}
 }
 
-// RecordSuccess 记录工具成功使用
+// RecordSuccess 记录tool成功使用
 func (l *MemoryToolLearner) RecordSuccess(ctx context.Context, toolName string, args, result string) error {
 	record := ToolUsageRecord{
 		ToolName:  toolName,
@@ -108,7 +108,7 @@ func (l *MemoryToolLearner) RecordSuccess(ctx context.Context, toolName string, 
 	return l.memory.Add(ctx, episode)
 }
 
-// RecordFailure 记录工具失败使用
+// RecordFailure 记录tool失败使用
 func (l *MemoryToolLearner) RecordFailure(ctx context.Context, toolName string, args, errorMsg string) error {
 	record := ToolUsageRecord{
 		ToolName:  toolName,
@@ -139,8 +139,8 @@ func (l *MemoryToolLearner) RecordFailure(ctx context.Context, toolName string, 
 	return l.memory.Add(ctx, episode)
 }
 
-// GetBestPractices 获取工具最佳实践
-// 从记忆存储中查询指定工具的使用记录，按成功率聚合为 BestPractice。
+// GetBestPractices 获取tool最佳实践
+// 从记忆存储中查询指定tool的使用记录，按成功率聚合为 BestPractice。
 // 当无历史数据时返回空切片（非 nil）。
 //
 // 实现说明：

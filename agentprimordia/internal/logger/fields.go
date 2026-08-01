@@ -20,7 +20,7 @@ const (
 	FieldProvider = "provider"
 	// FieldModel 模型名称（如 gpt-4o / claude-sonnet-4）
 	FieldModel = "model"
-	// FieldTool 工具名
+	// FieldTool tool名
 	FieldTool = "tool"
 	// FieldDuration 耗时（毫秒）。统一以毫秒输出，避免秒/毫秒混用。
 	FieldDuration = "duration_ms"
@@ -32,7 +32,7 @@ const (
 	FieldSpanID = "span_id"
 	// FieldComponent 组件名（admin / pool / tools.executor 等）
 	FieldComponent = "component"
-	// FieldArgsLen 工具调用参数长度（避免记录完整参数可能泄漏敏感数据）
+	// FieldArgsLen tool调用参数长度（避免记录完整参数可能泄漏敏感数据）
 	FieldArgsLen = "args_len"
 )
 

@@ -508,13 +508,13 @@ type openaiEmbedResponse struct {
 	} `json:"usage"`
 }
 
-// openaiTool 工具定义 typed struct（perf-v6 Task C：减少反射）
+// openaiTool tool定义 typed struct（perf-v6 Task C：减少反射）
 type openaiTool struct {
 	Type     string             `json:"type"`
 	Function openaiToolFunction `json:"function"`
 }
 
-// openaiToolFunction 工具函数定义
+// openaiToolFunction tool函数定义
 type openaiToolFunction struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`

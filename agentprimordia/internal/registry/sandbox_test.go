@@ -132,8 +132,8 @@ func TestPluginSandbox_Acquire_GoroutineLimit(t *testing.T) {
 	if err == nil {
 		t.Fatal("超出 Goroutine 上限应该报错")
 	}
-	if !strings.Contains(err.Error(), "Goroutine") {
-		t.Fatalf("错误信息应包含 'Goroutine'：%v", err)
+	if !strings.Contains(err.Error(), "goroutine") {
+		t.Fatalf("错误信息应包含 'goroutine'：%v", err)
 	}
 }
 
@@ -148,10 +148,10 @@ func TestPluginSandbox_Acquire_MemoryLimit(t *testing.T) {
 	})
 	_, err := sb.Acquire()
 	if err == nil {
-		t.Fatal("超出内存上限应该报错")
+		t.Fatal("超出memory上限应该报错")
 	}
-	if !strings.Contains(err.Error(), "内存") {
-		t.Fatalf("错误信息应包含 '内存'：%v", err)
+	if !strings.Contains(err.Error(), "memory") {
+		t.Fatalf("错误信息应包含 'memory'：%v", err)
 	}
 }
 

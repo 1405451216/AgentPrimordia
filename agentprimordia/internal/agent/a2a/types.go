@@ -12,9 +12,9 @@ import (
 // ===== 业务错误 =====
 
 var (
-	ErrTaskNotFound   = errors.New("任务不存在")
-	ErrTaskConflict   = errors.New("任务冲突或非法状态转换")
-	ErrMessageMissing = errors.New("缺少 message 参数")
+	ErrTaskNotFound   = errors.New("task not found")
+	ErrTaskConflict   = errors.New("task conflict or illegal state transition")
+	ErrMessageMissing = errors.New("missing message parameter")
 )
 
 // ===== 认证相关 =====

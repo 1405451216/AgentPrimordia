@@ -567,7 +567,7 @@ func (p *Pool) createAgentForTask(task TaskConfig) (agent.Agent, error) {
 		return nil, err
 	}
 
-	// v0.7.0: Toolkit 字段已废弃，通过链式 API 注入工具能力
+	// v0.7.0: Toolkit 字段已废弃，通过链式 API 注入tool能力
 	var agt agent.Agent = reactAgt
 	if p.toolkit != nil {
 		agt = reactAgt.WithToolkit(p.toolkit)

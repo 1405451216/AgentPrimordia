@@ -20,14 +20,14 @@ type OpenAIMessage struct {
 	Name       string           `json:"name,omitempty"`
 }
 
-// OpenAIToolCall OpenAI 工具调用结构
+// OpenAIToolCall OpenAI tool调用结构
 type OpenAIToolCall struct {
 	ID       string             `json:"id"`
 	Type     string             `json:"type"`
 	Function OpenAIToolCallFunc `json:"function"`
 }
 
-// OpenAIToolCallFunc 工具调用函数部分
+// OpenAIToolCallFunc tool调用函数部分
 type OpenAIToolCallFunc struct {
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`

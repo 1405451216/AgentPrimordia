@@ -36,9 +36,9 @@ const (
 	HookBeforeLLM = agent.HookBeforeLLM
 	// HookAfterLLM 在 LLM 响应后触发
 	HookAfterLLM = agent.HookAfterLLM
-	// HookBeforeTool 在工具执行前触发
+	// HookBeforeTool 在tool执行前触发
 	HookBeforeTool = agent.HookBeforeTool
-	// HookAfterTool 在工具执行后触发
+	// HookAfterTool 在tool执行后触发
 	HookAfterTool = agent.HookAfterTool
 	// HookOnError 在发生错误时触发
 	HookOnError = agent.HookOnError

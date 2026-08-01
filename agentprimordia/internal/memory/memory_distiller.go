@@ -78,7 +78,7 @@ func (d *MemoryDistiller) Distill(ctx context.Context, sessionID string) error {
 func (d *MemoryDistiller) buildPrompt(episodes []*Episode) string {
 	var b strings.Builder
 	b.WriteString("从以下对话历史中提取结构化知识，严格以 JSON 返回，格式：\n")
-	b.WriteString(`{"patterns":[{"pattern":"工具名/场景","description":"何时使用","success_rate":0.0}],`)
+	b.WriteString(`{"patterns":[{"pattern":"tool名/场景","description":"何时使用","success_rate":0.0}],`)
 	b.WriteString(`"facts":[{"key":"事实名","value":"事实内容","confidence":0.0}]}`)
 	b.WriteString("\n\n对话历史：\n")
 	for _, ep := range episodes {

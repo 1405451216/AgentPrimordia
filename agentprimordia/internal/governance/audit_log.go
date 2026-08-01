@@ -85,11 +85,11 @@ type FileAuditLogger struct {
 func NewFileAuditLogger(filePath string, maxSizeMB int, alertFn AlertCallback) (*FileAuditLogger, error) {
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, fmt.Errorf("创建审计日志目录失败: %w", err)
+		return nil, fmt.Errorf("failed to create audit log directory: %w", err)
 	}
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		return nil, fmt.Errorf("打开审计日志文件失败: %w", err)
+		return nil, fmt.Errorf("failed to open audit log file: %w", err)
 	}
 	return &FileAuditLogger{
 		filePath:  filePath,
@@ -175,7 +175,7 @@ func (l *FileAuditLogger) Query(filter AuditQuery) ([]AuditEvent, error) {
 
 	data, err := os.ReadFile(l.filePath)
 	if err != nil {
-		return nil, fmt.Errorf("读取审计日志失败: %w", err)
+		return nil, fmt.Errorf("failed to read audit log: %w", err)
 	}
 
 	var events []AuditEvent

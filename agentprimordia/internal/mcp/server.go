@@ -1,15 +1,15 @@
 // Package mcp 实现 Model Context Protocol (MCP) Server 端。
 //
-// MCP 是 LLM Agent 与外部工具集成的行业标准协议（JSON-RPC 2.0）。
+// MCP 是 LLM Agent 与外部tool集成的行业标准协议（JSON-RPC 2.0）。
 // 本包将 AgentPrimordia 的 tools.Registry 自动包装为 MCP Server，
 // 使得任何支持 MCP 的客户端（Claude Desktop / Cursor / VS Code / Windsurf / Cline）
-// 都能发现和调用 AgentPrimordia 注册的工具。
+// 都能发现和调用 AgentPrimordia 注册的tool。
 //
 // 设计要点：
 //   - 协议版本：MCP 2024-11-05
 //   - 传输层：stdio（默认）+ SSE（可选）
-//   - 工具发现：tools/list → 自动遍历 Registry.Definitions()
-//   - 工具调用：tools/call → 转发到 Registry.Get + tool.Execute
+//   - tool发现：tools/list → 自动遍历 Registry.Definitions()
+//   - tool调用：tools/call → 转发到 Registry.Get + tool.Execute
 //   - 零依赖：仅使用标准库 net/http + encoding/json
 //   - 可观测：调用耗时、错误率自动记录到 internal/metrics
 //
@@ -20,7 +20,7 @@
 //	// 或
 //	srv.ServeSSE(":3000")
 //
-// MCP 客户端工具声明格式：
+// MCP 客户端tool声明格式：
 //
 //	{
 //	  "jsonrpc": "2.0",
@@ -64,7 +64,7 @@ const JSONRPCVersion = "2.0"
 
 // Server 是 MCP 协议的服务端实现
 type Server struct {
-	// registry 是工具注册表
+	// registry 是tool注册表
 	registry *tools.Registry
 
 	// name 是 Server 名称（MCP 协议要求）
@@ -76,7 +76,7 @@ type Server struct {
 	// protocolVersion 是支持的 MCP 协议版本
 	protocolVersion string
 
-	// toolsCache 是 MCP 工具列表缓存（延迟初始化）
+	// toolsCache 是 MCP tool列表缓存（延迟初始化）
 	toolsCache atomic.Pointer[[]MCPTool]
 
 	// capabilities 是 Server 声明的扩展能力
@@ -88,12 +88,12 @@ type ServerCapabilities struct {
 	Tools *ToolsCapability `json:"tools,omitempty"`
 }
 
-// ToolsCapability 声明工具能力的细节
+// ToolsCapability 声明tool能力的细节
 type ToolsCapability struct {
 	ListChanged bool `json:"listChanged,omitempty"`
 }
 
-// MCPTool 是 MCP 协议的工具描述格式
+// MCPTool 是 MCP 协议的tool描述格式
 type MCPTool struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
@@ -195,7 +195,7 @@ func (s *Server) handleInitialize(method string, id json.RawMessage) *JSONRPCRes
 	})
 }
 
-// handleToolsList 列出所有可用工具
+// handleToolsList 列出所有可用tool
 func (s *Server) handleToolsList(id json.RawMessage) *JSONRPCResponse {
 	cache := s.toolsCache.Load()
 	var tools []MCPTool
@@ -208,7 +208,7 @@ func (s *Server) handleToolsList(id json.RawMessage) *JSONRPCResponse {
 	return successResponse(id, map[string]any{"tools": tools})
 }
 
-// handleToolsCall 调用指定工具
+// handleToolsCall 调用指定tool
 func (s *Server) handleToolsCall(ctx context.Context, id json.RawMessage, paramsRaw json.RawMessage) *JSONRPCResponse {
 	var params struct {
 		Name      string         `json:"name"`
@@ -251,7 +251,7 @@ func (s *Server) handleToolsCall(ctx context.Context, id json.RawMessage, params
 	})
 }
 
-// buildMCPTools 从 Registry 构建 MCP 工具列表
+// buildMCPTools 从 Registry 构建 MCP tool列表
 func (s *Server) buildMCPTools() []MCPTool {
 	defs := s.registry.Definitions()
 	result := make([]MCPTool, 0, len(defs))

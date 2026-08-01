@@ -87,7 +87,7 @@ func convertToOpenAIMessages(history []Message) []map[string]any {
 	return msgs
 }
 
-// convertToolDefsToLLMDefinitions 将 []map[string]any 形式的工具定义反解为 []llm.ToolDefinition。
+// convertToolDefsToLLMDefinitions 将 []map[string]any 形式的tool定义反解为 []llm.ToolDefinition。
 // 优化（Task 2.5）：调用点直接持有 []llm.ToolDefinition 避免重复反解。
 func convertToolDefsToLLMDefinitions(toolDefs []map[string]any) []llm.ToolDefinition {
 	definitions := make([]llm.ToolDefinition, 0, len(toolDefs))

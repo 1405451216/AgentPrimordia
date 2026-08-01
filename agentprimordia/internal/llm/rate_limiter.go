@@ -1,4 +1,4 @@
-// RateLimiter 基于令牌桶算法的速率限制器
+// RateLimiter 基于令牌桶算法的rate limited器
 // 用于控制 LLM API 调用频率，防止触发上游限流
 package llm
 
@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-// ErrRateLimited 表示请求被速率限制拒绝
+// ErrRateLimited 表示请求被rate limited拒绝
 var ErrRateLimited = errors.New("rate limit exceeded")
 
-// RateLimitConfig 速率限制配置
+// RateLimitConfig rate limited配置
 type RateLimitConfig struct {
 	// RequestsPerSecond 每秒允许的请求数
 	RequestsPerSecond float64
@@ -22,7 +22,7 @@ type RateLimitConfig struct {
 	MaxWait time.Duration
 }
 
-// DefaultRateLimitConfig 默认速率限制配置
+// DefaultRateLimitConfig 默认rate limited配置
 func DefaultRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
 		RequestsPerSecond: 10,
@@ -119,14 +119,14 @@ func (b *tokenBucket) Tokens() float64 {
 	return b.tokens
 }
 
-// RateLimitedProvider 包装 Provider 并施加速率限制
+// RateLimitedProvider 包装 Provider 并施加rate limited
 type RateLimitedProvider struct {
 	provider Provider
 	bucket   *tokenBucket
 	config   RateLimitConfig
 }
 
-// NewRateLimitedProvider 创建带速率限制的 Provider 包装器
+// NewRateLimitedProvider 创建带rate limited的 Provider 包装器
 func NewRateLimitedProvider(provider Provider, cfg RateLimitConfig) (*RateLimitedProvider, error) {
 	if provider == nil {
 		return nil, errors.New("provider must not be nil")

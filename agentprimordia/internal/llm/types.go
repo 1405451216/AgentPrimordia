@@ -5,7 +5,7 @@ import (
 )
 
 // Provider 是 LLM Provider 的统一接口。
-// 实现者需提供同步补全（Complete）、流式补全（Stream）和工具调用（CallTools）能力。
+// 实现者需提供同步补全（Complete）、流式补全（Stream）和tool调用（CallTools）能力。
 // Stream 返回只读 channel（<-chan Chunk），调用方通过 range 消费，channel 在流结束后由 Provider 关闭。
 type Provider interface {
 	Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error)

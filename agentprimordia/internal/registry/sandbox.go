@@ -75,44 +75,44 @@ func NewDefaultSandboxPolicy() SandboxPolicy {
 // Validate 检查策略的合法性。
 func (p *SandboxPolicy) Validate() error {
 	if p.MaxExecutionTime < 0 {
-		return fmt.Errorf("sandbox: MaxExecutionTime 不能为负")
+		return fmt.Errorf("sandbox: MaxExecutionTime must not be negative")
 	}
 	if p.MaxMemoryBytes < 0 {
-		return fmt.Errorf("sandbox: MaxMemoryBytes 不能为负")
+		return fmt.Errorf("sandbox: MaxMemoryBytes must not be negative")
 	}
 	if p.MaxGoroutines < 0 {
-		return fmt.Errorf("sandbox: MaxGoroutines 不能为负")
+		return fmt.Errorf("sandbox: MaxGoroutines must not be negative")
 	}
 	if p.MaxConcurrent < 0 {
-		return fmt.Errorf("sandbox: MaxConcurrent 不能为负")
+		return fmt.Errorf("sandbox: MaxConcurrent must not be negative")
 	}
 	for _, path := range p.AllowedFileReadPaths {
 		if path == "" {
-			return fmt.Errorf("sandbox: AllowedFileReadPaths 含空字符串")
+			return fmt.Errorf("sandbox: AllowedFileReadPaths contains empty string")
 		}
 	}
 	for _, path := range p.AllowedFileWritePaths {
 		if path == "" {
-			return fmt.Errorf("sandbox: AllowedFileWritePaths 含空字符串")
+			return fmt.Errorf("sandbox: AllowedFileWritePaths contains empty string")
 		}
 	}
 	return nil
 }
 
 // ErrSandboxDenied 表示沙箱拒绝资源访问的统一错误。
-var ErrSandboxDenied = errors.New("sandbox: 拒绝访问")
+var ErrSandboxDenied = errors.New("sandbox: access denied")
 
 // ErrSandboxBusy 表示插件已达最大并发数。
-var ErrSandboxBusy = errors.New("sandbox: 插件并发已满")
+var ErrSandboxBusy = errors.New("sandbox: plugin concurrency limit reached")
 
-// ErrSandboxTimedOut 表示插件执行超时。
-var ErrSandboxTimedOut = errors.New("sandbox: 执行超时")
+// ErrSandboxTimedOut 表示插件execution timeout。
+var ErrSandboxTimedOut = errors.New("sandbox: execution timeout")
 
-// ErrSandboxMemoryExceeded 表示内存超限（软监控）。
-var ErrSandboxMemoryExceeded = errors.New("sandbox: 内存超限")
+// ErrSandboxMemoryExceeded 表示memory limit exceeded（软监控）。
+var ErrSandboxMemoryExceeded = errors.New("sandbox: memory limit exceeded")
 
 // ErrSandboxGoroutinesExceeded 表示 Goroutine 数超限（软监控）。
-var ErrSandboxGoroutinesExceeded = errors.New("sandbox: Goroutine 超限")
+var ErrSandboxGoroutinesExceeded = errors.New("sandbox: goroutine limit exceeded")
 
 // PluginSandbox 是单插件沙箱实例。
 //
@@ -132,7 +132,7 @@ type PluginSandbox struct {
 // NewPluginSandbox 为指定插件构造沙箱。
 func NewPluginSandbox(pluginName string, policy SandboxPolicy) (*PluginSandbox, error) {
 	if pluginName == "" {
-		return nil, fmt.Errorf("sandbox: 插件名不能为空")
+		return nil, fmt.Errorf("sandbox: plugin name must not be empty")
 	}
 	if err := policy.Validate(); err != nil {
 		return nil, err
@@ -174,7 +174,7 @@ func (s *PluginSandbox) Acquire() (release func(), err error) {
 
 	if s.policy.MaxGoroutines > 0 {
 		if n := runtime.NumGoroutine(); n > s.policy.MaxGoroutines {
-			return nil, fmt.Errorf("%w: 当前=%d 上限=%d", ErrSandboxGoroutinesExceeded, n, s.policy.MaxGoroutines)
+			return nil, fmt.Errorf("%w: current=%d limit=%d", ErrSandboxGoroutinesExceeded, n, s.policy.MaxGoroutines)
 		}
 	}
 
@@ -182,7 +182,7 @@ func (s *PluginSandbox) Acquire() (release func(), err error) {
 		var ms runtime.MemStats
 		runtime.ReadMemStats(&ms)
 		if int64(ms.HeapAlloc) > s.policy.MaxMemoryBytes {
-			return nil, fmt.Errorf("%w: 当前=%d 上限=%d", ErrSandboxMemoryExceeded, ms.HeapAlloc, s.policy.MaxMemoryBytes)
+			return nil, fmt.Errorf("%w: current=%d limit=%d", ErrSandboxMemoryExceeded, ms.HeapAlloc, s.policy.MaxMemoryBytes)
 		}
 	}
 
@@ -216,14 +216,14 @@ func (s *PluginSandbox) AcquireWithContext(ctx context.Context) (release func(),
 // 路径匹配规则：filepath.Clean 后做前缀匹配（与 tools.FileScopePolicy 兼容）。
 func (s *PluginSandbox) CheckFileAccess(absPath string, isWrite bool) error {
 	if absPath == "" {
-		return fmt.Errorf("%w: 路径为空", ErrSandboxDenied)
+		return fmt.Errorf("%w: path is empty", ErrSandboxDenied)
 	}
 	allowList := s.policy.AllowedFileReadPaths
 	if isWrite {
 		allowList = s.policy.AllowedFileWritePaths
 	}
 	if len(allowList) == 0 {
-		return fmt.Errorf("%w: %s 路径白名单为空", ErrSandboxDenied, writeOrRead(isWrite))
+		return fmt.Errorf("%w: %s path allowlist is empty", ErrSandboxDenied, writeOrRead(isWrite))
 	}
 
 	cleaned := filepath.Clean(absPath)
@@ -236,7 +236,7 @@ func (s *PluginSandbox) CheckFileAccess(absPath string, isWrite bool) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: %s 不在白名单 %v", ErrSandboxDenied, absPath, allowList)
+	return fmt.Errorf("%w: %s not in allowlist %v", ErrSandboxDenied, absPath, allowList)
 }
 
 // CheckNetworkAccess 检查访问 host:port 是否在白名单内。
@@ -244,10 +244,10 @@ func (s *PluginSandbox) CheckFileAccess(absPath string, isWrite bool) error {
 // host:port 必须形如 "example.com:443"；空表示拒绝。
 func (s *PluginSandbox) CheckNetworkAccess(hostPort string) error {
 	if len(s.policy.AllowedNetworkHosts) == 0 {
-		return fmt.Errorf("%w: 网络白名单为空（已禁用网络）", ErrSandboxDenied)
+		return fmt.Errorf("%w: network allowlist is empty (network disabled)", ErrSandboxDenied)
 	}
 	if hostPort == "" {
-		return fmt.Errorf("%w: 空的 host:port", ErrSandboxDenied)
+		return fmt.Errorf("%w: empty host:port", ErrSandboxDenied)
 	}
 
 	host, port := splitHostPort(hostPort)
@@ -257,7 +257,7 @@ func (s *PluginSandbox) CheckNetworkAccess(hostPort string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("%w: %s 不在网络白名单 %v", ErrSandboxDenied, hostPort, s.policy.AllowedNetworkHosts)
+	return fmt.Errorf("%w: %s not in network allowlist %v", ErrSandboxDenied, hostPort, s.policy.AllowedNetworkHosts)
 }
 
 // Stats 返回当前沙箱占用快照。
@@ -301,7 +301,7 @@ func NewPluginSandboxManager() *PluginSandboxManager {
 // Register 注册插件沙箱；同名重复注册返回错误。
 func (m *PluginSandboxManager) Register(pluginName string, policy SandboxPolicy) error {
 	if pluginName == "" {
-		return fmt.Errorf("sandbox: 插件名不能为空")
+		return fmt.Errorf("sandbox: plugin name must not be empty")
 	}
 	if err := policy.Validate(); err != nil {
 		return err
@@ -310,7 +310,7 @@ func (m *PluginSandboxManager) Register(pluginName string, policy SandboxPolicy)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, exists := m.sandboxes[pluginName]; exists {
-		return fmt.Errorf("sandbox: 插件 %s 已注册", pluginName)
+		return fmt.Errorf("sandbox: plugin %s already registered", pluginName)
 	}
 	sb, err := NewPluginSandbox(pluginName, policy)
 	if err != nil {
@@ -326,7 +326,7 @@ func (m *PluginSandboxManager) Get(pluginName string) (*PluginSandbox, error) {
 	defer m.mu.RUnlock()
 	sb, ok := m.sandboxes[pluginName]
 	if !ok {
-		return nil, fmt.Errorf("sandbox: 插件 %s 未注册", pluginName)
+		return nil, fmt.Errorf("sandbox: plugin %s not registered", pluginName)
 	}
 	return sb, nil
 }

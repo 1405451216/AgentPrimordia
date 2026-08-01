@@ -454,7 +454,7 @@ func (p *OpenAIMultimodalProvider) Stream(ctx context.Context, req *CompletionRe
 	return p.StreamMultimodal(ctx, extReq)
 }
 
-// CallTools 工具调用（暂不支持多模态，降级为标准调用）
+// CallTools tool调用（暂不支持多模态，降级为标准调用）
 func (p *OpenAIMultimodalProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	return nil, ErrNotSupported
 }

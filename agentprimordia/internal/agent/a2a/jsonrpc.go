@@ -42,7 +42,7 @@ func (r *JSONRPCRequest) UnmarshalJSON(data []byte) error {
 	}
 	*r = JSONRPCRequest(*alias)
 	if r.JSONRPC != "2.0" {
-		return fmt.Errorf("不支持的 JSON-RPC 版本: %s", r.JSONRPC)
+		return fmt.Errorf("unsupported JSON-RPC version: %s", r.JSONRPC)
 	}
 	return nil
 }
@@ -115,12 +115,12 @@ func NewAuthFailedError(msg string) *JSONRPCResponse {
 }
 
 func NewTaskNotFoundError(taskID string) *JSONRPCResponse {
-	return NewJSONRPCError(nil, ErrCodeTaskNotFound, fmt.Sprintf("任务不存在: %s", taskID), "")
+	return NewJSONRPCError(nil, ErrCodeTaskNotFound, fmt.Sprintf("task not found: %s", taskID), "")
 }
 
 func NewTaskConflictError(from, to TaskState) *JSONRPCResponse {
 	return NewJSONRPCError(nil, ErrCodeTaskConflict,
-		fmt.Sprintf("非法状态转换: %s → %s", from, to), "")
+		fmt.Sprintf("illegal state transition: %s -> %s", from, to), "")
 }
 
 func NewInternalError(msg string) *JSONRPCResponse {

@@ -116,7 +116,7 @@ func (w *SSEWriter) writeEvent(event string, data any) error {
 	default:
 		jsonBytes, err := json.Marshal(v)
 		if err != nil {
-			return fmt.Errorf("SSE 数据序列化失败: %w", err)
+			return fmt.Errorf("failed to serialize SSE data: %w", err)
 		}
 		dataStr = string(jsonBytes)
 	}
@@ -139,7 +139,7 @@ func (w *SSEWriter) writeEvent(event string, data any) error {
 	buf.WriteString("\n")
 
 	if _, err := w.w.Write(buf.Bytes()); err != nil {
-		return fmt.Errorf("SSE 写入失败: %w", err)
+		return fmt.Errorf("SSE write failed: %w", err)
 	}
 
 	// 刷新缓冲区
@@ -160,7 +160,7 @@ func (w *SSEWriter) Token(content string) error {
 	return w.writeEvent("token", content)
 }
 
-// ToolCall 写入工具调用事件
+// ToolCall 写入tool调用事件
 func (w *SSEWriter) ToolCall(name string, args json.RawMessage) error {
 	data := map[string]any{
 		"name": name,
@@ -169,7 +169,7 @@ func (w *SSEWriter) ToolCall(name string, args json.RawMessage) error {
 	return w.writeEvent("tool_call", data)
 }
 
-// ToolResult 写入工具执行结果事件
+// ToolResult 写入tool执行结果事件
 func (w *SSEWriter) ToolResult(tool string, content string) error {
 	data := map[string]string{
 		"tool":    tool,
@@ -198,7 +198,7 @@ func (w *SSEWriter) Heartbeat() error {
 	defer w.mu.Unlock()
 
 	if _, err := w.w.Write([]byte(": heartbeat\n\n")); err != nil {
-		return fmt.Errorf("SSE 心跳写入失败: %w", err)
+		return fmt.Errorf("SSE heartbeat write failed: %w", err)
 	}
 
 	if w.flusher != nil {

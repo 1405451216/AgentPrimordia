@@ -1,14 +1,14 @@
 // speculative_exec.go — Phase 2 G2-2 Go 原生投机执行
-// 工具执行期间并行启动预测性 LLM 调用，
+// tool执行期间并行启动预测性 LLM 调用，
 // 命中预测则节省一轮 LLM 延迟。利用 select + channel 做灵活的取消控制。
 //
 // 投机策略：
-//  1. 工具结果预测（Predictor）：根据历史 (toolName, args) → cached result
-//     - 命中：跳过工具执行，直接返回 cached result（节省 I/O 延迟）
+//  1. tool结果预测（Predictor）：根据历史 (toolName, args) → cached result
+//     - 命中：跳过tool执行，直接返回 cached result（节省 I/O 延迟）
 //     - 未命中：正常执行 + 记录到 predictor
-//  2. LLM 投机调用：工具执行期间并行预测下一步 LLM 响应
-//     - 工具先完成 + LLM 预测命中 → 节省一轮 LLM 延迟
-//     - LLM 先完成 + 工具命中预测 → 可在工具真正完成前展示部分结果
+//  2. LLM 投机调用：tool执行期间并行预测下一步 LLM 响应
+//     - tool先完成 + LLM 预测命中 → 节省一轮 LLM 延迟
+//     - LLM 先完成 + tool命中预测 → 可在tool真正完成前展示部分结果
 //
 // 与 doc 03-phase2-implementation.md G2-2 的差异：
 //   - 取消传播：所有 goroutine 通过 ctx.Done() 统一取消
@@ -27,7 +27,7 @@ import (
 	"agentprimordia/internal/llm"
 )
 
-// ToolResult 复用一个简化的工具结果结构（投机层不直接依赖 tools 包）
+// ToolResult 复用一个简化的tool结果结构（投机层不直接依赖 tools 包）
 type SpeculativeToolResult struct {
 	ToolCallID string
 	Content    string
@@ -41,7 +41,7 @@ type SpeculativeToolCall struct {
 	Args string
 }
 
-// ToolResultPredictor 基于 (toolName, args) 的工具结果预测器。
+// ToolResultPredictor 基于 (toolName, args) 的tool结果预测器。
 //
 // 设计取舍：
 //   - 精确 args 匹配（用 SHA-256 hash 作为 key）：避免误命中
@@ -98,7 +98,7 @@ func (p *ToolResultPredictor) Predict(toolName, args string) (*SpeculativeToolRe
 	return r, ok
 }
 
-// Record 记录一次工具执行结果到缓存。
+// Record 记录一次tool执行结果到缓存。
 func (p *ToolResultPredictor) Record(toolName, args string, result *SpeculativeToolResult) {
 	if p == nil || result == nil {
 		return
@@ -192,7 +192,7 @@ type SpeculativeExecutor struct {
 }
 
 // NewSpeculativeExecutor 创建投机执行器
-// minHitRate: 低于此命中率的工具不启用投机（0-1，默认 0.1）
+// minHitRate: 低于此命中率的tool不启用投机（0-1，默认 0.1）
 // specTimeout: 投机 LLM 调用超时（默认 5s）
 func NewSpeculativeExecutor(provider llm.Provider, predictor *ToolResultPredictor, minHitRate float64, specTimeout time.Duration) *SpeculativeExecutor {
 	if minHitRate <= 0 {
@@ -215,24 +215,24 @@ func NewSpeculativeExecutor(provider llm.Provider, predictor *ToolResultPredicto
 // SpeculativeResult 投机执行结果
 type SpeculativeResult struct {
 	Results            []*SpeculativeToolResult
-	PredictionHits     int                     // 命中预测的工具数
+	PredictionHits     int                     // 命中预测的tool数
 	SpeculativeLLMHit  bool                    // LLM 投机是否命中
 	SpeculativeLLMResp *llm.CompletionResponse // 命中的预测（nil 表示未命中）
 	Skipped            bool
 }
 
-// ExecuteWithSpeculation 投机执行一组工具调用。
+// ExecuteWithSpeculation 投机执行一组tool调用。
 //
 // 工作流程：
 //  1. 对每个 tool call 检查 predictor；命中则使用预测结果
 //  2. 未命中的 tool call 实际执行，并行启动
-//  3. 如果至少有 1 个未命中工具，且 provider 不为 nil，并行启动 LLM 投机调用
+//  3. 如果至少有 1 个未命中tool，且 provider 不为 nil，并行启动 LLM 投机调用
 //  4. 投机 LLM 通过 select + ctx.Done() 异步接收
 //
 // 参数：
 //   - ctx: 取消传播
-//   - toolCalls: 待执行工具列表
-//   - executeFn: 实际工具执行函数（由调用方注入）
+//   - toolCalls: 待执行tool列表
+//   - executeFn: 实际tool执行函数（由调用方注入）
 //   - specMessages: 用于投机 LLM 调用的消息
 func (e *SpeculativeExecutor) ExecuteWithSpeculation(
 	ctx context.Context,
@@ -267,7 +267,7 @@ func (e *SpeculativeExecutor) ExecuteWithSpeculation(
 	e.stats.PredictionsAttempted.Add(int64(n))
 	e.stats.PredictionHits.Add(hitCount)
 
-	// Phase 2：并行执行未命中的工具
+	// Phase 2：并行执行未命中的tool
 	if len(pending) > 0 {
 		toolCh := make(chan struct {
 			idx    int
@@ -344,7 +344,7 @@ func (e *SpeculativeExecutor) ExecuteWithSpeculation(
 	}
 
 	// 检查投机 LLM 是否已就绪（短轮询等待）
-	// 设计取舍：工具已实际完成，但 LLM 投机可能仍在飞行中。
+	// 设计取舍：tool已实际完成，但 LLM 投机可能仍在飞行中。
 	// 给一个非常短的超时（max(specTimeout/4, 5ms)）避免主流程卡顿。
 	if specCh != nil {
 		waitBudget := e.specTimeout / 4

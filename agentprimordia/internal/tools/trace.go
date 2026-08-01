@@ -15,7 +15,7 @@ var (
 	ErrTraceNotFound = errors.New("trace not found")
 )
 
-// ToolCallTrace 表示一次工具调用的追踪记录
+// ToolCallTrace 表示一次tool调用的追踪记录
 type ToolCallTrace struct {
 	ID        string        `json:"id"`
 	ParentID  string        `json:"parent_id,omitempty"`
@@ -57,7 +57,7 @@ func (t *ToolCallTrace) ToMap() map[string]any {
 	return m
 }
 
-// TraceCollector 工具调用链收集器接口
+// TraceCollector tool调用链收集器接口
 type TraceCollector interface {
 	Record(call *ToolCallTrace) error
 	GetTrace(traceID string) (*ToolCallTrace, error)
@@ -81,7 +81,7 @@ func NewTraceCollector() *InMemoryTraceCollector {
 	}
 }
 
-// Record 记录一次工具调用
+// Record 记录一次tool调用
 func (c *InMemoryTraceCollector) Record(call *ToolCallTrace) error {
 	if call.ID == "" {
 		return errors.New("trace ID cannot be empty")
@@ -193,7 +193,7 @@ func NewTraceContext(collector *InMemoryTraceCollector) *TraceContext {
 	}
 }
 
-// StartCall 记录一个工具调用的开始
+// StartCall 记录一个tool调用的开始
 func (tc *TraceContext) StartCall(traceID, toolName string, input any) *ToolCallTrace {
 	trace := &ToolCallTrace{
 		ID:        traceID,
@@ -207,7 +207,7 @@ func (tc *TraceContext) StartCall(traceID, toolName string, input any) *ToolCall
 	return trace
 }
 
-// EndCall 记录工具调用的结束
+// EndCall 记录tool调用的结束
 func (tc *TraceContext) EndCall(trace *ToolCallTrace, output any, err error) {
 	trace.Duration = time.Since(trace.Timestamp)
 	trace.Output = output

@@ -76,7 +76,7 @@ type RAGCapable interface {
 }
 
 // HITLCapable 标识 Agent 具备人机协作能力。
-// 工具执行前自动检查是否需要人类确认。
+// tool执行前自动检查是否需要人类确认。
 type HITLCapable interface {
 	GetHITLConfig() *HITLConfig
 }
@@ -112,7 +112,7 @@ type EventCapable interface {
 }
 
 // MetricsCapable 标识 Agent 具备指标记录能力。
-// 引擎自动收集 LLM 调用、工具调用等指标。
+// 引擎自动收集 LLM 调用、tool调用等指标。
 type MetricsCapable interface {
 	GetMetricsRecorder() MetricsRecorder
 }
@@ -141,8 +141,8 @@ type CacheCapable interface {
 	GetCache() llm.LLMCache
 }
 
-// ToolkitCapable 标识 Agent 具备工具注册表能力。
-// 引擎通过此接口发现可用的工具定义。
+// ToolkitCapable 标识 Agent 具备tool注册表能力。
+// 引擎通过此接口发现可用的tool定义。
 type ToolkitCapable interface {
 	GetToolkit() *tools.Registry
 }
@@ -159,8 +159,8 @@ type ReflectionCapable interface {
 	GetReflector() reflection.Reflector
 }
 
-// ToolLearningCapable 标识 Agent 具备工具学习能力。
-// Agent 可以记录工具使用经验，获取最佳实践，并基于历史经验建议改进。
+// ToolLearningCapable 标识 Agent 具备tool学习能力。
+// Agent 可以记录tool使用经验，获取最佳实践，并基于历史经验建议改进。
 type ToolLearningCapable interface {
 	GetToolLearner() tool_learning.ToolLearner
 }
@@ -172,7 +172,7 @@ type GuardrailCapable interface {
 }
 
 // AuditLoggerCapable 标识 Agent 具备审计日志能力。
-// 引擎在 LLM 调用、工具调用、Agent 启动/停止等关键路径自动写入审计事件。
+// 引擎在 LLM 调用、tool调用、Agent 启动/停止等关键路径自动写入审计事件。
 type AuditLoggerCapable interface {
 	GetAuditLogger() AuditLogger
 }

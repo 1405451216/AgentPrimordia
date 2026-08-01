@@ -273,7 +273,7 @@ func (p *AnthropicVisionProvider) convertToAnthropicFormat(content *MultimodalCo
 		}, nil
 
 	case ContentTypeImageURL:
-		return nil, fmt.Errorf("Anthropic 不支持直接使用图片 URL，请先下载图片并以 base64 格式提供")
+		return nil, fmt.Errorf("Anthropic does not support direct image URLs; download the image and provide it as base64")
 
 	case ContentTypeImageB64:
 		if content.Data == "" || content.MIME == "" {
@@ -422,7 +422,7 @@ func (p *AnthropicVisionProvider) Stream(ctx context.Context, req *CompletionReq
 	return p.StreamMultimodal(ctx, extReq)
 }
 
-// CallTools 工具调用（暂不支持）
+// CallTools tool调用（暂不支持）
 func (p *AnthropicVisionProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
 	return nil, ErrNotSupported
 }

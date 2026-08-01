@@ -45,14 +45,14 @@ type AgentMessage struct {
 	Timestamp int64             `json:"timestamp"`
 }
 
-// ToolCall 表示一次工具调用请求。
+// ToolCall 表示一次tool调用请求。
 type ToolCall struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"` // JSON 字符串
 }
 
-// ToolResult 表示工具执行结果。
+// ToolResult 表示tool执行结果。
 type ToolResult struct {
 	ToolCallID string `json:"tool_call_id"`
 	Result     string `json:"result"` // JSON 字符串
@@ -154,7 +154,7 @@ func (m *AgentMessage) Validate() error {
 	return nil
 }
 
-// Validate 校验工具调用。
+// Validate 校验tool调用。
 func (tc *ToolCall) Validate() error {
 	if tc.ID == "" {
 		return &ParseError{Field: "tool_call.id", Message: "cannot be empty"}
@@ -165,7 +165,7 @@ func (tc *ToolCall) Validate() error {
 	return nil
 }
 
-// Validate 校验工具结果。
+// Validate 校验tool结果。
 func (tr *ToolResult) Validate() error {
 	if tr.ToolCallID == "" {
 		return &ParseError{Field: "tool_result.tool_call_id", Message: "cannot be empty"}
@@ -184,7 +184,7 @@ func (e *EventMessage) Validate() error {
 	return nil
 }
 
-// ===== JSON 兼容工具 =====
+// ===== JSON 兼容tool =====
 
 // CompactJSON 移除 JSON 字符串中不影响语义的空白字符。
 // 用于跨语言对比测试中消除格式差异。

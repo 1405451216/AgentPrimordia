@@ -1,34 +1,34 @@
-// Package a2a 实现 Agent 间工具租赁协议（Tool Leasing Protocol）。
+// Package a2a 实现 Agent 间tool租赁协议（Tool Leasing Protocol）。
 //
 // 背景：
 //
 //	A2A 基础 RPC（CreateTask / SubscribeTaskEvents / GetAgentCard）已完备。
-//	但未提供"Agent A 临时使用 Agent B 的工具"的标准模式。
-//	工具租赁协议在现有 RPC 之上构建，无需修改 protobuf。
+//	但未提供"Agent A 临时使用 Agent B 的tool"的标准模式。
+//	tool租赁协议在现有 RPC 之上构建，无需修改 protobuf。
 //
 // 模式：
 //  1. Agent A 调用 GetAgentCard 发现 Agent B 的 ToolCapabilities
 //  2. Agent A 在本地虚拟化一个 "leased_tool"，指向 Agent B 的 A2A 端点
-//  3. Agent A 调用工具时，leased_tool 内部通过 CreateTask + SubscribeTaskEvents
+//  3. Agent A 调用tool时，leased_tool 内部通过 CreateTask + SubscribeTaskEvents
 //     将调用转发给 Agent B，并将结果流式返回给 Agent A 的 ReAct 循环
 //  4. 租期结束后（超时 / 显式释放），leased_tool 从本地注册表移除
 //
 // 关键类型：
 //   - ToolLease：租赁元数据（租期、费用、配额）
-//   - LessorHandler：Agent B 端的工具暴露处理器
-//   - LesseeClient：Agent A 端的工具租赁客户端
-//   - LeasedTool：Agent A 端的虚拟工具实现
+//   - LessorHandler：Agent B 端的tool暴露处理器
+//   - LesseeClient：Agent A 端的tool租赁客户端
+//   - LeasedTool：Agent A 端的虚拟tool实现
 //
-// 使用方式（Agent B 暴露工具）：
+// 使用方式（Agent B 暴露tool）：
 //
 //	lessor := a2a.NewLessorHandler(myToolRegistry, a2a.WithLeaseTTL(5*time.Minute))
-//	// lessor 自动将 tools.Registry 中的工具暴露为 A2A-task 格式
+//	// lessor 自动将 tools.Registry 中的tool暴露为 A2A-task 格式
 //
-// 使用方式（Agent A 租用工具）：
+// 使用方式（Agent A 租用tool）：
 //
 //	_ = a2a.NewLesseeClient(grpcClient, a2a.WithLeaseMaxDuration(time.Hour))
 //	ctx := context.Background()
-//	tool, err := client.LeaseTool(ctx, "agent-b", "database_query") // 租赁 Agent B 的数据库查询工具
+//	tool, err := client.LeaseTool(ctx, "agent-b", "database_query") // 租赁 Agent B 的数据库查询tool
 //	defer tool.Release()                                            // 显式释放
 //
 //	tool.Execute(ctx, args) // 透明调用，内部通过 A2A 转发
@@ -44,7 +44,7 @@ import (
 
 // ===== 租赁元数据 =====
 
-// LeaseStatus 表示工具租赁状态
+// LeaseStatus 表示tool租赁状态
 type LeaseStatus int
 
 const (
@@ -55,13 +55,13 @@ const (
 	LeaseStatusDenied                      // 被拒绝
 )
 
-// ToolLease 描述一个工具租赁的元数据
+// ToolLease 描述一个tool租赁的元数据
 type ToolLease struct {
 	// LeaseID 租赁唯一 ID
 	LeaseID string `json:"lease_id"`
 	// LessorAgent 出租方 Agent 名称
 	LessorAgent string `json:"lessor_agent"`
-	// ToolName 远程工具名称
+	// ToolName 远程tool名称
 	ToolName string `json:"tool_name"`
 	// LesseeAgent 租用方 Agent 名称（可选，用于审计）
 	LesseeAgent string `json:"lessee_agent,omitempty"`
@@ -120,9 +120,9 @@ func WithLeaseMaxDuration(d time.Duration) LessorOption {
 	return func(l *LessorHandler) { l.maxDuration = d }
 }
 
-// LessorHandler 是 Agent B 端的工具暴露处理器
+// LessorHandler 是 Agent B 端的tool暴露处理器
 type LessorHandler struct {
-	// registry 是被租赁的本地工具注册表
+	// registry 是被租赁的本地tool注册表
 	registry *tools.Registry
 	// defaultTTL 默认租期
 	defaultTTL time.Duration
@@ -150,7 +150,7 @@ func NewLessorHandler(registry *tools.Registry, agentName string, opts ...Lessor
 	return l
 }
 
-// GetLeasedTool 根据 leaseID 返回工具租赁信息
+// GetLeasedTool 根据 leaseID 返回tool租赁信息
 func (l *LessorHandler) GetLeasedTool(leaseID string) (*ToolLease, bool) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
@@ -165,7 +165,7 @@ func (l *LessorHandler) GetLeasedTool(leaseID string) (*ToolLease, bool) {
 	return lease, true
 }
 
-// CreateLease 创建新的工具租赁（由 A2A service layer 调用）
+// CreateLease 创建新的tool租赁（由 A2A service layer 调用）
 func (l *LessorHandler) CreateLease(toolName, lesseeAgent, remoteEndpoint string, requestedTTL time.Duration) (*ToolLease, error) {
 	if _, ok := l.registry.Get(toolName); !ok {
 		return nil, fmt.Errorf("tool %q not found in registry", toolName)
@@ -215,7 +215,7 @@ func (l *LessorHandler) RecordCall(leaseID string) bool {
 	return true
 }
 
-// GetAvailableTools 返回可供租赁的工具列表
+// GetAvailableTools 返回可供租赁的tool列表
 func (l *LessorHandler) GetAvailableTools() []ToolCapability {
 	defs := l.registry.Definitions()
 	result := make([]ToolCapability, 0, len(defs))
@@ -243,14 +243,14 @@ func (l *LessorHandler) GetAvailableTools() []ToolCapability {
 	return result
 }
 
-// GetRegistry 返回底层工具注册表（供内部 task executor 使用）
+// GetRegistry 返回底层tool注册表（供内部 task executor 使用）
 func (l *LessorHandler) GetRegistry() *tools.Registry {
 	return l.registry
 }
 
-// ===== 工具能力描述 =====
+// ===== tool能力描述 =====
 
-// ToolCapability 是 Agent Card 中描述的可租赁工具
+// ToolCapability 是 Agent Card 中描述的可租赁tool
 type ToolCapability struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description"`

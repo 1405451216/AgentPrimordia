@@ -223,7 +223,11 @@ func (w *WorkflowExecution) retryNodeExecution(ctx context.Context, node *Workfl
 		}
 		lastErr = err
 
-		time.Sleep(time.Duration(i+1) * 100 * time.Millisecond)
+		select {
+		case <-time.After(time.Duration(i+1) * 100 * time.Millisecond):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 
 	w.result.Metrics.RetriesAttempted.Add(int64(maxRetries))

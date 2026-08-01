@@ -91,7 +91,7 @@ func (e *PolicyEnforcer) logAudit(eventType AuditEventType, toolName, reason, se
 	})
 }
 
-// findToolRestriction 在策略中查找指定工具的限制。
+// findToolRestriction 在策略中查找指定tool的限制。
 func (e *PolicyEnforcer) findToolRestriction(toolName string) *ToolRestriction {
 	for i := range e.policy.Spec.ToolRestrictions {
 		if e.policy.Spec.ToolRestrictions[i].Tool == toolName {
@@ -101,7 +101,7 @@ func (e *PolicyEnforcer) findToolRestriction(toolName string) *ToolRestriction {
 	return nil
 }
 
-// CheckToolCall 在工具执行前检查策略（线程安全）。
+// CheckToolCall 在tool执行前检查策略（线程安全）。
 func (e *PolicyEnforcer) CheckToolCall(ctx context.Context, toolName, args string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -110,22 +110,22 @@ func (e *PolicyEnforcer) CheckToolCall(ctx context.Context, toolName, args strin
 		return ErrPolicyNotFound
 	}
 
-	// 输入安全：防止 prompt injection（检查工具名和参数中的可疑模式）
+	// 输入安全：防止 prompt injection（检查tool名和参数中的可疑模式）
 	if sanitized := detectPromptInjection(args); sanitized != "" {
 		e.logAudit(AuditToolCallBlocked, toolName, "检测到 prompt injection 尝试: "+sanitized, "critical")
 		if e.metrics != nil {
 			e.metrics.RecordToolBlocked(e.agentID, toolName, "prompt_injection")
 		}
-		return fmt.Errorf("%w: 工具 %s 参数中检测到 prompt injection", ErrBlockedArgument, toolName)
+		return fmt.Errorf("%w: prompt injection detected in tool %s arguments", ErrBlockedArgument, toolName)
 	}
 
-	// 全局行为约束：会话工具总调用数
+	// 全局行为约束：会话tool总调用数
 	if e.policy.Spec.BehaviorConstraints.MaxToolCalls > 0 &&
 		e.totalToolCalls >= e.policy.Spec.BehaviorConstraints.MaxToolCalls {
 		if e.metrics != nil {
 			e.metrics.RecordToolBlocked(e.agentID, toolName, "max_calls_exceeded")
 		}
-		return fmt.Errorf("%w: 超过会话工具调用上限 %d",
+		return fmt.Errorf("%w: session tool call limit %d exceeded",
 			ErrToolCallLimitExceeded, e.policy.Spec.BehaviorConstraints.MaxToolCalls)
 	}
 
@@ -138,7 +138,7 @@ func (e *PolicyEnforcer) CheckToolCall(ctx context.Context, toolName, args strin
 		if e.metrics != nil {
 			e.metrics.RecordToolBlocked(e.agentID, toolName, "per_run_limit")
 		}
-		return fmt.Errorf("%w: 工具 %s 单次运行调用上限 %d",
+		return fmt.Errorf("%w: tool %s per-run call limit %d exceeded",
 			ErrToolCallLimitExceeded, toolName, restriction.MaxCallsPerRun)
 	}
 
@@ -148,7 +148,7 @@ func (e *PolicyEnforcer) CheckToolCall(ctx context.Context, toolName, args strin
 			if e.metrics != nil {
 				e.metrics.RecordToolBlocked(e.agentID, toolName, "blocked_arg")
 			}
-			return fmt.Errorf("%w: 工具 %s 命中禁止参数 '%s'",
+			return fmt.Errorf("%w: tool %s hit forbidden argument '%s'",
 				ErrBlockedArgument, toolName, blocked)
 		}
 	}
@@ -156,7 +156,7 @@ func (e *PolicyEnforcer) CheckToolCall(ctx context.Context, toolName, args strin
 	return nil
 }
 
-// RecordToolCall 在 CheckToolCall 通过后记录一次工具调用。
+// RecordToolCall 在 CheckToolCall 通过后记录一次tool调用。
 func (e *PolicyEnforcer) RecordToolCall(ctx context.Context, toolName string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -183,7 +183,7 @@ func (e *PolicyEnforcer) CheckCost(ctx context.Context, cost float64) error {
 		if e.metrics != nil {
 			e.metrics.RecordCostExceeded()
 		}
-		return fmt.Errorf("%w: 本次请求成本 %.4f 超过上限 %.4f",
+		return fmt.Errorf("%w: request cost %.4f exceeds limit %.4f",
 			ErrCostLimitExceeded, e.totalCost, e.policy.Spec.CostLimits.PerRequest)
 	}
 	return nil
@@ -198,11 +198,11 @@ func (e *PolicyEnforcer) CheckOutput(ctx context.Context, output string) error {
 	}
 	g := e.policy.Spec.OutputGuardrail
 	if g.MaxLength > 0 && len(output) > g.MaxLength {
-		e.logAudit(AuditOutputBlocked, "", fmt.Sprintf("输出长度 %d 超过上限 %d", len(output), g.MaxLength), "warning")
+		e.logAudit(AuditOutputBlocked, "", fmt.Sprintf("output length %d exceeds limit %d", len(output), g.MaxLength), "warning")
 		if e.metrics != nil {
 			e.metrics.RecordOutputBlocked()
 		}
-		return fmt.Errorf("%w: 输出长度 %d 超过上限 %d", ErrOutputTooLong, len(output), g.MaxLength)
+		return fmt.Errorf("%w: output length %d exceeds limit %d", ErrOutputTooLong, len(output), g.MaxLength)
 	}
 	if g.PIIFilter == "strict" && containsPII(output) {
 		e.logAudit(AuditPIIDetected, "", "strict PII 检测命中", "critical")

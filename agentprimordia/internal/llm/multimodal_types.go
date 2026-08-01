@@ -180,7 +180,7 @@ func NewSystemMessage(text string) *ChatMessageExt {
 	}
 }
 
-// NewToolMessage 创建工具结果消息
+// NewToolMessage 创建tool结果消息
 func NewToolMessage(toolCallID, content string, isError bool) *ChatMessageExt {
 	return &ChatMessageExt{
 		Role:        "tool",

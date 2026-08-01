@@ -44,7 +44,7 @@ func (a *ReActAgent) StreamSeq(ctx context.Context, input Message) iter.Seq2[llm
 					return
 				}
 			}
-			// 工具调用等事件不暴露给 Chunk 迭代器
+			// tool调用等事件不暴露给 Chunk 迭代器
 		}
 	}
 }

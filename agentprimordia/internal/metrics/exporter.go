@@ -54,7 +54,7 @@ func (h *PrometheusHandler) Start() error {
 	go func() {
 		close(h.ready)
 		if err := h.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			h.logger.Error("Prometheus 服务器错误", "error", err)
+			h.logger.Error("Prometheus server error", "error", err)
 		}
 	}()
 	<-h.ready

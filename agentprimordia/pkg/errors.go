@@ -44,16 +44,16 @@ var (
 	ErrAgentRunning = errors.New("agent is already running")
 	// ErrMaxTurnsExceeded 表示 Agent 超出最大推理轮次
 	ErrMaxTurnsExceeded = agent.ErrMaxTurnsExceeded
-	// ErrNoToolkit 表示 Agent 未配置工具包
+	// ErrNoToolkit 表示 Agent 未配置tool包
 	ErrNoToolkit = agent.ErrNoToolkit
 
-	// ErrToolNotFound 表示请求的工具未注册
+	// ErrToolNotFound 表示请求的tool未注册
 	ErrToolNotFound = tools.ErrToolNotFound
-	// ErrToolExecution 表示工具执行失败
+	// ErrToolExecution 表示tool执行失败
 	ErrToolExecution = tools.ErrToolExecution
-	// ErrConfirmDenied 表示工具确认被拒绝
+	// ErrConfirmDenied 表示tool确认被拒绝
 	ErrConfirmDenied = tools.ErrConfirmDenied
-	// ErrInvalidConfig 表示工具配置无效
+	// ErrInvalidConfig 表示tool配置无效
 	ErrInvalidConfig = tools.ErrInvalidConfig
 
 	// ErrLLMCallFailed 表示 LLM 调用失败

@@ -65,7 +65,7 @@ const (
 	RAGModeAuto RAGMode = "auto"
 	// RAGModeFirst 仅在第一轮推理前查询知识库
 	RAGModeFirst RAGMode = "first"
-	// RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search 工具时查询
+	// RAGModeOnDemand 仅当 Agent 主动调用 knowledge_search tool时查询
 	RAGModeOnDemand RAGMode = "on_demand"
 )
 
@@ -298,8 +298,8 @@ type StreamEventType string
 const (
 	StreamEventToken      StreamEventType = "token"       // 逐 token 输出
 	StreamEventThought    StreamEventType = "thought"     // 思考/推理
-	StreamEventToolCall   StreamEventType = "tool_call"   // 工具调用开始
-	StreamEventToolResult StreamEventType = "tool_result" // 工具执行结果
+	StreamEventToolCall   StreamEventType = "tool_call"   // tool调用开始
+	StreamEventToolResult StreamEventType = "tool_result" // tool执行结果
 	StreamEventComplete   StreamEventType = "complete"    // 运行完成
 	StreamEventError      StreamEventType = "error"       // 错误
 )

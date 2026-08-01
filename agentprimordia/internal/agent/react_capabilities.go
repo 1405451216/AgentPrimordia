@@ -86,7 +86,7 @@ func (a *ReActAgent) recordLLM(duration time.Duration, err error) {
 	}
 }
 
-// recordTool 记录工具调用，优先使用带标签的记录器（内部已调用 RecordToolCall）
+// recordTool 记录tool调用，优先使用带标签的记录器（内部已调用 RecordToolCall）
 // 优化（Task 2）：使用缓存的 labeledRecorder。
 func (a *ReActAgent) recordTool(duration time.Duration, err error, toolName string) {
 	if a.capCache != nil && a.capCache.labeledRecorder != nil {
@@ -162,7 +162,7 @@ func (a *ReActAgent) getFileScope() []string {
 	return nil
 }
 
-// getToolkit 获取工具注册表，通过 ToolkitCapable 接口发现
+// getToolkit 获取tool注册表，通过 ToolkitCapable 接口发现
 func (a *ReActAgent) getToolkit() *tools.Registry {
 	if c, ok := a.self.(ToolkitCapable); ok {
 		return c.GetToolkit()
@@ -180,7 +180,7 @@ func (a *ReActAgent) getOutputGuard() OutputGuard {
 }
 
 // getAuditLogger 获取审计日志器，通过 AuditLoggerCapable 接口发现
-// 用于在 LLM 调用、工具调用、Agent 启动/停止时写入审计事件
+// 用于在 LLM 调用、tool调用、Agent 启动/停止时写入审计事件
 func (a *ReActAgent) getAuditLogger() AuditLogger {
 	if c, ok := a.self.(AuditLoggerCapable); ok {
 		return c.GetAuditLogger()
@@ -206,7 +206,7 @@ func (a *ReActAgent) getReflector() reflection.Reflector {
 	return nil
 }
 
-// getToolLearner 获取工具学习器，通过 ToolLearningCapable 接口发现
+// getToolLearner 获取tool学习器，通过 ToolLearningCapable 接口发现
 // R1.2：G1-3 ToolLearning 接入的发现入口
 func (a *ReActAgent) getToolLearner() tool_learning.ToolLearner {
 	if c, ok := a.self.(ToolLearningCapable); ok {

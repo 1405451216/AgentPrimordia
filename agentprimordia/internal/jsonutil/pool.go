@@ -1,4 +1,4 @@
-// Package jsonutil 提供 JSON 序列化优化工具（perf-v6 round 5/6/8 Task 1）
+// Package jsonutil 提供 JSON 序列化优化tool（perf-v6 round 5/6/8 Task 1）
 // 减少 encoding/json 的反射开销，并通过 sync.Pool 复用 buffer/reader
 package jsonutil
 

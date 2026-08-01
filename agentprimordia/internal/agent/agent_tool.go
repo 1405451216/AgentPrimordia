@@ -10,7 +10,7 @@ import (
 
 // AgentToolConfig AgentTool 配置
 type AgentToolConfig struct {
-	// Description 工具描述，默认自动生成
+	// Description tool描述，默认自动生成
 	Description string
 	// ParamSchema 自定义输入参数 JSON Schema
 	ParamSchema json.RawMessage
@@ -21,7 +21,7 @@ type AgentToolConfig struct {
 }
 
 // AgentTool 将 Agent 适配为 Tool 接口
-// 使一个 Agent 可以在 ReAct Loop 中作为工具调用另一个 Agent
+// 使一个 Agent 可以在 ReAct Loop 中作为tool调用另一个 Agent
 type AgentTool struct {
 	agent       Agent
 	config      AgentToolConfig
@@ -79,7 +79,7 @@ func (t *AgentTool) Parameters() json.RawMessage {
 	return t.paramSchema
 }
 
-// agentToolArgs 工具调用参数
+// agentToolArgs tool调用参数
 type agentToolArgs struct {
 	Input string `json:"input"`
 }
@@ -88,11 +88,11 @@ type agentToolArgs struct {
 func (t *AgentTool) Execute(ctx context.Context, args json.RawMessage) (*tools.Result, error) {
 	var parsed agentToolArgs
 	if err := json.Unmarshal(args, &parsed); err != nil {
-		return tools.NewErrorResult(fmt.Sprintf("参数解析失败: %v", err)), fmt.Errorf("参数解析失败: %w", err)
+		return tools.NewErrorResult(fmt.Sprintf("failed to parse arguments: %v", err)), fmt.Errorf("failed to parse arguments: %w", err)
 	}
 
 	if parsed.Input == "" {
-		return tools.NewErrorResult("缺少必需参数 'input'"), fmt.Errorf("缺少必需参数 'input'")
+		return tools.NewErrorResult("missing required parameter 'input'"), fmt.Errorf("missing required parameter 'input'")
 	}
 
 	msg := UserMessage(parsed.Input)

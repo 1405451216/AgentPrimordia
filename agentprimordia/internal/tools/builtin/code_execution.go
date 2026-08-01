@@ -18,13 +18,13 @@ const (
 	codeExecMaxOutputSize  = 10 * 1024 // 10KB
 )
 
-// CodeExecution 代码执行工具，支持在安全沙箱中执行 Python、JavaScript、Go 代码
+// CodeExecution 代码执行tool，支持在安全沙箱中执行 Python、JavaScript、Go 代码
 type CodeExecution struct {
 	defaultTimeout time.Duration
 	maxOutputSize  int
 }
 
-// NewCodeExecution 创建代码执行工具实例
+// NewCodeExecution 创建代码执行tool实例
 func NewCodeExecution() *CodeExecution {
 	return &CodeExecution{
 		defaultTimeout: codeExecDefaultTimeout,
@@ -32,7 +32,7 @@ func NewCodeExecution() *CodeExecution {
 	}
 }
 
-// WithTimeout 设置默认执行超时
+// WithTimeout 设置默认execution timeout
 func (c *CodeExecution) WithTimeout(d time.Duration) *CodeExecution {
 	c.defaultTimeout = d
 	return c

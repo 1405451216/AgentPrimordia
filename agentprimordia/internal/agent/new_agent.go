@@ -81,7 +81,7 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 		cap = cap.WithFileScope(cfg.Memory.FileScope)
 	}
 
-	// 注入工具能力
+	// 注入tool能力
 	if cfg.Tools.Registry != nil {
 		cap = cap.WithToolkit(cfg.Tools.Registry)
 	}

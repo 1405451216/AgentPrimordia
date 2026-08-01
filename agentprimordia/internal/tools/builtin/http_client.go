@@ -21,7 +21,7 @@ const (
 	httpClientDefaultMaxRedirects = 10
 )
 
-// HTTPClient 增强型 HTTP 客户端工具，支持多种认证方式和响应处理
+// HTTPClient 增强型 HTTP 客户端tool，支持多种认证方式和响应处理
 type HTTPClient struct {
 	timeout      time.Duration
 	maxBodySize  int64
@@ -49,7 +49,7 @@ type HTTPAuth struct {
 	KeyValue string `json:"key_value"` // apikey header 值
 }
 
-// NewHTTPClient 创建新的 HTTPClient 工具实例
+// NewHTTPClient 创建新的 HTTPClient tool实例
 func NewHTTPClient() *HTTPClient {
 	return &HTTPClient{
 		timeout:      httpClientDefaultTimeout,
@@ -82,12 +82,12 @@ func (c *HTTPClient) WithAllowPrivate(allow bool) *HTTPClient {
 	return c
 }
 
-// Name 返回工具名称
+// Name 返回tool名称
 func (c *HTTPClient) Name() string { return "http_client" }
 
-// Description 返回工具描述
+// Description 返回tool描述
 func (c *HTTPClient) Description() string {
-	return `增强型 HTTP 客户端工具，支持多种认证方式和智能响应处理。
+	return `增强型 HTTP 客户端tool，支持多种认证方式和智能响应处理。
 功能：
 - 支持 GET/POST/PUT/DELETE/PATCH 方法
 - 自定义请求头，自动设置 Content-Type

@@ -42,7 +42,7 @@ type VaultConfig struct {
 	Mount string
 	// Prefix 密钥路径前缀（如 "agentprimordia"）
 	Prefix string
-	// Timeout HTTP 请求超时（默认 10s）
+	// Timeout HTTP request timeout（默认 10s）
 	Timeout time.Duration
 }
 

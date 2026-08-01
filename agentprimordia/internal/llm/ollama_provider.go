@@ -181,8 +181,8 @@ func (p *OllamaProvider) Stream(ctx context.Context, req *CompletionRequest) (<-
 }
 
 func (p *OllamaProvider) CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error) {
-	// Ollama 的工具调用支持取决于模型能力
-	// 这里实现 Ollama 原生工具调用格式
+	// Ollama 的tool调用支持取决于模型能力
+	// 这里实现 Ollama 原生tool调用格式
 	model := p.config.Model
 	if req.Model != "" {
 		model = req.Model

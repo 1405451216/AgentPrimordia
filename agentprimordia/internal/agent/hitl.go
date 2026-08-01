@@ -5,7 +5,7 @@ import (
 	"agentprimordia/internal/agent/hitl"
 )
 
-// ErrHumanChannelClosed 人类输入通道已关闭错误
+// ErrHumanChannelClosed human input channel closed错误
 var ErrHumanChannelClosed = hitl.ErrHumanChannelClosed
 
 // InterruptReason 中断原因

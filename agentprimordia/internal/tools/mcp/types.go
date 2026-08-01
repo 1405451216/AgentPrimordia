@@ -1,5 +1,5 @@
 // Package mcp 实现 Model Context Protocol (MCP) 客户端，
-// 允许 AgentPrimordia Agent 连接外部 MCP 服务器并调用其工具。
+// 允许 AgentPrimordia Agent 连接外部 MCP 服务器并调用其tool。
 //
 // MCP 协议规范: https://spec.modelcontextprotocol.io/
 //
@@ -10,14 +10,14 @@ import "encoding/json"
 
 // ===== MCP 协议核心类型 =====
 
-// ToolDefinition 描述 MCP 服务器暴露的工具
+// ToolDefinition 描述 MCP 服务器暴露的tool
 type ToolDefinition struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
 	InputSchema map[string]any `json:"inputSchema"` // JSON Schema
 }
 
-// ToolCallResult MCP 工具调用结果
+// ToolCallResult MCP tool调用结果
 type ToolCallResult struct {
 	Content []ContentBlock `json:"content"`
 	IsError bool           `json:"isError,omitempty"`

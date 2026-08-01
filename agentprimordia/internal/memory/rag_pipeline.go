@@ -71,7 +71,7 @@ func CreateSplitter(strategy SplitterStrategy, cfg SplitterConfig) (TextSplitter
 	defer splitterRegistryMu.RUnlock()
 	factory, ok := splitterRegistry[strategy]
 	if !ok {
-		return nil, fmt.Errorf("未知切分策略: %q", strategy)
+		return nil, fmt.Errorf("unknown split strategy: %q", strategy)
 	}
 	return factory(cfg), nil
 }
@@ -490,7 +490,7 @@ func NewSemanticChunker(cfg SemanticChunkerConfig) (*SemanticChunker, error) {
 	}
 	base, err := CreateSplitter(cfg.BaseStrategy, cfg.BaseConfig)
 	if err != nil {
-		return nil, fmt.Errorf("创建基础切分器失败: %w", err)
+		return nil, fmt.Errorf("failed to create base splitter: %w", err)
 	}
 	if cfg.SimThreshold <= 0 {
 		cfg.SimThreshold = 0.75
@@ -589,7 +589,7 @@ func NewEnhancedRAGPipeline(cfg EnhancedRAGPipelineConfig) (*EnhancedRAGPipeline
 func (p *EnhancedRAGPipeline) Ingest(ctx context.Context, source string) (*IngestResult, error) {
 	docs, err := p.loader.Load(ctx, source)
 	if err != nil {
-		return nil, fmt.Errorf("文档加载失败: %w", err)
+		return nil, fmt.Errorf("document loading failed: %w", err)
 	}
 
 	result := &IngestResult{Source: source}

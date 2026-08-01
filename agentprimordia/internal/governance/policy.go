@@ -1,5 +1,5 @@
 // Package governance 实现"策略即代码"：用 YAML 定义 Agent 行为策略，
-// 运行时通过 PolicyEnforcer 强制执行（工具限制 / 成本限制 / 输出护栏 / 行为约束）。
+// 运行时通过 PolicyEnforcer 强制执行（tool限制 / 成本限制 / 输出护栏 / 行为约束）。
 //
 // 设计取舍：
 //   - 策略以 YAML 描述，加载期解析为 Policy 结构；
@@ -15,11 +15,11 @@ import (
 
 // 策略执行相关错误
 var (
-	// ErrToolCallLimitExceeded 单次运行内某工具调用次数/会话总调用超过上限
+	// ErrToolCallLimitExceeded 单次运行内某tool调用次数/会话总调用超过上限
 	ErrToolCallLimitExceeded = errors.New("tool call limit exceeded")
 	// ErrCostLimitExceeded 成本超过策略上限
 	ErrCostLimitExceeded = errors.New("cost limit exceeded")
-	// ErrBlockedArgument 工具参数命中禁止模式
+	// ErrBlockedArgument tool参数命中禁止模式
 	ErrBlockedArgument = errors.New("blocked argument pattern")
 	// ErrOutputTooLong 输出长度超过策略上限
 	ErrOutputTooLong = errors.New("output exceeds max length")
@@ -56,7 +56,7 @@ type PolicySpec struct {
 	BehaviorConstraints BehaviorConstraints `yaml:"behaviorConstraints"`
 }
 
-// ToolRestriction 单工具限制
+// ToolRestriction 单tool限制
 type ToolRestriction struct {
 	Tool            string   `yaml:"tool"`
 	RequireApproval bool     `yaml:"requireApproval"`

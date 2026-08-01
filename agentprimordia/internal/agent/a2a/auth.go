@@ -9,8 +9,8 @@ import (
 
 // perf-v6 round 4 Task 2：a2a auth 静态错误
 var (
-	ErrAuthHeaderMissing  = errors.New("缺少 Authorization 头")
-	ErrAuthBearerRequired = errors.New("Authorization 格式错误，需要 Bearer token")
+	ErrAuthHeaderMissing  = errors.New("missing Authorization header")
+	ErrAuthBearerRequired = errors.New("invalid Authorization format, Bearer token required")
 )
 
 // Principal 已认证主体
@@ -69,11 +69,11 @@ func NewAPIKeyAuthenticator(keys map[string]string, headerName string) *APIKeyAu
 func (a *APIKeyAuthenticator) Authenticate(r *http.Request) (*Principal, error) {
 	key := r.Header.Get(a.header)
 	if key == "" {
-		return nil, fmt.Errorf("缺少认证头: %s", a.header)
+		return nil, fmt.Errorf("missing auth header: %s", a.header)
 	}
 	principalID, ok := a.keys[key]
 	if !ok {
-		return nil, errors.New("无效 API Key") // perf-v6 Task G：静态文案用 errors.New
+		return nil, errors.New("invalid API key") // perf-v6 Task G：静态文案用 errors.New
 	}
 	return &Principal{ID: principalID, Scopes: []string{"*"}}, nil
 }

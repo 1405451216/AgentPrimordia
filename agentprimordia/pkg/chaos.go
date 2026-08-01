@@ -134,7 +134,7 @@ var (
 	LLMHTTP503Fault = chaos.LLMHTTP503Fault
 	// LLMHTTP429Fault 创建 429 限流故障
 	LLMHTTP429Fault = chaos.LLMHTTP429Fault
-	// LLMHTTP500Fault 创建 500 服务器错误
+	// LLMHTTP500Fault 创建 500 server error
 	LLMHTTP500Fault = chaos.LLMHTTP500Fault
 	// NewLLMTimeoutFault 创建超时故障
 	NewLLMTimeoutFault = chaos.NewLLMTimeoutFault

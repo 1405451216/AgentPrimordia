@@ -32,9 +32,9 @@ const (
 	EventTurnStart = events.EventTurnStart
 	// EventTurnEnd 表示推理轮次结束事件
 	EventTurnEnd = events.EventTurnEnd
-	// EventToolCall 表示工具调用事件
+	// EventToolCall 表示tool调用事件
 	EventToolCall = events.EventToolCall
-	// EventToolResult 表示工具结果事件
+	// EventToolResult 表示tool结果事件
 	EventToolResult = events.EventToolResult
 	// EventLLMCall 表示 LLM 调用事件
 	EventLLMCall = events.EventLLMCall

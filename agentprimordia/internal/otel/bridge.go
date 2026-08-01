@@ -286,7 +286,7 @@ func (s *otelSpan) W3CTraceParent() string {
 	return fmt.Sprintf("00-%s-%s-%s", s.traceID, s.spanID, flags)
 }
 
-// ===== 工具函数 =====
+// ===== tool函数 =====
 
 func generateHexID(n int) string {
 	b := make([]byte, n)

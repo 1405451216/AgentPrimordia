@@ -397,12 +397,12 @@ func getOverlapSentences(text string, maxLen int) string {
 	return text[len(text)-maxLen:]
 }
 
-// --- TextSplitterTool 工具封装 ---
+// --- TextSplitterTool tool封装 ---
 
-// TextSplitterTool 文本切分工具，实现 tools.Tool 接口
+// TextSplitterTool 文本切分tool，实现 tools.Tool 接口
 type TextSplitterTool struct{}
 
-// NewTextSplitterTool 创建文本切分工具
+// NewTextSplitterTool 创建文本切分tool
 func NewTextSplitterTool() *TextSplitterTool {
 	return &TextSplitterTool{}
 }

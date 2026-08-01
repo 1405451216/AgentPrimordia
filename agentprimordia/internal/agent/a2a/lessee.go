@@ -39,7 +39,7 @@ func WithLeaseClientMaxTTL(ttl time.Duration) LesseeOption {
 	return func(c *LesseeClient) { c.leaseMaxTTL = ttl }
 }
 
-// LeaseTool 模拟租赁工具（创建本地租约记录）
+// LeaseTool 模拟租赁tool（创建本地租约记录）
 // 实际场景中通过 gRPC 远程调用 LessorHandler.CreateLease
 func (c *LesseeClient) LeaseTool(ctx context.Context, lessorName, toolName, remoteEndpoint string) (*ToolLease, error) {
 	c.mu.Lock()

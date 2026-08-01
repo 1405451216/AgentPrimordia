@@ -52,10 +52,10 @@ const defaultRAGSystemPrompt = `你是一个有帮助的 AI 助手。请基于�
 // NewRetrievalAugmentedGenerator 创建 RAG 端到端生成器
 func NewRetrievalAugmentedGenerator(cfg RAGConfig) (*RetrievalAugmentedGenerator, error) {
 	if cfg.Store == nil {
-		return nil, fmt.Errorf("RAG Store 不能为空")
+		return nil, fmt.Errorf("RAG Store must not be nil")
 	}
 	if cfg.Generator == nil {
-		return nil, fmt.Errorf("LLM Generator 不能为空")
+		return nil, fmt.Errorf("LLM Generator must not be nil")
 	}
 	if cfg.TopK <= 0 {
 		cfg.TopK = 5
@@ -103,7 +103,7 @@ func (g *RetrievalAugmentedGenerator) Ask(ctx context.Context, query string) (*Q
 		results, err = g.store.Query(ctx, query, g.topK)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("RAG 检索失败: %w", err)
+		return nil, fmt.Errorf("RAG retrieval failed: %w", err)
 	}
 
 	filtered := g.filterByMinScore(results)
@@ -112,7 +112,7 @@ func (g *RetrievalAugmentedGenerator) Ask(ctx context.Context, query string) (*Q
 
 	answer, err := g.generator.Generate(ctx, prompt)
 	if err != nil {
-		return nil, fmt.Errorf("LLM 生成失败: %w", err)
+		return nil, fmt.Errorf("LLM generation failed: %w", err)
 	}
 
 	return &QueryResult{
@@ -134,7 +134,7 @@ func (g *RetrievalAugmentedGenerator) AskWithStreaming(ctx context.Context, quer
 		results, err = g.store.Query(ctx, query, g.topK)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("RAG 检索失败: %w", err)
+		return nil, nil, fmt.Errorf("RAG retrieval failed: %w", err)
 	}
 
 	filtered := g.filterByMinScore(results)
@@ -144,7 +144,7 @@ func (g *RetrievalAugmentedGenerator) AskWithStreaming(ctx context.Context, quer
 	if streamer, ok := g.generator.(LLMStreamGenerator); ok {
 		ch, err := streamer.GenerateStream(ctx, prompt)
 		if err != nil {
-			return nil, nil, fmt.Errorf("LLM 流式生成失败: %w", err)
+			return nil, nil, fmt.Errorf("LLM streaming generation failed: %w", err)
 		}
 		result := &QueryResult{
 			Sources: filtered,
@@ -156,7 +156,7 @@ func (g *RetrievalAugmentedGenerator) AskWithStreaming(ctx context.Context, quer
 
 	answer, err := g.generator.Generate(ctx, prompt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("LLM 生成失败: %w", err)
+		return nil, nil, fmt.Errorf("LLM generation failed: %w", err)
 	}
 
 	ch := make(chan string, 1)

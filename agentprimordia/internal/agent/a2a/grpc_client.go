@@ -76,7 +76,7 @@ func NewA2AGRPCClient(target string, opts ...GRPCClientOption) (*A2AGRPCClient, 
 	case c.tlsConfig != nil:
 		creds, err := ClientTLSCredentials(*c.tlsConfig)
 		if err != nil {
-			return nil, fmt.Errorf("mTLS 配置失败: %w", err)
+			return nil, fmt.Errorf("mTLS configuration failed: %w", err)
 		}
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(creds))
 	default:
@@ -93,7 +93,7 @@ func NewA2AGRPCClient(target string, opts ...GRPCClientOption) (*A2AGRPCClient, 
 
 	conn, err := grpc.DialContext(ctx, target, append(dialOpts, grpc.WithBlock())...)
 	if err != nil {
-		return nil, fmt.Errorf("连接 gRPC server 失败: %w", err)
+		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
 
 	c.conn = conn
@@ -146,7 +146,7 @@ func (c *A2AGRPCClient) ctx(ctx context.Context) context.Context {
 func (c *A2AGRPCClient) FetchAgentCard(ctx context.Context) (*AgentCard, error) {
 	resp, err := c.client.GetAgentCard(c.ctx(ctx), &a2av1.GetAgentCardRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("获取 AgentCard 失败: %w", err)
+		return nil, fmt.Errorf("failed to get AgentCard: %w", err)
 	}
 	return fromProtoAgentCard(resp), nil
 }
@@ -158,7 +158,7 @@ func (c *A2AGRPCClient) CreateTask(ctx context.Context, message *A2AMessage, tas
 		TaskId:  taskID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("创建任务失败: %w", err)
+		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 	return fromProtoTask(resp), nil
 }
@@ -167,7 +167,7 @@ func (c *A2AGRPCClient) CreateTask(ctx context.Context, message *A2AMessage, tas
 func (c *A2AGRPCClient) GetTask(ctx context.Context, taskID string) (*Task, error) {
 	resp, err := c.client.GetTask(c.ctx(ctx), &a2av1.GetTaskRequest{Id: taskID})
 	if err != nil {
-		return nil, fmt.Errorf("获取任务失败: %w", err)
+		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
 	return fromProtoTask(resp), nil
 }
@@ -176,7 +176,7 @@ func (c *A2AGRPCClient) GetTask(ctx context.Context, taskID string) (*Task, erro
 func (c *A2AGRPCClient) CancelTask(ctx context.Context, taskID string) (*Task, error) {
 	resp, err := c.client.CancelTask(c.ctx(ctx), &a2av1.CancelTaskRequest{Id: taskID})
 	if err != nil {
-		return nil, fmt.Errorf("取消任务失败: %w", err)
+		return nil, fmt.Errorf("failed to cancel task: %w", err)
 	}
 	return fromProtoTask(resp), nil
 }
@@ -185,7 +185,7 @@ func (c *A2AGRPCClient) CancelTask(ctx context.Context, taskID string) (*Task, e
 func (c *A2AGRPCClient) StreamEvents(ctx context.Context, taskID string) (<-chan *TaskEvent, error) {
 	stream, err := c.client.SubscribeTaskEvents(c.ctx(ctx), &a2av1.SubscribeTaskEventsRequest{Id: taskID})
 	if err != nil {
-		return nil, fmt.Errorf("订阅事件失败: %w", err)
+		return nil, fmt.Errorf("failed to subscribe events: %w", err)
 	}
 
 	ch := make(chan *TaskEvent, 64)

@@ -1,6 +1,6 @@
 // Package audit 提供审计日志功能，用于记录和查询 Agent 操作的合规性事件。
 //
-// 审计日志记录所有关键操作（如文件访问、工具调用、权限变更等），
+// 审计日志记录所有关键操作（如文件访问、tool调用、权限变更等），
 // 支持按 Actor/Action/Resource/时间范围进行查询，并可生成合规报告。
 package audit
 
@@ -92,7 +92,7 @@ type Logger struct {
 }
 
 // ErrOutputRequired 当 LoggerConfig.Output 为 nil 时返回
-var ErrOutputRequired = errors.New("audit: LoggerConfig.Output 不能为 nil")
+var ErrOutputRequired = errors.New("audit: LoggerConfig.Output must not be nil")
 
 // NewLogger 创建审计日志器。
 // cfg.Output 不能为 nil，否则返回 ErrOutputRequired。

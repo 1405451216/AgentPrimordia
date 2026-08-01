@@ -1,3 +1,5 @@
+//go:build ignore_template
+
 package llm
 
 // ===== 复制此文件并重命名为 {provider}_provider_test.go =====

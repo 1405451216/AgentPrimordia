@@ -21,14 +21,14 @@ const (
 	apiDefaultMaxRedirects = 10
 )
 
-// API 是 REST API 调用工具，支持 GET/POST/PUT/DELETE/PATCH 方法
+// API 是 REST API 调用tool，支持 GET/POST/PUT/DELETE/PATCH 方法
 type API struct {
 	timeout      time.Duration
 	maxBodySize  int64
 	allowPrivate bool
 }
 
-// NewAPI 创建新的 API 工具实例
+// NewAPI 创建新的 API tool实例
 func NewAPI() *API {
 	return &API{
 		timeout:     apiDefaultTimeout,
@@ -57,7 +57,7 @@ func (a *API) WithAllowPrivate(allow bool) *API {
 func (a *API) Name() string { return "api" }
 
 func (a *API) Description() string {
-	return `REST API 调用工具，支持 GET/POST/PUT/DELETE/PATCH 方法。
+	return `REST API 调用tool，支持 GET/POST/PUT/DELETE/PATCH 方法。
 功能：
 - 自动 JSON 请求/响应处理
 - 自定义请求头

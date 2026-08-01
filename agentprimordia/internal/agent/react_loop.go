@@ -87,12 +87,12 @@ type ReActConfig struct {
 
 	// ===== Phase 1 G1 闭环配置 =====
 
-	// ParallelToolExecution 启用同轮工具并行执行（G1-4）
+	// ParallelToolExecution 启用同轮tool并行执行（G1-4）
 	// 默认 false 保持向后兼容
 	ParallelToolExecution bool
 
-	// MaxParallelTools 单批并行工具数上限（G1-4）
-	// 0 表示无限制（一次并行所有同轮工具）；建议生产设为 8-16 避免资源争用
+	// MaxParallelTools 单批并行tool数上限（G1-4）
+	// 0 表示无限制（一次并行所有同轮tool）；建议生产设为 8-16 避免资源争用
 	MaxParallelTools int
 
 	// ReflectionSeverityThreshold 触发 Reflection 改进的最低严重度（G1-2）
@@ -100,7 +100,7 @@ type ReActConfig struct {
 	// 低于阈值的 Critique 不触发 Improve，直接返回原始输出
 	ReflectionSeverityThreshold string
 
-	// ToolLearningConfidenceThreshold 触发工具参数建议的最低置信度（G1-3）
+	// ToolLearningConfidenceThreshold 触发tool参数建议的最低置信度（G1-3）
 	// 范围 [0, 1]，默认 0.7
 	ToolLearningConfidenceThreshold float64
 }
@@ -141,7 +141,7 @@ type ReActAgent struct {
 	memWriter *memoryWriter
 
 	// ===== Task 1.5: Executor 复用 =====
-	// 缓存的 *tools.Executor，避免每轮工具调用时重新分配
+	// 缓存的 *tools.Executor，避免每轮tool调用时重新分配
 	toolExecutor     *tools.Executor
 	toolExecutorOnce sync.Once
 
@@ -190,7 +190,7 @@ type loopConfig struct {
 // capabilityCache 缓存单次 Run() 期间不变的能力查找结果。
 // 优化（Task 2）：ReAct 循环中每轮调用的 getTracer/getCostTracker/getMemoryStore 等
 // 在 Run() 入口一次性查找并缓存到此处，避免每轮重复类型断言。
-// 优化（perf-v2）：新增 toolDefinitions 缓存，避免每轮重复转换工具定义。
+// 优化（perf-v2）：新增 toolDefinitions 缓存，避免每轮重复转换tool定义。
 // R1.2：新增 planner/reflector/toolLearner 字段，连接 G1-1/G1-2/G1-3 闭环。
 type capabilityCache struct {
 	requestID        string
@@ -205,7 +205,7 @@ type capabilityCache struct {
 	summarizer       memory.SummaryExtractor
 	fileScope        []string
 	toolkit          *tools.Registry
-	toolDefinitions  []llm.ToolDefinition // 优化（perf-v2）：缓存转换后的工具定义
+	toolDefinitions  []llm.ToolDefinition // 优化（perf-v2）：缓存转换后的tool定义
 	systemInfoCached bool
 	provider         string
 	model            string
@@ -262,7 +262,7 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		c.provider = info.Provider
 		c.model = info.Name
 	}
-	// 优化（perf-v2）：预转换工具定义，避免每轮重复转换
+	// 优化（perf-v2）：预转换tool定义，避免每轮重复转换
 	if c.toolkit != nil {
 		if defs := c.toolkit.Definitions(); len(defs) > 0 {
 			c.toolDefinitions = convertToolDefsToLLMDefinitions(defs)

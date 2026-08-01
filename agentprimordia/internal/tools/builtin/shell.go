@@ -28,7 +28,7 @@ var blockedCommands = []string{
 
 // defaultWhitelist 默认允许的安全命令列表
 // 不包含 curl/wget（可下载执行任意内容）、npm/pip（postinstall 脚本风险）、
-// chmod/chown（权限变更风险）等高危工具。如需使用，请通过 WithWhitelist 显式添加。
+// chmod/chown（权限变更风险）等高危tool。如需使用，请通过 WithWhitelist 显式添加。
 var defaultWhitelist = []string{
 	"ls", "cat", "head", "tail", "wc", "echo", "pwd", "whoami",
 	"grep", "find", "sort", "uniq", "diff",
@@ -39,7 +39,7 @@ var defaultWhitelist = []string{
 }
 
 // containsShellMetacharacters 检查命令是否包含危险的 shell 元字符。
-// 复用 tools 包的统一规则，确保 Shell 工具与 Sandbox 校验一致。
+// 复用 tools 包的统一规则，确保 Shell tool与 Sandbox 校验一致。
 func containsShellMetacharacters(cmd string) (bool, string) {
 	return tools.ContainsShellMetacharacter(cmd)
 }
@@ -73,7 +73,7 @@ func NewShell() *Shell {
 	}
 }
 
-// WithTimeout 设置执行超时
+// WithTimeout 设置execution timeout
 func (s *Shell) WithTimeout(d time.Duration) *Shell {
 	s.defaultTimeout = d
 	return s

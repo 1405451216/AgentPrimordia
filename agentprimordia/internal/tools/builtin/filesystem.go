@@ -132,7 +132,7 @@ func (f *FileSystem) openAndValidate(path string, flag int, perm os.FileMode) (*
 			return nil, fmt.Errorf("access denied: symlink target is outside allowed root directory")
 		}
 	} else if !os.IsNotExist(evalErr) {
-		// 文件已打开但 symlink 无法解析 — 可能是损坏的符号链接，拒绝访问
+		// 文件已打开但 symlink 无法解析 — 可能是损坏的符号链接，access denied
 		file.Close()
 		if flag&os.O_CREATE != 0 || flag&os.O_TRUNC != 0 {
 			os.Remove(path)
@@ -218,7 +218,7 @@ func (f *FileSystem) Execute(ctx context.Context, args json.RawMessage) (*tools.
 			return tools.NewErrorResult("access denied: symlink target is outside allowed root directory"), fmt.Errorf("access denied: symlink target is outside allowed root directory")
 		}
 	} else if !os.IsNotExist(evalErr) {
-		// 路径存在但无法解析 symlink — 可能是损坏的符号链接或权限问题，拒绝访问
+		// 路径存在但无法解析 symlink — 可能是损坏的符号链接或权限问题，access denied
 		return tools.NewErrorResult(fmt.Sprintf("access denied: cannot resolve path symlinks: %v", evalErr)), fmt.Errorf("access denied: cannot resolve path symlinks: %v", evalErr)
 	}
 	// os.IsNotExist: 路径尚不存在（如写入新文件），验证父目录安全性

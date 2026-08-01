@@ -1,5 +1,5 @@
 // Package mcp 提供 AgentCard HTTP-MCP-Server，
-// 用于通过 HTTP REST + SSE 暴露 AgentPrimordia 工具给 MCP 客户端。
+// 用于通过 HTTP REST + SSE 暴露 AgentPrimordia tool给 MCP 客户端。
 //
 // MCP 客户端（Claude/Cursor）发现 Agent 的标准方法是：
 //
@@ -62,8 +62,8 @@ func (s *AgentCardHTTPServer) ShutdownTimeout() time.Duration {
 // 端点:
 //
 //	POST /mcp          — JSON-RPC 请求
-//	POST /mcp/tools    — 列出所有工具（快捷方式）
-//	POST /mcp/call      — 调用工具（快捷方式）
+//	POST /mcp/tools    — 列出所有tool（快捷方式）
+//	POST /mcp/call      — 调用tool（快捷方式）
 //	GET  /health        — 健康检查
 func (s *AgentCardHTTPServer) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/mcp", s.handleMCP)
@@ -89,7 +89,7 @@ func (s *AgentCardHTTPServer) handleMCP(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// handleTools 列出可用工具
+// handleTools 列出可用tool
 func (s *AgentCardHTTPServer) handleTools(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -99,7 +99,7 @@ func (s *AgentCardHTTPServer) handleTools(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]any{"tools": tools})
 }
 
-// handleCall 调用指定工具
+// handleCall 调用指定tool
 func (s *AgentCardHTTPServer) handleCall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
@@ -154,7 +154,7 @@ func (s *AgentCardHTTPServer) handleHealth(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-// buildMCPTools 从 Registry 构建 MCP 工具列表
+// buildMCPTools 从 Registry 构建 MCP tool列表
 func (s *AgentCardHTTPServer) buildMCPTools() []MCPTool {
 	defs := s.registry.Definitions()
 	result := make([]MCPTool, 0, len(defs))

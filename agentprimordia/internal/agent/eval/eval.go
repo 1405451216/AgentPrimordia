@@ -13,7 +13,7 @@ type Response struct {
 	ToolCalls []ToolCall
 }
 
-// ToolCall 表示工具调用
+// ToolCall 表示tool调用
 type ToolCall struct {
 	Name string
 	Args string
@@ -155,7 +155,7 @@ func (e *ContainsEvaluator) Evaluate(ctx context.Context, input EvalInput) (*Eva
 	}, nil
 }
 
-// ToolUsageEvaluator 工具使用评估器
+// ToolUsageEvaluator tool使用评估器
 type ToolUsageEvaluator struct {
 	ExpectedTools []string
 }

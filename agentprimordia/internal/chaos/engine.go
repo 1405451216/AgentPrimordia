@@ -201,7 +201,7 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 		pre, err := exp.SteadyState.Check(expCtx)
 		if err != nil {
 			result.Status = StatusFailed
-			result.Error = fmt.Errorf("实验前稳态检查失败: %w", err)
+			result.Error = fmt.Errorf("pre-experiment steady state check failed: %w", err)
 			result.EndTime = time.Now()
 			result.Duration = result.EndTime.Sub(result.StartTime)
 			return result, result.Error
@@ -209,7 +209,7 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 		result.PreSteadyState = pre
 		if !pre.Met {
 			result.Status = StatusFailed
-			result.Error = fmt.Errorf("实验前稳态不满足: %s", pre.Message)
+			result.Error = fmt.Errorf("pre-experiment steady state not satisfied: %s", pre.Message)
 			result.EndTime = time.Now()
 			result.Duration = result.EndTime.Sub(result.StartTime)
 			return result, result.Error
@@ -241,7 +241,7 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 			}
 			result.FaultResults = append(result.FaultResults, fr)
 			result.Status = StatusFailed
-			result.Error = fmt.Errorf("故障 %s 注入失败: %w", fault.Type(), err)
+			result.Error = fmt.Errorf("fault %s injection failed: %w", fault.Type(), err)
 			result.EndTime = time.Now()
 			result.Duration = result.EndTime.Sub(result.StartTime)
 			return result, result.Error
@@ -295,7 +295,10 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 	// 5. 实验后稳态检查
 	if exp.SteadyState != nil {
 		// 等待短暂时间让系统稳定
-		time.Sleep(2 * time.Second)
+		select {
+	case <-time.After(2 * time.Second):
+	case <-expCtx.Done():
+	}
 
 		post, err := exp.SteadyState.Check(expCtx)
 		if err != nil {

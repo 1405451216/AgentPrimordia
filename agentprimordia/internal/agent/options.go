@@ -44,7 +44,7 @@ func WithMemory(m MemoryStore) Option {
 	return func(c *AgentConfig) { c.Memory.Store = m }
 }
 
-// WithToolkit 设置工具注册表（快捷方式：等价于 WithToolsConfig 时仅设 Registry 字段）。
+// WithToolkit 设置tool注册表（快捷方式：等价于 WithToolsConfig 时仅设 Registry 字段）。
 func WithToolkit(r *tools.Registry) Option {
 	return func(c *AgentConfig) { c.Tools.Registry = r }
 }
@@ -126,7 +126,7 @@ func WithResilience(cfg ResilienceConfig) Option {
 	return func(c *AgentConfig) { c.Resilience = cfg }
 }
 
-// WithToolsConfig 整体设置工具系统分组配置（Registry）。
+// WithToolsConfig 整体设置tool系统分组配置（Registry）。
 func WithToolsConfig(cfg ToolsConfig) Option {
 	return func(c *AgentConfig) { c.Tools = cfg }
 }
