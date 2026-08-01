@@ -48,8 +48,8 @@ export class TextLoader implements FileDocLoader {
 
   async load(source: string): Promise<ExtractedDocument[]> {
     if (typeof process !== 'undefined' && process.env) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
       const content = await fs.readFile(source, { encoding: this.encoding as BufferEncoding });
       const name = path.basename(source);
       return [
@@ -72,8 +72,8 @@ export class TextLoader implements FileDocLoader {
 export class MDLoader implements FileDocLoader {
   async load(source: string): Promise<ExtractedDocument[]> {
     if (typeof process !== 'undefined' && process.env) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
       const content = await fs.readFile(source, { encoding: 'utf-8' as BufferEncoding });
       const name = path.basename(source);
       return [
@@ -96,8 +96,8 @@ export class MDLoader implements FileDocLoader {
 export class JSONDocLoader implements FileDocLoader {
   async load(source: string): Promise<ExtractedDocument[]> {
     if (typeof process !== 'undefined' && process.env) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
       const raw = await fs.readFile(source, { encoding: 'utf-8' as BufferEncoding });
       const content = JSON.stringify(JSON.parse(raw), null, 2);
       const name = path.basename(source);
@@ -142,8 +142,8 @@ export class CodeLoader implements FileDocLoader {
 
   async load(source: string): Promise<ExtractedDocument[]> {
     if (typeof process !== 'undefined' && process.env) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
       const content = await fs.readFile(source, { encoding: 'utf-8' as BufferEncoding });
       const name = path.basename(source);
       const ext = path.extname(source).toLowerCase();
@@ -176,8 +176,8 @@ export class DirectoryLoader implements FileDocLoader {
 
   async load(source: string): Promise<ExtractedDocument[]> {
     if (typeof process !== 'undefined' && process.env) {
-      const fs = await import('fs/promises');
-      const path = await import('path');
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
       const results: ExtractedDocument[] = [];
 
       const walk = async (dir: string): Promise<void> => {

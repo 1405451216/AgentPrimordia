@@ -378,7 +378,8 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.64.0
+          # v1.64.0 的 release 已被移除（下载 404），升到仍有 linux-amd64 二进制的 v1.64.8
+          version: v1.64.8
           working-directory: agentprimordia
           args: --timeout 5m
 

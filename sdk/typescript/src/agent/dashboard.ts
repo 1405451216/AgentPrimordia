@@ -22,7 +22,7 @@
 import type { ReActAgent, StreamEvent } from './react-loop.js';
 import type { RunOptions } from './react-loop.js';
 import type { Response } from '../types.js';
-import * as http from 'http';
+import * as http from 'node:http';
 
 // ===== 类型定义 =====
 
