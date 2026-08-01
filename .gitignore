@@ -1,5 +1,5 @@
 # ============================================
-# CodeCast Project - Git Ignore Configuration
+# AgentPrimordia Project - Git Ignore Configuration
 # ============================================
 
 # ---------- Dependencies ----------
@@ -30,7 +30,7 @@ CodeCast-*.tar.gz
 Thumbs.db
 Desktop.ini
 ehthumbs.db
-# Windows 绯荤粺缂撳瓨锛堥槻姝㈣�鍏ュ簱锛�
+# Windows 系统缓存（防止误入仓库）
 **/ProgramData/Microsoft/Windows/Caches/
 **/%SystemDrive%/
 
@@ -92,6 +92,14 @@ out/
 # ---------- Claude Code ----------
 .claude/
 
+# ---------- Agent 工具会话/产物（禁止入库） ----------
+.aelacli/
+.qoder/
+
+# ---------- Python 缓存 ----------
+__pycache__/
+*.pyc
+
 # ---------- Go Coverage ----------
 *.cover.out
 *.out
@@ -113,6 +121,9 @@ cover_tools
 coverage_tools
 coverage_collab*
 coverage
+# go tool cover 输出（误提交历史：agentprimordia/cover_eval）
+cover_eval
+cover_eval.*
 
 # ---------- Diff Temp ----------
 diff_*.txt
@@ -139,8 +150,6 @@ default.pgo
 
 # ---------- Go Build Cache ----------
 .gocache/
-# 死代码测试文件，已从 index 移除
-agentprimordia/internal/prompt/prompt_test.go
 
 # 临时分析报告（不提交）
 deadcode-report.txt
