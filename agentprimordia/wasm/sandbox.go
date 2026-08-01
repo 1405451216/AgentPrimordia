@@ -1,4 +1,4 @@
-﻿// Package wasm 提供基于 wazero 的 WASM 沙箱执行环境。
+// Package wasm 提供基于 wazero 的 WASM 沙箱执行环境。
 package wasm
 
 import (

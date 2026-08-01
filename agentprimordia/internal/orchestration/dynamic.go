@@ -154,6 +154,12 @@ func (d *DynamicDAG) findStartNodes() []string {
 			hasIncoming[to] = true
 		}
 	}
+	// 条件路由的目标节点同样拥有入边（来自条件节点），不能被当作起始节点
+	for _, routing := range d.conditions {
+		for _, to := range routing {
+			hasIncoming[to] = true
+		}
+	}
 
 	var starts []string
 	for id := range d.nodes {
