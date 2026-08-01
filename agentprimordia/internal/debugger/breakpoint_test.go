@@ -229,7 +229,7 @@ func TestTimeTravelDebugger_StepForward(t *testing.T) {
 	tt.Record(2, &AgentState{Turn: 2, Memory: &DebugMemorySnapshot{Latest: "s2"}})
 
 	// 从 turn 0 开始
-	tt.Restore(0)
+	_, _ = tt.Restore(0)
 
 	// 前进一步
 	state, err := tt.StepForward()
@@ -264,7 +264,7 @@ func TestTimeTravelDebugger_StepBackward(t *testing.T) {
 	tt.Record(2, &AgentState{Turn: 2, Memory: &DebugMemorySnapshot{Latest: "s2"}})
 
 	// 从 turn 2 开始
-	tt.Restore(2)
+	_, _ = tt.Restore(2)
 
 	// 后退一步
 	state, err := tt.StepBackward()
@@ -327,7 +327,7 @@ func TestTimeTravelDebugger_GetCurrent(t *testing.T) {
 	tt.Record(0, &AgentState{Turn: 0, Memory: &DebugMemorySnapshot{Latest: "s0"}})
 	tt.Record(1, &AgentState{Turn: 1, Memory: &DebugMemorySnapshot{Latest: "s1"}})
 
-	tt.Restore(0)
+	_, _ = tt.Restore(0)
 	state := tt.GetCurrent()
 	if state == nil {
 		t.Fatal("expected current state")

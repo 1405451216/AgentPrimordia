@@ -226,5 +226,5 @@ func TestLeaderElection_TwoNodes_MemoryCoord(t *testing.T) {
 	if lease.Holder() != "node-b" {
 		t.Fatalf("锁持有者 = %q, want node-b", lease.Holder())
 	}
-	coordB.Release(ctx, lease)
+	_ = coordB.Release(ctx, lease)
 }

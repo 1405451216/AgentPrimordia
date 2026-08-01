@@ -200,7 +200,7 @@ func TestAdminHandler_Health(t *testing.T) {
 	}
 
 	var result map[string]any
-	json.NewDecoder(rec.Body).Decode(&result)
+	_ = json.NewDecoder(rec.Body).Decode(&result)
 
 	if result["status"] != "healthy" {
 		t.Errorf("status = %v, want healthy", result["status"])
@@ -222,7 +222,7 @@ func TestAdminHandler_SystemInfo(t *testing.T) {
 	}
 
 	var result map[string]any
-	json.NewDecoder(rec.Body).Decode(&result)
+	_ = json.NewDecoder(rec.Body).Decode(&result)
 
 	if _, ok := result["go_version"]; !ok {
 		t.Error("expected go_version field")

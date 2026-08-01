@@ -74,8 +74,6 @@ func (f *CPUStressFault) Inject(ctx context.Context) (CleanupFunc, error) {
 					return
 				case <-ctx.Done():
 					return
-				default:
-					// CPU 密集计算
 				}
 			}
 		}()

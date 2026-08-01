@@ -293,7 +293,7 @@ func TestWithTenant_NilCtx(t *testing.T) {
 			t.Fatalf("nil ctx 不应 panic：%v", r)
 		}
 	}()
-	ctx := WithTenant(nil, "x")
+	ctx := WithTenant(context.TODO(), "x")
 	if TenantFromContext(ctx) != "x" {
 		t.Fatal("应能从 nil 派生的 ctx 读到 tenantID")
 	}
@@ -303,7 +303,7 @@ func TestTenantFromContext_Empty(t *testing.T) {
 	if got := TenantFromContext(context.Background()); got != "" {
 		t.Fatalf("未注入时应该返回空，实际=%q", got)
 	}
-	if got := TenantFromContext(nil); got != "" {
+	if got := TenantFromContext(context.TODO()); got != "" {
 		t.Fatalf("nil ctx 应该返回空，实际=%q", got)
 	}
 }
@@ -508,18 +508,4 @@ func ids(eps []*Episode) []string {
 		out[i] = ep.ID
 	}
 	return out
-}
-
-func mustScoped(t *testing.T, id string) *TenantScoped {
-	t.Helper()
-	if id == "" {
-		// 故意传空以触发 panic
-		_ = id
-		return nil
-	}
-	sc, err := NewTenantScoped(NewInMemoryStore(), id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return sc
 }

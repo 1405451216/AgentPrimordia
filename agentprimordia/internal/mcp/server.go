@@ -268,7 +268,7 @@ func (s *Server) buildMCPTools() []MCPTool {
 			Name:        name,
 			Description: desc,
 		}
-		if params != nil && len(params) > 0 {
+		if len(params) > 0 {
 			tool.InputSchema = params
 		} else {
 			// MCP 要求 inputSchema 不能省略，给个默认 object

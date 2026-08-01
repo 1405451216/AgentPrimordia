@@ -82,7 +82,7 @@ func TestAlerts_YAMLValid(t *testing.T) {
 					if _, ok := rule.Labels["severity"]; !ok {
 						t.Errorf("alert %q missing 'severity' label", rule.Alert)
 					}
-					severity, _ := rule.Labels["severity"]
+					severity := rule.Labels["severity"]
 					if !isValidSeverity(severity) {
 						t.Errorf("alert %q: invalid severity %q (allowed: critical, warning, info)", rule.Alert, severity)
 					}

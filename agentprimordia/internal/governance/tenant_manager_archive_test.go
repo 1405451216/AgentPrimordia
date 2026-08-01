@@ -39,9 +39,9 @@ func TestTenantManager_ListTenants_AfterArchive(t *testing.T) {
 	tm := NewTenantManager()
 	ctx := context.Background()
 
-	tm.CreateTenant(ctx, "active1", PlanFree, DefaultQuota(PlanFree), false)
+	_, _, _ = tm.CreateTenant(ctx, "active1", PlanFree, DefaultQuota(PlanFree), false)
 	t2, _, _ := tm.CreateTenant(ctx, "to-archive", PlanFree, DefaultQuota(PlanFree), false)
-	tm.ArchiveTenant(ctx, t2.ID)
+	_ = tm.ArchiveTenant(ctx, t2.ID)
 
 	tenants := tm.ListTenants(ctx)
 	if len(tenants) != 2 {

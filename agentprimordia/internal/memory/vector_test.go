@@ -8,9 +8,9 @@ import (
 func TestVectorStore_AddAndSearch(t *testing.T) {
 	store := NewVectorStore(4)
 
-	store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, nil)
-	store.Add(context.Background(), "doc2", []float32{0, 1, 0, 0}, nil)
-	store.Add(context.Background(), "doc3", []float32{0.9, 0.1, 0, 0}, nil)
+	_ = store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, nil)
+	_ = store.Add(context.Background(), "doc2", []float32{0, 1, 0, 0}, nil)
+	_ = store.Add(context.Background(), "doc3", []float32{0.9, 0.1, 0, 0}, nil)
 
 	results, err := store.Search(context.Background(), []float32{1, 0, 0, 0}, 3)
 	if err != nil {
@@ -33,8 +33,8 @@ func TestVectorStore_AddAndSearch(t *testing.T) {
 func TestVectorStore_CosineSimilarity(t *testing.T) {
 	store := NewVectorStore(3)
 
-	store.Add(context.Background(), "a", []float32{1, 0, 0}, nil)
-	store.Add(context.Background(), "b", []float32{0, 1, 0}, nil)
+	_ = store.Add(context.Background(), "a", []float32{1, 0, 0}, nil)
+	_ = store.Add(context.Background(), "b", []float32{0, 1, 0}, nil)
 
 	results, _ := store.Search(context.Background(), []float32{1, 0, 0}, 2)
 
@@ -64,7 +64,7 @@ func TestVectorStore_DimensionMismatch(t *testing.T) {
 func TestVectorStore_Delete(t *testing.T) {
 	store := NewVectorStore(4)
 
-	store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, nil)
+	_ = store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, nil)
 
 	err := store.Delete(context.Background(), "doc1")
 	if err != nil {
@@ -89,7 +89,7 @@ func TestVectorStore_Get(t *testing.T) {
 	store := NewVectorStore(4)
 
 	meta := map[string]string{"source": "test"}
-	store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, meta)
+	_ = store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, meta)
 
 	entry, err := store.Get(context.Background(), "doc1")
 	if err != nil {
@@ -119,7 +119,7 @@ func TestVectorStore_TopK(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		vec := make([]float32, 4)
 		vec[0] = float32(i) / 10.0
-		store.Add(context.Background(), "doc"+string(rune('0'+i)), vec, nil)
+		_ = store.Add(context.Background(), "doc"+string(rune('0'+i)), vec, nil)
 	}
 
 	results, _ := store.Search(context.Background(), []float32{1, 0, 0, 0}, 3)
@@ -152,8 +152,8 @@ func TestVectorStore_EmptySearch(t *testing.T) {
 func TestVectorStore_Metadata(t *testing.T) {
 	store := NewVectorStore(4)
 
-	store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, map[string]string{"tag": "important"})
-	store.Add(context.Background(), "doc2", []float32{0, 1, 0, 0}, map[string]string{"tag": "normal"})
+	_ = store.Add(context.Background(), "doc1", []float32{1, 0, 0, 0}, map[string]string{"tag": "important"})
+	_ = store.Add(context.Background(), "doc2", []float32{0, 1, 0, 0}, map[string]string{"tag": "normal"})
 
 	results, _ := store.Search(context.Background(), []float32{1, 0, 0, 0}, 2)
 

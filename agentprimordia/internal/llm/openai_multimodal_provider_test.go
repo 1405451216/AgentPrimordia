@@ -237,7 +237,7 @@ func TestCompleteMultimodal_WithMockServer(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -279,7 +279,7 @@ func TestCompleteMultimodal_APIError(t *testing.T) {
 		resp := map[string]string{
 			"error": "Invalid API key",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -301,7 +301,7 @@ func TestCompleteMultimodal_APIError(t *testing.T) {
 func TestComplete_BackwardCompatible(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 
 		messages := body["messages"].([]any)
 		firstMsg := messages[0].(map[string]any)
@@ -323,7 +323,7 @@ func TestComplete_BackwardCompatible(t *testing.T) {
 			},
 			"usage": map[string]int{"total_tokens": 10},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

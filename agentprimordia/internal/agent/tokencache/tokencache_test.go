@@ -52,7 +52,7 @@ func TestEstimateTokensCached_Concurrent(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < iterations; j++ {
 				// 50% 重复 + 50% 唯一
-				text := "common"
+				var text string
 				if j%2 == 0 {
 					text = "common"
 				} else {

@@ -93,8 +93,8 @@ func TestSemanticMemory_AddAndInject(t *testing.T) {
 func TestMemoryDistiller_ValidJSON(t *testing.T) {
 	store := NewInMemoryStore()
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "用 shell 列出文件"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "已执行 ls"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "用 shell 列出文件"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "已执行 ls"))
 
 	sem := NewSemanticMemory()
 	resp := `{"patterns":[{"pattern":"shell","description":"文件操作","success_rate":0.9}],"facts":[{"key":"project","value":"AgentPrimordia","confidence":0.8}]}`
@@ -132,7 +132,7 @@ func TestMemoryDistiller_EmptyStore(t *testing.T) {
 func TestMemoryDistiller_BadJSON(t *testing.T) {
 	store := NewInMemoryStore()
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "hello"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "hello"))
 
 	sem := NewSemanticMemory()
 	// 输出无法解析为 JSON：应优雅降级（不 panic、不写入）
@@ -148,7 +148,7 @@ func TestMemoryDistiller_BadJSON(t *testing.T) {
 func TestMemoryDistiller_LLMError(t *testing.T) {
 	store := NewInMemoryStore()
 	ctx := context.Background()
-	store.Add(ctx, MustEpisode("s1", "user", "hello"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "hello"))
 	sem := NewSemanticMemory()
 	dist := NewMemoryDistiller(store, sem, &stubLLM{err: context.Canceled})
 	if err := dist.Distill(ctx, "s1"); err == nil {
@@ -162,8 +162,8 @@ func TestLayeredMemoryIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	store := NewInMemoryStore()
-	store.Add(ctx, MustEpisode("s1", "user", "用 shell 创建目录"))
-	store.Add(ctx, MustEpisode("s1", "assistant", "已执行 mkdir"))
+	_ = store.Add(ctx, MustEpisode("s1", "user", "用 shell 创建目录"))
+	_ = store.Add(ctx, MustEpisode("s1", "assistant", "已执行 mkdir"))
 
 	// 第一层：工作记忆保存当前上下文
 	wm := NewWorkingMemory(4000)

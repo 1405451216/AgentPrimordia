@@ -128,7 +128,7 @@ func TestAuthenticatedDiscovery_ListAgentsByRole(t *testing.T) {
 		Name:    "Worker Agent",
 		Address: "127.0.0.1:8081",
 	}
-	discovery.Register(ctx, workerInfo, workerToken)
+	_ = discovery.Register(ctx, workerInfo, workerToken)
 
 	// 注册 admin 角色的 Agent
 	adminIdentity := &AgentIdentity{
@@ -142,7 +142,7 @@ func TestAuthenticatedDiscovery_ListAgentsByRole(t *testing.T) {
 		Name:    "Admin Agent",
 		Address: "127.0.0.1:8082",
 	}
-	discovery.Register(ctx, adminInfo, adminToken)
+	_ = discovery.Register(ctx, adminInfo, adminToken)
 
 	// 按角色列出 Agent
 	workers, err := discovery.ListAgentsByRole(ctx, "worker")
@@ -191,7 +191,7 @@ func TestAuthenticatedDiscovery_Unregister(t *testing.T) {
 		Name:    "Test Agent",
 		Address: "127.0.0.1:8080",
 	}
-	discovery.Register(ctx, info, token)
+	_ = discovery.Register(ctx, info, token)
 
 	// 注销 Agent
 	err := discovery.Unregister(ctx, "agent-1", token)
@@ -225,7 +225,7 @@ func TestAuthenticatedDiscovery_Heartbeat(t *testing.T) {
 		Name:    "Test Agent",
 		Address: "127.0.0.1:8080",
 	}
-	discovery.Register(ctx, info, token)
+	_ = discovery.Register(ctx, info, token)
 
 	// 发送心跳
 	err := discovery.Heartbeat(ctx, "agent-1")

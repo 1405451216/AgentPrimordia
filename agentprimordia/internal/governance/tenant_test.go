@@ -206,8 +206,8 @@ func TestTenantManager_ListTenants(t *testing.T) {
 	ctx := context.Background()
 	mgr := NewTenantManager()
 
-	mgr.CreateTenant(ctx, "A", PlanFree, TenantQuota{}, false)
-	mgr.CreateTenant(ctx, "B", PlanPro, TenantQuota{}, false)
+	_, _, _ = mgr.CreateTenant(ctx, "A", PlanFree, TenantQuota{}, false)
+	_, _, _ = mgr.CreateTenant(ctx, "B", PlanPro, TenantQuota{}, false)
 
 	list := mgr.ListTenants(ctx)
 	if len(list) != 2 {
@@ -243,14 +243,14 @@ func TestTenantManager_APIKeyBinding(t *testing.T) {
 	}
 
 	// 禁用后验证失败
-	mgr.DisableTenant(ctx, created.ID)
+	_ = mgr.DisableTenant(ctx, created.ID)
 	_, err = mgr.ValidateAPIKey(ctx, apiKey)
 	if err != ErrTenantDisabled {
 		t.Errorf("ValidateAPIKey after disable = %v, want ErrTenantDisabled", err)
 	}
 
 	// 撤销 API Key
-	mgr.UpdateTenant(ctx, created.ID, func(t *Tenant) error {
+	_ = mgr.UpdateTenant(ctx, created.ID, func(t *Tenant) error {
 		t.Status = TenantActive
 		return nil
 	})
@@ -314,7 +314,7 @@ func TestIsolation_TenantFromContext_Empty(t *testing.T) {
 }
 
 func TestIsolation_TenantFromContext_Nil(t *testing.T) {
-	tid := TenantFromContext(nil)
+	tid := TenantFromContext(context.TODO())
 	if tid != "" {
 		t.Errorf("TenantFromContext(nil) = %q, want empty", tid)
 	}

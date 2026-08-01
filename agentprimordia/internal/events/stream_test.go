@@ -40,7 +40,7 @@ func TestMemoryEventStream_ReplayWithTimeFilter(t *testing.T) {
 
 	base := time.Now()
 	for i := 0; i < 10; i++ {
-		s.Publish(ctx, &Event{
+		_ = s.Publish(ctx, &Event{
 			Type:      EventTurnEnd,
 			Timestamp: base.Add(time.Duration(i) * time.Minute),
 		})
@@ -64,7 +64,7 @@ func TestMemoryEventStream_ReplayWithDiscard(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 10; i++ {
-		s.Publish(ctx, &Event{Type: EventTurnStart, Payload: i})
+		_ = s.Publish(ctx, &Event{Type: EventTurnStart, Payload: i})
 	}
 
 	events, err := s.Replay(time.Time{}, time.Time{}, "")
@@ -90,7 +90,7 @@ func TestStreamBus_PublishAndReplay(t *testing.T) {
 
 	// 同时发布到实时总线和持久化流
 	for i := 0; i < 3; i++ {
-		sb.PublishStream(ctx, Event{
+		_ = sb.PublishStream(ctx, Event{
 			Type:   EventLLMCall,
 			Source: "agent-1",
 		})

@@ -770,9 +770,7 @@ func runOrchestrationTest(t *testing.T, tc testCaseSpec) {
 				t.Errorf("步骤[%d] = %q, 期望 %q", i, stage, expected.ExecutionOrder[i])
 			}
 		}
-		if expected.AllCompleted {
-			// Pipeline 按顺序执行，全部完成的语义已验证
-		}
+		// Pipeline 按顺序执行，全部完成的语义已在上面验证
 
 	case "dag":
 		if len(input.Nodes) == 0 {

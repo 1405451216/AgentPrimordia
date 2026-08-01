@@ -448,12 +448,6 @@ func TestMultimodalMessage_ToMessage(t *testing.T) {
 
 // ===== IsMultimodalProvider test =====
 
-type mockMultimodalProvider struct{}
-
-func (m *mockMultimodalProvider) CompleteMultimodal(ctx interface{}, req *llm.CompletionRequestExt) (*llm.CompletionResponse, error) {
-	return &llm.CompletionResponse{}, nil
-}
-
 type mockNonMultimodalProvider struct{}
 
 func TestIsMultimodalProvider_True(t *testing.T) {

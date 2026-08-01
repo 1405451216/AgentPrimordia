@@ -295,7 +295,8 @@ func (le *LeaderElector) resign(reason string) {
 	if leasePtr != nil {
 		lease := *leasePtr
 		le.lease.Store(nil) // 先清空，防止 heartbeat goroutine 再用
-		le.coord.Release(context.Background(), lease)
+		// 释放失败不阻塞 resign：租约会因 TTL 到期自动过期
+		_ = le.coord.Release(context.Background(), lease)
 	}
 	le.leaderSince.Store(0)
 	le.setState(LeaderDegraded, reason)

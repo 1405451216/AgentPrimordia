@@ -420,7 +420,7 @@ func (b *RemoteMessageBus) MessageHandler() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(reply)
+		_ = json.NewEncoder(w).Encode(reply)
 	}
 }
 
@@ -458,7 +458,7 @@ func (b *RemoteMessageBus) PingHandler() http.HandlerFunc {
 		b.mu.RUnlock()
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status":      "ok",
 			"node_count":  nodeCount,
 			"local_agents": len(b.local.ListAgents()),
@@ -488,7 +488,7 @@ func (b *RemoteMessageBus) StateSyncHandler() http.HandlerFunc {
 		merged := b.ReceiveStateSync(snapshot)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		_ = json.NewEncoder(w).Encode(map[string]any{
 			"merged": merged,
 		})
 	}

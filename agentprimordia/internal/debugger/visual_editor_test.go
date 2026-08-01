@@ -132,7 +132,7 @@ func TestVisualEditorServer_GetConfig(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	// 获取配置
 	req = httptest.NewRequest(http.MethodGet, "/api/editor/config/"+created.ID, nil)
@@ -165,7 +165,7 @@ func TestVisualEditorServer_UpdateConfig(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	// 更新配置
 	updated := EditorConfig{
@@ -183,7 +183,7 @@ func TestVisualEditorServer_UpdateConfig(t *testing.T) {
 	}
 
 	var result EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &result)
+	_ = json.Unmarshal(w.Body.Bytes(), &result)
 
 	if result.Name != "Updated" {
 		t.Errorf("Expected name 'Updated', got %s", result.Name)
@@ -208,7 +208,7 @@ func TestVisualEditorServer_DeleteConfig(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	// 删除配置
 	req = httptest.NewRequest(http.MethodDelete, "/api/editor/config/"+created.ID, nil)
@@ -241,7 +241,7 @@ func TestVisualEditorServer_ExecuteConfig(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	// 执行配置
 	req = httptest.NewRequest(http.MethodPost, "/api/editor/execute/"+created.ID, nil)
@@ -253,7 +253,7 @@ func TestVisualEditorServer_ExecuteConfig(t *testing.T) {
 	}
 
 	var result map[string]string
-	json.Unmarshal(w.Body.Bytes(), &result)
+	_ = json.Unmarshal(w.Body.Bytes(), &result)
 
 	if result["execution_id"] == "" {
 		t.Error("Expected execution_id to be returned")
@@ -408,7 +408,7 @@ func TestVisualEditor_AsyncExecution_Completed(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	// 触发执行
 	req = httptest.NewRequest(http.MethodPost, "/api/editor/execute/"+created.ID, nil)
@@ -420,7 +420,7 @@ func TestVisualEditor_AsyncExecution_Completed(t *testing.T) {
 	}
 
 	var execResp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &execResp)
+	_ = json.Unmarshal(w.Body.Bytes(), &execResp)
 	execID := execResp["execution_id"]
 
 	// 等待异步执行完成
@@ -498,14 +498,14 @@ func TestVisualEditor_AsyncExecution_WithRegisteredAgent(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	req = httptest.NewRequest(http.MethodPost, "/api/editor/execute/"+created.ID, nil)
 	w = httptest.NewRecorder()
 	server.Handler().ServeHTTP(w, req)
 
 	var execResp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &execResp)
+	_ = json.Unmarshal(w.Body.Bytes(), &execResp)
 	execID := execResp["execution_id"]
 
 	// 等待完成
@@ -550,14 +550,14 @@ func TestVisualEditor_AsyncExecution_Failure(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	req = httptest.NewRequest(http.MethodPost, "/api/editor/execute/"+created.ID, nil)
 	w = httptest.NewRecorder()
 	server.Handler().ServeHTTP(w, req)
 
 	var execResp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &execResp)
+	_ = json.Unmarshal(w.Body.Bytes(), &execResp)
 	execID := execResp["execution_id"]
 
 	// 等待执行完成（应为失败，重试机制可能耗时较长）
@@ -595,14 +595,14 @@ func TestVisualEditor_AsyncExecution_ConcurrentQuery(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	req = httptest.NewRequest(http.MethodPost, "/api/editor/execute/"+created.ID, nil)
 	w = httptest.NewRecorder()
 	server.Handler().ServeHTTP(w, req)
 
 	var execResp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &execResp)
+	_ = json.Unmarshal(w.Body.Bytes(), &execResp)
 	execID := execResp["execution_id"]
 
 	// 并发查询执行状态（模拟轮询）
@@ -653,7 +653,7 @@ func TestVisualEditor_AsyncExecution_MultipleExecutions(t *testing.T) {
 	server.Handler().ServeHTTP(w, req)
 
 	var created EditorConfig
-	json.Unmarshal(w.Body.Bytes(), &created)
+	_ = json.Unmarshal(w.Body.Bytes(), &created)
 
 	// 触发 3 次执行
 	execIDs := make([]string, 3)
@@ -663,7 +663,7 @@ func TestVisualEditor_AsyncExecution_MultipleExecutions(t *testing.T) {
 		server.Handler().ServeHTTP(w, req)
 
 		var resp map[string]string
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		execIDs[i] = resp["execution_id"]
 	}
 

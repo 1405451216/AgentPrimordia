@@ -158,7 +158,7 @@ func TestLLMFaultProxy(t *testing.T) {
 		if err := proxy.Start("127.0.0.1:18091"); err != nil {
 			t.Fatalf("Start failed: %v", err)
 		}
-		defer proxy.Stop(context.Background())
+		defer func() { _ = proxy.Stop(context.Background()) }()
 
 		// 等待服务器启动
 		time.Sleep(50 * time.Millisecond)
@@ -188,7 +188,7 @@ func TestLLMFaultProxy(t *testing.T) {
 		if err := proxy.Start("127.0.0.1:18092"); err != nil {
 			t.Fatalf("Start failed: %v", err)
 		}
-		defer proxy.Stop(context.Background())
+		defer func() { _ = proxy.Stop(context.Background()) }()
 
 		time.Sleep(50 * time.Millisecond)
 
@@ -229,7 +229,7 @@ func TestLLMFaultProxy(t *testing.T) {
 		if err := proxy.Start("127.0.0.1:18093"); err != nil {
 			t.Fatalf("Start failed: %v", err)
 		}
-		defer proxy.Stop(context.Background())
+		defer func() { _ = proxy.Stop(context.Background()) }()
 
 		time.Sleep(50 * time.Millisecond)
 

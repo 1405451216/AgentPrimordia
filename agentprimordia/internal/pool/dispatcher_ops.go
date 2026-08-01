@@ -26,19 +26,6 @@ func (p *Pool) getTask(id string) *poolTask {
 	return p.tasks[id]
 }
 
-// updateStats 同步原子计数器到 PoolStats 结构体，供向后兼容的 Stats() 调用使用。
-// 优化（Task 8）：O(1) 原子读取替代 O(n) 全量遍历 tasks map。
-func (p *Pool) updateStats() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.stats.RunningTasks = int(p.runningCount.Load())
-	p.stats.QueuedTasks = int(p.queuedCount.Load())
-	p.stats.CompletedTasks = int(p.completedCount.Load())
-	p.stats.FailedTasks = int(p.failedCount.Load())
-	p.stats.ActiveConcurrency = p.stats.RunningTasks
-}
-
 func (p *Pool) emitEvent(event PoolEvent) {
 	event.Timestamp = time.Now()
 	select {

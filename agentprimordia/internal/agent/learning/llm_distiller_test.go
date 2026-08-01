@@ -271,7 +271,7 @@ func TestLLMDistiller_SearchKnowledge(t *testing.T) {
 	interactions := []Interaction{
 		{ID: "search_test", UserInput: "q", AgentOutput: "a", Success: true},
 	}
-	distiller.DistillWithLLM(context.Background(), interactions)
+	_, _ = distiller.DistillWithLLM(context.Background(), interactions)
 
 	// 按类别搜索
 	facts := distiller.SearchKnowledge("fact", "")

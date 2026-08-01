@@ -302,9 +302,6 @@ func NewGroupChat(cfg GroupChatConfig) (*GroupChat, error) {
 
 // Run 运行多 Agent 对话
 func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChatResult, error) {
-	g.mu.Lock()
-	g.mu.Unlock() // 仅用于序列化初始化，不持有锁运行
-
 	result := &GroupChatResult{
 		Messages:   []Message{initialMessage},
 		AgentOrder: make([]string, 0, g.maxRounds),

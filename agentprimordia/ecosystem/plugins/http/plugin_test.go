@@ -44,7 +44,7 @@ func TestHTTPClientTool_EndToEnd_GET(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"hello"}`))
+		_, _ = w.Write([]byte(`{"message":"hello"}`))
 	}))
 	defer srv.Close()
 
@@ -78,7 +78,7 @@ func TestHTTPClientTool_EndToEnd_POST(t *testing.T) {
 		n, _ := r.Body.Read(buf)
 		gotBody = string(buf[:n])
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"id":1}`))
+		_, _ = w.Write([]byte(`{"id":1}`))
 	}))
 	defer srv.Close()
 

@@ -448,7 +448,7 @@ func FormatSoakChaosReport(result *SoakChaosResult) string {
 	// 退化检测
 	if result.DegradationDetected {
 		sb.WriteString("## ⚠️ 退化检测\n\n")
-		sb.WriteString(fmt.Sprintf("**状态**: 检测到退化\n\n"))
+		sb.WriteString("**状态**: 检测到退化\n\n")
 		sb.WriteString(fmt.Sprintf("**详情**: %s\n\n", result.DegradationDetails))
 		if result.StoppedEarly {
 			sb.WriteString("**操作**: 已提前停止测试\n\n")

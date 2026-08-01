@@ -32,7 +32,7 @@ func TestOpenAIProvider_Complete_Success(t *testing.T) {
 		}
 
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		resp := map[string]any{
 			"id": "chatcmpl-123",
@@ -52,7 +52,7 @@ func TestOpenAIProvider_Complete_Success(t *testing.T) {
 				"total_tokens":      15,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -103,7 +103,7 @@ func TestOpenAIProvider_Complete_WithToolCalls(t *testing.T) {
 				"total_tokens":      30,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -128,7 +128,7 @@ func TestOpenAIProvider_Complete_APIError(t *testing.T) {
 				"code":    "invalid_request",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -183,7 +183,7 @@ func TestOpenAIProvider_Complete_InvalidJSON(t *testing.T) {
 func TestOpenAIProvider_Stream_Basic(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 		if !reqBody["stream"].(bool) {
 			t.Error("expected stream=true")
 		}
@@ -285,7 +285,7 @@ func TestOpenAIProvider_Stream_ContextCancel(t *testing.T) {
 func TestOpenAIProvider_CallTools_Success(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		tools, ok := reqBody["tools"].([]any)
 		if !ok || len(tools) == 0 {
@@ -320,7 +320,7 @@ func TestOpenAIProvider_CallTools_Success(t *testing.T) {
 				"total_tokens":      45,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -364,7 +364,7 @@ func TestOpenAIProvider_Embeddings_APIError(t *testing.T) {
 				"code":    "invalid_api_key",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -436,7 +436,7 @@ func TestOpenAIProvider_New_NoAPIKey(t *testing.T) {
 func TestOpenAIProvider_Complete_WithTemperatureAndMaxTokens(t *testing.T) {
 	server, provider := newTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		temp, hasTemp := reqBody["temperature"]
 		if !hasTemp || temp != 0.7 {
@@ -465,7 +465,7 @@ func TestOpenAIProvider_Complete_WithTemperatureAndMaxTokens(t *testing.T) {
 				"total_tokens":      8,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -493,7 +493,7 @@ func TestOpenAIProvider_Complete_EmptyChoices(t *testing.T) {
 				"total_tokens":      5,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 

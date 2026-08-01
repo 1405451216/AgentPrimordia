@@ -1,8 +1,11 @@
+//go:build etcd || redis
+
 // testhelpers_test.go — 分布式 Checkpoint E2E 测试辅助函数
 //
 // 提供 etcd/redis 连接检测工具，用于在基础设施不可用时优雅跳过测试。
-// 本文件无 build tag，所有 persist 包测试均可使用。
-package persist
+// 本文件仅在 etcd/redis 集成构建下编译（默认构建下这些符号不参与编译，
+// 避免 golangci-lint unused 误报）。
+package persist //nolint:unused // 供 build-tag(etcd/redis) 集成测试使用，默认构建下视为未引用
 
 import (
 	"net"

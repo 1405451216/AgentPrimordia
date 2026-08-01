@@ -71,5 +71,5 @@ func main() {
 
 	fmt.Println("\nMetrics endpoint: curl http://localhost:9090/metrics")
 	fmt.Println("Press Enter to exit...")
-	fmt.Scanln()
+	_, _ = fmt.Scanln()
 }

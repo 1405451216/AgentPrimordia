@@ -11,7 +11,7 @@ func TestSemanticCache_ExactMatch(t *testing.T) {
 	ctx := context.Background()
 	resp := &ProviderResponse{Content: "Hello, world!", Model: "test"}
 
-	cache.Store(ctx, "hello", resp, time.Minute)
+	_ = cache.Store(ctx, "hello", resp, time.Minute)
 
 	cached, ok := cache.Lookup(ctx, "hello", 0.95)
 	if !ok {
@@ -27,7 +27,7 @@ func TestSemanticCache_SemanticMatch(t *testing.T) {
 	ctx := context.Background()
 	resp := &ProviderResponse{Content: "Paris is the capital of France", Model: "test"}
 
-	cache.Store(ctx, "What is the capital of France?", resp, time.Minute)
+	_ = cache.Store(ctx, "What is the capital of France?", resp, time.Minute)
 
 	// 语义相似但措辞不同
 	cached, ok := cache.Lookup(ctx, "capital of France?", 0.5)
@@ -43,7 +43,7 @@ func TestSemanticCache_Miss(t *testing.T) {
 	cache := NewSemanticCache(100)
 	ctx := context.Background()
 
-	cache.Store(ctx, "apple fruit", &ProviderResponse{Content: "about apples"}, time.Minute)
+	_ = cache.Store(ctx, "apple fruit", &ProviderResponse{Content: "about apples"}, time.Minute)
 
 	_, ok := cache.Lookup(ctx, "car automobile vehicle", 0.95)
 	if ok {
@@ -55,7 +55,7 @@ func TestSemanticCache_Expire(t *testing.T) {
 	cache := NewSemanticCache(100)
 	ctx := context.Background()
 
-	cache.Store(ctx, "temp", &ProviderResponse{Content: "temp"}, time.Millisecond)
+	_ = cache.Store(ctx, "temp", &ProviderResponse{Content: "temp"}, time.Millisecond)
 	time.Sleep(5 * time.Millisecond)
 
 	_, ok := cache.Lookup(ctx, "temp", 0.95)
@@ -68,7 +68,7 @@ func TestSemanticCache_Stats(t *testing.T) {
 	cache := NewSemanticCache(100)
 	ctx := context.Background()
 
-	cache.Store(ctx, "test prompt", &ProviderResponse{Content: "test"}, time.Minute)
+	_ = cache.Store(ctx, "test prompt", &ProviderResponse{Content: "test"}, time.Minute)
 	cache.Lookup(ctx, "test prompt", 0.95)   // hit
 	cache.Lookup(ctx, "unrelated xyz", 0.95) // miss
 
@@ -88,9 +88,9 @@ func TestSemanticCache_Eviction(t *testing.T) {
 	cache := NewSemanticCache(2)
 	ctx := context.Background()
 
-	cache.Store(ctx, "a", &ProviderResponse{Content: "a"}, time.Minute)
-	cache.Store(ctx, "b", &ProviderResponse{Content: "b"}, time.Minute)
-	cache.Store(ctx, "c", &ProviderResponse{Content: "c"}, time.Minute) // evicts oldest
+	_ = cache.Store(ctx, "a", &ProviderResponse{Content: "a"}, time.Minute)
+	_ = cache.Store(ctx, "b", &ProviderResponse{Content: "b"}, time.Minute)
+	_ = cache.Store(ctx, "c", &ProviderResponse{Content: "c"}, time.Minute) // evicts oldest
 
 	if cache.Stats().Entries > 2 {
 		t.Errorf("expected max 2 entries, got %d", cache.Stats().Entries)
@@ -102,7 +102,7 @@ func TestMultiLevelCache_L1Hit(t *testing.T) {
 	ctx := context.Background()
 
 	resp := &ProviderResponse{Content: "L1 hit", Model: "test"}
-	mlc.Store(ctx, "exact prompt", resp, time.Minute)
+	_ = mlc.Store(ctx, "exact prompt", resp, time.Minute)
 
 	cached, ok := mlc.Lookup(ctx, "exact prompt", 0.95)
 	if !ok {
@@ -118,7 +118,7 @@ func TestMultiLevelCache_L2Hit(t *testing.T) {
 	ctx := context.Background()
 
 	resp := &ProviderResponse{Content: "L2 hit", Model: "test"}
-	mlc.Store(ctx, "What is 2+2?", resp, time.Minute)
+	_ = mlc.Store(ctx, "What is 2+2?", resp, time.Minute)
 
 	// 语义相似
 	cached, ok := mlc.Lookup(ctx, "What is 2+2?", 0.5)

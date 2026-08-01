@@ -390,6 +390,24 @@ func TestReadAllPooled_LargeData(t *testing.T) {
 	}
 }
 
+func TestReadAllPooled_NoStaleDataAfterMarshal(t *testing.T) {
+	// 回归测试（脏读）：Marshal 返回指向池内 buffer 的切片且 Put 时未清空。
+	// 若 ReadAllPooled 在 Get 后不先 Reset 就 io.Copy，会追加残留数据，
+	// 导致结果长度 > 输入长度（实测 4096 + 残留 = 5985）。
+	if _, err := Marshal(map[string]string{"key": strings.Repeat("v", 2048)}); err != nil {
+		t.Fatalf("Marshal failed: %v", err)
+	}
+
+	reader := strings.NewReader(strings.Repeat("x", 4096))
+	result, err := ReadAllPooled(reader)
+	if err != nil {
+		t.Fatalf("ReadAllPooled failed: %v", err)
+	}
+	if len(result) != 4096 {
+		t.Errorf("result length = %d, want 4096（不应包含 Marshal 残留数据）", len(result))
+	}
+}
+
 func TestReadAllPooled_ReadError(t *testing.T) {
 	reader := &errorReader{}
 	_, err := ReadAllPooled(reader)

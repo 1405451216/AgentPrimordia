@@ -260,7 +260,7 @@ func TestClusterManagerLeaderElection(t *testing.T) {
 	if err := mgr.Start(ctx); err != nil {
 		t.Fatalf("Start 失败: %v", err)
 	}
-	defer mgr.Stop(ctx)
+	defer func() { _ = mgr.Stop(ctx) }()
 
 	// 等待选举完成
 	time.Sleep(500 * time.Millisecond)

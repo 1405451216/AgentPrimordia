@@ -49,6 +49,3 @@ type NodeExecutionStats = dag.NodeExecutionStats
 func NewDAGWorkflow() *DAGWorkflow {
 	return dag.NewDAGWorkflow()
 }
-
-// sanitizeMermaidID 内部辅助函数，委托到 dag 子包（测试用）
-var sanitizeMermaidID = dag.SanitizeMermaidID

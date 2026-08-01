@@ -59,8 +59,6 @@ const (
 	clusterServiceName = "agentprimordia.cluster.v1.ClusterBus"
 	// methodSendMessage 单播方法
 	methodSendMessage = "/agentprimordia.cluster.v1.ClusterBus/SendMessage"
-	// methodBroadcast 广播方法
-	methodBroadcast = "/agentprimordia.cluster.v1.ClusterBus/Broadcast"
 	// methodHealthCheck 健康检查方法
 	methodHealthCheck = "/agentprimordia.cluster.v1.ClusterBus/HealthCheck"
 )
@@ -107,8 +105,10 @@ func NewGRPCRemoteNode(cfg GRPCRemoteNodeConfig) (*GRPCRemoteNode, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DialTimeout)
 	defer cancel()
 
+	//nolint:staticcheck // API 弃用但为兼容保留，NewClient 为惰性连接语义不同
 	conn, err := grpc.DialContext(ctx, cfg.Address,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		//nolint:staticcheck // API 弃用但为兼容保留，NewClient 为惰性连接语义不同
 		grpc.WithBlock(),
 	)
 	if err != nil {

@@ -70,10 +70,7 @@ func evictHalfTokenCache() {
 	tokenCache.Range(func(k, _ any) bool {
 		tokenCache.Delete(k)
 		deleted++
-		if deleted >= current-target {
-			return false
-		}
-		return true
+		return deleted < current-target
 	})
 	tokenCacheEntries.Add(-deleted)
 }

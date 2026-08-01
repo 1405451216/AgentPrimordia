@@ -93,7 +93,11 @@ func (c *lshBucketCache) probeCandidates(vec []float32) []*CacheEntry {
 	return candidates
 }
 
-// 保留原简单分桶作为 fallback（perf-v6 Task 3）
+// 保留原简单分桶作为 fallback（perf-v6 Task 3）。
+// 当前 LSH 为活动实现，分桶方案未被调用；按原工程师意图保留供未来回退。
+// 以下符号为有意保留的死代码，故抑制 unused 检查。
+//
+//nolint:unused // 保留的分桶 fallback 常量
 const (
 	bucketCount        = 16 // 16 个 bucket
 	maxBucketScanSkips = 32 // 连续跳过这么多后放弃分桶过滤
@@ -148,7 +152,9 @@ func embeddingCacheSize() int {
 	return count
 }
 
-// bucketKey 根据 queryVec 第一维计算 bucket（perf-v6 Task 3 fallback）
+// bucketKey 根据 queryVec 第一维计算 bucket（perf-v6 Task 3 fallback，有意保留）
+//
+//nolint:unused // 保留的分桶 fallback 函数
 func bucketKey(vec []float32) int {
 	if len(vec) == 0 {
 		return 0
@@ -157,7 +163,9 @@ func bucketKey(vec []float32) int {
 	return int(bits) % bucketCount
 }
 
-// entryBucket 根据 fingerprint key 字符串计算 bucket（perf-v6 Task 3 fallback）
+// entryBucket 根据 fingerprint key 字符串计算 bucket（perf-v6 Task 3 fallback，有意保留）
+//
+//nolint:unused // 保留的分桶 fallback 函数
 func entryBucket(key string) int {
 	if len(key) == 0 {
 		return 0

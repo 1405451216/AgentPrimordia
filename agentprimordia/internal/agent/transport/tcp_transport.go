@@ -390,9 +390,9 @@ func (p *connPool) Get(ctx context.Context, target string) (net.Conn, error) {
 
 		// 检查连接是否仍然活跃（非阻塞式）
 		// 如果连接被对端关闭，Read 会返回错误
-		pc.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+		_ = pc.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
 		n, err := pc.Read(oneByte)
-		pc.SetReadDeadline(time.Time{})
+		_ = pc.SetReadDeadline(time.Time{})
 
 		if err != nil {
 			if ne, ok := err.(net.Error); ok && ne.Timeout() && n == 0 {

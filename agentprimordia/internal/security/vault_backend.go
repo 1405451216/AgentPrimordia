@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -23,13 +22,12 @@ import (
 //   - List:    GET  /v1/{mount}/metadata/{path}?list=true
 //   - Delete:  DELETE /v1/{mount}/metadata/{path}
 type VaultBackend struct {
-	address   string
-	token     string
-	mount     string // KV v2 mount point (default "secret")
-	prefix    string // 路径前缀
-	audit     *AuditLog
-	client    *http.Client
-	mu        sync.RWMutex
+	address string
+	token   string
+	mount   string // KV v2 mount point (default "secret")
+	prefix  string // 路径前缀
+	audit   *AuditLog
+	client  *http.Client
 }
 
 // VaultConfig Vault 后端配置

@@ -13,15 +13,15 @@ func TestSQLiteStore_GetMemoriesByTag(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Message about golang")
 	ep1.Topics = "go,programming"
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "Message about python")
 	ep2.Topics = "python,data"
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	ep3 := MustEpisode("s1", "user", "Another go message")
 	ep3.Topics = "golang,backend"
-	store.Add(ctx, ep3)
+	_ = store.Add(ctx, ep3)
 
 	results, err := store.GetMemoriesByTag(ctx, "go", 10)
 	if err != nil {
@@ -45,7 +45,7 @@ func TestSQLiteStore_GetMemoriesByTag_NoMatch(t *testing.T) {
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
 	ep.Topics = "java"
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	results, err := store.GetMemoriesByTag(ctx, "nonexistent", 10)
 	if err != nil {
@@ -62,13 +62,13 @@ func TestSQLiteStore_GetMemoriesBySession(t *testing.T) {
 
 	ctx := context.Background()
 	ep1 := MustEpisode("session-a", "user", "First message")
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("session-a", "assistant", "Second message")
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	ep3 := MustEpisode("session-b", "user", "Other session")
-	store.Add(ctx, ep3)
+	_ = store.Add(ctx, ep3)
 
 	results, err := store.GetMemoriesBySession(ctx, "session-a")
 	if err != nil {
@@ -89,7 +89,7 @@ func TestSQLiteStore_SetImportance(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Important message")
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	err := store.SetImportance(ctx, ep.ID, 0.8)
 	if err != nil {
@@ -108,7 +108,7 @@ func TestSQLiteStore_SetImportance_Invalid(t *testing.T) {
 
 	ctx := context.Background()
 	ep := MustEpisode("s1", "user", "Message")
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	if err := store.SetImportance(ctx, ep.ID, -0.1); err != ErrInvalidImportance {
 		t.Errorf("SetImportance(-0.1) error = %v, want %v", err, ErrInvalidImportance)
@@ -125,15 +125,15 @@ func TestSQLiteStore_GetImportantMemories(t *testing.T) {
 	ctx := context.Background()
 	ep1 := MustEpisode("s1", "user", "Low importance")
 	ep1.Importance = 0.2
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "High importance")
 	ep2.Importance = 0.9
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	ep3 := MustEpisode("s1", "user", "Medium importance")
 	ep3.Importance = 0.5
-	store.Add(ctx, ep3)
+	_ = store.Add(ctx, ep3)
 
 	results, err := store.GetImportantMemories(ctx, 0.5, 10)
 	if err != nil {
@@ -156,15 +156,15 @@ func TestSQLiteStore_GetMemoryTimeline(t *testing.T) {
 	now := time.Now().UTC()
 	ep1 := MustEpisode("s1", "user", "Today message")
 	ep1.CreatedAt = now.Format(time.RFC3339)
-	store.Add(ctx, ep1)
+	_ = store.Add(ctx, ep1)
 
 	ep2 := MustEpisode("s1", "user", "Yesterday message")
 	ep2.CreatedAt = now.AddDate(0, 0, -1).Format(time.RFC3339)
-	store.Add(ctx, ep2)
+	_ = store.Add(ctx, ep2)
 
 	ep3 := MustEpisode("s1", "user", "Two days ago")
 	ep3.CreatedAt = now.AddDate(0, 0, -2).Format(time.RFC3339)
-	store.Add(ctx, ep3)
+	_ = store.Add(ctx, ep3)
 
 	results, err := store.GetMemoryTimeline(ctx, 7)
 	if err != nil {
@@ -192,7 +192,7 @@ func TestSQLiteStore_GetMemoryTimeline_DefaultDays(t *testing.T) {
 	now := time.Now().UTC()
 	ep := MustEpisode("s1", "user", "Recent message")
 	ep.CreatedAt = now.AddDate(0, 0, -5).Format(time.RFC3339)
-	store.Add(ctx, ep)
+	_ = store.Add(ctx, ep)
 
 	results, err := store.GetMemoryTimeline(ctx, 0)
 	if err != nil {

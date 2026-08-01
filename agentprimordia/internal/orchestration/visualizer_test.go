@@ -11,9 +11,9 @@ import (
 
 func TestVisualizer_DAGExport(t *testing.T) {
 	dag := agent.NewDAGWorkflow().WithName("test-wf")
-	dag.AddNode(&agent.DAGNode{ID: "step-1", Metadata: map[string]string{"label": "第一步"}})
-	dag.AddNode(&agent.DAGNode{ID: "step-2", Metadata: map[string]string{"label": "第二步"}})
-	dag.AddEdge(agent.DAGEdge{From: "step-1", To: "step-2"})
+	_ = dag.AddNode(&agent.DAGNode{ID: "step-1", Metadata: map[string]string{"label": "第一步"}})
+	_ = dag.AddNode(&agent.DAGNode{ID: "step-2", Metadata: map[string]string{"label": "第二步"}})
+	_ = dag.AddEdge(agent.DAGEdge{From: "step-1", To: "step-2"})
 
 	v := NewVisualizer(dag)
 	export := v.ExportJSON()
@@ -36,7 +36,7 @@ func TestVisualizer_DAGExport(t *testing.T) {
 
 func TestVisualizer_EditorEndpoint(t *testing.T) {
 	dag := agent.NewDAGWorkflow().WithName("test-wf")
-	dag.AddNode(&agent.DAGNode{ID: "step-1", Metadata: map[string]string{"label": "第一步"}})
+	_ = dag.AddNode(&agent.DAGNode{ID: "step-1", Metadata: map[string]string{"label": "第一步"}})
 
 	v := NewVisualizer(dag)
 	handler := v.EditorHandler()

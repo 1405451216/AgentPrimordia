@@ -408,7 +408,7 @@ func (s *DiscoveryServer) handleDiscoverByID(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(info)
+	_ = json.NewEncoder(w).Encode(info)
 }
 
 func (s *DiscoveryServer) handleUnregisterByID(w http.ResponseWriter, r *http.Request, agentID string) {
@@ -452,5 +452,5 @@ func (s *DiscoveryServer) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(agents)
+	_ = json.NewEncoder(w).Encode(agents)
 }

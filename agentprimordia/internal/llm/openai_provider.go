@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"agentprimordia/internal/jsonutil" // perf-v6 round 5 Task 1：JSON 池化
@@ -24,9 +23,6 @@ const (
 	userAgent       = "AgentPrimordia/1.0"
 
 	defaultOpenAIMaxContext = 128000
-
-	// perf-v6 Task D：requestBodyPool 初始 buffer 大小
-	defaultRequestBodyPoolSize = 8 * 1024
 )
 
 var (
@@ -456,20 +452,8 @@ func (p *OpenAIProvider) resolveModel(reqModel string) string {
 }
 
 // requestBodyPool 复用 LLM 请求体 []byte buffer（perf-v6 Task D）
-var requestBodyPool = sync.Pool{
-	New: func() any {
-		b := make([]byte, 0, defaultRequestBodyPoolSize)
-		return &b
-	},
-}
-
 func (p *OpenAIProvider) buildMessages(msgs []ChatMessage) []map[string]any {
 	return BuildOpenAIMessages(msgs)
-}
-
-// buildResponseFormat 将通用 ResponseFormat 转换为 OpenAI API 格式
-func (p *OpenAIProvider) buildResponseFormat(rf *ResponseFormat) map[string]any {
-	return buildOpenAIResponseFormat(rf)
 }
 
 // buildOpenAIResponseFormat 将通用 ResponseFormat 转换为 OpenAI 兼容格式

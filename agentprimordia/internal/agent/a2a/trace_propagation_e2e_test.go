@@ -32,6 +32,7 @@ func newBufconnServerClient(t *testing.T) (*A2AGRPCClient, *A2AService, func()) 
 		return lis.Dial()
 	}
 
+	//nolint:staticcheck // API deprecated, keep for compat; NewClient has lazy-connect semantics
 	conn, err := grpc.DialContext(
 		context.Background(),
 		"bufnet",
@@ -102,6 +103,7 @@ func TestTracePropagation_EndToEnd_CreateTaskWithCapture(t *testing.T) {
 		_ = rawServer.Serve(lis)
 	}()
 
+	//nolint:staticcheck // API deprecated, keep for compat; NewClient has lazy-connect semantics
 	conn, err := grpc.DialContext(
 		context.Background(),
 		"bufnet",
@@ -172,6 +174,7 @@ func TestTracePropagation_EndToEnd_StreamTaskEvents(t *testing.T) {
 		_ = rawServer.Serve(lis)
 	}()
 
+	//nolint:staticcheck // API deprecated, keep for compat; NewClient has lazy-connect semantics
 	conn, err := grpc.DialContext(
 		context.Background(),
 		"bufnet",

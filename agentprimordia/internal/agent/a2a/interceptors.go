@@ -208,11 +208,6 @@ func StreamMetricsInterceptor(metrics *A2AInterceptorMetrics) grpc.StreamServerI
 	}
 }
 
-// PanicMetricsInterceptor 包装 RecoveryInterceptor 统计 panic 恢复次数。
-// 注意：实现上 panic 恢复已在 RecoveryInterceptor 中处理，本拦截器仅在
-// 检测到状态码为 Internal 时增量计数（与 A2AInterceptorMetrics 共享）。
-type panicCounter struct{ counter *A2AInterceptorMetrics }
-
 // isClientCanceled 判断错误是否为客户端主动取消。
 func isClientCanceled(err error) bool {
 	if err == nil {

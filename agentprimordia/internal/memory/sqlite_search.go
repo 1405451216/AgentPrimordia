@@ -245,12 +245,6 @@ func tokenize(text string) map[string]struct{} {
 	return tokens
 }
 
-// computeSemanticScore 计算查询与 Episode 的语义相似度（基础版：实时 tokenize）
-func computeSemanticScore(queryTokens map[string]struct{}, ep *Episode) float64 {
-	contentTokens := tokenize(ep.Content + " " + ep.Summary + " " + ep.Topics)
-	return computeSemanticScorePrecomputed(queryTokens, contentTokens, ep.Importance)
-}
-
 // computeSemanticScorePrecomputed 使用预计算的 content token 集合计算语义分数
 // 优化（perf-v3）：避免搜索路径中重复 tokenize episode 内容
 func computeSemanticScorePrecomputed(queryTokens, contentTokens map[string]struct{}, importance float64) float64 {

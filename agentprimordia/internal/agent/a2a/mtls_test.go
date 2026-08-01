@@ -83,9 +83,9 @@ func TestTLSManager_DefaultRotationInterval(t *testing.T) {
 	caFile := filepath.Join(dir, "ca.pem")
 
 	// 写入无效的 PEM 内容
-	os.WriteFile(certFile, []byte("invalid"), 0o644)
-	os.WriteFile(keyFile, []byte("invalid"), 0o644)
-	os.WriteFile(caFile, []byte("invalid"), 0o644)
+	_ = os.WriteFile(certFile, []byte("invalid"), 0o644)
+	_ = os.WriteFile(keyFile, []byte("invalid"), 0o644)
+	_ = os.WriteFile(caFile, []byte("invalid"), 0o644)
 
 	// 文件存在但内容无效，应该在 loadCredentials 时失败
 	_, err := NewTLSManager(TLSConfig{
@@ -142,7 +142,7 @@ func TestCircuitBreakerInterceptor_Execute(t *testing.T) {
 
 	// 连续失败触发断路
 	for i := 0; i < 2; i++ {
-		interceptor.cb.Execute(ctx, func(ctx context.Context) error {
+		_ = interceptor.cb.Execute(ctx, func(ctx context.Context) error {
 			return fmt.Errorf("fail")
 		})
 	}

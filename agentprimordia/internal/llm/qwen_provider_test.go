@@ -200,7 +200,7 @@ func TestCompleteMultimodal_Qwen_WithMockServer(t *testing.T) {
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -247,7 +247,7 @@ func TestCompleteMultimodal_Qwen_APIError(t *testing.T) {
 				"code":    "InvalidApiKey",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -289,7 +289,7 @@ func TestResolveMaxTokens_Qwen_FromRequest(t *testing.T) {
 func TestComplete_Qwen_BackwardCompatible(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		_ = json.NewDecoder(r.Body).Decode(&body)
 
 		messages := body["messages"].([]any)
 		firstMsg := messages[0].(map[string]any)
@@ -305,7 +305,7 @@ func TestComplete_Qwen_BackwardCompatible(t *testing.T) {
 			},
 			"usage": map[string]int{"total_tokens": 20},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

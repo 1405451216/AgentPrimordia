@@ -62,10 +62,8 @@ func buildExecutionResult(plan *ExecutionPlan, stepResults map[string]*StepResul
 		FinalOutput: make(map[string]any),
 	}
 
-	if initialInput != nil {
-		for k, v := range initialInput {
-			result.FinalOutput[k] = v
-		}
+	for k, v := range initialInput {
+		result.FinalOutput[k] = v
 	}
 	for _, sr := range stepResults {
 		if sr.Status == StepCompleted && sr.Output != nil {

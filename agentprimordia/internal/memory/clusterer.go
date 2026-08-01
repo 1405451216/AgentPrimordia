@@ -67,22 +67,6 @@ type memoryDoc struct {
 	Embedding  []float32
 }
 
-// newMemoryDoc 从 Episode 创建 memoryDoc。
-func newMemoryDoc(ep *Episode, embedding []float32) *memoryDoc {
-	return &memoryDoc{
-		ID:         ep.ID,
-		SessionID:  ep.SessionID,
-		Role:       ep.Role,
-		Content:    ep.Content,
-		Summary:    ep.Summary,
-		Topics:     ep.Topics,
-		Importance: ep.Importance,
-		Metadata:   ep.Metadata,
-		CreatedAt:  ep.CreatedAt,
-		Embedding:  embedding,
-	}
-}
-
 var clusterIDCounter atomic.Int64
 
 func generateClusterID() string {

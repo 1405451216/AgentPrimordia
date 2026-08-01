@@ -25,11 +25,12 @@ func enableWindowsANSI() {
 	}
 
 	mode |= 0x0004
-	setConsoleMode.Call(uintptr(handle), uintptr(mode))
+	// 启用 ANSI 是尽力而为：失败时终端只是不支持颜色，不影响运行
+	_, _, _ = setConsoleMode.Call(uintptr(handle), uintptr(mode))
 
 	// 同样为 stderr 启用
 	handleErr, _ := syscall.GetStdHandle(syscall.STD_ERROR_HANDLE)
 	if handleErr != syscall.InvalidHandle {
-		setConsoleMode.Call(uintptr(handleErr), uintptr(mode))
+		_, _, _ = setConsoleMode.Call(uintptr(handleErr), uintptr(mode))
 	}
 }

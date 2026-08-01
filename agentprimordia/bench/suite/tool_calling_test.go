@@ -13,7 +13,7 @@ import (
 func BenchmarkToolCalling(b *testing.B) {
 	registry := ap.NewToolRegistry()
 	fs, _ := ap.NewFileSystem(".")
-	registry.Register(fs)
+	_ = registry.Register(fs)
 
 	agent, err := ap.NewAgent("BenchAgent", "你是一个助手，使用工具完成任务。", &benchMockLLM{}, ap.WithMaxTurns(5), ap.WithToolkit(registry))
 	if err != nil {
@@ -47,7 +47,7 @@ func BenchmarkMemoryStore(b *testing.B) {
 
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			memory.Add(ctx, &ap.Episode{
+			_ = memory.Add(ctx, &ap.Episode{
 				ID:      fmt.Sprintf("bench-%d", i),
 				Content: "benchmark test episode",
 				Role:    "user",
@@ -57,7 +57,7 @@ func BenchmarkMemoryStore(b *testing.B) {
 
 	b.Run("Search", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			memory.Search(ctx, "benchmark", nil)
+			_, _ = memory.Search(ctx, "benchmark", nil)
 		}
 	})
 }

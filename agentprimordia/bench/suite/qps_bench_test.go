@@ -68,7 +68,7 @@ func BenchmarkQPS_MemoryAdd(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		memory.Add(ctx, &ap.Episode{
+		_ = memory.Add(ctx, &ap.Episode{
 			ID:      fmt.Sprintf("qps-mem-%d", i),
 			Content: "benchmark episode",
 			Role:    "user",
@@ -84,7 +84,7 @@ func BenchmarkQPS_MemorySearch(b *testing.B) {
 
 	// 预填充 1000 条
 	for i := 0; i < 1000; i++ {
-		memory.Add(ctx, &ap.Episode{
+		_ = memory.Add(ctx, &ap.Episode{
 			ID:      fmt.Sprintf("pre-%d", i),
 			Content: fmt.Sprintf("episode content %d for search", i),
 			Role:    "user",
@@ -94,7 +94,7 @@ func BenchmarkQPS_MemorySearch(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		memory.Search(ctx, "benchmark", nil)
+		_, _ = memory.Search(ctx, "benchmark", nil)
 	}
 }
 
@@ -102,7 +102,7 @@ func BenchmarkQPS_MemorySearch(b *testing.B) {
 func BenchmarkQPS_ToolCall(b *testing.B) {
 	registry := ap.NewToolRegistry()
 	fs, _ := ap.NewFileSystem(".")
-	registry.Register(fs)
+	_ = registry.Register(fs)
 
 	agent, err := ap.NewAgent("QPSToolAgent", "你是助手", &benchMockLLM{}, ap.WithMaxTurns(5), ap.WithToolkit(registry))
 	if err != nil {

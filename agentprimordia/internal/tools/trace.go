@@ -203,7 +203,7 @@ func (tc *TraceContext) StartCall(traceID, toolName string, input any) *ToolCall
 		Depth:     tc.depth,
 		Timestamp: time.Now(),
 	}
-	tc.collector.Record(trace)
+	_ = tc.collector.Record(trace)
 	return trace
 }
 
@@ -212,7 +212,7 @@ func (tc *TraceContext) EndCall(trace *ToolCallTrace, output any, err error) {
 	trace.Duration = time.Since(trace.Timestamp)
 	trace.Output = output
 	trace.Err = err
-	tc.collector.Record(trace)
+	_ = tc.collector.Record(trace)
 }
 
 // ChildContext 创建子调用的追踪上下文

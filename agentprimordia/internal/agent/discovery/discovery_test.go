@@ -42,8 +42,8 @@ func TestLocalDiscovery_RegisterAndDiscover(t *testing.T) {
 	if len(got.Capabilities) != 2 {
 		t.Errorf("Capabilities length = %d, want 2", len(got.Capabilities))
 	}
-	if !got.LastSeen.IsZero() {
-		// LastSeen should be set
+	if got.LastSeen.IsZero() {
+		t.Errorf("LastSeen should be set, got zero value")
 	}
 }
 

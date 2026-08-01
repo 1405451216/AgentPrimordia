@@ -34,7 +34,7 @@ func TestInteractiveWizard_ShowTemplates(t *testing.T) {
 	output := &bytes.Buffer{}
 
 	wizard := NewWizard(input, output)
-	wizard.Run()
+	_, _ = wizard.Run()
 
 	prompt := output.String()
 	if !strings.Contains(prompt, "quickstart") {

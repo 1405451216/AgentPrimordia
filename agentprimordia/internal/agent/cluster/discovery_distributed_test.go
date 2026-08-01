@@ -40,8 +40,8 @@ func TestMemKVStoreDelete(t *testing.T) {
 
 	ctx := context.Background()
 
-	kv.Put(ctx, "key1", "value1", 0)
-	kv.Delete(ctx, "key1")
+	_ = kv.Put(ctx, "key1", "value1", 0)
+	_ = kv.Delete(ctx, "key1")
 
 	_, err := kv.Get(ctx, "key1")
 	if err == nil {
@@ -56,7 +56,7 @@ func TestMemKVStoreTTL(t *testing.T) {
 	ctx := context.Background()
 
 	// 写入带 TTL 的 key
-	kv.Put(ctx, "temp", "value", 50*time.Millisecond)
+	_ = kv.Put(ctx, "temp", "value", 50*time.Millisecond)
 
 	// 立即可读
 	val, err := kv.Get(ctx, "temp")
@@ -79,9 +79,9 @@ func TestMemKVStoreListByPrefix(t *testing.T) {
 
 	ctx := context.Background()
 
-	kv.Put(ctx, "agents/a1", "data1", 0)
-	kv.Put(ctx, "agents/a2", "data2", 0)
-	kv.Put(ctx, "other/b1", "data3", 0)
+	_ = kv.Put(ctx, "agents/a1", "data1", 0)
+	_ = kv.Put(ctx, "agents/a2", "data2", 0)
+	_ = kv.Put(ctx, "other/b1", "data3", 0)
 
 	result, err := kv.ListByPrefix(ctx, "agents/")
 	if err != nil {
@@ -102,7 +102,7 @@ func TestMemKVStoreWatch(t *testing.T) {
 	ch := kv.Watch(ctx, "watch/")
 
 	// 写入 key
-	kv.Put(ctx, "watch/key1", "value1", 0)
+	_ = kv.Put(ctx, "watch/key1", "value1", 0)
 
 	select {
 	case event := <-ch:
@@ -159,7 +159,7 @@ func TestDistributedDiscoveryUnregister(t *testing.T) {
 
 	ctx := context.Background()
 
-	ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-1", Name: "Agent One"})
+	_ = ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-1", Name: "Agent One"})
 
 	// 注销
 	if err := ddb.Unregister(ctx, "agent-1"); err != nil {
@@ -184,8 +184,8 @@ func TestDistributedDiscoveryListAgents(t *testing.T) {
 
 	ctx := context.Background()
 
-	ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-1", Name: "Agent One"})
-	ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-2", Name: "Agent Two"})
+	_ = ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-1", Name: "Agent One"})
+	_ = ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-2", Name: "Agent Two"})
 
 	agents, err := ddb.ListAgents(ctx)
 	if err != nil {
@@ -208,7 +208,7 @@ func TestDistributedDiscoveryHeartbeat(t *testing.T) {
 
 	ctx := context.Background()
 
-	ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-1", Name: "Agent One"})
+	_ = ddb.Register(ctx, &discovery.AgentInfo{ID: "agent-1", Name: "Agent One"})
 
 	originalTime := time.Now()
 	time.Sleep(10 * time.Millisecond)

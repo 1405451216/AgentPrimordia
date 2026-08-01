@@ -126,7 +126,7 @@ func TestVaultBackend_InputSanitization(t *testing.T) {
 				resp := map[string]any{
 					"data": map[string]any{"data": map[string]string{}},
 				}
-				json.NewEncoder(w).Encode(resp)
+				_ = json.NewEncoder(w).Encode(resp)
 			}))
 			defer server.Close()
 
@@ -137,7 +137,7 @@ func TestVaultBackend_InputSanitization(t *testing.T) {
 			})
 
 			ctx := context.Background()
-			v2.GetSecret(ctx, tt.key)
+			_, _ = v2.GetSecret(ctx, tt.key)
 
 			// 验证请求路径：记录路径遍历安全发现
 			if strings.Contains(receivedPath, "/../") {

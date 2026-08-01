@@ -98,7 +98,7 @@ func TestHybridSearch_ModeSwitch(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 5; i++ {
-		mem.Add(ctx, &Episode{
+		_ = mem.Add(ctx, &Episode{
 			ID:        string(rune('a' + i)),
 			SessionID: "s1",
 			Role:      "user",
@@ -140,7 +140,7 @@ func TestHybridSearch_FTSSourceTags(t *testing.T) {
 	defer mem.Close()
 	ctx := context.Background()
 
-	mem.Add(ctx, &Episode{
+	_ = mem.Add(ctx, &Episode{
 		ID:        "ep1",
 		SessionID: "s1",
 		Role:      "user",
@@ -183,7 +183,7 @@ func TestHybridSearchRRF_KBounds(t *testing.T) {
 	defer mem.Close()
 	ctx := context.Background()
 
-	mem.Add(ctx, &Episode{ID: "ep1", SessionID: "s1", Role: "user", Content: "test content for RRF bounds"})
+	_ = mem.Add(ctx, &Episode{ID: "ep1", SessionID: "s1", Role: "user", Content: "test content for RRF bounds"})
 
 	store := NewRAGStore(mem, nil)
 

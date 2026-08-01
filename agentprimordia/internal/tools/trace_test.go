@@ -39,9 +39,9 @@ func TestTraceCollector_GetTraceNotFound(t *testing.T) {
 func TestTraceCollector_ParentChild(t *testing.T) {
 	c := NewTraceCollector()
 	parent := &ToolCallTrace{ID: "parent", ToolName: "orchestrator", Depth: 0}
-	c.Record(parent)
+	_ = c.Record(parent)
 	child := &ToolCallTrace{ID: "child", ParentID: "parent", ToolName: "search", Depth: 1}
-	c.Record(child)
+	_ = c.Record(child)
 	children, err := c.GetChildren("parent")
 	if err != nil {
 		t.Fatalf("GetChildren error: %v", err)
@@ -74,8 +74,8 @@ func TestTraceCollector_RecordEmptyID(t *testing.T) {
 
 func TestTraceCollector_AllTraces(t *testing.T) {
 	c := NewTraceCollector()
-	c.Record(&ToolCallTrace{ID: "a", ToolName: "a"})
-	c.Record(&ToolCallTrace{ID: "b", ToolName: "b"})
+	_ = c.Record(&ToolCallTrace{ID: "a", ToolName: "a"})
+	_ = c.Record(&ToolCallTrace{ID: "b", ToolName: "b"})
 	traces := c.AllTraces()
 	if len(traces) != 2 {
 		t.Errorf("expected 2 traces, got %d", len(traces))
@@ -87,7 +87,7 @@ func TestTraceCollector_AllTraces(t *testing.T) {
 
 func TestTraceCollector_Truncate(t *testing.T) {
 	c := NewTraceCollector()
-	c.Record(&ToolCallTrace{ID: "a", ToolName: "a"})
+	_ = c.Record(&ToolCallTrace{ID: "a", ToolName: "a"})
 	c.Truncate()
 	if c.TraceCount() != 0 {
 		t.Errorf("expected 0 after truncate, got %d", c.TraceCount())

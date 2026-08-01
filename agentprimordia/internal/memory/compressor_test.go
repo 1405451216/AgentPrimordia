@@ -13,7 +13,7 @@ func TestCompressor_CompressOldEpisodes(t *testing.T) {
 
 	// 添加 20 条记忆
 	for i := 0; i < 20; i++ {
-		mem.Add(ctx, &Episode{
+		_ = mem.Add(ctx, &Episode{
 			ID:        fmt.Sprintf("ep-%d", i),
 			SessionID: "test-session",
 			Content:   fmt.Sprintf("第 %d 条对话内容，包含一些常见的关键词", i),
@@ -53,7 +53,7 @@ func TestCompressor_SkipRecentEpisodes(t *testing.T) {
 
 	// 只添加 3 条（少于窗口大小）
 	for i := 0; i < 3; i++ {
-		mem.Add(ctx, &Episode{
+		_ = mem.Add(ctx, &Episode{
 			ID:        fmt.Sprintf("ep-%d", i),
 			SessionID: "test-session",
 			Content:   fmt.Sprintf("最近的对话 %d", i),

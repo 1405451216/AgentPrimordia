@@ -152,7 +152,6 @@ type WorkflowExecution struct {
 	nodes          map[string]*WorkflowNode
 	transitions    map[string][]*Transition
 	startNodeID    string
-	endNodeIDs     []string
 	currentNode    *WorkflowNode
 	variables      map[string]any
 	history        []*ExecutionRecord

@@ -3,7 +3,6 @@ package a2a
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"agentprimordia/internal/agent/discovery"
 )
@@ -15,7 +14,6 @@ import (
 // 如需实时心跳事件推送，应直接使用 discovery.Discovery 的 Heartbeat 机制配合外部事件总线。
 type DiscoveryAdapter struct {
 	inner discovery.Discovery
-	mu    sync.Mutex
 	watch chan DiscoveryEvent
 }
 

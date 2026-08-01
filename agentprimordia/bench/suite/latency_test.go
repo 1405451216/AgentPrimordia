@@ -73,7 +73,7 @@ func BenchmarkMemoryLatency(b *testing.B) {
 
 	// 预填充数据
 	for i := 0; i < 1000; i++ {
-		memory.Add(ctx, &ap.Episode{
+		_ = memory.Add(ctx, &ap.Episode{
 			ID:      fmt.Sprintf("pre-%d", i),
 			Content: fmt.Sprintf("预填充记忆条目 %d，包含一些常见关键词如文件、搜索、分析", i),
 			Role:    "user",
@@ -82,7 +82,7 @@ func BenchmarkMemoryLatency(b *testing.B) {
 
 	b.Run("Search_1K", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			memory.Search(ctx, "文件搜索", nil)
+			_, _ = memory.Search(ctx, "文件搜索", nil)
 		}
 	})
 }
@@ -97,7 +97,7 @@ func BenchmarkVectorSearch(b *testing.B) {
 		for j := range v {
 			v[j] = float32(i*128+j) / 100000.0
 		}
-		store.Add(ctx, fmt.Sprintf("vec-%d", i), v, nil)
+		_ = store.Add(ctx, fmt.Sprintf("vec-%d", i), v, nil)
 	}
 
 	query := make([]float32, 128)
@@ -107,6 +107,6 @@ func BenchmarkVectorSearch(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		store.Search(ctx, query, 10)
+		_, _ = store.Search(ctx, query, 10)
 	}
 }

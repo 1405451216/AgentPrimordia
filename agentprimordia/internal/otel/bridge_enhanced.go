@@ -16,9 +16,8 @@ type BridgeConfig struct {
 // EnhancedBridge 增强版 OTel 桥接器
 // 集成 Tracing、Metrics 和 Baggage 传播能力
 type EnhancedBridge struct {
-	tracer   *agent.LoggingTracer
-	exporter *OTLPExporter
-	metrics  *MetricExporter
+	tracer  *agent.LoggingTracer
+	metrics *MetricExporter
 }
 
 // NewEnhancedBridge 创建增强版桥接器

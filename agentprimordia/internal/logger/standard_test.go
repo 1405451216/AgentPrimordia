@@ -73,7 +73,7 @@ func TestStandardLogger_WithAgent(t *testing.T) {
 	agentL.Info("agent action")
 
 	var m map[string]any
-	json.Unmarshal(buf.Bytes(), &m)
+	_ = json.Unmarshal(buf.Bytes(), &m)
 	if m["agent_id"] != "agent-001" {
 		t.Errorf("agent_id = %v, want agent-001", m["agent_id"])
 	}
@@ -86,7 +86,7 @@ func TestStandardLogger_WithSession(t *testing.T) {
 	sessionL.Info("session action")
 
 	var m map[string]any
-	json.Unmarshal(buf.Bytes(), &m)
+	_ = json.Unmarshal(buf.Bytes(), &m)
 	if m["session_id"] != "sess-abc" {
 		t.Errorf("session_id = %v, want sess-abc", m["session_id"])
 	}
@@ -103,7 +103,7 @@ func TestStandardLogger_DebugCtx(t *testing.T) {
 	ctxL.Debug("ctx msg")
 
 	var m map[string]any
-	json.Unmarshal(buf.Bytes(), &m)
+	_ = json.Unmarshal(buf.Bytes(), &m)
 	if m["trace_id"] != "trace-123" {
 		t.Errorf("trace_id = %v, want trace-123", m["trace_id"])
 	}

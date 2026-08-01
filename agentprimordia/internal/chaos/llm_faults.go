@@ -65,12 +65,12 @@ func (f *LLMHTTPStatusFault) Inject(ctx context.Context) (CleanupFunc, error) {
 	mux.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(f.StatusCode)
-		w.Write([]byte(f.Body))
+		_, _ = w.Write([]byte(f.Body))
 	})
 	mux.HandleFunc("/v1/completions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(f.StatusCode)
-		w.Write([]byte(f.Body))
+		_, _ = w.Write([]byte(f.Body))
 	})
 
 	f.server = &http.Server{
@@ -123,7 +123,7 @@ func (f *LLMTimeoutFault) Inject(ctx context.Context) (CleanupFunc, error) {
 		select {
 		case <-time.After(f.Timeout + 5*time.Second):
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"choices":[{"message":{"content":"late response"}}]}`))
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"late response"}}]}`))
 		case <-r.Context().Done():
 			// 客户端已超时断开
 			return
@@ -181,12 +181,12 @@ func (f *LLMIntermittentFault) Inject(ctx context.Context) (CleanupFunc, error) 
 		if rand.Float64() < f.FailureRate {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(f.FailureStatus)
-			w.Write([]byte(`{"error": {"message": "Intermittent failure", "type": "server_error"}}`))
+			_, _ = w.Write([]byte(`{"error": {"message": "Intermittent failure", "type": "server_error"}}`))
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`))
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"ok"}}]}`))
 	})
 
 	f.server = &http.Server{
@@ -245,7 +245,7 @@ func (f *LLMSlowResponseFault) Inject(ctx context.Context) (CleanupFunc, error) 
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"choices":[{"message":{"content":"slow response"}}]}`))
+		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"slow response"}}]}`))
 	})
 
 	f.server = &http.Server{

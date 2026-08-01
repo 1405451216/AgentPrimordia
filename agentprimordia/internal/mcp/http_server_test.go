@@ -32,7 +32,7 @@ func (t *mockToolMCPHTTP) Execute(ctx context.Context, args json.RawMessage) (*t
 
 func newHTTPTestServer() (*AgentCardHTTPServer, *tools.Registry) {
 	reg := tools.NewRegistry()
-	reg.Register(&mockToolMCPHTTP{
+	_ = reg.Register(&mockToolMCPHTTP{
 		name:   "echo",
 		desc:   "echo input",
 		params: json.RawMessage(`{"type":"object","properties":{"msg":{"type":"string"}}}`),

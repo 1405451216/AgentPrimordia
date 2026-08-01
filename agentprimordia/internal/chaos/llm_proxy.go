@@ -243,14 +243,14 @@ func (fp *LLMFaultProxy) injectFault(w http.ResponseWriter, r *http.Request, fau
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Retry-After", "5")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(`{"error": {"message": "Service temporarily unavailable (chaos injection)", "type": "server_error"}}`))
+		_, _ = w.Write([]byte(`{"error": {"message": "Service temporarily unavailable (chaos injection)", "type": "server_error"}}`))
 
 	case FaultType429:
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Retry-After", "10")
 		w.Header().Set("X-RateLimit-Remaining", "0")
 		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte(`{"error": {"message": "Rate limit exceeded (chaos injection)", "type": "rate_limit_error"}}`))
+		_, _ = w.Write([]byte(`{"error": {"message": "Rate limit exceeded (chaos injection)", "type": "rate_limit_error"}}`))
 
 	case FaultTypeTimeout:
 		// 模拟超时：等待指定时间后返回
@@ -260,12 +260,12 @@ func (fp *LLMFaultProxy) injectFault(w http.ResponseWriter, r *http.Request, fau
 			return
 		}
 		w.WriteHeader(http.StatusGatewayTimeout)
-		w.Write([]byte(`{"error": {"message": "Upstream timeout (chaos injection)", "type": "timeout_error"}}`))
+		_, _ = w.Write([]byte(`{"error": {"message": "Upstream timeout (chaos injection)", "type": "timeout_error"}}`))
 
 	case FaultTypeMalformed:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{invalid json!!! this is not valid`))
+		_, _ = w.Write([]byte(`{invalid json!!! this is not valid`))
 
 	case FaultTypeConnReset:
 		// 模拟连接重置：直接关闭连接
@@ -281,7 +281,7 @@ func (fp *LLMFaultProxy) injectFault(w http.ResponseWriter, r *http.Request, fau
 
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error": {"message": "Unknown fault type"}}`))
+		_, _ = w.Write([]byte(`{"error": {"message": "Unknown fault type"}}`))
 	}
 }
 
@@ -303,7 +303,7 @@ func (fp *LLMFaultProxy) handleConfigUpdate(w http.ResponseWriter, r *http.Reque
 	if rate != "" {
 		var f float64
 		if _, err := fmt.Sscanf(rate, "%f", &f); err == nil {
-			fp.SetFaultRate(f)
+			_ = fp.SetFaultRate(f)
 		}
 	}
 

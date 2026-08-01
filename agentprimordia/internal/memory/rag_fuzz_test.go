@@ -30,13 +30,13 @@ func FuzzRAGStoreHybridSearch(f *testing.F) {
 		ctx := context.Background()
 
 		// 添加一些基础数据
-		mem.Add(ctx, &Episode{
+		_ = mem.Add(ctx, &Episode{
 			ID:        "ep1",
 			SessionID: "s1",
 			Role:      "user",
 			Content:   "Go is a compiled language",
 		})
-		mem.Add(ctx, &Episode{
+		_ = mem.Add(ctx, &Episode{
 			ID:        "ep2",
 			SessionID: "s1",
 			Role:      "assistant",
@@ -81,7 +81,7 @@ func FuzzRAGStoreRRFSearch(f *testing.F) {
 		defer mem.Close()
 		ctx := context.Background()
 
-		mem.Add(ctx, &Episode{
+		_ = mem.Add(ctx, &Episode{
 			ID:        "ep1",
 			SessionID: "s1",
 			Role:      "user",

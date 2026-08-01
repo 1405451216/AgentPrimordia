@@ -238,7 +238,7 @@ func TestDistillPipeline_TriggerRAG_NoWeakness(t *testing.T) {
 	if err != nil {
 		t.Fatalf("不应返回错误: %v", err)
 	}
-	if results != nil && len(results) > 0 {
+	if len(results) > 0 {
 		t.Error("无弱项时不应有 RAG 结果")
 	}
 }

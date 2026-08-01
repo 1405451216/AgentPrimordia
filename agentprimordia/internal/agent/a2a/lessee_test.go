@@ -47,8 +47,8 @@ func TestLesseeClient_ActiveLeaseCount(t *testing.T) {
 	client := NewLesseeClient(reg)
 	ctx := context.Background()
 
-	client.LeaseTool(ctx, "agent-a", "tool-1", "localhost:50051")
-	client.LeaseTool(ctx, "agent-b", "tool-2", "localhost:50052")
+	_, _ = client.LeaseTool(ctx, "agent-a", "tool-1", "localhost:50051")
+	_, _ = client.LeaseTool(ctx, "agent-b", "tool-2", "localhost:50052")
 	if client.ActiveLeaseCount() != 2 {
 		t.Errorf("expected 2 active leases, got %d", client.ActiveLeaseCount())
 	}

@@ -11,10 +11,10 @@ import (
 func setupTestProject(t *testing.T) string {
 	t.Helper()
 	tmpDir := t.TempDir()
-	os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module test\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module test\n"), 0o644)
 	origDir, _ := os.Getwd()
-	t.Cleanup(func() { os.Chdir(origDir) })
-	os.Chdir(tmpDir)
+	t.Cleanup(func() { _ = os.Chdir(origDir) })
+	_ = os.Chdir(tmpDir)
 	return tmpDir
 }
 
@@ -45,7 +45,7 @@ mcp:
     remote:
       base_url: "http://localhost:3001/mcp"
 `
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
 
 	err := mcpList()
 	if err != nil {

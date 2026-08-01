@@ -63,7 +63,7 @@ func (s *VisualEditorServer) listConfigs(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(configs)
+	_ = json.NewEncoder(w).Encode(configs)
 }
 
 // createConfig 创建新配置
@@ -86,7 +86,7 @@ func (s *VisualEditorServer) createConfig(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(cfg)
+	_ = json.NewEncoder(w).Encode(cfg)
 }
 
 // handleConfig 处理单个配置
@@ -121,7 +121,7 @@ func (s *VisualEditorServer) getConfig(w http.ResponseWriter, r *http.Request, i
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cfg)
+	_ = json.NewEncoder(w).Encode(cfg)
 }
 
 // updateConfig 更新配置
@@ -148,7 +148,7 @@ func (s *VisualEditorServer) updateConfig(w http.ResponseWriter, r *http.Request
 	s.editor.configs[id] = &updated
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updated)
+	_ = json.NewEncoder(w).Encode(updated)
 }
 
 // deleteConfig 删除配置
@@ -210,7 +210,7 @@ func (s *VisualEditorServer) handleExecute(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"execution_id": execID,
 		"status":       "started",
 	})
@@ -232,7 +232,7 @@ func (s *VisualEditorServer) handleExecutions(w http.ResponseWriter, r *http.Req
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(executions)
+	_ = json.NewEncoder(w).Encode(executions)
 }
 
 // handleExecution 处理单个执行
@@ -258,13 +258,13 @@ func (s *VisualEditorServer) handleExecution(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(exec)
+	_ = json.NewEncoder(w).Encode(exec)
 }
 
 // handleEditorUI 提供编辑器Web UI
 func (s *VisualEditorServer) handleEditorUI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(editorHTML))
+	_, _ = w.Write([]byte(editorHTML))
 }
 
 // editorHTML 编辑器HTML（使用React Flow）

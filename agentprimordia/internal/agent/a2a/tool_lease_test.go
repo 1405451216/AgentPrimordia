@@ -29,12 +29,12 @@ func (t *mockToolForLease) Execute(ctx context.Context, args json.RawMessage) (*
 
 func newLessorWithTools() (*LessorHandler, *tools.Registry) {
 	reg := tools.NewRegistry()
-	reg.Register(&mockToolForLease{
+	_ = reg.Register(&mockToolForLease{
 		name:   "get_weather",
 		desc:   "Get weather info",
 		params: json.RawMessage(`{"type":"object","properties":{"city":{"type":"string"}}}`),
 	})
-	reg.Register(&mockToolForLease{
+	_ = reg.Register(&mockToolForLease{
 		name:   "search_web",
 		desc:   "Search the web",
 		params: json.RawMessage(`{"type":"object","properties":{"query":{"type":"string"}}}`),

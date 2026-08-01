@@ -14,7 +14,7 @@ func TestSharedStore_WriteAndRead(t *testing.T) {
 
 	// Agent-1 写入共享记忆
 	shared.Bind("agent-1", mem1)
-	shared.Publish(ctx, "agent-1", &Episode{
+	_ = shared.Publish(ctx, "agent-1", &Episode{
 		ID:        "shared-1",
 		SessionID: "shared",
 		Content:   "共享知识：项目使用 Go 1.26",
@@ -45,7 +45,7 @@ func TestSharedStore_ScopeIsolation(t *testing.T) {
 	shared.Bind("agent-2", mem2)
 
 	// Agent-1 写入私有记忆（不共享）
-	mem1.Add(ctx, &Episode{
+	_ = mem1.Add(ctx, &Episode{
 		ID:        "private-1",
 		SessionID: "private",
 		Content:   "Agent-1 的私有数据",
@@ -53,7 +53,7 @@ func TestSharedStore_ScopeIsolation(t *testing.T) {
 	})
 
 	// Agent-1 写入共享记忆
-	shared.Publish(ctx, "agent-1", &Episode{
+	_ = shared.Publish(ctx, "agent-1", &Episode{
 		ID:        "shared-1",
 		SessionID: "shared",
 		Content:   "团队共享数据",

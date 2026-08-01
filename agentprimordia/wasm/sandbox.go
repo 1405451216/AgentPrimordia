@@ -83,10 +83,6 @@ func (s *Sandbox) Execute(ctx context.Context, moduleName, funcName string, args
 		return 0, fmt.Errorf("function %s not found in %s", funcName, moduleName)
 	}
 
-	if s.config.MaxFuel > 0 {
-		// wazero fuel 通过 runtime 设置
-	}
-
 	results, err := fn.Call(ctx, args...)
 	if err != nil {
 		return 0, fmt.Errorf("execute %s.%s: %w", moduleName, funcName, err)

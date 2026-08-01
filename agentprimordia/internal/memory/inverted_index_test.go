@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"testing"
 )
 
@@ -451,15 +450,6 @@ func BenchmarkScanBasedSearch(b *testing.B) {
 		ep.Topics = "react,tools,agent"
 		_ = store.Add(ctx, ep)
 	}
-
-	// 拿到底层 episodes（仅用于对比测试）
-	type snapshot struct {
-		mu       sync.RWMutex
-		episodes map[string]*Episode
-	}
-	// 通过 reflection-free 接口拿不到 episodes map；
-	// 改为：在测试里用 Search 路径对比，直接调用 indexed 路径。
-	_ = store
 
 	// 直接走全表扫描
 	episodes := make(map[string]*Episode, 1000)

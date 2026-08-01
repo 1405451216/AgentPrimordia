@@ -13,15 +13,14 @@ import (
 
 // mockSpan 用于在测试中记录 span 调用
 type mockSpan struct {
-	mu          sync.Mutex
-	name        string
-	kind        trace.SpanKind
-	attributes  map[string]any
-	status      trace.SpanStatus
-	statusDesc  string
-	ended       bool
-	parentCtx   trace.SpanContext
-	childrenIDs []string
+	mu         sync.Mutex
+	name       string
+	kind       trace.SpanKind
+	attributes map[string]any
+	status     trace.SpanStatus
+	statusDesc string
+	ended      bool
+	parentCtx  trace.SpanContext
 }
 
 func (s *mockSpan) SetName(name string) {
@@ -310,11 +309,11 @@ func TestTracingStepExecutor_Disabled(t *testing.T) {
 func TestTracingPipeline_Success(t *testing.T) {
 	tr := &mockTracer{}
 	p := NewPipeline(time.Minute)
-	p.AddStage(&Stage{
+	_ = p.AddStage(&Stage{
 		Name:    "stage-1",
 		Handler: func(ctx context.Context, input string) (string, error) { return "out-1", nil },
 	})
-	p.AddStage(&Stage{
+	_ = p.AddStage(&Stage{
 		Name:    "stage-2",
 		Handler: func(ctx context.Context, input string) (string, error) { return "out-2", nil },
 	})
@@ -351,13 +350,13 @@ func TestTracingPipeline_Success(t *testing.T) {
 func TestTracingPipeline_DefaultName(t *testing.T) {
 	tr := &mockTracer{}
 	p := NewPipeline(time.Minute)
-	p.AddStage(&Stage{
+	_ = p.AddStage(&Stage{
 		Name:    "stage-1",
 		Handler: func(ctx context.Context, input string) (string, error) { return "ok", nil },
 	})
 
 	tp := NewTracingPipeline(p, WithTracer(tr), "")
-	tp.Execute(context.Background(), "in")
+	_, _ = tp.Execute(context.Background(), "in")
 
 	if tr.FindSpan("orchestration.pipeline.pipeline") == nil {
 		t.Errorf("empty name should fall back to 'pipeline'")
@@ -368,13 +367,13 @@ func TestTracingPipeline_DefaultName(t *testing.T) {
 func TestTracingPipeline_Failure(t *testing.T) {
 	tr := &mockTracer{}
 	p := NewPipeline(time.Minute)
-	p.AddStage(&Stage{
+	_ = p.AddStage(&Stage{
 		Name:    "failing-stage",
 		Handler: func(ctx context.Context, input string) (string, error) { return "", errors.New("boom") },
 	})
 
 	tp := NewTracingPipeline(p, WithTracer(tr), "failing")
-	tp.Execute(context.Background(), "in")
+	_, _ = tp.Execute(context.Background(), "in")
 
 	span := tr.FindSpan("orchestration.pipeline.failing")
 	if span == nil {
@@ -445,11 +444,11 @@ func TestTracingStepExecutor_Attributes(t *testing.T) {
 func TestTracingPipeline_Delegation(t *testing.T) {
 	tr := &mockTracer{}
 	p := NewPipeline(time.Minute)
-	p.AddStage(&Stage{
+	_ = p.AddStage(&Stage{
 		Name:    "s1",
 		Handler: func(ctx context.Context, input string) (string, error) { return input + "-s1", nil },
 	})
-	p.AddStage(&Stage{
+	_ = p.AddStage(&Stage{
 		Name:    "s2",
 		Handler: func(ctx context.Context, input string) (string, error) { return input + "-s2", nil },
 	})

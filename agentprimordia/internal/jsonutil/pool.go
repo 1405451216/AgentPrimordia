@@ -163,6 +163,9 @@ func ReadAllPooled(r io.Reader) ([]byte, error) {
 		return nil, io.EOF
 	}
 	buf := bufferPool.Get().(*bytes.Buffer)
+	// 关键：取出的 buffer 可能是其他用户（如 Marshal）留下未清空的内容，
+	// 必须先 Reset 再 io.Copy，否则结果会包含陈旧数据（脏读）。
+	buf.Reset()
 	defer func() {
 		buf.Reset()
 		bufferPool.Put(buf)

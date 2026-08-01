@@ -80,7 +80,7 @@ func TestNewLogger_WithAgentContext(t *testing.T) {
 	agentL.Info("agent action")
 
 	var m map[string]any
-	json.Unmarshal(buf.Bytes(), &m)
+	_ = json.Unmarshal(buf.Bytes(), &m)
 
 	if m["agent_name"] != "my-agent" {
 		t.Errorf("agent_name = %v, 期望 my-agent", m["agent_name"])
@@ -110,7 +110,7 @@ func TestNewLogger_WithComponent(t *testing.T) {
 	compL.Info("connection established")
 
 	var m map[string]any
-	json.Unmarshal(buf.Bytes(), &m)
+	_ = json.Unmarshal(buf.Bytes(), &m)
 
 	if m["component"] != "database" {
 		t.Errorf("component = %v, 期望 database", m["component"])

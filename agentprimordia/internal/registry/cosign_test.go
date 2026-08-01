@@ -176,7 +176,7 @@ func TestVerifyEnvelope_EndToEnd(t *testing.T) {
 	}
 
 	// 修改文件后应失败
-	os.WriteFile(pluginPath, []byte("tampered"), 0o644)
+	_ = os.WriteFile(pluginPath, []byte("tampered"), 0o644)
 	if err := VerifyEnvelope(env, pluginPath, allowlist); err == nil {
 		t.Error("文件被篡改后应验证失败")
 	}

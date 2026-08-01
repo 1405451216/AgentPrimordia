@@ -91,6 +91,7 @@ func NewA2AGRPCClient(target string, opts ...GRPCClientOption) (*A2AGRPCClient, 
 		)
 	}
 
+	//nolint:staticcheck // API 弃用但为兼容保留，NewClient 为惰性连接语义不同
 	conn, err := grpc.DialContext(ctx, target, append(dialOpts, grpc.WithBlock())...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)

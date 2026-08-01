@@ -69,7 +69,7 @@ func TestVaultBackend_GetSecret(t *testing.T) {
 				"data": map[string]string{"api_key": "secret-value-123"},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -96,7 +96,7 @@ func TestVaultBackend_SetSecret(t *testing.T) {
 	var receivedBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
-			json.NewDecoder(r.Body).Decode(&receivedBody)
+			_ = json.NewDecoder(r.Body).Decode(&receivedBody)
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -149,7 +149,7 @@ func TestVaultBackend_ListSecrets(t *testing.T) {
 				"keys": []string{"api_key", "db_password", "nested/"},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -210,7 +210,7 @@ func TestVaultBackend_GetSecret_NotFound(t *testing.T) {
 				"data": map[string]string{"other_key": "value"},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -284,7 +284,7 @@ func TestVaultBackend_GetAuditLog(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			_ = json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{"data": map[string]string{"k": "v"}},
 			})
 		case http.MethodPost:
@@ -302,8 +302,8 @@ func TestVaultBackend_GetAuditLog(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	v.GetSecret(ctx, "k")
-	v.SetSecret(ctx, "k", "v2")
+	_, _ = v.GetSecret(ctx, "k")
+	_ = v.SetSecret(ctx, "k", "v2")
 
 	log := v.GetAuditLog()
 	entries := log.Entries()

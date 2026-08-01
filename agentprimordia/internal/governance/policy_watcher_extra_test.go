@@ -18,7 +18,7 @@ func TestWatchablePolicy_Rollback(t *testing.T) {
 			CostLimits: CostLimits{PerRequest: 2.0},
 		},
 	}
-	wp.Swap(updated, "test")
+	_ = wp.Swap(updated, "test")
 
 	// 回滚
 	err := wp.Rollback(initial, "test rollback")
@@ -42,11 +42,11 @@ func TestWatchablePolicy_Rollback_NilPrevious(t *testing.T) {
 
 func TestWatchablePolicy_GetHistory(t *testing.T) {
 	wp := NewWatchablePolicy(&Policy{Spec: PolicySpec{CostLimits: CostLimits{PerRequest: 1.0}}}, nil)
-	wp.Swap(&Policy{Spec: PolicySpec{CostLimits: CostLimits{PerRequest: 2.0}}}, "test")
+	_ = wp.Swap(&Policy{Spec: PolicySpec{CostLimits: CostLimits{PerRequest: 2.0}}}, "test")
 
 	history := wp.GetHistory()
 	if history == nil {
-		t.Error("GetHistory should not return nil")
+		t.Fatal("GetHistory should not return nil")
 	}
 	if len(history.Versions) == 0 {
 		t.Error("History should contain at least one version")

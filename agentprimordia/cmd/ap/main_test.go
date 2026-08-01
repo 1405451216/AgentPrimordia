@@ -15,13 +15,13 @@ func TestFindProjectDir_CurrentDir(t *testing.T) {
 	// 在有 go.mod 的目录应能找到项目
 	tmpDir := t.TempDir()
 	goMod := filepath.Join(tmpDir, "go.mod")
-	os.WriteFile(goMod, []byte("module test\n"), 0o644)
+	_ = os.WriteFile(goMod, []byte("module test\n"), 0o644)
 
 	// 保存当前目录
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
+	defer func() { _ = os.Chdir(origDir) }()
 
-	os.Chdir(tmpDir)
+	_ = os.Chdir(tmpDir)
 	dir, err := findProjectDir()
 	if err != nil {
 		t.Fatalf("findProjectDir 失败: %v", err)
@@ -36,9 +36,9 @@ func TestFindProjectDir_NotFound(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
+	defer func() { _ = os.Chdir(origDir) }()
 
-	os.Chdir(tmpDir)
+	_ = os.Chdir(tmpDir)
 	_, err := findProjectDir()
 	if err == nil {
 		t.Error("期望返回错误，实际返回 nil")
@@ -48,12 +48,12 @@ func TestFindProjectDir_NotFound(t *testing.T) {
 func TestFindProjectDir_ApYaml(t *testing.T) {
 	tmpDir := t.TempDir()
 	apYaml := filepath.Join(tmpDir, ".ap.yaml")
-	os.WriteFile(apYaml, []byte("name: test\n"), 0o644)
+	_ = os.WriteFile(apYaml, []byte("name: test\n"), 0o644)
 
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
+	defer func() { _ = os.Chdir(origDir) }()
 
-	os.Chdir(tmpDir)
+	_ = os.Chdir(tmpDir)
 	dir, err := findProjectDir()
 	if err != nil {
 		t.Fatalf("findProjectDir 失败: %v", err)
@@ -66,8 +66,8 @@ func TestFindProjectDir_ApYaml(t *testing.T) {
 func TestRunInit_BasicTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	// 模拟 ap init my-agent
 	if err := runInit([]string{"my-agent"}); err != nil {
@@ -119,8 +119,8 @@ func TestRunInit_BasicTemplate(t *testing.T) {
 func TestRunInit_WithToolsTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"my-agent", "--template", "with-tools"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -146,8 +146,8 @@ func TestRunInit_WithToolsTemplate(t *testing.T) {
 func TestRunInit_MultiAgentTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"my-agent", "--template", "multi-agent"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -173,8 +173,8 @@ func TestRunInit_GeneratedProjectBuilds(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"buildable-agent"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -213,11 +213,11 @@ func contains(s, substr string) bool {
 func TestRunInit_DirExists(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	// 创建已存在的目录
-	os.Mkdir(filepath.Join(tmpDir, "my-agent"), 0o755)
+	_ = os.Mkdir(filepath.Join(tmpDir, "my-agent"), 0o755)
 
 	// runInit 现在返回 error，可以测试错误路径
 	err := runInit([]string{"my-agent"})
@@ -229,8 +229,8 @@ func TestRunInit_DirExists(t *testing.T) {
 func TestRunInit_InvalidTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	err := runInit([]string{"my-agent", "--template", "does-not-exist"})
 	if err == nil {
@@ -241,8 +241,8 @@ func TestRunInit_InvalidTemplate(t *testing.T) {
 func TestRunInit_NoName(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	err := runInit([]string{})
 	if err == nil {
@@ -253,11 +253,11 @@ func TestRunInit_NoName(t *testing.T) {
 func TestAPConfig_LoadSave(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	// 创建 go.mod 让 findProjectDir 工作
-	os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module test\n"), 0o644)
+	_ = os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte("module test\n"), 0o644)
 
 	// 保存配置
 	config := &apConfig{
@@ -284,8 +284,8 @@ func TestAPConfig_LoadSave(t *testing.T) {
 func TestRunInit_AgentWithCacheTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"cache-agent", "--template", "agent-with-cache"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -305,8 +305,8 @@ func TestRunInit_AgentWithCacheTemplate(t *testing.T) {
 func TestRunInit_AgentWithRAGTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"rag-agent", "--template", "agent-with-rag"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -326,8 +326,8 @@ func TestRunInit_AgentWithRAGTemplate(t *testing.T) {
 func TestRunInit_AgentWithMetricsTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"metrics-agent", "--template", "agent-with-metrics"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -353,8 +353,8 @@ func TestRunInit_AgentWithMetricsTemplate(t *testing.T) {
 func TestRunInit_QuickstartTemplate(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"qs-agent", "--template", "quickstart"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -376,8 +376,8 @@ func TestRunInit_QuickstartTemplate(t *testing.T) {
 func TestRunInit_GoModVersion(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	if err := runInit([]string{"ver-agent"}); err != nil {
 		t.Fatalf("runInit 失败: %v", err)
@@ -393,8 +393,8 @@ func TestRunInit_GoModVersion(t *testing.T) {
 func TestRunInit_Help(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	err := runInit([]string{"--help"})
 	if err != nil {
@@ -411,8 +411,8 @@ func TestRunInit_Help(t *testing.T) {
 func TestRunInit_DryRun(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
-	defer os.Chdir(origDir)
-	os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origDir) }()
+	_ = os.Chdir(tmpDir)
 
 	err := runInit([]string{"dry-agent", "--dry-run"})
 	if err != nil {
@@ -494,7 +494,7 @@ llm:
   model: gpt-4o
   api_key: sk-test-key
 `
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
 
 	env := []string{"PATH=/usr/bin"}
 	result := appendConfigEnv(env, dir)
@@ -534,7 +534,7 @@ llm:
   provider: openai
   model: gpt-4o
 `
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
 
 	// 已有环境变量不应被覆盖
 	env := []string{"PATH=/usr/bin", "AP_LLM_PROVIDER=anthropic"}

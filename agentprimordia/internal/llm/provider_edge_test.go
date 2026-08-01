@@ -38,7 +38,7 @@ func TestOpenAI_Embeddings_Success(t *testing.T) {
 				"total_tokens":  10,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -89,7 +89,7 @@ func TestOpenAI_Stream_APIErrorStructured(t *testing.T) {
 			"type":    "invalid_request_error",
 			"code":    "model_not_found",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -110,7 +110,7 @@ func TestOpenAI_Stream_APIErrorStructured(t *testing.T) {
 func TestOpenAI_BuildMessages_ToolMessages(t *testing.T) {
 	var capturedBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&capturedBody)
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 		resp := map[string]any{
 			"id": "test",
 			"choices": []map[string]any{
@@ -118,7 +118,7 @@ func TestOpenAI_BuildMessages_ToolMessages(t *testing.T) {
 			},
 			"usage": map[string]any{"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -164,7 +164,7 @@ func TestOpenAI_BuildMessages_ToolMessages(t *testing.T) {
 func TestOpenAI_ResolveModel(t *testing.T) {
 	var capturedBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&capturedBody)
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 		resp := map[string]any{
 			"id": "test",
 			"choices": []map[string]any{
@@ -172,7 +172,7 @@ func TestOpenAI_ResolveModel(t *testing.T) {
 			},
 			"usage": map[string]any{"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -197,7 +197,7 @@ func TestOpenAI_ResolveModel(t *testing.T) {
 func TestOpenAI_Complete_ConfigMaxTokens(t *testing.T) {
 	var capturedBody map[string]any
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&capturedBody)
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 		resp := map[string]any{
 			"id": "test",
 			"choices": []map[string]any{
@@ -205,7 +205,7 @@ func TestOpenAI_Complete_ConfigMaxTokens(t *testing.T) {
 			},
 			"usage": map[string]any{"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -234,7 +234,7 @@ func TestOpenAI_CallTools_EmptyResponse(t *testing.T) {
 			"choices": []map[string]any{},
 			"usage":   map[string]any{"prompt_tokens": 1, "completion_tokens": 0, "total_tokens": 1},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -294,7 +294,7 @@ func TestAnthropicProvider_Complete_Success(t *testing.T) {
 			},
 			"stop_reason": "end_turn",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -315,7 +315,7 @@ func TestAnthropicProvider_Complete_Success(t *testing.T) {
 func TestAnthropicProvider_Complete_WithSystem(t *testing.T) {
 	var capturedBody map[string]any
 	server, provider := newAnthropicTestServer(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&capturedBody)
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 		resp := map[string]any{
 			"id":   "msg-sys",
 			"type": "message",
@@ -325,7 +325,7 @@ func TestAnthropicProvider_Complete_WithSystem(t *testing.T) {
 			},
 			"usage": map[string]any{"input_tokens": 5, "output_tokens": 3},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -352,7 +352,7 @@ func TestAnthropicProvider_Complete_EmptyResponse(t *testing.T) {
 			"content": []map[string]any{},
 			"usage":   map[string]any{"input_tokens": 5, "output_tokens": 0},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -376,7 +376,7 @@ func TestAnthropicProvider_Complete_APIError(t *testing.T) {
 				"type":    "invalid_request_error",
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -460,7 +460,7 @@ func TestAnthropicProvider_Stream_Error(t *testing.T) {
 func TestAnthropicProvider_CallTools_Success(t *testing.T) {
 	server, provider := newAnthropicTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 
 		if _, ok := reqBody["tools"]; !ok {
 			t.Error("expected tools in request")
@@ -476,7 +476,7 @@ func TestAnthropicProvider_CallTools_Success(t *testing.T) {
 			},
 			"usage": map[string]any{"input_tokens": 20, "output_tokens": 10},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -598,7 +598,7 @@ func TestGeminiProvider_Complete_Success(t *testing.T) {
 				"totalTokenCount":      15,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -619,7 +619,7 @@ func TestGeminiProvider_Complete_Success(t *testing.T) {
 func TestGeminiProvider_Complete_WithSystem(t *testing.T) {
 	var capturedBody map[string]any
 	server, provider := newGeminiTestServer(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&capturedBody)
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 		resp := map[string]any{
 			"candidates": []map[string]any{
 				{
@@ -633,7 +633,7 @@ func TestGeminiProvider_Complete_WithSystem(t *testing.T) {
 				"promptTokenCount": 5, "candidatesTokenCount": 3, "totalTokenCount": 8,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -666,7 +666,7 @@ func TestGeminiProvider_Complete_APIError(t *testing.T) {
 				"code":    400,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -701,7 +701,7 @@ func TestGeminiProvider_Complete_EmptyResponse(t *testing.T) {
 				"promptTokenCount": 5, "candidatesTokenCount": 0, "totalTokenCount": 5,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -779,7 +779,7 @@ func TestGeminiProvider_CallTools_Success(t *testing.T) {
 				"promptTokenCount": 20, "candidatesTokenCount": 10, "totalTokenCount": 30,
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -818,7 +818,7 @@ func TestGeminiProvider_Embeddings_Success(t *testing.T) {
 				},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -893,7 +893,7 @@ func TestOllamaProvider_Complete_Success(t *testing.T) {
 		}
 
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 		if stream, ok := reqBody["stream"].(bool); ok && stream {
 			t.Error("expected stream=false for Complete")
 		}
@@ -905,7 +905,7 @@ func TestOllamaProvider_Complete_Success(t *testing.T) {
 			"prompt_eval_count": 10,
 			"eval_count":        5,
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -941,7 +941,7 @@ func TestOllamaProvider_Complete_APIError(t *testing.T) {
 func TestOllamaProvider_Stream_Basic(t *testing.T) {
 	server, provider := newOllamaTestServer(func(w http.ResponseWriter, r *http.Request) {
 		var reqBody map[string]any
-		json.NewDecoder(r.Body).Decode(&reqBody)
+		_ = json.NewDecoder(r.Body).Decode(&reqBody)
 		if stream, ok := reqBody["stream"].(bool); !ok || !stream {
 			t.Error("expected stream=true for Stream")
 		}
@@ -1014,7 +1014,7 @@ func TestOllamaProvider_CallTools_Success(t *testing.T) {
 			"prompt_eval_count": 20,
 			"eval_count":        10,
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -1046,7 +1046,7 @@ func TestOllamaProvider_Embeddings_Success(t *testing.T) {
 		resp := map[string]any{
 			"embedding": []float32{0.1, 0.2, 0.3},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 
@@ -1099,12 +1099,12 @@ func TestOllamaProvider_New_Defaults(t *testing.T) {
 func TestOllamaProvider_Complete_WithTemperature(t *testing.T) {
 	var capturedBody map[string]any
 	server, provider := newOllamaTestServer(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&capturedBody)
+		_ = json.NewDecoder(r.Body).Decode(&capturedBody)
 		resp := map[string]any{
 			"model": "llama3", "message": map[string]any{"role": "assistant", "content": "ok"},
 			"done": true, "prompt_eval_count": 5, "eval_count": 3,
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	})
 	defer server.Close()
 

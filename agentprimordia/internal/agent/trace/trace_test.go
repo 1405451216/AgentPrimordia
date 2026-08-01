@@ -275,6 +275,7 @@ func TestLoggingTracer_String(t *testing.T) {
 	}
 	if !strings.Contains(output, "key=val") && !strings.Contains(output, "key:val") {
 		// attrs format may vary
+		t.Errorf("String() should contain attribute key=val or key:val: %q", output)
 	}
 }
 

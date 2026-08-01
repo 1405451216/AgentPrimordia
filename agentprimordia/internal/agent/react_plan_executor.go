@@ -78,7 +78,9 @@ func (a *ReActAgent) executePlan(ctx context.Context, history []Message, plan *p
 				)
 				return nil, fmt.Errorf("subtask %s failed: %w", st.ID, err)
 			}
-			lastOutput = resp.Content
+			if resp != nil {
+				lastOutput = resp.Content
+			}
 			if resp != nil && resp.Metrics.TotalTools > 0 {
 				executedTools += resp.Metrics.TotalTools
 				planLLMLatency += resp.Metrics.LLMLatency

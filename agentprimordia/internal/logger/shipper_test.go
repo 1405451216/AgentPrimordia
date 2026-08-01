@@ -161,7 +161,7 @@ func TestHook_WithAttrs(t *testing.T) {
 	}
 
 	var m map[string]any
-	json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &m)
+	_ = json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &m)
 	fields, ok := m["fields"].(map[string]any)
 	if !ok {
 		t.Fatalf("fields not found or not an object in: %s", buf.String())

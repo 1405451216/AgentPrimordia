@@ -26,10 +26,7 @@ type GrpcTransport struct {
 }
 
 type grpcPeerConn struct {
-	target string
-	addr   string
-	conn   *grpc.ClientConn
-	cancel context.CancelFunc
+	conn *grpc.ClientConn
 }
 
 // grpcMessage JSON 编码的消息封装。

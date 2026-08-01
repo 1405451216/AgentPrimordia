@@ -87,7 +87,7 @@ func TestCapabilityAgent_Inner(t *testing.T) {
 func TestCapabilityAgent_GracefulShutdown(t *testing.T) {
 	a := testutil.NewTestAgent(testutil.TestAgentConfig{Name: "shutdown"})
 	// 不应 panic
-	a.GracefulShutdown(context.Background())
+	_ = a.GracefulShutdown(context.Background())
 }
 
 func TestCapabilityAgent_Pause_Resume(t *testing.T) {

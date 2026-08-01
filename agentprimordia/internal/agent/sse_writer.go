@@ -53,7 +53,7 @@ func (w *SSEWriter) SetEventID(id string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	// 解析为整数以便后续自增
-	fmt.Sscanf(id, "%d", &w.eventID)
+	_, _ = fmt.Sscanf(id, "%d", &w.eventID)
 }
 
 // writeEvent 写入一个 SSE 事件（内部方法，调用者需持有锁或自行加锁）

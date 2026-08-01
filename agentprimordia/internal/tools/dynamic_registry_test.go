@@ -42,7 +42,7 @@ func TestDynamicRegistry_Register(t *testing.T) {
 
 func TestDynamicRegistry_Unregister(t *testing.T) {
 	dr := NewDynamicRegistry()
-	dr.Register(&dynMockTool{name: "test_tool", desc: "test"})
+	_ = dr.Register(&dynMockTool{name: "test_tool", desc: "test"})
 	if err := dr.Unregister("test_tool"); err != nil {
 		t.Fatalf("Unregister error: %v", err)
 	}
@@ -53,8 +53,8 @@ func TestDynamicRegistry_Unregister(t *testing.T) {
 
 func TestDynamicRegistry_ListDynamic(t *testing.T) {
 	dr := NewDynamicRegistry()
-	dr.Register(&dynMockTool{name: "a", desc: "first"})
-	dr.Register(&dynMockTool{name: "b", desc: "second"})
+	_ = dr.Register(&dynMockTool{name: "a", desc: "first"})
+	_ = dr.Register(&dynMockTool{name: "b", desc: "second"})
 	infos := dr.ListDynamic()
 	if len(infos) != 2 {
 		t.Fatalf("expected 2 dynamic tools, got %d", len(infos))
@@ -77,8 +77,8 @@ func TestDynamicRegistry_OnChange(t *testing.T) {
 		events = append(events, e)
 		mu.Unlock()
 	})
-	dr.Register(&dynMockTool{name: "x", desc: "x"})
-	dr.Unregister("x")
+	_ = dr.Register(&dynMockTool{name: "x", desc: "x"})
+	_ = dr.Unregister("x")
 	mu.Lock()
 	defer mu.Unlock()
 	if len(events) != 2 {
@@ -110,7 +110,7 @@ func TestDynamicRegistry_UnregisterNotFound(t *testing.T) {
 
 func TestDynamicRegistry_Definitions(t *testing.T) {
 	dr := NewDynamicRegistry()
-	dr.Register(&dynMockTool{name: "my_tool", desc: "for testing defs"})
+	_ = dr.Register(&dynMockTool{name: "my_tool", desc: "for testing defs"})
 	defs := dr.Definitions()
 	if len(defs) != 1 {
 		t.Fatalf("expected 1 definition, got %d", len(defs))
@@ -130,7 +130,7 @@ func TestDynamicRegistry_Concurrent(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(n int) {
 			name := "tool_" + string(rune(97+n))
-			dr.Register(&dynMockTool{name: name, desc: "concurrent"})
+			_ = dr.Register(&dynMockTool{name: name, desc: "concurrent"})
 			done <- true
 		}(i)
 	}

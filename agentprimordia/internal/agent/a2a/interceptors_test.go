@@ -29,10 +29,6 @@ func panicHandler(_ context.Context, _ any) (any, error) {
 	panic("boom")
 }
 
-type dummyInfo struct{ method string }
-
-func (d *dummyInfo) FullMethod() string { return d.method }
-
 // TestRecoveryInterceptor 测试 panic 恢复
 func TestRecoveryInterceptor(t *testing.T) {
 	interceptor := RecoveryInterceptor()

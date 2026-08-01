@@ -258,7 +258,7 @@ func TestConnPoolWithHTTPTransport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("监听失败: %v", err)
 	}
-	go server.Serve(ln)
+	go func() { _ = server.Serve(ln) }()
 	defer server.Close()
 
 	// 使用连接池发送请求
@@ -310,7 +310,7 @@ func TestConnPoolConcurrentUse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("监听失败: %v", err)
 	}
-	go server.Serve(ln)
+	go func() { _ = server.Serve(ln) }()
 	defer server.Close()
 
 	pool := NewConnPool(20, 90*time.Second)
@@ -451,7 +451,7 @@ func TestConnPoolBasic(t *testing.T) {
 			// 简单回写
 			go func(c net.Conn) {
 				defer c.Close()
-				io.Copy(c, c)
+				_, _ = io.Copy(c, c)
 			}(conn)
 		}
 	}()

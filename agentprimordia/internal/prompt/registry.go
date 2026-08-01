@@ -123,7 +123,6 @@ type MessageTemplate struct {
 
 // MessageTemplates 消息模板集合（System + User + Assistant）
 type MessageTemplates struct {
-	mu       sync.RWMutex
 	registry *Registry
 }
 

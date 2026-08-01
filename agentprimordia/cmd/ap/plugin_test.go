@@ -25,7 +25,7 @@ plugins:
   - github.com/user/ap-plugin-slack
   - github.com/user/ap-plugin-weather
 `
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
 
 	err := pluginList()
 	if err != nil {
@@ -78,7 +78,7 @@ func TestPluginCreate_DirExists(t *testing.T) {
 	dir := setupTestProject(t)
 
 	// 创建已存在的目录
-	os.Mkdir(filepath.Join(dir, "existing-plugin"), 0o755)
+	_ = os.Mkdir(filepath.Join(dir, "existing-plugin"), 0o755)
 
 	err := pluginCreate([]string{"existing-plugin"})
 	if err == nil {
@@ -123,7 +123,7 @@ func TestPluginRemove_Success(t *testing.T) {
 plugins:
   - github.com/user/ap-plugin-test
 `
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(apYaml), 0o644)
 
 	err := pluginRemove([]string{"github.com/user/ap-plugin-test"})
 	if err != nil {
@@ -187,7 +187,7 @@ func TestLoadPluginRegistry_ValidFile(t *testing.T) {
 
 	// 写入临时 registry.json
 	regDir := filepath.Join(dir, "ecosystem", "plugins")
-	os.MkdirAll(regDir, 0o755)
+	_ = os.MkdirAll(regDir, 0o755)
 	content := `{
   "version": "1.0",
   "plugins": [
@@ -218,7 +218,7 @@ func TestLoadPluginRegistry_InvalidJSON(t *testing.T) {
 	dir := setupTestProject(t)
 
 	regDir := filepath.Join(dir, "ecosystem", "plugins")
-	os.MkdirAll(regDir, 0o755)
+	_ = os.MkdirAll(regDir, 0o755)
 	if err := os.WriteFile(filepath.Join(regDir, "registry.json"), []byte("{invalid json"), 0o644); err != nil {
 		t.Fatalf("写文件失败: %v", err)
 	}
@@ -358,7 +358,7 @@ func TestPluginSearch_InstalledOnly(t *testing.T) {
 }`)
 
 	// 标记 alpha 为已安装
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(`name: t
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(`name: t
 plugins:
   - example.com/alpha
 `), 0o644)
@@ -379,7 +379,7 @@ func TestPluginUpdate_NoPlugins(t *testing.T) {
 
 func TestPluginUpdate_NotInList(t *testing.T) {
 	dir := setupTestProject(t)
-	os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(`name: t
+	_ = os.WriteFile(filepath.Join(dir, ".ap.yaml"), []byte(`name: t
 plugins:
   - example.com/alpha
 `), 0o644)

@@ -288,7 +288,7 @@ func TestPrivacyRouter_CleanupExpiredRedactions(t *testing.T) {
 	)
 
 	// 创建脱敏映射
-	router.Route(context.Background(), "a@b.com", []string{"node-a"})
+	_, _ = router.Route(context.Background(), "a@b.com", []string{"node-a"})
 
 	// 清理过期
 	cleaned := router.CleanupExpiredRedactions()

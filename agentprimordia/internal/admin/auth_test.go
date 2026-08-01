@@ -52,7 +52,7 @@ func TestWithPrincipal_NilCtx(t *testing.T) {
 			t.Fatalf("nil ctx 不应 panic：%v", r)
 		}
 	}()
-	ctx := WithPrincipal(nil, Principal{Subject: "x"})
+	ctx := WithPrincipal(context.TODO(), Principal{Subject: "x"})
 	if _, ok := PrincipalFromContext(ctx); !ok {
 		t.Fatal("应能从 nil 派生的 ctx 读到 principal")
 	}
@@ -62,7 +62,7 @@ func TestPrincipalFromContext_Empty(t *testing.T) {
 	if _, ok := PrincipalFromContext(context.Background()); ok {
 		t.Fatal("未注入时 ok 应=false")
 	}
-	if _, ok := PrincipalFromContext(nil); ok {
+	if _, ok := PrincipalFromContext(context.TODO()); ok {
 		t.Fatal("nil ctx 应返回 ok=false")
 	}
 }

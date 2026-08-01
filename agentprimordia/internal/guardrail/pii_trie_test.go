@@ -1,7 +1,6 @@
 package guardrail
 
 import (
-	"sort"
 	"testing"
 )
 
@@ -218,12 +217,4 @@ func TestPIITrie_PIIFinding(t *testing.T) {
 	if f.Start < 0 || f.End <= f.Start {
 		t.Errorf("invalid position: start=%d end=%d", f.Start, f.End)
 	}
-}
-
-// 辅助：排序 findings 按 Start
-func sortFindings(findings []PIIFinding) []PIIFinding {
-	sort.Slice(findings, func(i, j int) bool {
-		return findings[i].Start < findings[j].Start
-	})
-	return findings
 }

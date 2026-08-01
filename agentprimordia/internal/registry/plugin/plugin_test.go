@@ -28,7 +28,7 @@ func TestManifest_Validate(t *testing.T) {
 func TestFileLoader_Load(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "plugin.json")
-	os.WriteFile(path, []byte(`{"name":"test-plugin","version":"1.0.0","capabilities":["tool"]}`), 0644)
+	_ = os.WriteFile(path, []byte(`{"name":"test-plugin","version":"1.0.0","capabilities":["tool"]}`), 0644)
 
 	loader := NewFileLoader()
 	m, err := loader.Load(path)
@@ -47,10 +47,10 @@ func TestFileLoader_Load(t *testing.T) {
 
 func TestFileLoader_Discover(t *testing.T) {
 	dir := t.TempDir()
-	os.MkdirAll(filepath.Join(dir, "a"), 0755)
-	os.MkdirAll(filepath.Join(dir, "b"), 0755)
-	os.WriteFile(filepath.Join(dir, "a", "plugin.json"), []byte(`{"name":"a","version":"1.0"}`), 0644)
-	os.WriteFile(filepath.Join(dir, "b", "plugin.json"), []byte(`{"name":"b","version":"2.0"}`), 0644)
+	_ = os.MkdirAll(filepath.Join(dir, "a"), 0755)
+	_ = os.MkdirAll(filepath.Join(dir, "b"), 0755)
+	_ = os.WriteFile(filepath.Join(dir, "a", "plugin.json"), []byte(`{"name":"a","version":"1.0"}`), 0644)
+	_ = os.WriteFile(filepath.Join(dir, "b", "plugin.json"), []byte(`{"name":"b","version":"2.0"}`), 0644)
 
 	loader := NewFileLoader()
 	manifests, err := loader.Discover(dir)
@@ -65,7 +65,7 @@ func TestFileLoader_Discover(t *testing.T) {
 func TestFileLoader_Load_Invalid(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "plugin.json")
-	os.WriteFile(path, []byte(`{invalid`), 0644)
+	_ = os.WriteFile(path, []byte(`{invalid`), 0644)
 	_, err := NewFileLoader().Load(path)
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")

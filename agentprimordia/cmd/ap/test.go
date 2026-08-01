@@ -62,7 +62,7 @@ Examples:
 
 	// 检查是否有 eval_test.go 文件（递归扫描子目录）
 	hasEval := false
-	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	if err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
@@ -72,7 +72,9 @@ Examples:
 			return filepath.SkipDir // 找到即可退出
 		}
 		return nil
-	})
+	}); err != nil {
+		return fmt.Errorf("扫描 eval 测试文件失败: %w", err)
+	}
 
 	if !hasEval {
 		infof("eval test file not found, generating template...")

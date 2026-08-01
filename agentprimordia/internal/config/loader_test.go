@@ -73,14 +73,14 @@ func TestLoader_LoadEnv(t *testing.T) {
 func TestLoader_YAMLOverriddenByEnv(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
-	os.WriteFile(path, []byte("name: yaml-name\nport: 1111\n"), 0o644)
+	_ = os.WriteFile(path, []byte("name: yaml-name\nport: 1111\n"), 0o644)
 
 	cfg := &testConfig{}
 	ldr := NewOrFatal(cfg)
-	ldr.LoadYAML(path)
+	_ = ldr.LoadYAML(path)
 
 	t.Setenv("AP_NAME", "env-name")
-	ldr.LoadEnv()
+	_ = ldr.LoadEnv()
 
 	if cfg.Name != "env-name" {
 		t.Errorf("Name = %q, want env-name (ENV should override YAML)", cfg.Name)

@@ -132,14 +132,7 @@ func FuzzValidatePath(f *testing.F) {
 		acl.Allow("*", "/", AccessAll)
 		sb := NewSandbox(acl)
 
-		// ValidatePath 不应 panic
-		err := sb.ValidatePath("agent-1", path, AccessRead)
-
-		// 清理后仍含 ".." 的路径必须被拒绝
-		if err == nil {
-			// 如果通过了校验，说明路径合法
-			// 但 filepath.Clean 后不应残留 ".."
-			// 这是合法的——filepath.Clean 会解析 ".."
-		}
+		// ValidatePath 不应 panic（清理后残留 ".." 由 filepath.Clean 解析，属合法路径）
+		_ = sb.ValidatePath("agent-1", path, AccessRead)
 	})
 }

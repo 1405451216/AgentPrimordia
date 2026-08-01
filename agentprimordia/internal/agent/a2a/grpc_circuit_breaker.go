@@ -3,7 +3,6 @@ package a2a
 import (
 	"context"
 	"log/slog"
-	"sync"
 
 	"agentprimordia/internal/resilience"
 	"google.golang.org/grpc"
@@ -14,7 +13,6 @@ import (
 type CircuitBreakerInterceptor struct {
 	cb     *resilience.CircuitBreaker
 	logger *slog.Logger
-	mu     sync.Mutex
 }
 
 // NewCircuitBreakerInterceptor 创建断路器拦截器。

@@ -3,7 +3,6 @@ package agent
 import (
 	"agentprimordia/internal/agent/collaboration"
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -144,39 +143,6 @@ func (g *GroupChat) RunConsensus(ctx context.Context, question Message) (*Consen
 		Content: question.Content,
 	}
 	return g.gc.RunConsensus(ctx, msg)
-}
-
-// collabAgentReverseAdapter 将 collaboration.Agent 适配为 agent.Agent
-type collabAgentReverseAdapter struct {
-	a collaboration.Agent
-}
-
-func (w *collabAgentReverseAdapter) Name() string {
-	return w.a.Name()
-}
-
-func (w *collabAgentReverseAdapter) Run(ctx context.Context, msg Message) (*Response, error) {
-	collabMsg := collaboration.Message{
-		Role:    string(msg.Role),
-		Content: msg.Content,
-	}
-	resp, err := w.a.Run(ctx, collabMsg)
-	if err != nil {
-		return nil, err
-	}
-	return &Response{
-		Content: resp.Content,
-	}, nil
-}
-
-func (w *collabAgentReverseAdapter) StreamRun(ctx context.Context, msg Message) (<-chan StreamEvent, error) {
-	return nil, fmt.Errorf("StreamRun not supported by collaboration agent adapter")
-}
-
-func (w *collabAgentReverseAdapter) Stop() {}
-
-func (w *collabAgentReverseAdapter) Stats() AgentStats {
-	return AgentStats{}
 }
 
 // RoundRobinSelector 轮询选择器

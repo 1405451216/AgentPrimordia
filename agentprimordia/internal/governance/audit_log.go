@@ -142,7 +142,9 @@ func (l *FileAuditLogger) Log(event AuditEvent) {
 		}
 		// 写入失败：尝试轮转后重试
 		if rotateErr := l.rotate(); rotateErr == nil {
-			l.writer.Write(data)
+			if _, err := l.writer.Write(data); err != nil && l.metrics != nil {
+				l.metrics.RecordAuditLogError()
+			}
 		}
 		return
 	}
@@ -154,12 +156,14 @@ func (l *FileAuditLogger) Log(event AuditEvent) {
 
 	// 检查是否需要轮转
 	if l.shouldRotate() {
-		l.rotate()
+		if err := l.rotate(); err != nil && l.metrics != nil {
+			l.metrics.RecordAuditLogError()
+		}
 	}
 
 	// 触发告警回调（不持锁，但在此处同步执行以保证顺序）
 	if l.alertFn != nil {
-		go l.alertFn(event)
+		go func() { _ = l.alertFn(event) }()
 	}
 }
 
@@ -170,7 +174,9 @@ func (l *FileAuditLogger) Query(filter AuditQuery) ([]AuditEvent, error) {
 
 	// 关闭当前文件以刷新缓冲
 	if l.file != nil {
-		l.file.Sync()
+		if err := l.file.Sync(); err != nil {
+			return nil, fmt.Errorf("failed to sync audit log: %w", err)
+		}
 	}
 
 	data, err := os.ReadFile(l.filePath)
@@ -230,11 +236,13 @@ func (l *FileAuditLogger) shouldRotate() bool {
 // rotate 轮转日志文件。
 func (l *FileAuditLogger) rotate() error {
 	if l.file != nil {
-		l.file.Close()
+		_ = l.file.Close()
 	}
 	// 重命名旧文件
 	rotatedPath := fmt.Sprintf("%s.%s.rotated", l.filePath, time.Now().Format("20060102-150405"))
-	os.Rename(l.filePath, rotatedPath)
+	if err := os.Rename(l.filePath, rotatedPath); err != nil {
+		return err
+	}
 
 	// 打开新文件
 	f, err := os.OpenFile(l.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)

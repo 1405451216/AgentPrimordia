@@ -11,7 +11,7 @@ func TestInspector_StartSpan(t *testing.T) {
 	inspector := NewInspector(100)
 	ctx := context.Background()
 
-	span, ctx := inspector.StartSpan(ctx, "test-span", "agent", "session-1")
+	span, _ := inspector.StartSpan(ctx, "test-span", "agent", "session-1")
 
 	if span == nil {
 		t.Fatal("expected span to be created")
@@ -250,7 +250,7 @@ func TestSpanFromContext(t *testing.T) {
 	_, ctx = inspector.StartSpan(ctx, "test", "agent", "session-1")
 	span = SpanFromContext(ctx)
 	if span == nil {
-		t.Error("expected span from context")
+		t.Fatal("expected span from context")
 	}
 
 	if span.Name != "test" {

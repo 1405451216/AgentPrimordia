@@ -61,6 +61,7 @@ func (e *SignatureEnvelope) KeyFingerprint() (string, error) {
 		return "", errors.New("public_key is not ECDSA")
 	}
 	// 用未压缩椭圆曲线点（elliptic.Marshal）作为指纹输入
+	//nolint:staticcheck // API 弃用但为兼容保留，NewClient 为惰性连接语义不同
 	raw := elliptic.Marshal(ecPub.Curve, ecPub.X, ecPub.Y)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:]), nil

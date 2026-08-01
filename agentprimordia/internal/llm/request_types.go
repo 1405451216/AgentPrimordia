@@ -43,8 +43,6 @@ type azureChatRequest struct {
 }
 
 // buildAzureMessages 复用 OpenAI 消息格式
-var buildAzureMessages = BuildOpenAIMessages
-
 func convertResponseFormatToTyped(rf *ResponseFormat) *openaiRespFormat {
 	if rf == nil {
 		return nil

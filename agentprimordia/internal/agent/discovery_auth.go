@@ -24,7 +24,6 @@ type AgentIdentity struct {
 // TokenAuthenticator Token 认证器（HMAC-SHA256 签名）
 type TokenAuthenticator struct {
 	secret []byte
-	mu     sync.RWMutex
 }
 
 // NewTokenAuthenticator 创建 Token 认证器

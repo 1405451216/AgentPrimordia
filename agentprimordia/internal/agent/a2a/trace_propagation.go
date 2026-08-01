@@ -42,9 +42,6 @@ func (tc TraceContext) Sampled() bool {
 // traceparentHeader W3C traceparent header 名称（HTTP/gRPC metadata key）
 const traceparentHeader = "traceparent"
 
-// tracestateHeader W3C tracestate header 名称（保留用于未来扩展）
-const tracestateHeader = "tracestate"
-
 // traceContextKey context.Value 私有键，避免与其他包冲突
 type traceContextKey struct{}
 

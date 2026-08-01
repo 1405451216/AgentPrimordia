@@ -133,7 +133,7 @@ Examples:
 	if dryRun {
 		fmt.Printf("%s preview mode — files to be created:\n\n", bold("DRY RUN"))
 		scaffoldDir := "scaffold/" + template
-		fs.WalkDir(scaffoldFS, scaffoldDir, func(path string, d fs.DirEntry, err error) error {
+		if err := fs.WalkDir(scaffoldFS, scaffoldDir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return nil
 			}
@@ -143,7 +143,9 @@ Examples:
 			}
 			infof("%s/%s", name, relPath)
 			return nil
-		})
+		}); err != nil {
+			return fmt.Errorf("dry-run 预览模板失败: %w", err)
+		}
 		infof("%s/.ap.yaml", name)
 		infof("%s/.gitignore", name)
 		infof("%s/go.mod", name)

@@ -38,7 +38,7 @@ func TestCircuitBreaker_OpenAfterFailures(t *testing.T) {
 
 	// 连续失败 3 次
 	for i := 0; i < 3; i++ {
-		cb.Execute(context.Background(), func(ctx context.Context) error {
+		_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 			return testErr
 		})
 	}
@@ -64,7 +64,7 @@ func TestCircuitBreaker_HalfOpenAfterTimeout(t *testing.T) {
 
 	// 触发断路
 	for i := 0; i < 2; i++ {
-		cb.Execute(context.Background(), func(ctx context.Context) error {
+		_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 			return errors.New("fail")
 		})
 	}
@@ -96,7 +96,7 @@ func TestCircuitBreaker_Fallback(t *testing.T) {
 	})
 
 	// 触发断路
-	cb.Execute(context.Background(), func(ctx context.Context) error {
+	_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 		return errors.New("fail")
 	})
 
@@ -128,7 +128,7 @@ func TestCircuitBreaker_Reset(t *testing.T) {
 
 	// 触发断路
 	for i := 0; i < 2; i++ {
-		cb.Execute(context.Background(), func(ctx context.Context) error {
+		_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 			return errors.New("fail")
 		})
 	}
@@ -198,11 +198,11 @@ func TestCircuitBreaker_ConcurrentExecute(t *testing.T) {
 			defer func() { done <- struct{}{} }()
 			for j := 0; j < 50; j++ {
 				if id%2 == 0 {
-					cb.Execute(context.Background(), func(ctx context.Context) error {
+					_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 						return nil
 					})
 				} else {
-					cb.Execute(context.Background(), func(ctx context.Context) error {
+					_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 						return errors.New("fail")
 					})
 				}
@@ -225,7 +225,7 @@ func TestCircuitBreaker_HalfOpenFailureBackToOpen(t *testing.T) {
 
 	// 触发断路
 	for i := 0; i < 2; i++ {
-		cb.Execute(context.Background(), func(ctx context.Context) error {
+		_ = cb.Execute(context.Background(), func(ctx context.Context) error {
 			return errors.New("fail")
 		})
 	}

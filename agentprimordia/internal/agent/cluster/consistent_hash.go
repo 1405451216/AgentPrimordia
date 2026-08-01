@@ -149,10 +149,6 @@ func (h *ConsistentHash) RingSize() int {
 }
 
 // hash 计算字符串的 FNV-1a 哈希
-func (h *ConsistentHash) key(s string) uint32 {
-	return h.hash(s)
-}
-
 func (h *ConsistentHash) hash(s string) uint32 {
 	f := fnv.New32a()
 	f.Write([]byte(s))

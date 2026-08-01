@@ -93,7 +93,7 @@ func (h *HealthChecker) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	if !allHealthy {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (h *HealthChecker) handleReadyz(w http.ResponseWriter, r *http.Request) {

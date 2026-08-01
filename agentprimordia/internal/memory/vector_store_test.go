@@ -21,7 +21,7 @@ func TestInMemoryVectorStore_DropCollection(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
 
-	store.CreateCollection(ctx, "docs", 4)
+	_ = store.CreateCollection(ctx, "docs", 4)
 	if err := store.DropCollection(ctx, "docs"); err != nil {
 		t.Fatalf("DropCollection error: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestInMemoryVectorStore_DropCollection(t *testing.T) {
 func TestInMemoryVectorStore_InsertAndSearch(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "docs", 4)
+	_ = store.CreateCollection(ctx, "docs", 4)
 
 	records := []*VectorRecord{
 		{ID: "a", Vector: []float32{1, 0, 0, 0}, Metadata: map[string]any{"topic": "science"}},
@@ -59,7 +59,7 @@ func TestInMemoryVectorStore_InsertAndSearch(t *testing.T) {
 func TestInMemoryVectorStore_DimensionMismatch(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "docs", 4)
+	_ = store.CreateCollection(ctx, "docs", 4)
 
 	err := store.Insert(ctx, "docs", []*VectorRecord{
 		{ID: "x", Vector: []float32{1, 0, 0}},
@@ -72,9 +72,9 @@ func TestInMemoryVectorStore_DimensionMismatch(t *testing.T) {
 func TestInMemoryVectorStore_Delete(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "docs", 4)
+	_ = store.CreateCollection(ctx, "docs", 4)
 
-	store.Insert(ctx, "docs", []*VectorRecord{
+	_ = store.Insert(ctx, "docs", []*VectorRecord{
 		{ID: "a", Vector: []float32{1, 0, 0, 0}},
 		{ID: "b", Vector: []float32{0, 1, 0, 0}},
 	})
@@ -91,9 +91,9 @@ func TestInMemoryVectorStore_Delete(t *testing.T) {
 func TestInMemoryVectorStore_Threshold(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "docs", 4)
+	_ = store.CreateCollection(ctx, "docs", 4)
 
-	store.Insert(ctx, "docs", []*VectorRecord{
+	_ = store.Insert(ctx, "docs", []*VectorRecord{
 		{ID: "a", Vector: []float32{1, 0, 0, 0}},
 		{ID: "b", Vector: []float32{0, 1, 0, 0}},
 	})
@@ -108,9 +108,9 @@ func TestInMemoryVectorStore_Threshold(t *testing.T) {
 func TestInMemoryVectorStore_Filter(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "docs", 4)
+	_ = store.CreateCollection(ctx, "docs", 4)
 
-	store.Insert(ctx, "docs", []*VectorRecord{
+	_ = store.Insert(ctx, "docs", []*VectorRecord{
 		{ID: "a", Vector: []float32{1, 0, 0, 0}, Metadata: map[string]any{"topic": "science"}},
 		{ID: "b", Vector: []float32{0.9, 0.1, 0, 0}, Metadata: map[string]any{"topic": "art"}},
 	})
@@ -125,8 +125,8 @@ func TestInMemoryVectorStore_Filter(t *testing.T) {
 func TestInMemoryVectorStore_CollectionNames(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "a", 4)
-	store.CreateCollection(ctx, "b", 4)
+	_ = store.CreateCollection(ctx, "a", 4)
+	_ = store.CreateCollection(ctx, "b", 4)
 	names := store.CollectionNames()
 	if len(names) != 2 {
 		t.Errorf("expected 2 collections, got %d", len(names))
@@ -136,8 +136,8 @@ func TestInMemoryVectorStore_CollectionNames(t *testing.T) {
 func TestInMemoryVectorStore_Count(t *testing.T) {
 	ctx := context.Background()
 	store := NewInMemoryVectorStore()
-	store.CreateCollection(ctx, "docs", 4)
-	store.Insert(ctx, "docs", []*VectorRecord{
+	_ = store.CreateCollection(ctx, "docs", 4)
+	_ = store.Insert(ctx, "docs", []*VectorRecord{
 		{ID: "a", Vector: []float32{1, 0, 0, 0}},
 		{ID: "b", Vector: []float32{0, 1, 0, 0}},
 	})

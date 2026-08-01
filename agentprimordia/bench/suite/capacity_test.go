@@ -107,7 +107,7 @@ func TestCapacity_WASM_LatencyTarget(t *testing.T) {
 
 	registry := ap.NewToolRegistry()
 	fs, _ := ap.NewFileSystem(".")
-	registry.Register(fs)
+	_ = registry.Register(fs)
 
 	agent, err := ap.NewAgent("CapacityAgent", "你是助手", &benchMockLLM{},
 		ap.WithMaxTurns(1), ap.WithToolkit(registry))

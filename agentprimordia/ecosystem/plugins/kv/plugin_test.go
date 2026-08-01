@@ -234,7 +234,7 @@ func TestKVStoreTool_Update(t *testing.T) {
 	result, _ := tool.Execute(ctx, getArgs)
 
 	var data map[string]any
-	json.Unmarshal([]byte(result.Content), &data)
+	_ = json.Unmarshal([]byte(result.Content), &data)
 	if data["value"] != "2" {
 		t.Errorf("value = %v, want %q", data["value"], "2")
 	}
@@ -348,7 +348,7 @@ func TestKVStoreTool_EmptyList(t *testing.T) {
 	}
 
 	var data map[string]any
-	json.Unmarshal([]byte(result.Content), &data)
+	_ = json.Unmarshal([]byte(result.Content), &data)
 	count, _ := data["count"].(float64)
 	if int(count) != 0 {
 		t.Errorf("空存储 count = %v, want 0", data["count"])

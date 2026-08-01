@@ -761,9 +761,6 @@ func TestAdminAPI_XSS_JSONEncodingSafe(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &result); err != nil {
 		t.Fatalf("解析 JSON 失败: %v", err)
 	}
-
-	if result["error"] != nil { // expected for 404
-	}
 }
 
 // 并发安全：并发读写 - 同时 Dispatch 任务和请求 API

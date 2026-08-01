@@ -85,7 +85,7 @@ func TestVaultBackend_VaultRequest_Timeout(t *testing.T) {
 func TestVaultBackend_VaultRequest_InvalidJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("not-valid-json{{{"))
+		_, _ = w.Write([]byte("not-valid-json{{{"))
 	}))
 	defer server.Close()
 
@@ -197,7 +197,7 @@ func TestCachedSecretsManager_RotateInvalidCache(t *testing.T) {
 	ctx := context.Background()
 
 	// 填充缓存
-	cached.GetSecret(ctx, "k")
+	_, _ = cached.GetSecret(ctx, "k")
 
 	// 轮换后缓存应被清除
 	if err := cached.RotateSecret(ctx, "k"); err != nil {

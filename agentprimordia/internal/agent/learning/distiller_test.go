@@ -81,7 +81,7 @@ func TestKnowledgeDistillerSearch(t *testing.T) {
 		Timestamp:    time.Now(),
 	}
 
-	distiller.Distill(context.Background(), interaction)
+	_, _ = distiller.Distill(context.Background(), interaction)
 
 	// 搜索事实
 	results := distiller.SearchKnowledge("fact", "")
@@ -132,7 +132,7 @@ func TestKnowledgeDistillerStats(t *testing.T) {
 	distiller := NewKnowledgeDistiller()
 
 	for i := 0; i < 5; i++ {
-		distiller.Distill(context.Background(), Interaction{
+		_, _ = distiller.Distill(context.Background(), Interaction{
 			ID:           "stat-" + string(rune('0'+i)),
 			UserInput:    "What is X?",
 			AgentOutput:  "X is a variable. It is commonly used in math.",
@@ -176,7 +176,7 @@ func TestCapabilityEvolverEvaluate(t *testing.T) {
 	})
 
 	// 评估通过
-	evolver.Evaluate("coding", true)
+	_ = evolver.Evaluate("coding", true)
 
 	cap, _ := evolver.GetCapability("coding")
 	if cap.TimesTested != 1 {
@@ -190,7 +190,7 @@ func TestCapabilityEvolverEvaluate(t *testing.T) {
 	}
 
 	// 评估失败
-	evolver.Evaluate("coding", false)
+	_ = evolver.Evaluate("coding", false)
 	cap, _ = evolver.GetCapability("coding")
 	if cap.TimesTested != 2 {
 		t.Errorf("TimesTested = %d, 期望 2", cap.TimesTested)
@@ -261,7 +261,7 @@ func TestFeedbackLearnerRecordPositive(t *testing.T) {
 func TestFeedbackLearnerRecordNegative(t *testing.T) {
 	learner := NewFeedbackLearner()
 
-	learner.RecordFeedback(FeedbackEntry{
+	_ = learner.RecordFeedback(FeedbackEntry{
 		UserInput:   "test input",
 		AgentOutput: "This is a bad answer.",
 		Feedback:    "Incorrect and unhelpful.",
@@ -278,7 +278,7 @@ func TestFeedbackLearnerShouldPrefer(t *testing.T) {
 	learner := NewFeedbackLearner()
 
 	// 训练正面偏好
-	learner.RecordFeedback(FeedbackEntry{
+	_ = learner.RecordFeedback(FeedbackEntry{
 		UserInput:   "How to code?",
 		AgentOutput: "Use clean code practices. It is recommended.",
 		Feedback:    "Good advice!",
@@ -286,7 +286,7 @@ func TestFeedbackLearnerShouldPrefer(t *testing.T) {
 	})
 
 	// 训练负面偏好
-	learner.RecordFeedback(FeedbackEntry{
+	_ = learner.RecordFeedback(FeedbackEntry{
 		UserInput:   "How to code?",
 		AgentOutput: "Just write spaghetti code. It is fast.",
 		Feedback:    "Bad advice, wrong!",
@@ -311,7 +311,7 @@ func TestFeedbackLearnerHistory(t *testing.T) {
 	learner := NewFeedbackLearner()
 
 	for i := 0; i < 5; i++ {
-		learner.RecordFeedback(FeedbackEntry{
+		_ = learner.RecordFeedback(FeedbackEntry{
 			UserInput:   "test",
 			AgentOutput: "test output",
 			Feedback:    "ok",

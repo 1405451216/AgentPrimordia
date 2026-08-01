@@ -197,7 +197,7 @@ func TestQuotaManager_Status(t *testing.T) {
 	qm := NewQuotaManager("t_test", quotas)
 	qm.IncrementAgentCount()
 	qm.IncrementSessionCount()
-	qm.RecordTokens(500)
+	_ = qm.RecordTokens(500)
 
 	status := qm.Status()
 	if status.TenantID != "t_test" {
@@ -221,7 +221,7 @@ func TestQuotaManager_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func() {
 			for j := 0; j < 1000; j++ {
-				qm.RecordTokens(10)
+				_ = qm.RecordTokens(10)
 			}
 			done <- struct{}{}
 		}()

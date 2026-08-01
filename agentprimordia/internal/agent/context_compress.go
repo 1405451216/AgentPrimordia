@@ -18,8 +18,3 @@ type CompressStrategy = context.CompressStrategy
 func NewCompressStrategy(config CompressConfig) *CompressStrategy {
 	return context.NewCompressStrategy(config)
 }
-
-// estimateTokens 估算消息的 Token 数（委托到 context 子包）
-func estimateTokens(messages []Message) int {
-	return context.EstimateTokens(messages)
-}

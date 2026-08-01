@@ -42,7 +42,7 @@ func TestFeatureFlag_List(t *testing.T) {
 func TestFeatureFlag_LoadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "features.json")
-	os.WriteFile(path, []byte(`{"dark_mode": true, "beta_api": false}`), 0644)
+	_ = os.WriteFile(path, []byte(`{"dark_mode": true, "beta_api": false}`), 0644)
 
 	ff := NewFeatureFlag()
 	if err := ff.LoadFromFile(path); err != nil {

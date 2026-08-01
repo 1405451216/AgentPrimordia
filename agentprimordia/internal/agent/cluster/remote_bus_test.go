@@ -17,7 +17,7 @@ func TestRemoteNodePing(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/cluster/ping" {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"status":"ok"}`))
+			_, _ = w.Write([]byte(`{"status":"ok"}`))
 			return
 		}
 		http.NotFound(w, r)
@@ -50,7 +50,7 @@ func TestRemoteNodeSendMessage(t *testing.T) {
 				Content: "reply to: " + msg.Content,
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(&reply)
+			_ = json.NewEncoder(w).Encode(&reply)
 			return
 		}
 		http.NotFound(w, r)
@@ -124,7 +124,7 @@ func TestRemoteMessageBusRemoteForward(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/cluster/message" && r.Method == http.MethodPost {
 			var msg bus.BusMessage
-			json.NewDecoder(r.Body).Decode(&msg)
+			_ = json.NewDecoder(r.Body).Decode(&msg)
 			reply := bus.BusMessage{
 				ID:      "reply-" + msg.ID,
 				From:    msg.To,
@@ -132,7 +132,7 @@ func TestRemoteMessageBusRemoteForward(t *testing.T) {
 				Content: "remote reply",
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(&reply)
+			_ = json.NewEncoder(w).Encode(&reply)
 			return
 		}
 		http.NotFound(w, r)
@@ -274,7 +274,7 @@ func TestRemoteMessageBusHandlers(t *testing.T) {
 	}
 
 	var reply bus.BusMessage
-	json.Unmarshal(w.Body.Bytes(), &reply)
+	_ = json.Unmarshal(w.Body.Bytes(), &reply)
 	if reply.Content != "handled" {
 		t.Errorf("Reply content = %q, want %q", reply.Content, "handled")
 	}
@@ -309,7 +309,7 @@ func TestRemoteMessageBusHandlers(t *testing.T) {
 
 	respBody, _ := io.ReadAll(w3.Body)
 	var syncResult map[string]any
-	json.Unmarshal(respBody, &syncResult)
+	_ = json.Unmarshal(respBody, &syncResult)
 	if syncResult["merged"] == nil {
 		t.Error("StateSyncHandler should return merged count")
 	}

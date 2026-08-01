@@ -9,31 +9,6 @@ import (
 	"time"
 )
 
-func similarityScore(a, b string) float64 {
-	if a == b {
-		return 1.0
-	}
-	commonWords := 0
-	wordsA := strings.Fields(a)
-	wordsB := strings.Fields(b)
-
-	wordCountA := make(map[string]int)
-	for _, w := range wordsA {
-		wordCountA[w]++
-	}
-	for _, w := range wordsB {
-		if wordCountA[w] > 0 {
-			commonWords++
-		}
-	}
-
-	maxLen := max(len(wordsA), len(wordsB))
-	if maxLen == 0 {
-		return 0.0
-	}
-	return float64(commonWords) / float64(maxLen)
-}
-
 // wordFrequency 计算文本词频表（perf-v4 Task 5：辅助函数）
 func wordFrequency(text string) map[string]int {
 	words := strings.Fields(text)

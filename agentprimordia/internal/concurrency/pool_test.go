@@ -19,7 +19,7 @@ func TestGoroutinePool_BasicExecution(t *testing.T) {
 	var completed atomic.Int32
 
 	for i := 0; i < 20; i++ {
-		pool.Submit(func(ctx context.Context) error {
+		_ = pool.Submit(func(ctx context.Context) error {
 			completed.Add(1)
 			return nil
 		})
@@ -43,7 +43,7 @@ func TestGoroutinePool_DynamicScaling(t *testing.T) {
 
 	// 提交大量任务触发扩容
 	for i := 0; i < 50; i++ {
-		pool.Submit(func(ctx context.Context) error {
+		_ = pool.Submit(func(ctx context.Context) error {
 			time.Sleep(10 * time.Millisecond)
 			return nil
 		})
@@ -80,7 +80,7 @@ func TestGoroutinePool_ContextCancellation(t *testing.T) {
 
 	var started atomic.Int32
 	for i := 0; i < 10; i++ {
-		pool.SubmitWithContext(ctx, func(ctx context.Context) error {
+		_ = pool.SubmitWithContext(ctx, func(ctx context.Context) error {
 			started.Add(1)
 			<-ctx.Done()
 			return ctx.Err()
@@ -108,7 +108,7 @@ func TestGoroutinePool_QueueFull(t *testing.T) {
 
 	// 填满队列
 	for i := 0; i < 3; i++ {
-		pool.Submit(func(ctx context.Context) error {
+		_ = pool.Submit(func(ctx context.Context) error {
 			time.Sleep(1 * time.Second)
 			return nil
 		})
@@ -153,7 +153,7 @@ func BenchmarkGoroutinePool_Submit(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		pool.Submit(func(ctx context.Context) error {
+		_ = pool.Submit(func(ctx context.Context) error {
 			return nil
 		})
 	}

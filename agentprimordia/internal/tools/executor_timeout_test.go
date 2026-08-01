@@ -14,7 +14,7 @@ func TestExecutor_ToolTimeout(t *testing.T) {
 		name:  "slow",
 		delay: 5 * time.Second,
 	}
-	registry.Register(slowTool)
+	_ = registry.Register(slowTool)
 
 	exec := NewExecutorWithConfig(registry, ExecutorConfig{
 		DefaultTimeout: 100 * time.Millisecond,
@@ -46,8 +46,8 @@ func TestExecutor_PerToolTimeout(t *testing.T) {
 		name:  "slow",
 		delay: 5 * time.Second,
 	}
-	registry.Register(fastTool)
-	registry.Register(slowTool)
+	_ = registry.Register(fastTool)
+	_ = registry.Register(slowTool)
 
 	exec := NewExecutorWithConfig(registry, ExecutorConfig{
 		DefaultTimeout: 200 * time.Millisecond,

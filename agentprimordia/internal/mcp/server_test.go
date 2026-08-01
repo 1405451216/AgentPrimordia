@@ -25,7 +25,7 @@ func (t *mockTool) Execute(ctx context.Context, args json.RawMessage) (*tools.Re
 
 func newTestServer() (*Server, *tools.Registry) {
 	reg := tools.NewRegistry()
-	reg.Register(&mockTool{
+	_ = reg.Register(&mockTool{
 		name:   "echo",
 		desc:   "echo back input",
 		params: json.RawMessage(`{"type":"object","properties":{"msg":{"type":"string"}}}`),

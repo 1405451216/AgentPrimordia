@@ -11,9 +11,6 @@ import (
 	"agentprimordia/internal/tools"
 )
 
-// benchLogger 用于基准测试的静默日志记录器，避免 slog 默认输出淹没结果
-var benchLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
-
 // silentToolLogs 把 tools 包全局 slog 重定向到 io.Discard，benchmark 结束后恢复。
 //
 // Phase 4 Task 10 起，工具执行器已统一使用 slog，不再有 log.Printf 输出。

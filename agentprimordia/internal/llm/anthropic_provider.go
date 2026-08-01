@@ -374,33 +374,6 @@ func (p *AnthropicProvider) resolveMaxTokens(req *CompletionRequest) int {
 	return defaultAnthropicMaxTokens
 }
 
-// injectStructuredOutput 将结构化输出要求注入 Anthropic 请求体
-// Anthropic 不支持 response_format，通过 tool_choice + 单tool注入实现等效效果
-func (p *AnthropicProvider) injectStructuredOutput(body map[string]any, rf *ResponseFormat) {
-	if rf.JSONSchema == nil {
-		return
-	}
-
-	schemaName := rf.JSONSchema.Name
-	if schemaName == "" {
-		schemaName = "structured_output"
-	}
-
-	tool := anthropicTool{
-		Name:        schemaName,
-		Description: rf.JSONSchema.Description,
-		InputSchema: rf.JSONSchema.Schema,
-	}
-
-	existingTools, _ := body["tools"].([]anthropicTool)
-	allTools := append(existingTools, tool)
-	body["tools"] = allTools
-	body["tool_choice"] = map[string]any{
-		"type": "tool",
-		"name": schemaName,
-	}
-}
-
 // buildStructuredOutput 构建结构化输出tool（perf-v6 round 4 Task 1）
 // 替代 injectStructuredOutput 直接操作 map 的做法
 func (p *AnthropicProvider) buildStructuredOutput(rf *ResponseFormat) (anthropicTool, anthropicToolChoice) {

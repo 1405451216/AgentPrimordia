@@ -36,14 +36,16 @@ func BenchmarkGRPC_CreateTask(b *testing.B) {
 	service := NewA2AService(card, NewTaskManager())
 	server := NewGRPCServer(service)
 	lis := bufconn.Listen(1024 * 1024)
-	go server.Serve(lis)
+	go func() { _ = server.Serve(lis) }()
 	defer server.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	//nolint:staticcheck // API 弃用但为兼容保留，NewClient 为惰性连接语义不同
 	conn, err := grpc.DialContext(ctx, "passthrough:///bufnet",
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) { return lis.Dial() }),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		//nolint:staticcheck // API 弃用但为兼容保留，NewClient 为惰性连接语义不同
 		grpc.WithBlock())
 	if err != nil {
 		b.Fatal(err)

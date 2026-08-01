@@ -23,7 +23,7 @@ func TestOllamaProvider_ListModels(t *testing.T) {
 				{"name": "mistral:latest", "size": int64(4138026856)},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -44,7 +44,7 @@ func TestOllamaProvider_ListModels(t *testing.T) {
 func TestOllamaProvider_Ping(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]any{"models": []any{}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"models": []any{}})
 	}))
 	defer server.Close()
 
@@ -74,7 +74,7 @@ func TestOllamaProvider_ModelExists(t *testing.T) {
 				{"name": "llama3:latest", "size": int64(4661224676)},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -103,7 +103,7 @@ func TestOllamaProvider_PullModel(t *testing.T) {
 		if r.URL.Path == "/api/pull" && r.Method == "POST" {
 			pulled = true
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]any{"status": "success"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"status": "success"})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

@@ -38,12 +38,11 @@ func (p *ConstantLoadPattern) Name() string {
 // StepLoadPattern 阶梯负载模式
 // 从初始 RPS 开始，每隔 stepDuration 增加 rpsStep RPS
 type StepLoadPattern struct {
-	currentRPS    int
-	maxRPS        int
-	rpsStep       int
-	stepDuration  time.Duration
-	elapsed       time.Duration
-	lastStepTime  time.Time
+	currentRPS   int
+	maxRPS       int
+	rpsStep      int
+	stepDuration time.Duration
+	lastStepTime time.Time
 }
 
 // StepPattern 创建阶梯负载模式

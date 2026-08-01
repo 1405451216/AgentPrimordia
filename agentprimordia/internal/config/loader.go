@@ -142,7 +142,9 @@ func (l *Loader) LoadFlags() error {
 
 	// 解析 flags
 	if !l.flagSet.Parsed() {
-		l.flagSet.Parse(os.Args[1:])
+		if err := l.flagSet.Parse(os.Args[1:]); err != nil {
+			return fmt.Errorf("config: parse flags: %w", err)
+		}
 	}
 
 	// 将已设置的 flag 值写回结构体
@@ -258,7 +260,8 @@ func setByFlag(v reflect.Value, name, val string) {
 			continue
 		}
 		if field.Tag.Get("flag") == name {
-			setField(fv, val)
+			// 类型转换失败时保留字段默认值（错误由调用方在上游已做校验）
+			_ = setField(fv, val)
 			return
 		}
 	}

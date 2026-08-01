@@ -32,16 +32,6 @@ type ChatMessageForSummary struct {
 	Content string
 }
 
-// llmAdapter 将 llm.Provider 适配为 SummarizerLLM 接口
-// 定义在此文件中以避免 memory 包直接依赖 llm 包
-type llmAdapter struct {
-	completeFn func(ctx context.Context, messages []ChatMessageForSummary, model string) (string, error)
-}
-
-func (a *llmAdapter) Complete(ctx context.Context, messages []ChatMessageForSummary, model string) (string, error) {
-	return a.completeFn(ctx, messages, model)
-}
-
 // Summarizer 使用 LLM 从内容中提取摘要和标签
 type Summarizer struct {
 	provider   SummarizerLLM

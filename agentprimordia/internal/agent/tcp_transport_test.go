@@ -241,7 +241,7 @@ func TestTCPTransport_AckTimeout(t *testing.T) {
 		}
 		// 接收消息但不发送 ACK
 		buf := make([]byte, 1024)
-		conn.Read(buf)
+		_, _ = conn.Read(buf)
 		// 保持连接打开但不响应
 		time.Sleep(2 * time.Second)
 		conn.Close()

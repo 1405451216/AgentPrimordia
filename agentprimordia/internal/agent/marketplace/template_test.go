@@ -159,8 +159,8 @@ func TestTemplateRegistrySearch(t *testing.T) {
 		Temperature:  0.5,
 	}
 
-	reg.Register(tmpl1)
-	reg.Register(tmpl2)
+	_ = reg.Register(tmpl1)
+	_ = reg.Register(tmpl2)
 
 	// 按分类搜索
 	results := reg.Search("", "research", nil)
@@ -192,10 +192,10 @@ func TestTemplateRegistryRate(t *testing.T) {
 		SystemPrompt: "test",
 		Temperature:  0.7,
 	}
-	reg.Register(tmpl)
+	_ = reg.Register(tmpl)
 
-	reg.RateTemplate("rate-test", 4.0)
-	reg.RateTemplate("rate-test", 5.0)
+	_ = reg.RateTemplate("rate-test", 4.0)
+	_ = reg.RateTemplate("rate-test", 5.0)
 
 	got, _ := reg.Get("rate-test")
 	if got.Rating != 4.5 {
@@ -216,7 +216,7 @@ func TestTemplateRegistryTopByDownloads(t *testing.T) {
 			Temperature:  0.7,
 			Downloads:    i * 10,
 		}
-		reg.Register(tmpl)
+		_ = reg.Register(tmpl)
 	}
 
 	top := reg.TopByDownloads(3)
@@ -244,7 +244,7 @@ func TestDeployerDeploy(t *testing.T) {
 		MemoryStrategy:  "conversation",
 		Temperature:    0.7,
 	}
-	reg.Register(tmpl)
+	_ = reg.Register(tmpl)
 
 	deployer := NewDeployer(reg)
 
@@ -305,7 +305,7 @@ func TestDeployerDeployWithOverride(t *testing.T) {
 		DefaultModel:    "gpt-4",
 		Temperature:    0.7,
 	}
-	reg.Register(tmpl)
+	_ = reg.Register(tmpl)
 
 	deployer := NewDeployer(reg)
 
@@ -317,7 +317,7 @@ func TestDeployerDeployWithOverride(t *testing.T) {
 	})
 
 	var config map[string]any
-	json.Unmarshal(result.AgentConfig, &config)
+	_ = json.Unmarshal(result.AgentConfig, &config)
 
 	if config["provider"] != "anthropic" {
 		t.Errorf("provider = %v, 期望 anthropic", config["provider"])

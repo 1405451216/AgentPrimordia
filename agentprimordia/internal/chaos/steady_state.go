@@ -193,7 +193,6 @@ func (s *CompositeSteadyState) Name() string { return s.name }
 func (s *CompositeSteadyState) Check(ctx context.Context) (SteadyStateResult, error) {
 	allMet := true
 	details := make(map[string]any)
-	var messages []string
 
 	for _, ss := range s.states {
 		result, err := ss.Check(ctx)
@@ -207,7 +206,6 @@ func (s *CompositeSteadyState) Check(ctx context.Context) (SteadyStateResult, er
 			allMet = false
 		}
 		details[ss.Name()] = result
-		messages = append(messages, fmt.Sprintf("%s: %s", ss.Name(), result.Message))
 	}
 
 	msg := "所有稳态条件满足"

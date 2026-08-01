@@ -36,7 +36,7 @@ func TestResourceLimiter_ContextTimeout(t *testing.T) {
 		ConcurrentCalls: 1,
 	})
 
-	lim.Acquire(ResourceConcurrent)
+	_ = lim.Acquire(ResourceConcurrent)
 
 	done := make(chan error, 1)
 	go func() {
@@ -95,8 +95,8 @@ func TestResourceLimiter_Usage(t *testing.T) {
 		MaxMemoryMB:     1024,
 	})
 
-	lim.Acquire(ResourceConcurrent)
-	lim.Acquire(ResourceConcurrent)
+	_ = lim.Acquire(ResourceConcurrent)
+	_ = lim.Acquire(ResourceConcurrent)
 
 	usage := lim.Usage()
 	if usage.ConcurrentCalls != 2 {
@@ -118,8 +118,8 @@ func TestSessionLimiter(t *testing.T) {
 	})
 
 	// 在 session 限制内
-	session.Acquire(ResourceConcurrent)
-	session.Acquire(ResourceConcurrent)
+	_ = session.Acquire(ResourceConcurrent)
+	_ = session.Acquire(ResourceConcurrent)
 
 	// 第三次超出 session 限制
 	if err := session.Acquire(ResourceConcurrent); err == nil {

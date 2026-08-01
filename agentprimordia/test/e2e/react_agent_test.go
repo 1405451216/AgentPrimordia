@@ -47,7 +47,7 @@ func TestE2E_ReActAgent_WithToolCall(t *testing.T) {
 	defer cancel()
 
 	registry := tools.NewRegistry()
-	registry.Register(&echoTool{})
+	_ = registry.Register(&echoTool{})
 
 	// 第一轮返回工具调用，第二轮返回最终答案
 	mock := testutil.NewMockProvider("The echo tool said: hello world")

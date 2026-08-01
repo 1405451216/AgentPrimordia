@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -41,13 +42,13 @@ func TestHTTPHandler_Query(t *testing.T) {
 	handler := NewHTTPHandler(logger)
 
 	// 写入测试数据
-	_ = logger.Log(nil, Event{
+	_ = logger.Log(context.TODO(), Event{
 		Actor:    "agent-1",
 		Action:   "llm.call",
 		Resource: "gpt-4",
 		Result:   "success",
 	})
-	_ = logger.Log(nil, Event{
+	_ = logger.Log(context.TODO(), Event{
 		Actor:    "agent-2",
 		Action:   "tool.call",
 		Resource: "search",
@@ -83,9 +84,9 @@ func TestHTTPHandler_Query_ByAction(t *testing.T) {
 	logger, _ := NewLogger(LoggerConfig{Output: output})
 	handler := NewHTTPHandler(logger)
 
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "llm.call", Result: "success"})
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "tool.call", Result: "success"})
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "llm.call", Result: "success"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "llm.call", Result: "success"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "tool.call", Result: "success"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "llm.call", Result: "success"})
 
 	req := httptest.NewRequest(http.MethodGet, "/audit/events?action=llm.call", nil)
 	rec := httptest.NewRecorder()
@@ -107,9 +108,9 @@ func TestHTTPHandler_Query_ByTimeRange(t *testing.T) {
 	handler := NewHTTPHandler(logger)
 
 	now := time.Now()
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "x", Timestamp: now.Add(-2 * time.Hour), Result: "ok"})
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "x", Timestamp: now.Add(-1 * time.Hour), Result: "ok"})
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "x", Timestamp: now, Result: "ok"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "x", Timestamp: now.Add(-2 * time.Hour), Result: "ok"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "x", Timestamp: now.Add(-1 * time.Hour), Result: "ok"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "x", Timestamp: now, Result: "ok"})
 
 	start := now.Add(-90 * time.Minute).Format(time.RFC3339)
 	end := now.Add(1 * time.Minute).Format(time.RFC3339)
@@ -137,7 +138,7 @@ func TestHTTPHandler_Query_Limit(t *testing.T) {
 	handler := NewHTTPHandler(logger)
 
 	for i := 0; i < 10; i++ {
-		_ = logger.Log(nil, Event{Actor: "a1", Action: "x", Result: "ok"})
+		_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "x", Result: "ok"})
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/audit/events?limit=3", nil)
@@ -159,9 +160,9 @@ func TestHTTPHandler_Report(t *testing.T) {
 	logger, _ := NewLogger(LoggerConfig{Output: output})
 	handler := NewHTTPHandler(logger)
 
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "llm.call", Result: "success"})
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "tool.call", Result: "success"})
-	_ = logger.Log(nil, Event{Actor: "a2", Action: "llm.call", Result: "success"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "llm.call", Result: "success"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "tool.call", Result: "success"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a2", Action: "llm.call", Result: "success"})
 
 	now := time.Now()
 	start := now.Add(-1 * time.Hour).Format(time.RFC3339)
@@ -256,7 +257,7 @@ func TestHTTPHandler_Query_UnixTimestamp(t *testing.T) {
 	handler := NewHTTPHandler(logger)
 
 	now := time.Now()
-	_ = logger.Log(nil, Event{Actor: "a1", Action: "x", Timestamp: now, Result: "ok"})
+	_ = logger.Log(context.TODO(), Event{Actor: "a1", Action: "x", Timestamp: now, Result: "ok"})
 
 	// Unix 时间戳（秒）
 	startTs := strconv.FormatInt(now.Add(-1*time.Hour).Unix(), 10)

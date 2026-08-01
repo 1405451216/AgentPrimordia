@@ -46,28 +46,3 @@ var ErrNotResettable = lifecycle.ErrNotResettable
 
 // ErrAgentStopped 是 Agent 已停止错误
 var ErrAgentStopped = lifecycle.ErrAgentStopped
-
-// validTransitions 定义合法的状态转换
-var validTransitions = map[Status][]Status{
-	StatusIdle:            {StatusRunning},
-	StatusRunning:         {StatusPaused, StatusWaitingForInput, StatusCompleted, StatusFailed, StatusCancelled},
-	StatusPaused:          {StatusRunning, StatusCancelled},
-	StatusWaitingForInput: {StatusRunning, StatusCancelled, StatusFailed},
-	StatusCompleted:       {StatusIdle},
-	StatusFailed:          {StatusIdle},
-	StatusCancelled:       {StatusIdle},
-}
-
-// isValidTransition 检查状态转换是否合法
-func isValidTransition(from, to Status) bool {
-	allowed, ok := validTransitions[from]
-	if !ok {
-		return false
-	}
-	for _, s := range allowed {
-		if s == to {
-			return true
-		}
-	}
-	return false
-}

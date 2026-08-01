@@ -89,12 +89,12 @@ func (v *Visualizer) EditorHandler() http.Handler {
 
 	mux.HandleFunc("/editor", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(editorHTML))
+		_, _ = w.Write([]byte(editorHTML))
 	})
 
 	mux.HandleFunc("/api/dag/export", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(v.ExportJSON()))
+		_, _ = w.Write([]byte(v.ExportJSON()))
 	})
 
 	return mux

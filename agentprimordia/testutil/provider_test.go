@@ -86,18 +86,18 @@ func TestMockProvider_CallCount_TracksInvocations(t *testing.T) {
 		t.Errorf("expected 0 calls, got %d", mp.CallCount())
 	}
 
-	mp.Complete(context.Background(), &llm.CompletionRequest{})
+	_, _ = mp.Complete(context.Background(), &llm.CompletionRequest{})
 	if mp.CallCount() != 1 {
 		t.Errorf("expected 1 call, got %d", mp.CallCount())
 	}
 
-	mp.CallTools(context.Background(), &llm.ToolCallRequest{})
+	_, _ = mp.CallTools(context.Background(), &llm.ToolCallRequest{})
 	if mp.CallCount() != 2 {
 		t.Errorf("expected 2 calls, got %d", mp.CallCount())
 	}
 
-	mp.Complete(context.Background(), &llm.CompletionRequest{})
-	mp.Complete(context.Background(), &llm.CompletionRequest{})
+	_, _ = mp.Complete(context.Background(), &llm.CompletionRequest{})
+	_, _ = mp.Complete(context.Background(), &llm.CompletionRequest{})
 	if mp.CallCount() != 4 {
 		t.Errorf("expected 4 calls, got %d", mp.CallCount())
 	}

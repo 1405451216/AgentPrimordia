@@ -40,7 +40,7 @@ func FuzzExecutorExecute(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, toolName, args string) {
 		registry := NewRegistry()
-		registry.Register(&mockFuzzTool{name: "echo"})
+		_ = registry.Register(&mockFuzzTool{name: "echo"})
 		executor := NewExecutor(registry)
 
 		ctx := context.Background()
@@ -57,6 +57,7 @@ func FuzzExecutorExecute(f *testing.F) {
 		if toolName != "echo" && err == nil && result != nil && !result.IsError {
 			// 非注册工具不应成功执行
 			// 注意：executor 对不存在的工具返回 ErrorResult 而非 error
+			t.Errorf("非注册工具 %q 不应成功执行", toolName)
 		}
 
 		// 空工具名应返回错误
@@ -130,7 +131,7 @@ func FuzzExecuteBatch(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, namesStr, argsStr string) {
 		registry := NewRegistry()
-		registry.Register(&mockFuzzTool{name: "echo"})
+		_ = registry.Register(&mockFuzzTool{name: "echo"})
 		executor := NewExecutor(registry)
 
 		// 解析输入

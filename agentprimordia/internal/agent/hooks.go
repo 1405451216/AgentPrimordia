@@ -169,6 +169,3 @@ func TimeoutMiddleware(timeout time.Duration) *HookMiddlewareFunc {
 func ErrorRecoveryMiddleware(onError func(HookPoint, error)) *HookMiddlewareFunc {
 	return hooks.ErrorRecoveryMiddleware(onError)
 }
-
-// newHookStats 内部辅助函数，委托到 hooks 子包（测试用）
-var newHookStats = hooks.NewHookStats
