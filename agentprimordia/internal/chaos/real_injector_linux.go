@@ -141,8 +141,10 @@ func (inj *RealNetworkInjector) InjectPartition(ctx context.Context, target stri
 
 	// 阻断入站
 	if err := inj.runIptables(ctx, "-A", "INPUT", "-s", target, "-j", "DROP"); err != nil {
-		// 回滚出站规则
-		inj.runIptables(ctx, "-D", "OUTPUT", "-d", target, "-j", "DROP")
+		// 回滚出站规则（best-effort，失败仅记录）
+		if rbErr := inj.runIptables(ctx, "-D", "OUTPUT", "-d", target, "-j", "DROP"); rbErr != nil {
+			inj.logger.Warn("回滚出站 iptables 规则失败", "target", target, "error", rbErr)
+		}
 		return nil, fmt.Errorf("chaos_linux: inject partition (input): %w", err)
 	}
 
@@ -199,9 +201,6 @@ func (inj *RealNetworkInjector) runIptables(ctx context.Context, args ...string)
 }
 
 // ===== 参数验证 =====
-
-// ipRegexp 合法 IP 地址正则
-var ipRegexp = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
 
 // hostnameRegexp 合法主机名正则（仅允许字母、数字、点、连字符）
 var hostnameRegexp = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.\-]*[a-zA-Z0-9]$`)
