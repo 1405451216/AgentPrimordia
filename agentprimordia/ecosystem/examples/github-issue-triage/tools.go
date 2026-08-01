@@ -5,7 +5,10 @@
 //   - readIssueTool:   读取 issue 详情
 //   - addLabelTool:    给 issue 添加 label
 //
-// 所有工具通过 HTTP 调用 mock server（生产环境可换成真实 GitHub API）。
+// 双模式：
+//   - mock 模式（默认）：main 将 apiBase 注入为内存 mock server 地址
+//   - 真实 API 模式：设置 GITHUB_TOKEN + GH_REPO 后访问 https://api.github.com，
+//     工具自动附加 Authorization: Bearer 鉴权头
 package main
 
 import (
@@ -21,11 +24,35 @@ import (
 	ap "agentprimordia/pkg"
 )
 
-// apiBase 是 mock GitHub server 的基础 URL，由 main 在启动时注入
-var apiBase string
+// apiBase 是 GitHub API 基础 URL。
+// 默认 https://api.github.com（真实 API）；mock 模式由 main 注入 mock server 地址。
+var apiBase = "https://api.github.com"
+
+// githubToken 是可选的真实 GitHub API 访问令牌（来自 GITHUB_TOKEN 环境变量）。
+// 非空时所有工具请求都会附带 Authorization: Bearer 头。
+var githubToken string
+
+// githubRepo 是目标仓库 "owner/repo"（来自 GH_REPO 环境变量，默认 "owner/repo"）。
+var githubRepo = "owner/repo"
 
 // httpClient 共享给所有工具，避免每次都新建 client
 var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+// newGitHubRequest 构造带鉴权的 GitHub API 请求。
+// 设置 githubToken 时自动附加 Authorization: Bearer 头；有 body 时附加 JSON Content-Type。
+func newGitHubRequest(ctx context.Context, method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	if githubToken != "" {
+		req.Header.Set("Authorization", "Bearer "+githubToken)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return req, nil
+}
 
 // ===== listIssuesTool =====
 
@@ -68,8 +95,11 @@ func (listIssuesTool) Execute(ctx context.Context, args json.RawMessage) (*ap.To
 		params.State = "open"
 	}
 
-	url := fmt.Sprintf("%s/repos/owner/repo/issues?state=%s", apiBase, params.State)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	url := fmt.Sprintf("%s/repos/%s/issues?state=%s", apiBase, githubRepo, params.State)
+	req, err := newGitHubRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return ap.NewToolErrorResult(fmt.Sprintf("list_issues build request: %v", err)), nil
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return ap.NewToolErrorResult(fmt.Sprintf("list_issues http error: %v", err)), nil
@@ -123,8 +153,11 @@ func (readIssueTool) Execute(ctx context.Context, args json.RawMessage) (*ap.Too
 		return ap.NewToolErrorResult("read_issue requires issue_number"), nil
 	}
 
-	url := fmt.Sprintf("%s/repos/owner/repo/issues/%d", apiBase, params.IssueNumber)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	url := fmt.Sprintf("%s/repos/%s/issues/%d", apiBase, githubRepo, params.IssueNumber)
+	req, err := newGitHubRequest(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return ap.NewToolErrorResult(fmt.Sprintf("read_issue build request: %v", err)), nil
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return ap.NewToolErrorResult(fmt.Sprintf("read_issue http error: %v", err)), nil
@@ -188,9 +221,11 @@ func (addLabelTool) Execute(ctx context.Context, args json.RawMessage) (*ap.Tool
 	}
 
 	body, _ := json.Marshal(map[string]any{"labels": params.Labels})
-	url := fmt.Sprintf("%s/repos/owner/repo/issues/%d/labels", apiBase, params.IssueNumber)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
+	url := fmt.Sprintf("%s/repos/%s/issues/%d/labels", apiBase, githubRepo, params.IssueNumber)
+	req, err := newGitHubRequest(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return ap.NewToolErrorResult(fmt.Sprintf("add_label build request: %v", err)), nil
+	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return ap.NewToolErrorResult(fmt.Sprintf("add_label http error: %v", err)), nil

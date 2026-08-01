@@ -70,6 +70,20 @@ export DEEPSEEK_API_KEY=sk-xxx
 go run ./ecosystem/examples/github-issue-triage/
 ```
 
+### 方式 4：真实 GitHub API
+
+同时设置 `GITHUB_TOKEN` 与任一 LLM API Key，即可对真实仓库跑完整 triage：
+
+```bash
+export GITHUB_TOKEN=ghp_xxx          # 需要对该仓库有 issues 读取 + label 写入权限
+export GH_REPO=owner/repo            # 可选，默认 owner/repo
+export OPENAI_API_KEY=sk-xxx         # 或 QWEN_API_KEY / DEEPSEEK_API_KEY
+go run ./ecosystem/examples/github-issue-triage/
+```
+
+> ⚠️ **安全提示**：该模式会向真实仓库的 issue 写入 label。建议先在测试仓库上验证。
+> 只设置 `GITHUB_TOKEN` 但缺少 LLM Key 时，程序会安全回退 mock 模式，**不会**改动真实仓库。
+
 ## 演示输出（Mock 模式）
 
 ```
@@ -149,16 +163,13 @@ registry := registryFromTools(
 )
 ```
 
-### 接入真实 GitHub API
+### 接入真实 GitHub API（已内置）
 
-把 `mock_server.go` 替换为真实 GitHub API 调用：
-
-```go
-// 旧: apiBase = mockServerURL
-// 新: apiBase = "https://api.github.com"
-// 并在工具中添加 Authorization 头
-req.Header.Set("Authorization", "token "+os.Getenv("GITHUB_TOKEN"))
-```
+`tools.go` 已原生支持真实 GitHub API（无需修改代码）：
+- `apiBase` 默认 `https://api.github.com`
+- 设置 `GITHUB_TOKEN` 后，所有工具自动附加 `Authorization: Bearer` 头
+- 目标仓库通过 `GH_REPO`（`owner/repo`）指定
+- 请求构造统一走 `newGitHubRequest`，真实模式与 mock 模式共用同一套工具
 
 ## 关键代码结构
 

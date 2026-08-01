@@ -13,6 +13,12 @@
 //	export OPENAI_API_KEY=sk-xxx                    # 或 QWEN_API_KEY / DEEPSEEK_API_KEY
 //	go run ./ecosystem/examples/github-issue-triage/
 //
+// 接入真实 GitHub API（需同时设置 GITHUB_TOKEN 与 LLM API Key）：
+//
+//	export GITHUB_TOKEN=ghp_xxx                    # 需要 issues 读 + label 写权限
+//	export GH_REPO=owner/repo                      # 可选，默认 owner/repo
+//	go run ./ecosystem/examples/github-issue-triage/
+//
 // 无 API Key 也能跑（自动用 mock LLM，演示工具调用流程 + 预期结果）
 package main
 
@@ -68,13 +74,33 @@ func main() {
 	fmt.Println("=== AgentPrimordia: GitHub Issue Triage Bot ===")
 	fmt.Println()
 
-	// 1. 启动 mock GitHub server
-	server := newMockGitHubServer()
-	apiBaseURL, shutdown := server.start()
-	defer shutdown()
-	apiBase = apiBaseURL // 注入给 tools 包
-	fmt.Printf("[Mock Server] GitHub API mock 启动于 %s\n", apiBaseURL)
-	fmt.Printf("[Seed]       %d 个预置 issue 等待分类\n\n", len(server.snapshot()))
+	// 1. 决定 GitHub API 模式
+	//    - 真实模式：同时设置了 GITHUB_TOKEN 与 LLM API Key（需 LLM 驱动 ReAct 循环）
+	//    - mock 模式：其余情况（无 GITHUB_TOKEN，或缺少 LLM Key 时安全回退，不触碰真实仓库）
+	token := os.Getenv("GITHUB_TOKEN")
+	hasLLMKey := os.Getenv("OPENAI_API_KEY") != "" || os.Getenv("QWEN_API_KEY") != "" || os.Getenv("DEEPSEEK_API_KEY") != ""
+	useRealGitHub := token != "" && hasLLMKey
+
+	var server *mockGitHubServer
+	if useRealGitHub {
+		githubToken = token
+		if repo := os.Getenv("GH_REPO"); repo != "" {
+			githubRepo = repo
+		}
+		fmt.Printf("[GitHub API] 真实 API 模式：%s\n", githubRepo)
+		fmt.Printf("[提示]       请确保该 token 对 %s 有 issues 读取与 label 写入权限\n", githubRepo)
+	} else {
+		server = newMockGitHubServer()
+		apiBaseURL, shutdown := server.start()
+		defer shutdown()
+		apiBase = apiBaseURL // 注入给 tools 包
+		fmt.Printf("[Mock Server] GitHub API mock 启动于 %s\n", apiBaseURL)
+		fmt.Printf("[Seed]       %d 个预置 issue 等待分类\n\n", len(server.snapshot()))
+		if token != "" {
+			fmt.Println("[提示] 已设置 GITHUB_TOKEN 但缺少 LLM API Key：真实 GitHub API 需要 LLM 驱动，已安全回退 mock 模式（不会改动真实仓库）")
+		}
+	}
+	fmt.Println()
 
 	// 2. 创建 LLM Provider（按环境变量自动选择）
 	_, providerName, isMock, err := createProvider()
@@ -142,29 +168,39 @@ func main() {
 	fmt.Println(report)
 	fmt.Println()
 
-	// 5. 显示最终状态
+	// 5. 显示最终状态（mock 模式可读取服务端快照；真实 API 模式无法回读）
 	fmt.Println("=== 最终 Issue 状态 ===")
 	fmt.Println()
-	for _, iss := range server.snapshot() {
-		fmt.Println(formatIssueBrief(iss))
+	if server != nil {
+		for _, iss := range server.snapshot() {
+			fmt.Println(formatIssueBrief(iss))
+		}
+	} else {
+		fmt.Println("（真实 GitHub API 模式：无法读取服务端快照，最终状态见上方 Agent 输出的报告）")
 	}
 	fmt.Println()
 
 	// 6. 统计
-	totalIssues := len(server.snapshot())
-	labeledCount := 0
-	for _, iss := range server.snapshot() {
-		if len(iss.Labels) > 0 {
-			labeledCount++
+	if server != nil {
+		totalIssues := len(server.snapshot())
+		labeledCount := 0
+		for _, iss := range server.snapshot() {
+			if len(iss.Labels) > 0 {
+				labeledCount++
+			}
 		}
+		fmt.Println("=== 统计 ===")
+		fmt.Printf("总 Issue 数:     %d\n", totalIssues)
+		fmt.Printf("已分类 Issue 数: %d\n", labeledCount)
+		fmt.Printf("耗时:            %v\n", elapsed.Round(100*time.Millisecond))
+		fmt.Printf("LLM 轮数:        %d\n", turns)
+		fmt.Printf("工具调用次数:    %d\n", toolsUsed)
+	} else {
+		fmt.Println("=== 统计 ===")
+		fmt.Printf("耗时:            %v\n", elapsed.Round(100*time.Millisecond))
+		fmt.Printf("LLM 轮数:        %d\n", turns)
+		fmt.Printf("工具调用次数:    %d\n", toolsUsed)
 	}
-
-	fmt.Println("=== 统计 ===")
-	fmt.Printf("总 Issue 数:     %d\n", totalIssues)
-	fmt.Printf("已分类 Issue 数: %d\n", labeledCount)
-	fmt.Printf("耗时:            %v\n", elapsed.Round(100*time.Millisecond))
-	fmt.Printf("LLM 轮数:        %d\n", turns)
-	fmt.Printf("工具调用次数:    %d\n", toolsUsed)
 }
 
 // createProvider 按环境变量自动选择 LLM Provider
