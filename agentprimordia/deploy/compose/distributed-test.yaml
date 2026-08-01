@@ -1,0 +1,37 @@
+# AgentPrimordia 分布式后端集成测试依赖
+#
+# 提供 etcd + Redis 两个真实后端，供 build-tag 门控的集成测试使用：
+#
+#   # 启动依赖
+#   docker compose -f deploy/compose/distributed-test.yaml up -d
+#
+#   # 运行集成测试（无服务时测试会优雅跳过）
+#   make test-distributed-backends
+#
+#   # 停止并清理
+#   docker compose -f deploy/compose/distributed-test.yaml down -v
+
+services:
+  etcd:
+    image: bitnami/etcd:3.5
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://127.0.0.1:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+    ports:
+      - "2379:2379"
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

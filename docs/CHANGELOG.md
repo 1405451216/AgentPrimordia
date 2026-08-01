@@ -16,6 +16,15 @@
 - **AGENTS.md 白名单边界修正**: grpc 依赖的使用边界从「仅限 `internal/agent/a2a/`」更新为同时涵盖 `internal/agent/cluster/`（`grpc_bus.go`）与 `internal/agent/transport/`（`grpc.go`），与 V3.1 计划 3.2 的落地保持一致
 - **仓库卫生清理**: `.gitignore` 补充 `.aelacli/`、`.qoder/`、`__pycache__/`、`cover_eval` 等条目并修复乱码注释；将误提交的 26MB agent 会话库、Qoder 产物、覆盖率 profile 从 git 追踪中移除
 
+### Added — 分布式后端集成测试接入 CI（etcd + Redis 真实服务）
+
+- **CI 新 job** (`distributed-backend-tests`): 启动 etcd（bitnami/etcd:3.5）+ Redis（redis:7-alpine）服务容器，运行 build-tag 门控的真实后端集成测试
+  - `go test -tags=etcd,redis` `internal/persist/...` — 检查点 CRUD / 租约过期 / 跨节点恢复
+  - `go test -tags=etcd` `internal/agent/cluster/...`（EtcdKVStore/EtcdEndpoint）— 端点校验 / Put/Get/List/Watch/TTL
+  - 服务不可达时测试优雅跳过，可达时跑真实链路（此前这些测试从未在任何 CI 中执行）
+- **本地运行入口**: `Makefile` 新增 `test-distributed-backends` 目标；`deploy/compose/distributed-test.yaml` 提供 etcd + Redis 测试依赖一键启动
+- 顺带发现：`internal/agent/cluster` 下 `-tags=e2e` 的 10 节点 scale 测试（AgentMigration/LeaderElection）存在时序性 key 过期 flaky，暂未纳入 CI（后续单独治理）
+
 
 ## [v3.2.0] - 2026-07-31
 

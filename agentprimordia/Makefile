@@ -1,4 +1,4 @@
-.PHONY: build test test-race test-short test-integration lint lint-all lint-go lint-ts cover cover-html cover-check \
+.PHONY: build test test-race test-short test-integration test-distributed-backends lint lint-all lint-go lint-ts cover cover-html cover-check \
         deprecation-check benchmark api-diff api-extract cover-trend clean run-hello run-multi run-production \
         docker-build docker-run docker-clean \
         pgo-profile pgo-build pgo-clean test-ts test-affected
@@ -37,6 +37,13 @@ test-short:
 # 集成测试（需要 OPENAI_API_KEY 等环境变量）
 test-integration:
 	go test -tags=integration -timeout 5m -v ./...
+
+# 分布式后端集成测试（需要真实 etcd + Redis）
+# 先启动依赖：docker compose -f deploy/compose/distributed-test.yaml up -d
+# 无服务时测试会优雅跳过（skip），有服务时跑真实 CRUD/租约/发现链路
+test-distributed-backends:
+	go test -tags=etcd,redis -count=1 -timeout 10m -v ./internal/persist/...
+	go test -tags=etcd -count=1 -timeout 10m -v ./internal/agent/cluster/...
 
 # 跑覆盖率检查并打印报告
 cover:
