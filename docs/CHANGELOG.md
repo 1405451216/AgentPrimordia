@@ -4,6 +4,30 @@
 
 ## [Unreleased]
 
+### Fixed — CI 主流程全绿修复（首次推送远端实跑暴露）
+
+推送远端后 CI 首次真实运行，暴露多项**预存缺陷**（此前 CI 长期红着）：
+
+- **Go 路径问题**（根 `go build ./...` 在 workspace 下失败 `directory prefix . does not contain modules`）：test job 的 Build/Test/coverage、security 的 govulncheck/go-licenses、operator-envtest、build-cli、cross-compile、api-diff、release.yml 全部补 `working-directory: agentprimordia`
+- **distributed-backend-tests 容器初始化失败**：`bitnami/etcd:3.5` 镜像已从 Docker Hub 下架 → 换 `quay.io/coreos/etcd:v3.5.12`（compose 两处同步）
+- **Agent Eval 失败**：Build sanity 同路径问题 + 软失败逻辑 `$?` 读到 `cat` 退出码恒为 0 → 补 working-directory + `set +e` 捕获真实退出码
+- **Supply Chain SBOM 失败**：`scripts/generate-sbom.sh` / `cosign-sign.sh` 被 workflow 引用但从未提交 → 新建两脚本
+- **jsonutil `ReadAllPooled` 脏读回归修复**（真实 bug）：Get 后未 Reset 就 `io.Copy`，同包 `Marshal` 留下的池残留导致结果含陈旧数据（实测 4096+1889=5985）→ Get 处补 `buf.Reset()` + 新增确定性回归测试
+- **悬空文档引用修正**：两处指向不存在的 `docs/plans/2026-06-04-phase6-implementation.md` 改为指向 `agentprimordia/docs/VERSIONING.md`
+
+### Changed — Lint 门修复（TS ESLint + Go golangci-lint 长期红灯）
+
+- **TypeScript**：修复 `eslint src/` 全部 84 个 error（no-unused-vars 53、no-unsafe-function-type 16、consistent-type-imports 7 等），不改变运行时行为；`database-code-knowledge.test.ts` 的 go run 子进程测试超时放宽到 20s（负载 flaky 治理）。验证：eslint 0 错误 / tsc / vitest 2545 全过
+- **Go**：修复 `golangci-lint` 全部 131 个 error（errcheck 50、unused 50、staticcheck 23、gosimple 6、ineffassign 2），82 测试包全过。关键决策：
+  - 恢复 `llm/cache.go` 注释明确"保留作为 fallback（perf-v6 Task 3）"的分桶实现（nolint 抑制）
+  - `persist/testhelpers_test.go`（供 etcd/redis build-tag 集成测试使用）加 `//go:build etcd || redis`，避免默认构建误报 unused
+  - SA5011 三处 nil 解引用加防御式检查；SA1019 弃用 API 加 `nolint:staticcheck` 说明
+
+### 里程碑：CI 关键 gate 首跑即绿
+
+- **`contract-baseline`**（API 契约漂移门）✅ 首跑成功
+- **`version-consistency`**（跨语言版本一致）✅ 首跑成功
+
 ### Added — Studio Web UI 补全为可构建应用
 
 - **Studio 应用壳补全** (`agentprimordia/studio/web/`): 新增 `package.json`、`vite.config.ts`、`tsconfig.json`、`index.html`、`src/main.tsx`、`src/router.tsx`（路由树）、`src/App.tsx`（侧边导航布局）、`src/styles.css`，接入已有 4 页面（ChaosLab / ClusterDashboard / LearningMonitor / MarketplacePage）
