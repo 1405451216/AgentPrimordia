@@ -145,3 +145,44 @@ jobs:
             tail -20 agentprimordia/chaos-report.txt >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
+
+  # ===== 真实 LLM 集成测试（多 Provider 可用性验证） =====
+  #
+  # 运行 TestIntegration_* 套件（//go:build integration 门控）：
+  #   - 在仓库 Secrets 中配置对应 API Key 的 Provider 会跑真实调用
+  #   - 未配置的 Provider 测试优雅跳过（SKIP），不会导致失败
+  # 用于持续验证多 Provider（OpenAI/Anthropic/Gemini/Qwen/DeepSeek/GLM）
+  # 的真实可用性，防止模型/凭据变更被无声吞掉。
+  llm-integration:
+    name: Real LLM Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Run real LLM integration tests
+        working-directory: agentprimordia
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          QWEN_API_KEY: ${{ secrets.QWEN_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+        run: |
+          go test -tags=integration -count=1 -timeout=15m \
+            ./internal/llm/... ./internal/agent/... ./internal/guardrail/... ./pkg/...
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 真实 LLM 集成测试" >> $GITHUB_STEP_SUMMARY
+          echo "运行时间: $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "未配置 API Key 的 Provider 集成测试会跳过（SKIP）；" >> $GITHUB_STEP_SUMMARY
+          echo "配置后跑真实调用，401/超时等凭据或服务问题会在此 job 暴露。" >> $GITHUB_STEP_SUMMARY

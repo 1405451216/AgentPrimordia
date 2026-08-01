@@ -47,6 +47,21 @@
 - **main.go 模式选择**: `GITHUB_TOKEN` + LLM API Key 同时存在 → 真实仓库完整 ReAct triage；仅 token 缺 LLM Key 时安全回退 mock 模式（不触碰真实仓库）；真实模式下快照/统计区优雅降级
 - **新增 `tools_test.go` 5 例**（httptest 验证 URL/鉴权头/POST body/错误透传）；mock 模式端到端验证通过
 
+### Fixed — 集群领导者选举不收敛（生产 bug）
+
+- **根因**: `becomeFollower` 定义后从未被调用，且 `_leader_lease` 写入各节点**独立**的本地 `DistributedState`，无法跨节点协调——简化版选举只有"自举为 leader"路径，多节点永远无法收敛共识（10 节点 scale 测试暴露）
+- **修复** (`internal/agent/cluster/manager.go`): `ClusterConfig` 新增可选 `StateStore KVStore`（共享 KV 后端）；选举以共享租约 `_leader_lease` 为权威事实源——持有有效租约的在线节点成为领导者，其余节点调用 `becomeFollower` 跟随，从而收敛；`StateStore` 为空时退化为原本地行为（单节点场景不受影响）
+- **e2e scale 测试加固** (`e2e_scale_test.go` / `scale_helpers_test.go`):
+  - 选举测试由固定 5s sleep 改为轮询直到 ≥半数收敛（30s 上限），10/10 节点收敛实测 2s
+  - 注册传播/迁移测试按真实契约补 Agent 续租（`startAgentKeepalive` helper，`Register` 的 key TTL=heartbeat*3 需调用方续租），消除 TTL 边界 flaky
+  - 测试集群 `createTestCluster` 接线共享 `StateStore`
+- **验证**: `-tags=e2e` 10 节点套件连续 3 次全过；既有单节点选举测试与默认 cluster 测试无回归
+
+### Added — Nightly 真实 LLM 集成测试
+
+- **`nightly.yml` 新增 `llm-integration` job**: 运行 `-tags=integration` 门控的 `TestIntegration_*` 套件（internal/llm、agent、guardrail、pkg），仓库 Secrets 中配置了 API Key 的 Provider 跑真实调用，未配置的优雅跳过——持续验证 OpenAI/Anthropic/Gemini/Qwen/DeepSeek/GLM 多 Provider 真实可用性
+
+
 
 
 ## [v3.2.0] - 2026-07-31
