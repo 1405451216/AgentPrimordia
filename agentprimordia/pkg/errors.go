@@ -119,6 +119,36 @@ var (
 	ErrGlobalWriteConflict = concurrency.ErrGlobalWriteConflict
 	// ErrScopeOverlap 表示作用域存在重叠
 	ErrScopeOverlap = concurrency.ErrScopeOverlap
+
+	// --- Governance 错误 ---
+	// ErrQuotaExceeded 表示配额已耗尽
+	ErrQuotaExceeded = errors.New("ap: quota exceeded")
+	// ErrPolicyDenied 表示策略执行被拒绝
+	ErrPolicyDenied = errors.New("ap: policy enforcement denied")
+
+	// --- Guardrail 错误 ---
+	// ErrInputBlocked 表示输入被护栏拦截
+	ErrInputBlocked = errors.New("ap: input blocked by guardrail")
+	// ErrOutputBlocked 表示输出被护栏拦截
+	ErrOutputBlocked = errors.New("ap: output blocked by guardrail")
+
+	// --- Orchestration 错误 ---
+	// ErrNoAgentAvailable 表示无可用 Agent 处理请求
+	ErrNoAgentAvailable = errors.New("ap: no agent available")
+	// ErrHandoffLimitExceeded 表示 Handoff 次数超限
+	ErrHandoffLimitExceeded = errors.New("ap: handoff limit exceeded")
+
+	// --- A2A 错误 ---
+	// ErrA2ATaskNotFound 表示 A2A 任务未找到
+	ErrA2ATaskNotFound = errors.New("ap: a2a task not found")
+	// ErrA2ATaskConflict 表示 A2A 任务冲突
+	ErrA2ATaskConflict = errors.New("ap: a2a task conflict")
+
+	// --- Provider 超时/速率 ---
+	// ErrRateLimited 表示 LLM 请求被速率限制
+	ErrRateLimited = errors.New("ap: rate limited")
+	// ErrProviderTimeout 表示 LLM 提供者超时
+	ErrProviderTimeout = errors.New("ap: provider timeout")
 )
 
 // GetErrorCode 从错误中提取结构化错误码，支持 sentinel 错误和 Code() 接口
@@ -179,6 +209,27 @@ var errorCodeMapping = map[error]string{
 	// --- Concurrency 错误 ---
 	ErrGlobalWriteConflict: "CON_001",
 	ErrScopeOverlap:        "CON_002",
+
+	// --- Governance 错误 ---
+	ErrQuotaExceeded:  "GOV_001",
+	ErrPolicyDenied:   "GOV_002",
+	ErrOutputTooLong:  "GOV_003",
+
+	// --- Guardrail 错误 ---
+	ErrInputBlocked:  "GRD_001",
+	ErrOutputBlocked: "GRD_002",
+
+	// --- Orchestration 错误 ---
+	ErrNoAgentAvailable:    "ORC_001",
+	ErrHandoffLimitExceeded: "ORC_002",
+
+	// --- A2A 错误 ---
+	ErrA2ATaskNotFound: "A2A_001",
+	ErrA2ATaskConflict: "A2A_002",
+
+	// --- Provider 错误 ---
+	ErrRateLimited:     "LLM_009",
+	ErrProviderTimeout: "LLM_010",
 }
 
 func GetErrorCode(err error) string {
@@ -195,4 +246,29 @@ func GetErrorCode(err error) string {
 	}
 
 	return "UNKNOWN"
+}
+
+// IsRetryable 判断错误是否可重试（超时、速率限制、熔断器打开）
+func IsRetryable(err error) bool {
+	return errors.Is(err, ErrProviderTimeout) ||
+		errors.Is(err, ErrRateLimited) ||
+		errors.Is(err, ErrCircuitOpen) ||
+		errors.Is(err, ErrRetriesExhausted)
+}
+
+// IsTimeout 判断错误是否为超时类错误
+func IsTimeout(err error) bool {
+	return errors.Is(err, ErrProviderTimeout) ||
+		errors.Is(err, ErrTimeout) ||
+		errors.Is(err, ErrContextCanceled)
+}
+
+// IsAccessDenied 判断错误是否为访问拒绝类错误
+func IsAccessDenied(err error) bool {
+	return errors.Is(err, ErrAccessDenied) ||
+		errors.Is(err, ErrCommandBlocked) ||
+		errors.Is(err, ErrCommandNotAllowed) ||
+		errors.Is(err, ErrPolicyDenied) ||
+		errors.Is(err, ErrInputBlocked) ||
+		errors.Is(err, ErrOutputBlocked)
 }
