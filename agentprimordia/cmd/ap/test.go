@@ -9,31 +9,50 @@ import (
 )
 
 func runTest(args []string) error {
-	var verbose bool
+	var verbose, e2e bool
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--verbose", "-v":
 			verbose = true
+		case "--e2e":
+			e2e = true
 		case "--help", "-h":
-			fmt.Print(`ap test — run eval test suite
+			fmt.Print(`ap test — run eval/e2e test suite
 
 Usage:
-  ap test [--verbose]
+  ap test [--verbose] [--e2e]
 
 Options:
   --verbose, -v   show detailed output
+  --e2e           run end-to-end integration tests (test/e2e/)
 
 Description:
   Run the eval test suite for the current project, evaluating
   tool call accuracy, output quality, and response relevance.
+  With --e2e, runs the framework end-to-end integration tests.
 
 Examples:
   ap test
   ap test --verbose
+  ap test --e2e
 `)
 			return nil
 		}
+	}
+
+	// E2E 模式：直接运行 test/e2e/ 下的集成测试
+	if e2e {
+		infof("running end-to-end integration tests...")
+		fmt.Println()
+		goTestArgs := []string{"test", "-v", "-count=1", "-timeout", "60s", "./test/e2e/..."}
+		result, err := runCommand(".", "go", goTestArgs...)
+		if err != nil {
+			return fmt.Errorf("e2e tests failed:\n%s", result)
+		}
+		fmt.Println(result)
+		successf("all e2e tests passed!")
+		return nil
 	}
 
 	dir, err := findProjectDir()
