@@ -3,12 +3,14 @@
  *
  * 与 Go 端 internal/protocol/types.go 配套，确保跨语言兼容性。
  */
-import {
+import type {
   AgentMessage,
   ToolCall,
   ToolResult,
   EventMessage,
   MemoryEntry,
+} from './types.js';
+import {
   RoleSystem,
   RoleUser,
   RoleAssistant,

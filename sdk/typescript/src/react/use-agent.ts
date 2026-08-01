@@ -181,7 +181,6 @@ export function useAgentImpl(
     if (options.autoStart && options.initialPrompt) {
       void run(options.initialPrompt);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.autoStart, options.initialPrompt]);
 
   return {

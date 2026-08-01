@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { MCPClient, MCPError, createToolCaller } from './client.js'
+import { describe, it, expect } from 'vitest'
+import { MCPError, createToolCaller } from './client.js'
 
 describe('MCPClient JSON-RPC', () => {
   it('should parse initialize response', () => {

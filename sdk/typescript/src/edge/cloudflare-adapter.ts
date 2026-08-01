@@ -66,7 +66,7 @@ export class CloudflareAdapter {
     const storage = this.resolveStorage(mergedConfig);
 
     return {
-      fetch: async (request: Request, env: Record<string, unknown>, _ctx: ExecutionContext): Promise<Response> => {
+      fetch: async (request: Request, _env: Record<string, unknown>, _ctx: ExecutionContext): Promise<Response> => {
         const url = new URL(request.url);
         const path = url.pathname;
 

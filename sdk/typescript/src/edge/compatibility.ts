@@ -177,7 +177,7 @@ export async function createKVStore(): Promise<KVStore> {
     if (env.KV_REST_API_URL && env.KV_REST_API_TOKEN) {
       // Vercel KV (Upstash Redis) - 动态导入避免 Node.js 依赖
       try {
-        // @ts-ignore - 运行时动态加载
+        // @ts-expect-error - @vercel/kv is an optional dependency, dynamically loaded at runtime
         const { kv: vercelKV } = await import('@vercel/kv');
         return new VercelEdgeKVStore(vercelKV);
       } catch {
@@ -189,7 +189,7 @@ export async function createKVStore(): Promise<KVStore> {
   // Deno
   if (rt.name === 'deno') {
     try {
-      // @ts-ignore - Deno 全局
+      // @ts-expect-error - Deno global types are not available in Node environments
       const kv = await Deno.openKv();
       return {
         get: (key: string) => kv.get([key]).then((r: unknown) => (r as { value?: string })?.value ?? null),
@@ -274,7 +274,6 @@ export async function createAgent(options: {
 
   // Edge Runtime 默认配置
   const timeout = rt.isEdge ? (options.timeout ?? 25000) : (options.timeout ?? 60000);
-  const maxTurns = rt.isEdge ? (options.maxTurns ?? 5) : (options.maxTurns ?? 10);
 
   return {
     name: options.name,

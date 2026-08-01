@@ -6,7 +6,7 @@
  * 由实际的 VS Code 扩展注入 vscode.TreeItem 实现。
  */
 
-import type { AgentInfo, PlaygroundClient } from '../playground/index.js';
+import type { PlaygroundClient } from '../playground/index.js';
 
 /** TreeItem 折叠状态（与 vscode.TreeItemCollapsibleState 对齐） */
 export enum TreeItemCollapsibleState {

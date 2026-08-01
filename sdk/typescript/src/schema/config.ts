@@ -3,7 +3,7 @@
  * Schema 为类型唯一真源，TS 类型通过 z.infer<T> 自动推导。
  */
 import { z } from 'zod';
-import { ToolCallSchema, ToolResultSchema, MessageSchema } from './messages.js';
+import { MessageSchema } from './messages.js';
 import { AgentMetricsSchema } from './responses.js';
 
 /** 响应格式类型 */

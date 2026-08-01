@@ -158,14 +158,15 @@ export class AgentMonitor {
 
     // 同样包装 streamEvents 方法，确保流式模式也能被监控
     const originalStream = agent.streamEvents.bind(agent);
-    const monitor = this;
+    const { agents, runRecords, maxRecords } = this;
+    const notify = (): void => this.notify();
     agent.streamEvents = async function* (input: string, options?: RunOptions): AsyncIterable<StreamEvent> {
-      const state = monitor.agents.get(name);
+      const state = agents.get(name);
       if (state) {
         state.status = 'running';
         state.startTime = Date.now();
         state.currentTurn = 0;
-        monitor.notify();
+        notify();
       }
 
       try {
@@ -177,13 +178,13 @@ export class AgentMonitor {
           yield event;
         }
 
-        const st = monitor.agents.get(name);
+        const st = agents.get(name);
         if (st && lastResponse) {
           st.status = 'completed';
           st.endTime = Date.now();
           st.currentTurn = lastResponse.metrics.totalTurns;
 
-          monitor.runRecords.push({
+          runRecords.push({
             agentName: name,
             sessionId: '',
             input: input.slice(0, 200),
@@ -191,18 +192,18 @@ export class AgentMonitor {
             duration: lastResponse.metrics.duration,
             timestamp: new Date().toISOString(),
           });
-          if (monitor.runRecords.length > monitor.maxRecords) {
-            monitor.runRecords.shift();
+          if (runRecords.length > maxRecords) {
+            runRecords.shift();
           }
-          monitor.notify();
+          notify();
         }
       } catch (err) {
-        const st = monitor.agents.get(name);
+        const st = agents.get(name);
         if (st) {
           st.status = 'error';
           st.endTime = Date.now();
           st.lastError = err instanceof Error ? err.message : String(err);
-          monitor.notify();
+          notify();
         }
         throw err;
       }

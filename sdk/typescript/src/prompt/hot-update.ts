@@ -315,7 +315,6 @@ export class HotUpdateManager {
         l(event);
       } catch (err) {
         // listener 抛错不阻断其他 listener
-        // eslint-disable-next-line no-console
         console.error('HotUpdateManager listener error:', err);
       }
     }

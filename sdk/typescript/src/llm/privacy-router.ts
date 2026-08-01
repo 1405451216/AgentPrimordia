@@ -13,8 +13,8 @@
  * - 邮箱、电话、身份证号、银行卡号、IP 地址
  */
 
-import type { Message, CompletionResponse, ModelInfo } from '../types.js';
-import { WebGPUProvider } from './webgpu-provider.js';
+import type { Message, CompletionResponse } from '../types.js';
+import type { WebGPUProvider } from './webgpu-provider.js';
 
 // ===== PII 检测 =====
 

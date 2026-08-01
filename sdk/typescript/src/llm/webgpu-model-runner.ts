@@ -91,7 +91,7 @@ export class TransformersBackend implements InferenceBackend {
   private pipeline: any = null;
   private modelId = '';
 
-  async load(modelId: string, config: InferenceConfig): Promise<void> {
+  async load(modelId: string, _config: InferenceConfig): Promise<void> {
     // 动态导入 @xenova/transformers
     let transformers: any;
     try {
@@ -499,7 +499,7 @@ export class WebGPUModelRunner implements WebGPURuntime {
     if (typeof indexedDB === 'undefined') return null;
 
     try {
-      return await new Promise((resolve, reject) => {
+      return await new Promise((resolve, _reject) => {
         const request = indexedDB.open(this.cacheStrategy.cacheName, 1);
         request.onupgradeneeded = () => {
           request.result.createObjectStore('models');
@@ -524,7 +524,7 @@ export class WebGPUModelRunner implements WebGPURuntime {
     if (typeof indexedDB === 'undefined') return;
 
     try {
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve, _reject) => {
         const request = indexedDB.open(this.cacheStrategy.cacheName, 1);
         request.onupgradeneeded = () => {
           request.result.createObjectStore('models');

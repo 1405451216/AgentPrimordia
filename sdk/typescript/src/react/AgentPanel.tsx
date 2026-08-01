@@ -43,7 +43,7 @@ export async function AgentPanel({ agentId, apiBase = "http://localhost:8080" }:
   return <AgentView agent={agent} error={error} />;
 }
 
-export function StreamingOutput({ stream }: { stream: ReadableStream<Uint8Array> }): ReactNode {
+export function StreamingOutput(): ReactNode {
   return (
     <div className="ap-streaming-output" data-stream="sse" aria-live="polite">
       <span className="sr-only">Streaming agent response...</span>

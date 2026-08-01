@@ -1,4 +1,4 @@
-import type { Message, ToolCall, Response, ToolResult } from '../types.js';
+import type { Message, Response } from '../types.js';
 import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { CostTracker, Checkpoint, CheckpointStore } from './request-id.js';
@@ -19,7 +19,7 @@ import { HookManager } from './hooks.js';
 import { Lifecycle } from './lifecycle.js';
 
 import { TurnExecutor } from './turn-executor.js';
-import type { CapabilitiesCache, TurnState, TurnResult } from './turn-executor.js';
+import type { CapabilitiesCache, TurnState } from './turn-executor.js';
 
 export interface RunOptions {
   signal?: AbortSignal;

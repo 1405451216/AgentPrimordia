@@ -18,9 +18,6 @@ import {
   RemoteLLMProvider,
   mockCapabilities,
   unsupportedCapabilities,
-  type WebGPURuntime,
-  type WebGPUCapabilities,
-  type ProviderResponse,
   type ChatChunk,
 } from '../webgpu-provider.js';
 

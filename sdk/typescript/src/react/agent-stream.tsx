@@ -28,8 +28,6 @@
 // 标记为 Server Component（Next.js App Router 约定）
 'use server'
 
-import { Suspense } from 'react'
-
 // ===== 类型定义 =====
 
 /** 流事件类型 */
@@ -119,7 +117,7 @@ export interface AgentStreamProps {
 // ===== 内部 Agent 接口 =====
 
 interface AgentLike {
-  run(prompt: string, opts?: { signal?: AbortSignal }): Promise<{ content: string; metrics?: any }>
+  run(prompt: string, opts?: { signal?: AbortSignal }): Promise<{ content: string; metrics?: { totalTurns: number; totalTools: number; duration: string } }>
   streamRun(prompt: string): AsyncIterable<string>
 }
 
@@ -137,7 +135,7 @@ interface AgentConfig {
 // 动态导入 Agent 构建器（避免循环依赖）
 async function buildAgent(cfg: AgentConfig): Promise<AgentLike> {
   try {
-    const { Agent } = await import('../agent/builder.js') as any
+    const { Agent } = await import('../agent/builder.js') as unknown as { Agent: new (cfg: AgentConfig) => AgentLike }
     return new Agent(cfg) as AgentLike
   } catch {
     throw new Error('Agent builder not available. Make sure @agentprimordia/sdk is properly configured.')

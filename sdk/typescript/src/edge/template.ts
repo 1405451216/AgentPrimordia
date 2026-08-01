@@ -24,7 +24,6 @@
  */
 
 import type { Provider } from '../llm/provider.js';
-import type { ReActAgent, StreamEvent } from '../agent/react-loop.js';
 import { buildEdgeAgent, MemoryEdgeStorage, type EdgeStorage } from './edge-storage.js';
 
 // ===== 模板配置 =====

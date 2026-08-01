@@ -14,7 +14,7 @@
 
 import type { Provider } from '../llm/provider.js';
 import type { ReActAgent } from '../agent/react-loop.js';
-import { buildEdgeAgent, MemoryEdgeStorage, BunSQLiteStorage, type EdgeStorage } from './edge-storage.js';
+import { buildEdgeAgent, BunSQLiteStorage, type EdgeStorage } from './edge-storage.js';
 
 export interface BunAgentOptions {
   name?: string;

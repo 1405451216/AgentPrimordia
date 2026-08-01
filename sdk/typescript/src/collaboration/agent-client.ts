@@ -24,7 +24,6 @@
 import {
   CRDTDocumentImpl,
   type Operation,
-  type CRDTDocument,
   LamportClock,
 } from './crdt.js';
 
@@ -300,7 +299,7 @@ export class AgentCRDTClient<T extends object> {
 
   // ===== 内部方法 =====
 
-  private recordOperation(op: Operation, source: 'agent' | 'human'): void {
+  private recordOperation(op: Operation, _source: 'agent' | 'human'): void {
     if (this.config.enableOperationLog) {
       this.operationLog.push(op);
     }

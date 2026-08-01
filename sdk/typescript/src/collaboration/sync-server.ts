@@ -213,7 +213,7 @@ export class SyncServer {
   // ===== 内部方法 =====
 
   /** 处理新连接 */
-  private handleConnection(ws: WebSocketLike, req?: any): void {
+  private handleConnection(ws: WebSocketLike, _req?: any): void {
     if (this.clients.size >= this.config.maxClients) {
       const errorMsg: SyncMessage = {
         type: 'error',
@@ -238,7 +238,7 @@ export class SyncServer {
           clientID = msg.from;
           this.registerClient(clientID, ws);
         }
-      } catch (e) {
+      } catch (_e) {
         const errorMsg: SyncMessage = {
           type: 'error',
           timestamp: Date.now(),
@@ -315,7 +315,7 @@ export class SyncServer {
   }
 
   /** 处理同步请求：发送操作历史快照 */
-  private handleSyncRequest(ws: WebSocketLike, clientID: string): void {
+  private handleSyncRequest(ws: WebSocketLike, _clientID: string): void {
     const response: SyncMessage = {
       type: 'snapshot',
       from: 'server',

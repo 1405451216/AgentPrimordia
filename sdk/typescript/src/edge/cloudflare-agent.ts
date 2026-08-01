@@ -165,7 +165,7 @@ export class CloudflareEdgeAgent {
     let content: string;
 
     try {
-      const { result: resp, retries: actualRetries } = await withRetry(
+      const { result: resp } = await withRetry(
         async () => {
           const retryController = new AbortController();
           const retryTimeout = setTimeout(
@@ -341,7 +341,7 @@ export class AgentDurableObject {
   }
 
   /** WebSocket 升级处理（流式事件推送） */
-  private handleWebSocket(request: Request): Response {
+  private handleWebSocket(_request: Request): Response {
     // 在非 CF 环境中，WebSocket API 可能不可用
     // 使用类型安全的方式检测
     const g = globalThis as Record<string, unknown>;

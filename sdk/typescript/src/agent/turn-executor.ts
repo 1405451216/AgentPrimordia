@@ -20,7 +20,7 @@ import type { CostTracker, Checkpoint, CheckpointStore } from './request-id.js';
 import type { Memory } from '../memory/store.js';
 import type { OTelBridge } from '../metrics/otel-extended.js';
 import type { StreamEvent } from './hooks.js';
-import { HookManager } from './hooks.js';
+import type { HookManager } from './hooks.js';
 import { validateLLMCompletion, validateToolCallResponse } from '../schema/index.js';
 
 // ===== 能力缓存接口 =====

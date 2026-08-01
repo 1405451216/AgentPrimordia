@@ -10,7 +10,7 @@
  * - 自动降级到远程 API（createWithFallback）
  */
 
-import type { Message, CompletionResponse, Chunk, ModelInfo } from '../types.js';
+import type { Message, ModelInfo } from '../types.js';
 
 /** GPU 限制信息（与 WebGPU GPUDevice.limits 对齐）*/
 export interface GPULimits {

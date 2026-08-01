@@ -20,6 +20,8 @@
  *   client.close()
  */
 
+import { spawn } from 'node:child_process';
+
 // ===== 类型定义 =====
 
 export interface MCPTool {
@@ -101,11 +103,10 @@ class SSETransport {
 // ===== stdio 传输层 =====
 
 class StdioTransport {
-  private child: ReturnType<typeof import('node:child_process').spawn> | null = null
+  private child: ReturnType<typeof spawn> | null = null
   private url?: string
 
   constructor(command: string, args: string[] = []) {
-    const { spawn } = require('node:child_process') as typeof import('node:child_process')
     this.child = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
   }
 

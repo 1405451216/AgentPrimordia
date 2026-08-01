@@ -40,8 +40,8 @@ import {
   type UseAgentDeps,
 } from './use-agent.js';
 import type { Agent, AgentConfig } from './use-agent.js';
-import { useReActLoopImpl } from './use-react-loop.js';
-import { useStreamRunImpl } from './use-stream-run.js';
+import { useReActLoopImpl, type ReActStreamer } from './use-react-loop.js';
+import { useStreamRunImpl, type StreamProvider } from './use-stream-run.js';
 
 /**
  * useAgentWithReact：构造绑定到具体 React 实例的 useAgent Hook。
@@ -76,7 +76,7 @@ export function useReActLoopWithReact(
     useRef: UseAgentDeps['useRef'];
     useEffect: UseAgentDeps['useEffect'];
   },
-  streamerFactory: () => import('./use-react-loop.js').ReActStreamer,
+  streamerFactory: () => ReActStreamer,
 ) {
   return function useReActLoop() {
     return useReActLoopImpl(React, streamerFactory);
@@ -93,7 +93,7 @@ export function useStreamRunWithReact(
     useRef: UseAgentDeps['useRef'];
     useEffect: UseAgentDeps['useEffect'];
   },
-  providerFactory: () => import('./use-stream-run.js').StreamProvider,
+  providerFactory: () => StreamProvider,
 ) {
   return function useStreamRun() {
     return useStreamRunImpl(React, providerFactory);

@@ -370,7 +370,7 @@ export class EnhancedWSTransport {
     }
 
     // 重发未确认消息
-    for (const [id, item] of this.pendingAcks) {
+    for (const [, item] of this.pendingAcks) {
       if (this.connected) {
         item.pending = false;
         this.doSend(item);

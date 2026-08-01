@@ -833,7 +833,6 @@ export class WasmRuntime {
       }
 
       const errorMsg = err instanceof Error ? err.message : String(err);
-      const isTimeout = errorMsg.includes('timeout') || errorMsg.includes('Timeout');
 
       return {
         success: false,
@@ -984,7 +983,7 @@ export class CodeSandboxV2 {
   }
 
   /** 执行 JavaScript（Worker Thread） */
-  private async runJs(request: ExecRequest, timeout: number): Promise<ExecResult> {
+  private async runJs(request: ExecRequest, _timeout: number): Promise<ExecResult> {
     const code = request.code as string;
 
     // 安全检查
@@ -1056,7 +1055,7 @@ export class CodeSandboxV2 {
   }
 
   /** 执行 Python 代码（通过 Pyodide，可选） */
-  private async runPython(request: ExecRequest, timeout: number): Promise<ExecResult> {
+  private async runPython(request: ExecRequest, _timeout: number): Promise<ExecResult> {
     const startTime = Date.now();
 
     try {

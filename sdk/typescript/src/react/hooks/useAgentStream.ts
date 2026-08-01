@@ -101,7 +101,6 @@ export function useAgentStreamImpl(
   deps.useEffect(() => {
     if (options?.prompt) start(options.prompt);
     return () => abortRef.current?.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options?.prompt]);
 
   return {

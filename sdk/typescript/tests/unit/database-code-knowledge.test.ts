@@ -277,12 +277,13 @@ describe('CodeExecutionTool', () => {
     expect(typeof result).toBe('string');
   });
 
+  // go run 会触发真实 Go 工具链编译，在负载机器上可能超过默认 5s，放宽超时
   it('should support Go language parameter', async () => {
     process.env.AP_ALLOW_CODE_EXECUTION = 'true';
     const tool = new CodeExecutionTool();
     const result = await tool.execute({ language: 'go', code: 'package main\nfunc main() { println("hello") }' });
     expect(typeof result).toBe('string');
-  });
+  }, 20000);
 
   it('should use default timeout when not specified', async () => {
     process.env.AP_ALLOW_CODE_EXECUTION = 'true';

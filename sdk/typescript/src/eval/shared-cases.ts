@@ -5,7 +5,6 @@
  * - 同样 5 个标准用例
  * - 同样的字段结构和 JSON 兼容格式
  */
-import type { AgentMessage } from '../protocol/types.js';
 
 // ===== 类型定义 =====
 

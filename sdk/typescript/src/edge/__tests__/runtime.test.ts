@@ -15,7 +15,6 @@ import {
   supports,
   createTimer,
   getWebSocketConstructor,
-  type RuntimeInfo,
 } from '../runtime.js';
 
 const g = globalThis as Record<string, unknown>;

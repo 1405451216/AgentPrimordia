@@ -19,7 +19,7 @@
  * // => "操作在 30 秒后超时"
  */
 
-import { en, type LocaleKey } from './locales/en.js';
+import { en } from './locales/en.js';
 import { zhCN } from './locales/zh-CN.js';
 import { ja } from './locales/ja.js';
 

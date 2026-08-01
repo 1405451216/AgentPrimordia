@@ -14,11 +14,9 @@ import {
   WebGPUProvider,
   MockWebGPURuntime,
   type ChatChunk,
-  type ProviderResponse,
 } from '../webgpu-provider.js';
 import {
   WebGPUModelRunner,
-  DEFAULT_INFERENCE_CONFIG,
 } from '../webgpu-model-runner.js';
 
 // ===== Mock GPU 环境 =====

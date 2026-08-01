@@ -6,8 +6,7 @@
  * - TS 类型通过 `z.infer<>` 从 schema 自动推导，不允许手写 interface 作为类型主定义
  * - runtime 使用 `safeParse` / `parse` 对 LLM 返回结果做运行时验证
  */
-import { z } from 'zod';
-import { CompletionResponseSchema, ToolCallResponseSchema, ResponseSchema } from './responses.js';
+import { CompletionResponseSchema, ToolCallResponseSchema } from './responses.js';
 import { MessageSchema } from './messages.js';
 import { StreamEventSchema } from './events.js';
 import type { CompletionResponse, ToolCallResponse } from './responses.js';

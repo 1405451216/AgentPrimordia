@@ -13,8 +13,6 @@
  * - ��������ƴ�Ӻ���ַ���
  */
 
-import type { ReactElement } from 'react';
-
 /** StreamView ���� */
 export interface StreamViewProps {
   /** �ı��� */

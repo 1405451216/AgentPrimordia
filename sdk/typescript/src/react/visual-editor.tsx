@@ -243,10 +243,6 @@ export function VisualEditor({
     if (selectedNode === id) setSelectedNode(null)
   }, [selectedNode])
 
-  const deleteEdge = useCallback((id: string) => {
-    setGraph((prev) => ({ ...prev, edges: prev.edges.filter((e) => e.id !== id) }))
-  }, [])
-
   const updateNode = useCallback((id: string, updates: Partial<EditorNode>) => {
     setGraph((prev) => ({
       ...prev,

@@ -74,8 +74,14 @@ export function diffPrompts(a: string, b: string): PromptDiff {
       j++;
     }
   }
-  while (i < n) lines.push({ op: 'delete', text: aLines[i]!, aLine: i + 1, bLine: null }), i++;
-  while (j < m) lines.push({ op: 'insert', text: bLines[j]!, aLine: null, bLine: j + 1 }), j++;
+  while (i < n) {
+    lines.push({ op: 'delete', text: aLines[i]!, aLine: i + 1, bLine: null });
+    i++;
+  }
+  while (j < m) {
+    lines.push({ op: 'insert', text: bLines[j]!, aLine: null, bLine: j + 1 });
+    j++;
+  }
 
   const added = lines.filter((l) => l.op === 'insert').length;
   const removed = lines.filter((l) => l.op === 'delete').length;

@@ -1,4 +1,4 @@
-import type { AgentTemplate, DeployConfig, DeployResult } from './types.js';
+import type { DeployConfig, DeployResult } from './types.js';
 import type { TemplateRegistry } from './registry.js';
 
 /**

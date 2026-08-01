@@ -12,7 +12,7 @@
 
 import type { Provider } from '../llm/provider.js';
 import type { ReActAgent, StreamEvent } from '../agent/react-loop.js';
-import { buildEdgeAgent, MemoryEdgeStorage, DenoKVStorage, type EdgeStorage } from './edge-storage.js';
+import { buildEdgeAgent, DenoKVStorage, type EdgeStorage } from './edge-storage.js';
 
 export interface DenoAgentOptions {
   name?: string;

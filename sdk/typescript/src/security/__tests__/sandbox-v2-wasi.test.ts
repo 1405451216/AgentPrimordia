@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { WasiShim, VirtualFS } from '../sandbox-v2.js';
+import { WasiShim } from '../sandbox-v2.js';
 
 /** 创建一块 WASM 线性内存用于测试 */
 function createMemory(pages = 1): WebAssembly.Memory {
@@ -72,7 +72,7 @@ describe('WasiShim — 完整测试', () => {
   describe('fd_write — 写入文件描述符', () => {
     it('写入 stdout (fd=1) 应捕获到 getStdout', () => {
       const imports = wasi.buildImports();
-      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as Function;
+      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as (...args: unknown[]) => unknown;
 
       const text = 'hello stdout';
       // 在内存 offset=100 写入文本
@@ -91,7 +91,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('写入 stderr (fd=2) 应捕获到 getStderr', () => {
       const imports = wasi.buildImports();
-      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as Function;
+      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as (...args: unknown[]) => unknown;
 
       writeString(memory, 200, 'error msg');
       const view = new DataView(memory.buffer);
@@ -105,7 +105,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('写入 stdin (fd=0) 应返回 EBADF', () => {
       const imports = wasi.buildImports();
-      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as Function;
+      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as (...args: unknown[]) => unknown;
 
       const view = new DataView(memory.buffer);
       view.setUint32(0, 100, true);
@@ -117,7 +117,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('多个 iovec 应累加写入', () => {
       const imports = wasi.buildImports();
-      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as Function;
+      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as (...args: unknown[]) => unknown;
 
       // 字符串放在 offset=500 和 offset=600，避免与其他内存区域重叠
       writeString(memory, 500, 'part1');
@@ -142,7 +142,7 @@ describe('WasiShim — 完整测试', () => {
   describe('fd_read — 读取文件描述符', () => {
     it('读取 stdin (fd=0) 应返回 EOF（0字节）', () => {
       const imports = wasi.buildImports();
-      const fdRead = imports['wasi_snapshot_preview1']['fd_read'] as Function;
+      const fdRead = imports['wasi_snapshot_preview1']['fd_read'] as (...args: unknown[]) => unknown;
 
       const view = new DataView(memory.buffer);
       view.setUint32(0, 100, true);  // iov.buf
@@ -155,7 +155,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('读取 stdout (fd=1) 应返回 EBADF', () => {
       const imports = wasi.buildImports();
-      const fdRead = imports['wasi_snapshot_preview1']['fd_read'] as Function;
+      const fdRead = imports['wasi_snapshot_preview1']['fd_read'] as (...args: unknown[]) => unknown;
 
       const view = new DataView(memory.buffer);
       view.setUint32(0, 100, true);
@@ -170,7 +170,7 @@ describe('WasiShim — 完整测试', () => {
   describe('environ_get — 环境变量', () => {
     it('environ_sizes_get 应返回正确的 count 和 bufSize', () => {
       const imports = wasi.buildImports();
-      const sizesGet = imports['wasi_snapshot_preview1']['environ_sizes_get'] as Function;
+      const sizesGet = imports['wasi_snapshot_preview1']['environ_sizes_get'] as (...args: unknown[]) => unknown;
 
       const view = new DataView(memory.buffer);
       const errno = sizesGet(0, 4);
@@ -186,7 +186,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('environ_get 应将环境变量写入内存', () => {
       const imports = wasi.buildImports();
-      const envGet = imports['wasi_snapshot_preview1']['environ_get'] as Function;
+      const envGet = imports['wasi_snapshot_preview1']['environ_get'] as (...args: unknown[]) => unknown;
 
       // 指针数组从 offset=0 开始，字符串缓冲区从 offset=100 开始
       const errno = envGet(0, 100);
@@ -205,7 +205,7 @@ describe('WasiShim — 完整测试', () => {
   describe('args_get — 命令行参数', () => {
     it('args_sizes_get 应返回正确的 count 和 bufSize', () => {
       const imports = wasi.buildImports();
-      const sizesGet = imports['wasi_snapshot_preview1']['args_sizes_get'] as Function;
+      const sizesGet = imports['wasi_snapshot_preview1']['args_sizes_get'] as (...args: unknown[]) => unknown;
 
       const view = new DataView(memory.buffer);
       const errno = sizesGet(0, 4);
@@ -218,7 +218,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('args_get 应将参数写入内存', () => {
       const imports = wasi.buildImports();
-      const argsGet = imports['wasi_snapshot_preview1']['args_get'] as Function;
+      const argsGet = imports['wasi_snapshot_preview1']['args_get'] as (...args: unknown[]) => unknown;
 
       const errno = argsGet(0, 100);
       expect(errno).toBe(0);
@@ -238,7 +238,7 @@ describe('WasiShim — 完整测试', () => {
   describe('clock_time_get — 时间获取', () => {
     it('REALTIME 应返回当前时间（纳秒）', () => {
       const imports = wasi.buildImports();
-      const clockGet = imports['wasi_snapshot_preview1']['clock_time_get'] as Function;
+      const clockGet = imports['wasi_snapshot_preview1']['clock_time_get'] as (...args: unknown[]) => unknown;
 
       const before = BigInt(Date.now()) * 1_000_000n;
       const view = new DataView(memory.buffer);
@@ -253,7 +253,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('MONOTONIC 应返回经过时间', () => {
       const imports = wasi.buildImports();
-      const clockGet = imports['wasi_snapshot_preview1']['clock_time_get'] as Function;
+      const clockGet = imports['wasi_snapshot_preview1']['clock_time_get'] as (...args: unknown[]) => unknown;
 
       const view = new DataView(memory.buffer);
       const errno = clockGet(1, 0n, 0); // MONOTONIC=1
@@ -269,7 +269,7 @@ describe('WasiShim — 完整测试', () => {
   describe('proc_exit — 退出处理', () => {
     it('应抛出 WasiExitError 并设置 exitCode', () => {
       const imports = wasi.buildImports();
-      const procExit = imports['wasi_snapshot_preview1']['proc_exit'] as Function;
+      const procExit = imports['wasi_snapshot_preview1']['proc_exit'] as (...args: unknown[]) => unknown;
 
       expect(() => procExit(42)).toThrow();
       expect(wasi.getExitCode()).toBe(42);
@@ -277,7 +277,7 @@ describe('WasiShim — 完整测试', () => {
 
     it('exitCode 0 也应被记录', () => {
       const imports = wasi.buildImports();
-      const procExit = imports['wasi_snapshot_preview1']['proc_exit'] as Function;
+      const procExit = imports['wasi_snapshot_preview1']['proc_exit'] as (...args: unknown[]) => unknown;
 
       expect(() => procExit(0)).toThrow();
       expect(wasi.getExitCode()).toBe(0);
@@ -289,7 +289,7 @@ describe('WasiShim — 完整测试', () => {
     it('未 bindMemory 时调用应抛出 Memory not bound', () => {
       const unbound = new WasiShim();
       const imports = unbound.buildImports();
-      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as Function;
+      const fdWrite = imports['wasi_snapshot_preview1']['fd_write'] as (...args: unknown[]) => unknown;
 
       expect(() => fdWrite(1, 0, 1, 0)).toThrow('Memory not bound');
     });
@@ -299,7 +299,7 @@ describe('WasiShim — 完整测试', () => {
   describe('random_get', () => {
     it('应填充随机字节', () => {
       const imports = wasi.buildImports();
-      const randomGet = imports['wasi_snapshot_preview1']['random_get'] as Function;
+      const randomGet = imports['wasi_snapshot_preview1']['random_get'] as (...args: unknown[]) => unknown;
 
       // 先清零
       new Uint8Array(memory.buffer).fill(0, 0, 32);

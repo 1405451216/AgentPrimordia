@@ -15,8 +15,6 @@ import {
   WebGPUModelRunner,
   DEFAULT_INFERENCE_CONFIG,
   type InferenceConfig,
-  type CacheStrategy,
-  type WebGPUModelRunnerConfig,
   type ModelLoadProgress,
 } from '../webgpu-model-runner.js';
 

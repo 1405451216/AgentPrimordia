@@ -215,8 +215,8 @@ describe('Component props interfaces', () => {
   it('HITLPanelProps should accept optional callbacks', () => {
     const props: HITLPanelProps = {
       approvals: [],
-      onApprove: (id: string) => { /* noop */ },
-      onReject: (id: string) => { /* noop */ },
+      onApprove: (_id: string) => { /* noop */ },
+      onReject: (_id: string) => { /* noop */ },
     };
     expect(typeof props.onApprove).toBe('function');
     expect(typeof props.onReject).toBe('function');
