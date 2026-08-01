@@ -36,6 +36,7 @@ jobs:
         run: go mod download
 
       - name: Build (sanity)
+        working-directory: agentprimordia
         env:
           CGO_ENABLED: 0
         run: go build ./...
@@ -47,11 +48,14 @@ jobs:
         run: |
           cd agentprimordia
           chmod +x bench/eval-ci/run_eval.sh
-          # 捕获 JSON 输出用于后续步骤
+          # 捕获退出码（shell -e 下需先 set +e 才能拿到非零退出码）
+          set +e
           ./bench/eval-ci/run_eval.sh --threshold 0.8 --json > eval-result.json
+          EVAL_EXIT=$?
+          set -e
           cat eval-result.json
-          # 检查是否通过：退出码非 0 即 fail
-          if [ $? -ne 0 ]; then
+          # 退出码非 0 即低于阈值：软失败（不阻断，仅标记 warning）
+          if [ $EVAL_EXIT -ne 0 ]; then
             echo "::warning::Eval suite did not meet threshold (soft-fail, see logs)"
           fi
 

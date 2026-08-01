@@ -57,24 +57,28 @@ jobs:
         run: go mod download
 
       - name: Build
+        working-directory: agentprimordia
         env:
           CGO_ENABLED: 0
         run: go build ./...
 
       - name: Test with race detector
         if: runner.os != 'Windows'
+        working-directory: agentprimordia
         env:
           CGO_ENABLED: 1
         run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Test without race detector (Windows)
         if: runner.os == 'Windows'
+        working-directory: agentprimordia
         env:
           CGO_ENABLED: 0
         run: go test -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: "Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 soft gate)"
         if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26'
+        working-directory: agentprimordia
         run: |
           # Total coverage (reference metric)
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
@@ -123,7 +127,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage.out
+          path: agentprimordia/coverage.out
 
       - name: Check Deprecated annotations (Phase 8.4)
         if: matrix.os == 'ubuntu-latest'
@@ -147,11 +151,13 @@ jobs:
           go-version: '1.26'
 
       - name: Run govulncheck
+        working-directory: agentprimordia
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
       - name: Go license check
+        working-directory: agentprimordia
         run: |
           go install github.com/google/go-licenses@latest
           go-licenses check ./... 2>&1 || echo "::warning::许可证检查发现问题（非阻塞）"
@@ -220,6 +226,7 @@ jobs:
           go-version: '1.26'
 
       - name: Check Go API compatibility
+        working-directory: agentprimordia
         run: |
           go install golang.org/x/exp/cmd/apidiff@latest
           # Compare public API against base branch
@@ -294,9 +301,11 @@ jobs:
           go-version: '1.26'
 
       - name: Build ap CLI
+        working-directory: agentprimordia
         run: go build -ldflags="-X main.Version=${{ github.ref_name }}" -o ap ./cmd/ap/
 
       - name: Verify CLI
+        working-directory: agentprimordia
         run: ./ap version
 
   cross-compile:
@@ -328,6 +337,7 @@ jobs:
           go-version: '1.26'
 
       - name: Cross-compile binary
+        working-directory: agentprimordia
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -340,6 +350,7 @@ jobs:
           go build -ldflags="-s -w -X main.Version=ci-${{ github.sha }}" -o ${BINARY} ./cmd/ap/
 
       - name: Verify binary exists
+        working-directory: agentprimordia
         run: |
           BINARY=ap-${{ matrix.goos }}-${{ matrix.goarch }}
           if [ "${{ matrix.goos }}" = "windows" ]; then
@@ -402,6 +413,7 @@ jobs:
           echo "Fetched envtest assets at: $ENVTEST_DIR"
 
       - name: Run envtest E2E tests
+        working-directory: agentprimordia
         env:
           CGO_ENABLED: 0
         run: go test -tags=envtest -v -timeout=120s ./operator/controller/...
@@ -415,11 +427,10 @@ jobs:
     if: needs.changes.outputs.go == 'true'
     services:
       etcd:
-        image: bitnami/etcd:3.5
+        image: quay.io/coreos/etcd:v3.5.12
         env:
-          ALLOW_NONE_AUTHENTICATION: 'yes'
-          ETCD_ADVERTISE_CLIENT_URLS: 'http://127.0.0.1:2379'
           ETCD_LISTEN_CLIENT_URLS: 'http://0.0.0.0:2379'
+          ETCD_ADVERTISE_CLIENT_URLS: 'http://127.0.0.1:2379'
         ports:
           - 2379:2379
       redis:
