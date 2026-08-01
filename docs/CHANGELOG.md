@@ -25,6 +25,29 @@
 - **本地运行入口**: `Makefile` 新增 `test-distributed-backends` 目标；`deploy/compose/distributed-test.yaml` 提供 etcd + Redis 测试依赖一键启动
 - 顺带发现：`internal/agent/cluster` 下 `-tags=e2e` 的 10 节点 scale 测试（AgentMigration/LeaderElection）存在时序性 key 过期 flaky，暂未纳入 CI（后续单独治理）
 
+### Added — API 工具链一致性修复 + 契约基线漂移门
+
+- **api-extract 版本单一事实来源**: 版本号不再硬编码 `3.1.0`，改为从 `pkg/agent.go` 的 `const Version` 经 go/ast 提取；新增 `-no-timestamp` 确定性输出模式
+- **version-sync-check.mjs**: 硬编码 fallback `3.1.0` → `3.2.0`
+- **VERSIONING.md 版本表对齐 `3.2.0`**（Go/TS/CLI 三行 + 修正 `pkg/version.go` 引用），修复 `version-check.sh` 的 FAIL
+- **deprecation 检查精度修复**: 排除生成代码（`*.pb.go`）与测试文件，模式收紧为 `^// Deprecated:`（消除文档块提及与 `Deprecated: true` 误报）；按文件粒度校验；`RegisterPProf` 补 `// Removed in v4.0.0.`，检查 17/17 通过
+- **api-contract.json 基线刷新为 `3.2.0`**：新增此前缺失的 governance 模块、修正 14 个漂移模块，并改为与 Makefile/CI 一致的确定性输出
+- **CI 新增 `contract-baseline` job**: 重新生成契约与已提交基线比对，漂移即失败，杜绝 `api-contract.json` 过期复发
+
+### Added — Studio 后端 /api/v1 实现（四面板从空态变为可用）
+
+- **新增 `internal/studio` 包**: `StudioHandler` 实现 8 个 `/api/v1/*` 端点（chaos 列表/创建、cluster 状态、learning 三项统计、marketplace 模板/部署），响应形状与前端 TS 接口一一对齐
+- 四面板通过 Service 接口与底层逻辑包解耦，`WithChaos/WithCluster/WithLearning/WithMarketplace` 可注入真实引擎；默认 demo 实现开箱即演示（市场预置 3 个模板可搜索过滤、单节点集群、混沌实验内存记录）
+- **新增 `cmd/studio` 入口**（`:8090`，可选 `-token` Bearer 鉴权）；httptest 覆盖全部端点 13 例
+- `studio/web` vite 代理切到 `:8090`，README 移除"后端未实现"表述
+
+### Added — github-issue-triage 接入真实 GitHub API
+
+- **tools.go 双模式**: `apiBase` 默认 `https://api.github.com`，设置 `GITHUB_TOKEN` 后自动附加 `Authorization: Bearer`；目标仓库由 `GH_REPO` 指定；请求统一走 `newGitHubRequest`
+- **main.go 模式选择**: `GITHUB_TOKEN` + LLM API Key 同时存在 → 真实仓库完整 ReAct triage；仅 token 缺 LLM Key 时安全回退 mock 模式（不触碰真实仓库）；真实模式下快照/统计区优雅降级
+- **新增 `tools_test.go` 5 例**（httptest 验证 URL/鉴权头/POST body/错误透传）；mock 模式端到端验证通过
+
+
 
 ## [v3.2.0] - 2026-07-31
 
