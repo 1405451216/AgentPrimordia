@@ -151,29 +151,38 @@ func TestEtcdKVStore_Integration(t *testing.T) {
 		prefix := "agentprimordia/test/watch_"
 		watchCh := store.Watch(ctx, prefix)
 
-		// 写入触发事件
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			store.Put(ctx, prefix+"node1", "data1", 30*time.Second)
-		}()
+		// etcd Watch 注册是异步的：若 Put 发生在 watch 建立之前，事件会永久丢失。
+		// 这里采用「重试写入 + 接收」循环：先写入，若 watch 尚未就绪则间隔重试，
+		// 直到收到事件或超时，避免与 CI 等慢速环境下的注册延迟产生竞态。
+		deadline := time.Now().Add(10 * time.Second)
+		key := prefix + "node1"
+		for {
+			if err := store.Put(ctx, key, "data1", 30*time.Second); err != nil {
+				t.Fatalf("Put failed: %v", err)
+			}
 
-		select {
-		case event := <-watchCh:
-			if event.Type != EventPut {
-				t.Errorf("event type = %v, want EventPut", event.Type)
+			select {
+			case event := <-watchCh:
+				if event.Type != EventPut {
+					t.Errorf("event type = %v, want EventPut", event.Type)
+				}
+				if event.Key != key {
+					t.Errorf("event key = %q, want %q", event.Key, key)
+				}
+				if event.Value != "data1" {
+					t.Errorf("event value = %q, want %q", event.Value, "data1")
+				}
+
+				// 清理
+				store.Delete(ctx, key)
+				return
+			case <-time.After(500 * time.Millisecond):
+				if time.Now().After(deadline) {
+					t.Fatal("Watch timeout: no event received")
+				}
+				// watch 可能尚未注册，重试写入触发下一次事件
 			}
-			if event.Key != prefix+"node1" {
-				t.Errorf("event key = %q, want %q", event.Key, prefix+"node1")
-			}
-			if event.Value != "data1" {
-				t.Errorf("event value = %q, want %q", event.Value, "data1")
-			}
-		case <-time.After(5 * time.Second):
-			t.Fatal("Watch timeout: no event received")
 		}
-
-		// 清理
-		store.Delete(ctx, prefix+"node1")
 	})
 
 	// 测试 TTL 过期
@@ -188,8 +197,8 @@ func TestEtcdKVStore_Integration(t *testing.T) {
 			t.Fatalf("Get immediately after Put failed: %v", err)
 		}
 
-		// 等待过期
-		time.Sleep(2 * time.Second)
+		// 等待过期：etcd lease 到期检查粒度约 1s，CI 负载下留足余量
+		time.Sleep(3 * time.Second)
 
 		_, err := store.Get(ctx, key)
 		if err == nil {

@@ -409,7 +409,7 @@ jobs:
 
       - name: Fetch envtest binaries
         run: |
-          ENVTEST_DIR=$(setup-envtest use -p path 1.31.x)
+          ENVTEST_DIR=$(setup-envtest use -p path 1.32.x)
           echo "KUBEBUILDER_ASSETS=$ENVTEST_DIR" >> $GITHUB_ENV
           echo "Fetched envtest assets at: $ENVTEST_DIR"
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -36,8 +37,21 @@ func TestAgentControllerE2E(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// 复制 CRD 到临时目录：manifest/ 下混有非 CRD 的部署清单（controller.yaml），
+	// envtest 的 CRDDirectoryPaths 会解析目录内所有 yaml，混入非 CRD 会报错。
+	crdDir := t.TempDir()
+	crdBytes, err := os.ReadFile(filepath.Join("..", "manifest", "crd.yaml"))
+	if err != nil {
+		t.Fatalf("读取 CRD 清单失败: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(crdDir, "crd.yaml"), crdBytes, 0o644); err != nil {
+		t.Fatalf("写入临时 CRD 失败: %v", err)
+	}
+
 	testEnv := &envtest.Environment{
 		BinaryAssetsDirectory: os.Getenv("KUBEBUILDER_ASSETS"),
+		// 安装 AgentDeployment CRD，否则创建自定义资源会 404
+		CRDDirectoryPaths: []string{crdDir},
 	}
 
 	cfg, err := testEnv.Start()
