@@ -95,6 +95,7 @@ out/
 # ---------- Agent 工具会话/产物（禁止入库） ----------
 .aelacli/
 .qoder/
+.zcode/
 
 # ---------- Python 缓存 ----------
 __pycache__/

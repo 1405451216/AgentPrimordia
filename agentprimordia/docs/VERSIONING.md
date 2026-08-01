@@ -8,7 +8,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 - **次版本号（MINOR）**：向后兼容的功能新增
 - **修订号（PATCH）**：向后兼容的问题修复
 
-当前版本：`3.1.0`（定义于 `pkg/agent.go`，git tag 管理）
+当前版本：`3.2.0`（定义于 `pkg/agent.go`，git tag 管理）
 
 ## 版本信息单一事实来源
 
@@ -16,11 +16,11 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 | 组件 | 当前版本 | 版本定义位置 |
 |------|----------|----------------|
-| Go SDK | v3.1.0 | `pkg/agent.go` + git tag |
-| TypeScript SDK | v2.0.0 | `sdk/typescript/package.json` |
+| Go SDK | v3.2.0 | `pkg/agent.go` + git tag |
+| TypeScript SDK | v3.2.0 | `sdk/typescript/package.json` |
 | Python 客户端 | v2.0.0 | `sdk/python/pyproject.toml` |
 | Rust 客户端 | v2.0.0 | `sdk/rust/Cargo.toml` |
-| CLI | v3.1.0 | `cmd/ap/version.go` |
+| CLI | v3.2.0 | `cmd/ap/version.go` |
 | K8s Operator | v2.0.0 | `operator/go.mod` |
 
 ### 版本发布纪律
@@ -93,7 +93,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 引入破坏性变更时必须：
 
 1. 在 PR 中说明变更理由和影响范围
-2. 更新 `pkg/version.go` 中的主版本号
+2. 更新 `pkg/agent.go` 中的版本号
 3. 更新本文档的废弃列表和迁移历史
 4. 在 `ecosystem/docs/migration/` 中提供迁移指南
 5. 确保所有 `pkg/` 导出类型和函数的兼容性测试通过

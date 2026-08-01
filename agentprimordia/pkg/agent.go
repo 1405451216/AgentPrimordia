@@ -585,6 +585,7 @@ var NewHealthChecker = health.NewChecker
 // 注册 /debug/pprof/ 下的所有标准 profile 路由（CPU、heap、goroutine 等）。
 //
 // Deprecated: 无鉴权版本，生产环境请使用 RegisterPProfSecure 或 RegisterPProfStrict。
+// Removed in v4.0.0.
 var RegisterPProf = health.RegisterPProf
 
 // PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。

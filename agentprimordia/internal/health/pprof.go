@@ -28,6 +28,7 @@ var ErrPProfTokenRequired = errors.New("health: PPROF_TOKEN environment variable
 //   - /debug/pprof/mutex       — 互斥锁 profile
 //
 // Deprecated: 无鉴权版本，生产环境请使用 RegisterPProfSecure 或 RegisterPProfStrict。
+// Removed in v4.0.0.
 // 仅适用于本地开发调试。
 func RegisterPProf(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/", pprof.Index)

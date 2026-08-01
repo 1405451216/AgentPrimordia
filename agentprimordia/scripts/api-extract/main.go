@@ -10,6 +10,7 @@
 // 用法：
 //
 //	go run ./scripts/api-extract/ -output ../sdk/typescript/api-contract.json
+//	go run ./scripts/api-extract/ -no-timestamp   # 确定性输出（契约基线对比）
 package main
 
 import (
@@ -93,12 +94,25 @@ var stabilityRegexp = regexp.MustCompile(`Stability:\s*(Stable|Experimental|Depr
 func main() {
 	output := flag.String("output", "", "输出文件路径（默认 stdout）")
 	pkgDir := flag.String("pkg", "pkg", "pkg 目录路径")
+	noTimestamp := flag.Bool("no-timestamp", false, "确定性输出：generated_at 置空（用于契约基线对比）")
 	flag.Parse()
+
+	// 版本号从 pkg/agent.go 的 const Version 提取（单一事实来源），不再硬编码
+	version, err := loadVersion(*pkgDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "警告: 读取版本失败: %v\n", err)
+		version = "unknown"
+	}
 
 	contract, err := extractAPI(*pkgDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "错误: %v\n", err)
 		os.Exit(1)
+	}
+	contract.Version = version
+	contract.GeneratedAt = time.Now().UTC().Format(time.RFC3339)
+	if *noTimestamp {
+		contract.GeneratedAt = ""
 	}
 
 	data, err := json.MarshalIndent(contract, "", "  ")
@@ -166,10 +180,39 @@ func extractAPI(pkgDir string) (*APIContract, error) {
 	})
 
 	return &APIContract{
-		Version:     "3.1.0",
-		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
-		Modules:     modules,
+		Modules: modules,
 	}, nil
+}
+
+// loadVersion 从 pkg/agent.go 的 `const Version = "x.y.z"` 提取版本号。
+// 版本号以 pkg/agent.go 为单一事实来源，避免工具链内多处硬编码漂移。
+func loadVersion(pkgDir string) (string, error) {
+	path := filepath.Join(pkgDir, "agent.go")
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, 0)
+	if err != nil {
+		return "", fmt.Errorf("解析 %s: %w", path, err)
+	}
+	for _, decl := range file.Decls {
+		gd, ok := decl.(*ast.GenDecl)
+		if !ok || gd.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gd.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for i, name := range vs.Names {
+				if name.Name == "Version" && i < len(vs.Values) {
+					if lit, ok := vs.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+						return strings.Trim(lit.Value, `"`), nil
+					}
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("%s 中未找到 const Version", path)
 }
 
 // parseFile 解析单个 Go 文件，提取公开 API 签名

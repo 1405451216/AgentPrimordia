@@ -127,16 +127,7 @@ jobs:
 
       - name: Check Deprecated annotations (Phase 8.4)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          deprecated_count=$(grep -r "Deprecated:" --include="*.go" . | wc -l)
-          removed_in_count=$(grep -r "Removed in v" --include="*.go" . | wc -l)
-          echo "Deprecated: ${deprecated_count}, Removed in: ${removed_in_count}"
-          if [ "$deprecated_count" -gt 0 ] && [ "$removed_in_count" -lt "$deprecated_count" ]; then
-            echo "::error::每个 // Deprecated: 必须配 // Removed in vX.Y. 标注"
-            echo "::error::当前: $deprecated_count Deprecated, 仅 $removed_in_count Removed in"
-            exit 1
-          fi
-          echo "OK: Deprecated 标注完整"
+        run: bash scripts/deprecation-check.sh
 
       - name: Check CHANGELOG [Unreleased] (Phase 8.4)
         if: matrix.os == 'ubuntu-latest'
@@ -465,6 +456,43 @@ jobs:
       - name: Run etcd cluster discovery integration tests
         working-directory: agentprimordia
         run: go test -tags=etcd -count=1 -timeout=10m -v ./internal/agent/cluster/... -run 'EtcdKVStore|EtcdEndpoint'
+
+  # ===== API 契约基线检查（防 pkg/ 公共 API 契约过期） =====
+
+  contract-baseline:
+    name: API Contract Baseline Check
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.go == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-1.26-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-1.26-
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Regenerate API contract and check drift
+        working-directory: agentprimordia
+        run: |
+          go run ./scripts/api-extract/ -no-timestamp -output /tmp/api-contract.json
+          if ! cmp -s /tmp/api-contract.json ../sdk/typescript/api-contract.json; then
+            echo "::error::sdk/typescript/api-contract.json 与当前 pkg/ 公共 API 漂移。"
+            echo "::error::请在 agentprimordia/ 下运行 'make api-extract'（或 go run ./scripts/api-extract/ -no-timestamp -output ../sdk/typescript/api-contract.json）并提交更新。"
+            diff ../sdk/typescript/api-contract.json /tmp/api-contract.json | head -40 || true
+            exit 1
+          fi
+          echo "OK: API 契约与当前代码一致"
 
   # ===== Phase 4: 跨语言同步验证 =====
 

@@ -37,8 +37,8 @@ try {
       encoding: 'utf-8',
     }).trim().replace(/^v/, '');
   } catch {
-    // 最终回退：从 go.mod 的 module 声明推断
-    goVersion = '3.1.0'; // 当前已知版本
+    // 最终回退：与 agentprimordia/VERSION 与 pkg/agent.go 保持同步的已知版本
+    goVersion = '3.2.0';
   }
 }
 
