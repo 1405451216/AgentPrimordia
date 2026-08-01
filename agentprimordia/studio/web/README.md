@@ -14,13 +14,18 @@
 ## 开发
 
 ```bash
+# 1. 启动 Studio 后端（默认 :8090，内置 demo 数据）
+go run ./cmd/studio
+
+# 2. 启动前端
 npm install
-npm run dev        # http://localhost:5173，/api 代理到 :8080 管理后端
+npm run dev        # http://localhost:5173，/api 代理到 :8090
 ```
 
-> 开发模式下 `/api` 会被 Vite 代理到本地管理后端（`go run ./cmd/admin`，默认 `:8080`）。
-> 页面依赖的 `/api/v1/chaos|cluster|learning|marketplace/*` 端点尚未由后端实现，
-> 页面会以空态/错误态优雅降级；对应后端落地后可无缝接入。
+> 开发模式下 `/api` 会被 Vite 代理到 Studio 后端（`go run ./cmd/studio`，默认 `:8090`）。
+> 后端 `/api/v1/chaos|cluster|learning|marketplace/*` 端点由 `internal/studio` 实现，
+> 默认返回 demo 数据（市场预置 3 个模板、集群单节点、混沌实验内存记录），
+> 开箱即可演示；接入真实引擎见 `internal/studio` 的 `WithChaos/WithCluster/WithLearning/WithMarketplace` 选项。
 
 ## 构建
 
