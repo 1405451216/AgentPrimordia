@@ -33,7 +33,7 @@ export function LearningMonitor() {
   const [pipeline, setPipeline] = useState<PipelineStats | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const refresh = async () => {
       try {
         const [statsRes, capRes, pipeRes] = await Promise.all([
           fetch('/api/v1/learning/stats'),
@@ -45,8 +45,8 @@ export function LearningMonitor() {
         if (pipeRes.ok) setPipeline(await pipeRes.json());
       } catch { /* 忽略 */ }
     };
-    fetch();
-    const timer = setInterval(fetch, 10000);
+    refresh();
+    const timer = setInterval(refresh, 10000);
     return () => clearInterval(timer);
   }, []);
 

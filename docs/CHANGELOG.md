@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+### Added — Studio Web UI 补全为可构建应用
+
+- **Studio 应用壳补全** (`agentprimordia/studio/web/`): 新增 `package.json`、`vite.config.ts`、`tsconfig.json`、`index.html`、`src/main.tsx`、`src/router.tsx`（路由树）、`src/App.tsx`（侧边导航布局）、`src/styles.css`，接入已有 4 页面（ChaosLab / ClusterDashboard / LearningMonitor / MarketplacePage）
+  - `npm run dev` 启动开发服务器，`/api` 代理到本地管理后端（默认 `:8080`）；`npm run build` 产出可部署的 `dist/`（替换了此前与源码不符的过期构建产物）
+  - 修复 `LearningMonitor.tsx` 内部 `fetch` 函数遮蔽全局 `fetch` 导致 API 调用递归自身的 bug
+- **Studio 组件测试** (`src/App.test.tsx`): vitest + @testing-library/react 渲染测试 6 例，覆盖导航渲染、四页面路由切换、深链直达
+- **版本统一**: Go SDK `pkg.Version` 从 `3.1.0` 修正为 `3.2.0`，与 README / CHANGELOG / Release Notes / TypeScript SDK 对齐（v3.2.0 发布时遗漏）
+- **跨语言规范版本号对齐**: `sdk/typescript/tests/shared/cross-language-spec.json` 从 `3.0.0` 修正为 `3.1.0`（v3.2.0 Release Notes 声明的目标版本）
+- **扩展版本统一**: VSCode 扩展 `0.1.0` → `3.2.0`，Browser 扩展 `2.0.0` → `3.2.0`，兑现 v2.0.0「全局版本对齐」承诺
+- **AGENTS.md 白名单边界修正**: grpc 依赖的使用边界从「仅限 `internal/agent/a2a/`」更新为同时涵盖 `internal/agent/cluster/`（`grpc_bus.go`）与 `internal/agent/transport/`（`grpc.go`），与 V3.1 计划 3.2 的落地保持一致
+- **仓库卫生清理**: `.gitignore` 补充 `.aelacli/`、`.qoder/`、`__pycache__/`、`cover_eval` 等条目并修复乱码注释；将误提交的 26MB agent 会话库、Qoder 产物、覆盖率 profile 从 git 追踪中移除
+
+
 ## [v3.2.0] - 2026-07-31
 
 ### Added — 架构解耦与双语言对齐
