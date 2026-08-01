@@ -23,8 +23,8 @@
 // 防止任何生态代码或示例误把模板当真 Provider 用 —— 运行时才
 // 暴露 "TODO: 未实现" 太晚，启动期拒绝能更早发现问题。
 //
-// 误用防护设计参考 docs/plans/2026-06-04-phase6-implementation.md
-// §风险与债务 §3。
+// 误用防护设计参考 agentprimordia/docs/VERSIONING.md 的兼容性承诺与
+// Experimental API 定义。
 package llm
 
 // ProviderTemplate 是新 Provider 的模板代码

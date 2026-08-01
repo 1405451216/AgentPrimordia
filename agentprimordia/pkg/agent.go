@@ -31,7 +31,7 @@
 //	              文件内未导出符号默认属于此等级。
 //
 // 用户应使用 `go doc` 或 IDE 悬浮提示查看每个 export 的稳定性等级。
-// 详细治理策略见 docs/plans/2026-06-04-phase6-implementation.md §风险与债务。
+// 详细治理策略见 agentprimordia/docs/VERSIONING.md（兼容性承诺与废弃策略）。
 package ap
 
 import (
