@@ -66,6 +66,7 @@ func createTestCluster(t *testing.T, n int) *testCluster {
 			NodeID:            nodeID,
 			ListenAddr:        fmt.Sprintf("127.0.0.1:%d", 19000+i),
 			Discovery:         tc.discoveries[i],
+			StateStore:        kv, // 共享 KV 后端，使领导者选举跨节点收敛
 			HeartbeatInterval: 500 * time.Millisecond,
 			HeartbeatTimeout:  2 * time.Second,
 			ElectionTimeout:   1 * time.Second,
@@ -114,6 +115,31 @@ func (tc *testCluster) listAllAgents(t *testing.T, nodeIdx int) []*discovery.Age
 		t.Fatalf("节点 %d 列出 Agent 失败: %v", nodeIdx, err)
 	}
 	return agents
+}
+
+// startAgentKeepalive 为已注册的 Agent 启动续租 goroutine。
+//
+// Register 写入的 key TTL = heartbeat*3（测试配置 500ms*3 = 1.5s），且
+// heartbeatLoop 只续租节点自身。真实契约下调用方需自行续租，否则 key 会在
+// TTL 后过期。返回 cancel 停止全部续租 goroutine。
+func startAgentKeepalive(ctx context.Context, dd *DistributedDiscovery, agentIDs ...string) context.CancelFunc {
+	keepaliveCtx, cancel := context.WithCancel(ctx)
+	for _, id := range agentIDs {
+		agentID := id
+		go func() {
+			ticker := time.NewTicker(400 * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-keepaliveCtx.Done():
+					return
+				case <-ticker.C:
+					_ = dd.Heartbeat(keepaliveCtx, agentID)
+				}
+			}
+		}()
+	}
+	return cancel
 }
 
 // assertNoMemoryLeak 检测内存泄漏

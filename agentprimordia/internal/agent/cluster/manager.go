@@ -59,6 +59,9 @@ type NodeInfo struct {
 	LastSeen    time.Time         `json:"last_seen"`
 }
 
+// electionKey 共享领导者租约在 KV 中的键
+const electionKey = "_leader_lease"
+
 // ClusterConfig 集群配置
 type ClusterConfig struct {
 	// NodeID 当前节点 ID
@@ -67,6 +70,9 @@ type ClusterConfig struct {
 	ListenAddr string
 	// Discovery 服务发现接口
 	Discovery discovery.Discovery
+	// StateStore 共享 KV 后端（可选）。设置后领导者选举基于共享租约跨节点收敛；
+	// 为空时选举退化为纯本地行为（仅单节点场景可用）。
+	StateStore KVStore
 	// HeartbeatInterval 心跳间隔
 	HeartbeatInterval time.Duration
 	// HeartbeatTimeout 心跳超时（超过此时间未收到心跳视为离线）
@@ -405,25 +411,36 @@ func (m *ClusterManager) electionLoop(ctx context.Context) {
 }
 
 // checkLeadership 检查领导权
+//
+// 选举基于共享租约收敛：设置 StateStore（共享 KV 后端）后，各节点以
+// 共享租约 _leader_lease 为权威事实源——持有租约的在线节点成为领导者，
+// 其余节点跟随，从而收敛共识。StateStore 为空时退化为纯本地行为（仅单节点
+// 场景可用，各节点不会互相认可）。
 func (m *ClusterManager) checkLeadership(ctx context.Context) {
 	leader := m.GetLeader()
 
-	// 如果有领导者且领导者在线，不做任何事
+	// 共享租约是权威事实源：若其他节点持有有效租约且在线，跟随它
+	if lease, ok := m.leaseValue(ctx); ok && lease != "" && lease != m.config.NodeID {
+		if m.nodeIsOnline(lease) {
+			m.becomeFollower(lease)
+			return
+		}
+		// 持租约节点离线：租约视为失效，允许接管（走下方选举）
+		m.logger.Info("租约持有者离线，接管选举", "lease_holder", lease)
+	}
+
+	// 已有本地领导者视图
 	if leader != "" {
 		if leader == m.config.NodeID {
 			// 当前节点是领导者，续租
-			m.state.Set("_leader_lease", m.config.NodeID, m.config.ElectionTimeout*2)
+			m.renewLease(ctx)
 			return
 		}
 
-		// 检查领导者是否在线
-		m.mu.RLock()
-		leaderNode, exists := m.nodes[leader]
-		m.mu.RUnlock()
-
-		if exists && leaderNode.Status == StatusOnline &&
-			time.Since(leaderNode.LastSeen) <= m.config.HeartbeatTimeout {
-			return // 领导者仍然在线
+		// 其他节点：跟随在线领导者（收敛共识的关键路径）
+		if m.nodeIsOnline(leader) {
+			m.becomeFollower(leader)
+			return
 		}
 
 		// 领导者离线，触发选举
@@ -432,6 +449,41 @@ func (m *ClusterManager) checkLeadership(ctx context.Context) {
 
 	// 尝试成为领导者
 	m.startElection(ctx)
+}
+
+// nodeIsOnline 判断某节点是否在本地视图中处于在线状态
+func (m *ClusterManager) nodeIsOnline(nodeID string) bool {
+	if nodeID == m.config.NodeID {
+		return true
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	node, exists := m.nodes[nodeID]
+	return exists && node.Status == StatusOnline &&
+		time.Since(node.LastSeen) <= m.config.HeartbeatTimeout
+}
+
+// leaseValue 读取共享领导者租约。StateStore 为空时读本地 state。
+func (m *ClusterManager) leaseValue(ctx context.Context) (string, bool) {
+	if m.config.StateStore != nil {
+		value, err := m.config.StateStore.Get(ctx, electionKey)
+		if err != nil || value == "" {
+			return "", false
+		}
+		return value, true
+	}
+	value, ok := m.state.Get(electionKey)
+	return value, ok
+}
+
+// renewLease 续租领导者租约（优先写共享 StateStore，其次本地 state）
+func (m *ClusterManager) renewLease(ctx context.Context) {
+	ttl := m.config.ElectionTimeout * 2
+	if m.config.StateStore != nil {
+		_ = m.config.StateStore.Put(ctx, electionKey, m.config.NodeID, ttl)
+		return
+	}
+	m.state.Set(electionKey, m.config.NodeID, ttl)
 }
 
 // startElection 启动选举
@@ -466,12 +518,17 @@ func (m *ClusterManager) startElection(ctx context.Context) {
 
 	// 如果当前节点是最小 ID，成为领导者
 	if minID == m.config.NodeID {
-		m.becomeLeader()
+		// 二次确认共享租约未被其他在线节点持有（防 checkLeadership 竞态）
+		if lease, ok := m.leaseValue(ctx); ok && lease != "" && lease != m.config.NodeID && m.nodeIsOnline(lease) {
+			m.becomeFollower(lease)
+			return
+		}
+		m.becomeLeader(ctx)
 	}
 }
 
 // becomeLeader 成为领导者
-func (m *ClusterManager) becomeLeader() {
+func (m *ClusterManager) becomeLeader(ctx context.Context) {
 	m.role.Store(RoleLeader)
 	m.leaderID.Store(m.config.NodeID)
 
@@ -480,8 +537,8 @@ func (m *ClusterManager) becomeLeader() {
 	m.localNode.Role = RoleLeader
 	m.mu.Unlock()
 
-	// 设置领导者租约
-	m.state.Set("_leader_lease", m.config.NodeID, m.config.ElectionTimeout*2)
+	// 设置领导者租约（优先写共享 StateStore，其次本地 state）
+	m.renewLease(ctx)
 
 	m.logger.Info("成为领导者", "node_id", m.config.NodeID, "term", m.term.Load())
 }

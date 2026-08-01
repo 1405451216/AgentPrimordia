@@ -57,6 +57,9 @@ func TestE2E_Cluster_10NodeScale(t *testing.T) {
 			t.Fatalf("注册测试 Agent 失败: %v", err)
 		}
 
+		// Register 的 key TTL = heartbeat*3，启动保活防止校验窗口内过期
+		keepaliveCancel := startAgentKeepalive(ctx, tc.discoveries[0], testAgentID)
+
 		// 等待同步周期
 		time.Sleep(1500 * time.Millisecond)
 
@@ -74,6 +77,7 @@ func TestE2E_Cluster_10NodeScale(t *testing.T) {
 		}
 
 		// 清理
+		keepaliveCancel()
 		_ = tc.discoveries[0].Unregister(ctx, testAgentID)
 	})
 
@@ -151,6 +155,12 @@ func TestE2E_Cluster_10Node_AgentMigration(t *testing.T) {
 		}
 	}
 
+	// Register 写入的 key TTL = heartbeat*3，且 heartbeatLoop 只续租节点自身。
+	// 真实契约下调用方需自行续租，启动保活 goroutine 模拟真实调用方，
+	// 避免校验窗口内 key 过期导致 flaky。
+	keepaliveCancel := startAgentKeepalive(ctx, tc.discoveries[5],
+		"migration-agent-0", "migration-agent-1", "migration-agent-2", "migration-agent-3", "migration-agent-4")
+
 	// 等待同步
 	time.Sleep(1500 * time.Millisecond)
 
@@ -168,6 +178,9 @@ func TestE2E_Cluster_10Node_AgentMigration(t *testing.T) {
 		}
 	}
 	t.Log("所有节点均能发现迁移前注册的 Agent")
+
+	// 停止保活，随后注销（模拟节点离开）
+	keepaliveCancel()
 
 	// 模拟节点 5 离开：注销其注册的 Agent
 	for i := 0; i < 5; i++ {
@@ -210,14 +223,39 @@ func TestE2E_Cluster_10Node_LeaderElection(t *testing.T) {
 	tc := createTestCluster(t, nodeCount)
 	defer tc.stop(t)
 
-	// 等待选举收敛（多个选举周期）
-	time.Sleep(5 * time.Second)
+	// 等待选举收敛：轮询直到至少半数节点对领导者达成一致，或超时。
+	// 简化版选举中，节点需要先通过发现机制感知所有在线节点（heartbeat 传播
+	// 在慢机器上需要多个周期），固定 sleep 不可靠，改为轮询。
+	deadline := time.Now().Add(30 * time.Second)
+	var leaderViews map[string]string
+	for {
+		leaderViews = make(map[string]string) // nodeID -> 它认为的 leader
+		for i := 0; i < nodeCount; i++ {
+			leader := tc.managers[i].GetLeader()
+			leaderViews[tc.managers[i].config.NodeID] = leader
+		}
 
-	// 收集所有节点的领导者视图
-	leaderViews := make(map[string]string) // nodeID -> 它认为的 leader
-	for i := 0; i < nodeCount; i++ {
-		leader := tc.managers[i].GetLeader()
-		leaderViews[tc.managers[i].config.NodeID] = leader
+		// 统计每个候选 leader 被多少节点认可
+		consensus := make(map[string]int)
+		for _, leader := range leaderViews {
+			if leader != "" {
+				consensus[leader]++
+			}
+		}
+		topConsensus := 0
+		for _, c := range consensus {
+			if c > topConsensus {
+				topConsensus = c
+			}
+		}
+
+		if topConsensus >= nodeCount/2 {
+			break // 已收敛
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("10 节点选举在 30s 内未收敛: 视图=%v", leaderViews)
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// 验证至少有一个节点认为自己是领导者
@@ -238,8 +276,6 @@ func TestE2E_Cluster_10Node_LeaderElection(t *testing.T) {
 	}
 
 	// 验证所有节点对领导者达成一致（最终一致性）
-	// 注意：简化版选举中，每个节点独立选举，可能看到不同的领导者
-	// 但在共享 MemKVStore 下，应该趋向一致
 	consistentCount := 0
 	for _, leader := range leaderViews {
 		if leader == leaderID {
