@@ -14,7 +14,11 @@
 go 1.26.3
 
 use ./agentprimordia
+
 use ./pgvector
+
 use ./agentprimordia/operator
+
 use ./gateway
+
 use ./wasm
