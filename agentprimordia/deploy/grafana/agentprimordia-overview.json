@@ -1,0 +1,129 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Agent Run Status",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "ap_agent_runs_total", "legendFormat": "{{status}}"}],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "title": "Agent Run Duration (p95)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, rate(ap_agent_run_duration_seconds_bucket[5m]))", "legendFormat": "p95"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "title": "LLM Call Latency (p50/p95/p99)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, rate(ap_llm_call_duration_seconds_bucket[5m]))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, rate(ap_llm_call_duration_seconds_bucket[5m]))", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, rate(ap_llm_call_duration_seconds_bucket[5m]))", "legendFormat": "p99"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "title": "LLM Call Error Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "rate(ap_llm_call_errors_total[5m]) / rate(ap_llm_call_total[5m])", "legendFormat": "{{provider}}"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1}}
+    },
+    {
+      "title": "Tool Call Success Rate",
+      "type": "gauge",
+      "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
+      "targets": [{"expr": "ap_tool_call_success_total / (ap_tool_call_success_total + ap_tool_call_error_total)", "legendFormat": "{{tool}}"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1, "thresholds": {"steps": [{"color": "red", "value": 0}, {"color": "yellow", "value": 0.9}, {"color": "green", "value": 0.99}]}}}
+    },
+    {
+      "title": "Tool Call Latency by Tool",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 12, "x": 6, "y": 16},
+      "targets": [{"expr": "histogram_quantile(0.95, rate(ap_tool_call_duration_seconds_bucket[5m]))", "legendFormat": "{{tool}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "title": "Memory Operations",
+      "type": "timeseries",
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 16},
+      "targets": [
+        {"expr": "rate(ap_memory_add_total[5m])", "legendFormat": "add"},
+        {"expr": "rate(ap_memory_search_total[5m])", "legendFormat": "search"},
+        {"expr": "rate(ap_memory_delete_total[5m])", "legendFormat": "delete"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    },
+    {
+      "title": "LLM Token Usage",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+      "targets": [
+        {"expr": "rate(ap_llm_prompt_tokens_total[5m])", "legendFormat": "prompt tokens/s"},
+        {"expr": "rate(ap_llm_completion_tokens_total[5m])", "legendFormat": "completion tokens/s"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "title": "LLM Cost Estimate (USD/hour)",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 22},
+      "targets": [{"expr": "rate(ap_llm_cost_usd_total[1h]) * 3600", "legendFormat": "{{provider}}"}],
+      "fieldConfig": {"defaults": {"unit": "currencyUSD"}}
+    },
+    {
+      "title": "Active Agents",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 22},
+      "targets": [{"expr": "ap_agent_active", "legendFormat": "active"}],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "title": "Pool Utilization",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+      "targets": [
+        {"expr": "ap_pool_active_tasks", "legendFormat": "active"},
+        {"expr": "ap_pool_queued_tasks", "legendFormat": "queued"},
+        {"expr": "ap_pool_max_capacity", "legendFormat": "capacity"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "short"}}
+    },
+    {
+      "title": "Guardrail Blocks",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+      "targets": [
+        {"expr": "rate(ap_guardrail_input_blocked_total[5m])", "legendFormat": "input blocked"},
+        {"expr": "rate(ap_guardrail_output_blocked_total[5m])", "legendFormat": "output blocked"},
+        {"expr": "rate(ap_guardrail_pii_detected_total[5m])", "legendFormat": "PII detected"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["agentprimordia", "agent", "llm"],
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "query": "label_values(ap_agent_runs_total, instance)",
+        "refresh": 2
+      }
+    ]
+  },
+  "time": {"from": "now-1h", "to": "now"},
+  "title": "AgentPrimordia Overview",
+  "uid": "agentprimordia-overview",
+  "version": 1
+}
