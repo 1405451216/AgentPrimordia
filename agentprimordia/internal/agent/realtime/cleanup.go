@@ -75,6 +75,13 @@ func (cm *CleanupManager) Touch(sessionID string) {
 	cm.lastActive[sessionID] = time.Now()
 }
 
+// Remove 停止追踪指定会话（会话关闭时调用）
+func (cm *CleanupManager) Remove(sessionID string) {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	delete(cm.lastActive, sessionID)
+}
+
 // sweep 扫描并清理超时会话
 func (cm *CleanupManager) sweep() {
 	cm.mu.Lock()
