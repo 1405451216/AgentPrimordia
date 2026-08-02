@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&style=for-the-badge" alt="TypeScript">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Zero_CGO-✓-brightgreen?style=for-the-badge" alt="Zero CGO">
-  <img src="https://img.shields.io/badge/version-v3.2.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-v3.6.0-blue?style=for-the-badge" alt="Version">
 </p>
 
 <h1 align="center">⚡ AgentPrimordia</h1>
@@ -50,237 +50,28 @@
 
 ## ✨ 核心特性
 
-### 🧠 ReAct Loop 引擎
-
-完整的 **Reason → Act → Observe** 循环，这是 Agent 智能行为的核心：
-
-```
-用户提问 → LLM 推理 → 选择工具 → 执行 → 观察结果 → 继续推理 → 最终回答
-```
-
-- 可配置最大轮数（默认 50）
-- 支持流式输出（逐 token 返回）
-- 上下文窗口自动裁剪
-- 检查点保存与恢复
-
-### 🛡️ 弹性调用（ResilientProvider）
-
-生产环境的 LLM 调用从不稳定，AgentPrimordia 内建三重保护：
-
-| 机制 | 说明 |
+| 能力 | 说明 |
 |------|------|
-| **重试** | 指数退避重试（默认 3 次，最大 10s 退避） |
-| **降级** | 主 Provider 失败后自动切换 Fallback Provider |
-| **熔断** | 连续 5 次失败后熔断，30s 后半开探测恢复 |
+| 🧠 **ReAct Loop 引擎** | Reason→Act→Observe 循环，流式输出，上下文自动裁剪，检查点恢复 |
+| 🛡️ **弹性调用** | ResilientProvider：指数退避重试 + 降级链 + 熔断器 |
+| 🧩 **10+ LLM Provider** | OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek |
+| 🔧 **工具系统** | 7 内置工具（FS/Shell/Web/API/DB/Code/Knowledge）+ MCP + 插件，4 方法自定义 |
+| 🧠 **三层记忆** | SQLite FTS5 + Vector Store + RAG 混合检索（RRF 融合） |
+| 🔄 **多 Agent 调度** | Pool 信号量并发 + 会话隔离 + AutoScaler + 事件通知 |
+| 🔒 **安全沙箱** | ACL + Sandbox + 路径穿越/symlink 逃逸防护 + Guardrails/PII |
+| 🪝 **20+ 生命周期 Hook** | 审计/告警/成本追踪等关键节点插桩 |
+| 📊 **可观测性** | Prometheus 指标 + OpenTelemetry + 35 个结构化错误码 |
+| 🧭 **多模式编排** | Pipeline / Handoff / Parallel / DAG / GroupChat / Debate / Workflow |
 
-```go
-primary := NewOpenAIProvider(Config{APIKey: "...", Model: "gpt-4o"})
-fallback := NewOpenAIProvider(Config{APIKey: "...", Model: "deepseek-chat", BaseURL: "..."})
-
-resilient := NewResilientProvider(primary, DefaultResilientConfig())
-resilient.AddFallback(fallback)  // 主模型挂了自动切备用
-```
-
-### 🧩 多 LLM Provider 支持
-
-| Provider | 用途 |
-|----------|------|
-| **OpenAI** | GPT-4o / GPT-4o-mini，及所有 OpenAI 兼容 API |
-| **Anthropic** | Claude 系列 |
-| **Gemini** | Google Gemini |
-| **Ollama** | 本地模型（Llama、Qwen 等） |
-| **Azure OpenAI** | Azure 部署的 OpenAI 模型 |
-| **Qwen** | 通义千问（DashScope 兼容） |
-| **GLM** | 智谱 GLM |
-| **Cohere** | Cohere v2 API |
-| **Mistral** | Mistral AI |
-| **DeepSeek** | 通过 OpenAI 兼容模式使用 |
-| **ResilientProvider** | 任意 Provider 的弹性包装 |
-
-### 🔧 工具系统
-
-7 个开箱即用的内置工具：
-
-| 工具 | 能力 |
-|------|------|
-| **FileSystem** | 文件/目录的读写、搜索、列表 |
-| **Shell** | 执行 Shell 命令 |
-| **Web** | HTTP GET/POST 请求 |
-| **API** | REST API 调用（白名单、超时） |
-| **Database** | SQL 数据库查询 |
-| **CodeExecution** | 代码执行（沙箱） |
-| **Knowledge** | RAG on_demand 模式的知识检索 |
-
-自定义工具只需实现 4 个方法：
-
-```go
-type Tool interface {
-    Name() string
-    Description() string
-    Parameters() json.RawMessage
-    Execute(ctx context.Context, args json.RawMessage) (*Result, error)
-}
-```
-
-### 🧠 记忆系统
-
-**三层记忆架构**：
-
-| 层级 | 技术 | 能力 |
-|------|------|------|
-| **Episodic Memory** | SQLite + FTS5 | 全文搜索、标签过滤、重要性评分、时间线视图 |
-| **Vector Store** | 内存 + 余弦相似度 | 语义搜索 |
-| **RAG** | FTS + Vector 混合检索 | 加权融合（FTS×0.4 + Vec×0.6），知识库上下文注入 |
-
-```go
-// 混合检索：关键词 + 语义双通道
-results, _ := ragStore.HybridSearch(ctx, "Go 并发模型", 5)
-// 自动融合 FTS 和向量搜索结果，按相关度排序
-```
-
-### 🔄 多 Agent 并发调度
-
-```go
-pool := NewPool(PoolConfig{MaxConcurrency: 5})
-results, _ := pool.Dispatch(ctx, []TaskConfig{
-    {ID: "t1", Title: "数据分析", Prompt: "分析销售趋势"},
-    {ID: "t2", Title: "报告生成", Prompt: "生成月度报告"},
-    {ID: "t3", Title: "邮件草拟", Prompt: "撰写客户回访邮件"},
-})
-// 3 个任务并发执行，自动管理 Agent 生命周期
-```
-
-### 🔒 安全沙箱
-
-```go
-acl := NewACL()
-acl.Allow("agent-1", "/workspace/data", AccessAll)
-acl.Deny("agent-1", "/workspace/.env")
-
-sandbox := NewSandbox(acl)
-sandbox.AllowCommand("ls")
-sandbox.BlockCommand("rm -rf")
-sandbox.ValidatePath("agent-1", "/etc/../../../etc/passwd", AccessRead)
-// → ErrPathTraversal: 路径穿越攻击已拦截
-```
-
-### 🪝 20+ 个生命周期 Hook
-
-在 Agent 运行的每个关键节点插入你的逻辑：
-
-```go
-hooks := NewHookManager()
-hooks.Register(HookBeforeTool, func(ctx context.Context, hctx *HookContext) error {
-    return auditLog.Record(hctx.ToolCall)  // 审计日志
-})
-hooks.Register(HookOnError, func(ctx context.Context, hctx *HookContext) error {
-    return alerting.Notify(hctx.Error)     // 错误告警
-})
-hooks.Register(HookAfterLLM, func(ctx context.Context, hctx *HookContext) error {
-    return costTracker.Record(hctx.Response.Usage)  // 成本追踪
-})
-```
-
-### 📊 Prometheus 指标
-
-零配置即可获得生产级可观测性：
-
-```
-ap_llm_total_calls 1024
-ap_llm_latency_ms_bucket{le="100"} 856
-ap_tool_total_calls 512
-ap_active_agents 3
-```
-
-### 🚨 35 个结构化错误码
-
-每个错误都有唯一编码，便于程序化处理和告警：
-
-```go
-resp, err := agent.Run(ctx, msg)
-if err != nil {
-    switch GetCodeFromError(err) {
-    case "AGENT_003": log.Println("超出最大轮数")
-    case "LLM_003":  log.Println("熔断器开启，Provider 不健康")
-    case "SEC_004":   log.Println("检测到路径穿越攻击")
-    }
-}
-```
-
----
-
-## 🎉 v1.0.0 正式发布 (2026-06-30)
-
-**Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0，API 稳定性承诺锁定。**
-
-- 🔒 **API 稳定性承诺** — Stable API 向后兼容，破坏性变更需大版本（v2.0）
-- 📊 **全局版本统一** — Go `pkg.Version`、TypeScript `package.json`、CLI `ap version` 全部对齐 v1.0.0
-- 📖 **文档全面更新** — API 参考文档、CODE_WIKI、README 同步至 v1.0.0
-- ✅ **生产就绪** — 47 包 2900+ Go 测试用例 + 154 TypeScript 测试用例全部通过
-
----
-
-## 🆕 v1.0.0 性能优化亮点
-
-### 代码审查与质量
-
-- 🔍 **全量代码审查**: 覆盖 Go 47 包 + TypeScript 6 文件，发现并修复 24 个问题（3 高 / 8 中 / 13 低优先级）
-
-### 阶段一：并发调度优化
-
-- ⚡ **动态信号量**: Pool 调度器从固定容量 channel 升级为 `sync.Cond` 动态信号量，AutoScaler 实时生效
-- 🧵 **协程池优化**: `GoroutinePool.Wait()` 从忙等待改为 `sync.Cond` 通知机制，消除 CPU 空转
-- 🔗 **连接池复用**: LLM Provider 统一通过 `NewDefaultLLMClient` 共享 HTTP 连接池
-- ⏱️ **超时防护**: 上下文压缩 LLM 调用添加 30s 超时，防止无限阻塞
-
-### 阶段二：内存优化
-
-- 🔄 **HookContext Pool**: ReAct 循环热点路径引入 `sync.Pool` 复用 HookContext，减少 GC 压力
-- 📦 **bytes.Buffer Pool**: 通用 buffer 池化工具，benchmark 显示 2.2x 加速、0 allocs/op
-- 🧪 **Token 缓存评估**: 实测 `len(text)/4` (0.4ns) 比 sync.Map 缓存 (55ns) 快 100+ 倍，决策不启用缓存
-
-### 阶段三：LLM 层优化
-
-- 🌊 **SSE 流式背压**: OpenAI Provider 添加 timer-based 背压控制（5s 超时 + 10 连续丢弃后中断），防止慢消费者阻塞流
-- 📊 **Token 缓存基础设施**: FNV-1a 哈希 + sync.Map 缓存，为未来大规模场景预留
-
-### 阶段四：向量搜索升级
-
-- 🔀 **RRF 融合算法**: 引入 Reciprocal Rank Fusion (Cormack et al., 2009)，解决 Linear 加权量纲不可比问题
-- ⚙️ **可配置融合策略**: `RAGFusionConfig` 支持 Linear/RRF 模式切换、权重调优、over-fetch 召回
-- 🏷️ **双命中加成**: RRF 模式下同时命中 FTS + Vector 的结果获得 2x 分数加成
-- 🛡️ **类型安全**: TypeScript SDK `role` 字段从 `string` 强化为联合类型
-- ✅ **测试覆盖**: Go 47 包 2900+ 用例 + TS 6 文件 154 用例，全部 PASS
-
-## 🆕 v1.0.0 亮点
-
-- 🚀 **开发者体验重构**: `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent
-- 🔌 **`WithRAGMemory()` 一步 RAG**: 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装
-- 🔀 **RRF 融合算法**: Reciprocal Rank Fusion 混合检索，支持运行时切换 Linear / RRF 模式
-- 🧪 **`testutil` 测试包**: `MockProvider` + `NewTestAgent()`，无需手写 Mock
-- ⚡ **性能优化**: BufferPool、TokenCache、JSON Pool、pprof 端点、SSE 背压
-- ✅ **向后兼容**: Stable API 向后兼容，链式 API 仍可用
-- 🔒 **API 稳定性承诺**: Stable API 向后兼容，破坏性变更需大版本（v2.0）
-
-## v0.7.0 亮点
-
-- 🔒 **安全加固**: symlink 逃逸修复、熔断器逻辑修复、YAML 注入防护、License 统一
-- ☸️ **Operator 完善**: Service 暴露、HPA 自动扩缩、真实 Pod 指标采集
-- 📦 **TypeScript SDK 扩展**: Pipeline/Handoff/ParallelRun 编排、A2A 消息总线、MCP 类型、SQLite 持久化
-- 🔄 **CI/CD**: 安全扫描(govulncheck/Trivy)、多平台测试、Release 签名+SBOM
-- 📚 **文档更新**: 架构图重写、CHANGELOG 回填 v0.3-v0.6、开发文档同步
+> 每项能力的代码示例与详解见 [docs/index.md](docs/index.md) 与 [docs/concepts/](docs/concepts/)。V4 新增能力（自治/技能/互操作/实时）见上方速览表。
 
 ---
 
 ## 🚀 Quick Start
 
-### 安装
-
 ```bash
 go get agentprimordia
 ```
-
-### 30 秒创建你的第一个 Agent
 
 ```go
 package main
@@ -288,129 +79,27 @@ package main
 import (
     "context"
     "fmt"
-    "log"
     "os"
 
     ap "agentprimordia/pkg"
 )
 
 func main() {
-    // 1. 创建 LLM Provider
-    provider, err := ap.NewOpenAIProvider(ap.Config{
-        APIKey: os.Getenv("OPENAI_API_KEY"),
-        Model:  "gpt-4o-mini",
+    provider, _ := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"), Model: "gpt-4o-mini",
     })
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // 2. 创建工具注册表
-    registry := ap.NewToolRegistry()
-
-    // 3. 创建 Agent（推荐入口：ap.NewAgent）
-    agent, err := ap.NewAgent("my-agent", "You are a helpful assistant.",
-        provider,
-        ap.WithMaxTurns(10),
-        ap.WithToolkit(registry),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // 4. 运行！
-    resp, err := agent.Run(context.Background(), ap.UserMessage("Hello!"))
-    if err != nil {
-        log.Fatal(err)
-    }
-
+    agent, _ := ap.NewAgent("my-agent", "You are a helpful assistant.",
+        provider, ap.WithMaxTurns(10), ap.WithToolkit(ap.NewToolRegistry()))
+    resp, _ := agent.Run(context.Background(), ap.UserMessage("Hello!"))
     fmt.Println(resp.Content)
-    fmt.Printf("Turns: %d, Tokens: %d\n",
-        resp.Metrics.TotalTurns,
-        resp.Usage.TotalTokens)
 }
 ```
 
-### 5 分钟打造带工具和记忆的 Agent
-
-```go
-// 工具
-registry := ap.NewToolRegistry()
-fsTool, _ := ap.NewFileSystem(".")
-registry.Register(fsTool)
-
-// 记忆
-memory, _ := ap.WithInMemory()
-defer memory.Close()
-
-// Hook：审计每个工具调用
-hooks := ap.NewHookManager()
-hooks.Register(ap.HookBeforeTool, func(ctx context.Context, hctx *ap.HookContext) error {
-    slog.Info("工具调用", "tool", hctx.ToolCall.Name)
-    return nil
-})
-
-// Agent
-agent, err := ap.NewAgent("smart-agent", "You are a file analysis assistant.",
-    resilientProvider,
-    ap.WithMaxTurns(5),
-    ap.WithToolkit(registry),
-    ap.WithMemory(memory),
-    ap.WithHooks(hooks),
-)
-if err != nil {
-    log.Fatal(err)
-}
-
-// 运行
-resp, _ := agent.Run(ctx, ap.UserMessage("分析当前目录的文件结构"))
-
-// 回忆
-episodes, _ := memory.Search(ctx, "文件", nil)
-fmt.Printf("记忆了 %d 条交互记录\n", len(episodes))
-```
-
-### 10 分钟构建多 Agent 并发系统
-
-```go
-pool := ap.NewPool(ap.PoolConfig{
-    MaxConcurrency: 3,
-    Timeout:        30 * time.Second,
-    DefaultAgent: ap.ReActAgentConfig{
-        SystemPrompt: "You are a task assistant.",
-        MaxTurns:     3,
-    },
-})
-defer pool.Close()
-
-pool.SetModel(resilientProvider)
-pool.SetToolkit(registry)
-
-// 监听事件
-go func() {
-    for event := range pool.EventChannel() {
-        slog.Info("Pool事件", "type", event.Type, "task", event.TaskID)
-    }
-}()
-
-// 提交任务
-results, _ := pool.Dispatch(ctx, []ap.TaskConfig{
-    {ID: "1", Title: "代码审查", Prompt: "Review the pull request"},
-    {ID: "2", Title: "文档生成", Prompt: "Generate API documentation"},
-    {ID: "3", Title: "测试编写", Prompt: "Write unit tests for auth module"},
-})
-
-for _, r := range results {
-    icon := "✅"
-    if r.Error != nil { icon = "❌" }
-    fmt.Printf("%s [%s] %s (%v)\n", icon, r.TaskID, r.Task.Title, r.Duration)
-}
-```
+> 带工具/记忆/RAG/多 Agent 的进阶示例见 [docs/getting-started/](docs/getting-started/) 与 [docs/guides/](docs/guides/)。
 
 ---
 
 ## 🏗️ 架构设计
-
-### 分层架构
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -418,9 +107,9 @@ for _, r := range results {
 ├─────────────────────────────────────────────────┤
 │  pool/   │  agent/   │  security/  │ concurrency│
 │ (调度)   │ (ReAct)   │  (安全)     │  (并发)    │
-├──────────┼───────────┼────────────┼────────────┤
+├──────────┼───────────┼────────────────────────┤
 │  tools/  │  memory/  │  events/   │  metrics/  │
-│ (工具)   │ (记忆)    │  (事件)    │  (指标)    │
+│ (工具)   │  (记忆)    │  (事件)    │  (指标)    │
 ├──────────┴───────────┴────────────┴────────────┤
 │              llm/ (Provider 抽象层)              │
 ├─────────────────────────────────────────────────┤
@@ -428,110 +117,21 @@ for _, r := range results {
 └─────────────────────────────────────────────────┘
 ```
 
-**设计原则**：
-- 🔌 **接口驱动** — 所有子系统通过 interface 解耦
-- 🧱 **组合优于继承** — 能力通过配置组合
-- 🔒 **弹性优先** — 内建重试、降级、熔断
-- 🪶 **零 CGO 依赖** — 纯 Go SQLite 驱动
+**设计原则**：接口驱动 · 组合优于继承 · 弹性优先 · 零 CGO · 协议式微内核（能力经 `*Capable` 接口自动发现）。
 
-### ReAct Loop 数据流
-
-```
-                ┌──────────┐
-                │ 用户输入  │
-                └────┬─────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │  RAG 上下文   │ ◄── 知识库检索
-              │   注入       │
-              └──────┬───────┘
-                     │
-                     ▼
-              ┌──────────────┐
-              │ 上下文窗口    │ ◄── 自动裁剪长对话
-              │   裁剪       │
-              └──────┬───────┘
-                     │
-                     ▼
-     ┌───────────────────────────────┐
-     │         LLM 推理              │
-     │   (Complete / CallTools)      │
-     └───────────┬───────────────────┘
-                 │
-         ┌───────┴───────┐
-         │               │
-    有工具调用         无工具调用
-         │               │
-         ▼               ▼
-  ┌─────────────┐  ┌──────────┐
-  │  执行工具    │  │ 最终回答  │
-  │  (Execute)  │  │ Response │
-  └──────┬──────┘  └──────────┘
-         │
-         ▼
-  ┌─────────────┐
-  │ 结果加入历史 │
-  └──────┬──────┘
-         │
-         └──────► 回到 RAG 上下文注入
-```
+> 分层详解与 ReAct 数据流见 [docs/architecture-mermaid.md](../docs/architecture-mermaid.md) 与 [docs/concepts/react-loop.md](docs/concepts/react-loop.md)。
 
 ---
 
 ## 🟦 TypeScript SDK
 
-为 Node.js 开发者提供完整的 TypeScript SDK：
+为 Node.js 开发者提供与 Go 100% 功能对等的 TypeScript SDK：
 
 ```bash
 npm install @agentprimordia/sdk
 ```
 
-```typescript
-import {
-    ReActAgent,
-    OpenAIProvider,
-    ResilientProvider,
-    ToolRegistry,
-    InMemoryStore,
-    VectorStore,
-    HookManager,
-    AgentPool,
-    ACL,
-    Sandbox,
-    Bus,
-    Pipeline,
-    ParallelRun,
-    Handoff,
-    A2ABus,
-    MCPClient,
-    SqliteStore,
-    VERSION,
-} from '@agentprimordia/sdk';
-
-// 创建弹性 Provider
-const primary = new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY! });
-const fallback = new OpenAIProvider({
-    apiKey: process.env.DEEPSEEK_API_KEY!,
-    baseURL: 'https://api.deepseek.com/v1',
-});
-const resilient = new ResilientProvider(primary);
-resilient.addFallback(fallback);
-
-// 创建 Agent
-const agent = new ReActAgent({
-    name: 'production-agent',
-    model: resilient,
-    toolkit: new ToolRegistry(),
-    memory: new InMemoryStore(),
-    hooks: new HookManager(),
-    maxTurns: 10,
-});
-
-// 运行
-const response = await agent.run('Analyze the market trends');
-console.log(`SDK v${VERSION}: ${response.content}`);
-```
+> 完整 API、Provider/工具/记忆/编排示例见 [docs/index.md](docs/index.md)（TypeScript 标签页）与 [sdk/typescript/](../sdk/typescript/)。
 
 ---
 
@@ -539,165 +139,55 @@ console.log(`SDK v${VERSION}: ${response.content}`);
 
 ```
 agentprimordia/
-├── cmd/
-│   ├── ap/              # CLI 工具 (loop / run / pool / console)
-│   └── example/
-│       ├── hello-agent/     # 30 秒入门
-│       ├── multi-agent/     # 多 Agent 并发
-│       └── production/      # 生产级示例（RAG + 多模型 + 可观测性）
+├── cmd/ap/              # CLI (init/run/debug/loop/autonomy/skill/a2a/realtime/...)
 ├── internal/
-│   ├── admin/           # Admin HTTP API (调试/管理接口)
-│   ├── agent/           # ReAct Loop 引擎 + Hook + 生命周期
-│   │   ├── a2a/         # Agent2Agent 协议 (JSON-RPC / SSE / 任务管理)
-│   │   ├── planning/    # 任务规划器
-│   │   ├── reflection/  # Agent 自反思
-│   │   └── tool_learning/ # 工具学习/自动发现
-│   ├── concurrency/     # 文件锁 + 动态协程池 (sync.Cond 信号通知)
-│   ├── config/          # 配置热加载
-│   ├── debugger/        # 调试器 / Inspector
-│   ├── events/          # 内部事件总线
-│   ├── guardrail/       # 输入/输出护栏 (注入检测 / PII / 主题过滤)
-│   ├── llm/             # Provider 接口 + 10+ 内置实现 + 弹性层
-│   ├── memory/          # SQLite + FTS5 + VectorStore + RAG
-│   ├── metrics/         # Prometheus 指标采集
-│   ├── orchestration/   # 编排模式 (Pipeline / Handoff / DAG / GroupChat)
-│   ├── otel/            # OpenTelemetry 桥接与导出
-│   ├── persist/         # 状态持久化与 Checkpoint
-│   ├── pool/            # 多 Agent 并发调度器 + AutoScaler 动态扩缩
-│   ├── prompt/          # 提示词模板与少样本管理
-│   ├── security/        # ACL + Sandbox + 路径校验
-│   └── tools/           # 工具注册 + 执行 + MCP + 内置工具
-│       ├── builtin/     # FileSystem / Shell / Web / API / DB / Code
-│       └── mcp/         # MCP 协议适配器
+│   ├── agent/           # ReAct 引擎 + 编排 + 协议式微内核
+│   │   ├── autonomy/    # 长期自治 (v3.3)
+│   │   ├── skills/      # 技能进化 (v3.4)
+│   │   ├── realtime/    # 多模态实时 (v3.6)
+│   │   ├── a2a/         # Agent2Agent + 开放协议互操作 (v3.5)
+│   │   ├── planning/ reflection/ tool_learning/ learning/
+│   ├── llm/ memory/ tools/ pool/ persist/ orchestration/
+│   ├── guardrail/ security/ metrics/ otel/ events/ config/
+│   └── ...              # admin / debugger / chaos / health / logger / ...
 ├── pkg/                 # 公共 API 重导出
-├── ecosystem/           # 插件生态 / 示例 / 模板
+├── ecosystem/           # 插件 / 示例 / 模板
 ├── operator/            # Kubernetes Operator (CRD + HPA)
-├── pgvector/            # pgvector 向量存储扩展
 ├── bench/               # 性能基准测试套件
+├── docs/                # 概念 / 指南 / API 参考 / 路线图
 └── sdk/typescript/      # TypeScript SDK
 ```
-
----
-
-## 📊 质量与性能指标
-
-### 测试覆盖
-
-| 指标 | Go | TypeScript | 合计 |
-|------|-----|-----------|------|
-| 测试包数 | 47 | 6 | 53 |
-| 测试用例 | 2,900+ | 154 | 3,054+ |
-| 通过率 | 100% | 100% | 100% |
-| 总耗时 | ~125s | 0.6s | ~126s |
-
-### 并发与内存性能
-
-| 组件 | 机制 | 优化效果 |
-|------|------|----------|
-| Pool 调度器 | `sync.Cond` 动态信号量 | AutoScaler 实时生效，无忙等待 |
-| GoroutinePool | `sync.Cond` 通知 | Wait() CPU 占用从 ~100% → ~0% |
-| LLM Provider | 共享 HTTP 连接池 | 减少 TCP 连接数，复用 Keep-Alive |
-| 上下文压缩 | 30s 超时控制 | 防止 LLM 调用无限阻塞 |
-| HookContext | `sync.Pool` 复用 | ReAct 热点路径减少 GC 压力 |
-| bytes.Buffer | `sync.Pool` 池化 | 2.2x 加速，0 allocs/op |
-| SSE 流式 | Timer-based 背压 | 5s 超时 + 10 丢弃中断，防止流阻塞 |
-| Token 估算 | `len(text)/4` 直接计算 | 0.4ns/op，比 sync.Map 缓存快 100+ 倍 |
-
-### 向量搜索性能
-
-| 融合模式 | 算法 | 适用场景 |
-|----------|------|----------|
-| Linear | 加权融合 (FTS×0.4 + Vec×0.6) | 快速原型、小规模数据 |
-| RRF | Reciprocal Rank Fusion (k=60) | 生产环境、大规模数据 |
-
-- **Over-fetch 召回**: 预取 `topK + OverFetchSize` 候选，提升融合质量
-- **双命中加成**: RRF 模式下 FTS + Vector 同时命中的结果获得 2x 分数加成
-- **可配置策略**: 运行时动态切换融合模式，无需重启
-
-### 架构合规
-
-| 检查项 | 状态 |
-|--------|------|
-| 接口驱动设计 | 通过 |
-| 依赖方向规则 | 通过 |
-| 零 CGO 依赖 | 通过 |
-| 第三方依赖白名单 | 通过 |
-| 并发安全 (mutex/atomic/pool) | 通过 |
-| 错误处理规范 | 通过 |
-| 结构化错误码 | 35 个可用 |
-
----
-
-## 🗺️ 优化路线图
-
-## ✅ 已完成 (v2.0)
-
-- [x] **多租户 SaaS 隔离**: `TenantManager` + `QuotaManager` + 令牌桶限流 + context 级数据隔离
-- [x] **密钥管理系统**: `SecretsManager` + AES-GCM 加密 + 环境/Vault 多后端
-- [x] **gRPC 传输层**: Agent-to-Agent gRPC + 连接池复用
-- [x] **语义缓存**: 基于语义相似度的 LLM 响应缓存 + L1/L2 多级缓存
-- [x] **MapReduce 编排**: 大规模任务的 MapReduce 模式
-- [x] **SLO/SLI 指标**: 服务质量目标监控 + 增强 pprof
-- [x] **结构化日志**: `StandardLogger` + `LogShipper` 远程传输
-- [x] **调试器增强**: 条件断点 + 时间旅行回放 + 变量监视
-- [x] **记忆生命周期**: 重要性评分 + 自动归档/压缩 + 记忆聚类
-- [x] **插件市场**: 动态注册 + 版本管理 + 安装器 + 资源限制
-- [x] **MCP Server**: MCP Server 端实现
-- [x] **合规审计**: 合规报告生成器
-- [x] **WASM 增强沙箱**: 资源限制 + WASM 模块安全执行
-- [x] **PII Trie 优化**: Trie 树匹配，大词汇表场景比正则快 10x+
-
-## ✅ 已完成 (v1.0)
-
-- [x] **代码审查**: 全量审查 Go 47 包 + TypeScript 6 文件，修复 24 个问题
-- [x] **并发调度优化**: `sync.Cond` 动态信号量 + 协程池通知机制
-- [x] **内存优化**: HookContext/Buffer `sync.Pool` 池化，benchmark 2.2x 加速
-- [x] **LLM 层优化**: SSE 流式背压控制 + Token 缓存评估
-- [x] **向量搜索升级**: RRF 融合算法 + `RAGFusionConfig` 可配置化
-- [x] **版本统一**: Go SDK / TypeScript SDK / CLI 全局统一为 v1.0.0
-- [x] **API 稳定性承诺**: Stable API 向后兼容锁定
-
-### 近期 (v1.1)
-
-- [ ] **高并发压测**: 编写 `bench/` 套件，覆盖 Pool 1000+ 并发任务、GoroutinePool 10K goroutine 场景
-- [ ] **LLM 请求批量合并**: 实现 Request Batching 减少 API 调用次数
-- [ ] **RRF 生产调优**: 基于真实负载调整 RRF k 值与 over-fetch 比例
-
-### 中期 (v1.2)
-
-- [ ] **向量搜索扩展**: 大规模数据场景迁移到 pgvector 或 Milvus 后端
-- [ ] **TypeScript SDK 性能**: 添加 Node.js 性能基准测试
-- [ ] **分布式追踪**: 完善 OpenTelemetry Span 链路
-- [ ] **eBPF 可观测性**: 内核级 Agent 行为监控
-
-### 长期 (v3.0)
-
-- [ ] **Agent 市场**: 可插拔 Agent 模板生态
-- [ ] **生产就绪**: SLA 保障、混沌工程验证
-- [ ] **分布式集群**: 跨节点 Agent 协作
-- [ ] **自适应学习**: Agent 自主进化与知识蒸馏
 
 ---
 
 ## 🧪 运行示例
 
 ```bash
-# Hello Agent — 最简示例
-make run-hello
+# 既有示例（monorepo 根 agentprimordia/ 下）
+make run-hello          # 最简 Agent
+make run-multi          # 多 Agent 并发
+make run-production     # RAG + 弹性调用 + 事件系统
 
-# Multi-Agent — 并发调度
-make run-multi
-
-# Production — RAG + 弹性调用 + 事件系统
-make run-production
+# V4 验收 demo
+go run ./ecosystem/examples/autonomous-task/   # v3.3 长期自治 + 崩溃恢复
+go run ./ecosystem/examples/skill-evolution/   # v3.4 习得→复用
+go run ./ecosystem/examples/a2a-interop/       # v3.5 跨生态委托
+go run ./ecosystem/examples/realtime-voice/    # v3.6 语音多轮 + 打断
 ```
+
+> 全部示例见 [ecosystem/examples/](ecosystem/examples/)。
 
 ---
 
-## 📄 完整文档
+## 📚 文档
 
-- **[开发文档 (DEVELOPMENT.md)](./DEVELOPMENT.md)** — 架构详解、扩展指南、API 参考
-- **[许可证 (LICENSE)](./LICENSE)** — Apache License 2.0
+- **入门** — [getting-started/](docs/getting-started/) · [guides/create-agent.md](docs/guides/create-agent.md)
+- **概念** — [concepts/](docs/concepts/)（react-loop / memory / orchestration / tools / [autonomy](docs/concepts/autonomy.md) / [skills](docs/concepts/skills.md) / [realtime](docs/concepts/realtime.md) / [a2a](docs/concepts/a2a.md)）
+- **指南** — [guides/](docs/guides/)（[skill-format](docs/guides/skill-format.md) · [a2a-interop](docs/guides/a2a-interop.md) · [realtime](docs/guides/realtime.md) · 部署 · 安全 · 性能）
+- **API 参考** — [docs/api/](docs/api/) · [docs/api-reference/](docs/api-reference/)
+- ** cookbook** — [docs/cookbook/](docs/cookbook/)（RAG / 多 Agent / 代码审查机器人 / K8s 部署 / WASM 沙箱 …）
+- **路线图与变更** — [V4-ROADMAP.md](../docs/V4-ROADMAP.md) · [ROADMAP.md](../docs/ROADMAP.md) · [CHANGELOG.md](../docs/CHANGELOG.md)
+- **性能与部署** — [benchmarks/](docs/benchmarks/) · [DEPLOYMENT.md](../docs/DEPLOYMENT.md) · [DEVELOPMENT.md](./DEVELOPMENT.md)
 
 ---
 
@@ -710,10 +200,10 @@ make run-production
 | **弹性调用** | ✅ 内建重试+降级+熔断 | 需自行实现 | 需自行实现 |
 | **记忆系统** | ✅ SQLite+FTS+Vector+RAG | 需外接 | 基础支持 |
 | **安全沙箱** | ✅ ACL+Sandbox+路径穿越检测 | ❌ | ❌ |
+| **长期自治 / 技能进化** | ✅ v3.3 / v3.4 内建 | ❌ | ❌ |
 | **Prometheus** | ✅ 内建 | 需自行集成 | 需自行集成 |
-| **结构化错误码** | ✅ 35 个错误码 | ❌ | ❌ |
-| **TypeScript SDK** | ✅ 官方支持 | 社区 | ❌ |
-| **Operator HPA** | ✅ | ❌ | ❌ |
+| **结构化错误码** | ✅ 35 个错误码 | ❌ |  |
+| **TypeScript SDK** | ✅ 官方对等 | 社区 | ❌ |
 | **单二进制部署** | ✅ | ❌ | ❌ |
 
 ---
@@ -722,37 +212,3 @@ make run-production
   <strong>万物之源，智能之始</strong><br>
   用 AgentPrimordia 构建你自己的 AI Agent
 </p>
-
----
-
-## 🔒 供应链安全 (Supply Chain Security)
-
-### SBOM 生成
-
-```bash
-# 生成 CycloneDX 格式 SBOM（推荐，需安装 syft）
-./scripts/generate-sbom.sh sbom.json cyclonedx-json
-
-# 或使用 SPDX 格式
-./scripts/generate-sbom.sh sbom.spdx spdx-json
-
-# 无 syft 时自动降级为 go list 输出
-./scripts/generate-sbom.sh
-```
-
-### 容器镜像签名
-
-```bash
-# 基于密钥签名
-COSIGN_PRIVATE_KEY=$(cat cosign.key) ./scripts/cosign-sign.sh ghcr.io/example/app:latest
-
-# Keyless 签名（Fulcio + Rekor）
-./scripts/cosign-sign.sh ghcr.io/example/app:latest
-```
-
-### CI/CD 集成
-
-GitHub Actions 工作流 `scripts/.github/workflows/supply-chain.yml` 提供：
-- **SBOM 自动生成**：每次 push/PR 自动生成并上传 SBOM artifact
-- **镜像签名**：main 分支自动触发 Cosign 签名
-- **定期扫描**：每周一自动执行供应链安全检查
