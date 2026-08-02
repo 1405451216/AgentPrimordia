@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Fixed — 辅助 SDK 工程化修复（Rust 编译失败 + Python 注释乱码 + CI 盲区）
+
+- **Rust SDK 编译失败**：`sdk/rust/src/client.rs` 中 `return Err(resp.into())` 需要 `AgentPrimordiaError: From<reqwest::Response>`，但 `error.rs` 仅实现 `From<reqwest::Error>`，`cargo build` 报 E0277 编译错误且无任何 CI 覆盖 → 新增 `From<reqwest::Response>` 实现（401/429/其他状态码映射），`cargo build --locked` + `cargo clippy -- -D warnings` 全部通过
+- **Python SDK 中文注释乱码**：`sdk/python/agentprimordia/client.py` 10 处 docstring/注释因编码损坏固化为 U+FFFD 替换字符（git blob 中 74 处）→ 全部重写为正确中文；`__init__.py` 首行同步修复
+- **CI 盲区**：`sdk/python` / `sdk/rust` 不在任何 workflow 中，缺陷无法被门禁捕获 → ci.yml 新增 `changes` 过滤（py/rust）、`python-sdk` job（compileall + import 检查 + U+FFFD 乱码扫描）、`rust-sdk` job（`cargo build --locked` + `cargo clippy -- -D warnings`），随变更范围选择性触发
+- **`.gitignore` 补充**：新增 `target/` / `**/target/` 规则，防止 Rust 构建产物误入库
+
 ### Fixed — CI 第二批缺陷修复（推送后全量验证暴露）
 
 首次推送修复后 CI 仍有多条失败，逐项定位并修复（本地全量验证门全绿）：

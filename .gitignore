@@ -5,6 +5,10 @@
 # ---------- Dependencies ----------
 node_modules/
 
+# ---------- Rust Build Output ----------
+target/
+**/target/
+
 # ---------- Build Output ----------
 dist/
 build/

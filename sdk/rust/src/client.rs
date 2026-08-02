@@ -27,7 +27,7 @@ impl AgentPrimordiaClient {
     }
 
     pub async fn list_agents(&self) -> Result<Vec<Agent>, AgentPrimordiaError> {
-        let resp = self.client.get(&format!("{}/api/playground/agents", self.base_url))
+        let resp = self.client.get(format!("{}/api/playground/agents", self.base_url))
             .header("Authorization", format!("Bearer {}", self.api_key)).send().await?;
         let data: serde_json::Value = resp.json().await?;
         Ok(serde_json::from_value(data["agents"].clone()).unwrap_or_default())
