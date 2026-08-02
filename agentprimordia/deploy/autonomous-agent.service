@@ -1,0 +1,40 @@
+# systemd 服务单元：自治 Agent 守护进程
+# 安装：sudo cp deploy/autonomous-agent.service /etc/systemd/system/
+# 启用：sudo systemctl enable --now autonomous-agent
+#
+# 配合 v3.3 崩溃恢复：进程异常退出后 systemd 自动重启，
+# Agent 启动时调用 ResumeIncomplete() 从最后检查点恢复。
+
+[Unit]
+Description=AgentPrimordia Autonomous Agent
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ap-agent
+Group=ap-agent
+WorkingDirectory=/opt/agentprimordia
+ExecStart=/opt/agentprimordia/ap autonomy run --daemon
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# 环境变量
+Environment=AP_AGENT_NAME=autonomous-monitor
+Environment=AP_CHECKPOINT_PATH=/var/lib/ap/checkpoints
+Environment=AP_LOG_LEVEL=info
+
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ap
+
+# 资源限制
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target
