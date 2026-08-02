@@ -6,6 +6,29 @@
  * @packageDocumentation
  */
 
+// ===== v3.3 Autonomy（长期自治） =====
+export {
+  GoalState, Priority, createGoal, transitionGoal, canRetry,
+  createPlan, planProgress, isPlanComplete, readySteps,
+} from './autonomy/index.js';
+export type {
+  GoalConfig, AgentGoal, PlanStep, GoalPlan, StateChangeEvent,
+} from './autonomy/index.js';
+
+// ===== v3.4 Skills（技能进化） =====
+export {
+  createSkill, activateSkill, deprecateSkill, recordUsage,
+  SkillStore, SkillMatcher, validateSkill, versionString, isCompatible,
+} from './skills/index.js';
+export type {
+  SkillStatus, StepDef, IOSchema, Version, Skill,
+  ConfidenceLevel, MatchResult, MatcherConfig,
+} from './skills/index.js';
+
+// ===== v3.6 Realtime（多模态实时） =====
+export { SessionState, RealtimeSession, RealtimeHub, MockASR, MockTTS } from './realtime/index.js';
+export type { SessionEvent, ASRAdapter, TTSAdapter, HubConfig } from './realtime/index.js';
+
 export { ReActAgent, HookManager, Lifecycle } from './agent/react-loop.js';
 export type { ReActConfig, HookPoint, HookContext, HookFunc, StreamEvent, RunOptions } from './agent/react-loop.js';
 

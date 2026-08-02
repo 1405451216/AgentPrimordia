@@ -1,9 +1,12 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/autonomy"
 	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/realtime"
 	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/skills"
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
@@ -51,6 +54,12 @@ type CapabilityAgent struct {
 	distiller       *learning.KnowledgeDistiller
 	evolver         *learning.CapabilityEvolver
 	feedbackLearner *learning.FeedbackLearner
+
+	// v3.3-v3.6：自治 / 技能 / 实时能力
+	autonomyRT  *autonomy.AutonomyRuntime
+	skillStore  *skills.Store
+	skillMatch  *skills.Matcher
+	realtimeHub *realtime.RealtimeHub
 }
 
 // ===== Agent 接口委托 =====
@@ -362,3 +371,36 @@ func (c *CapabilityAgent) WithFeedbackLearner(f *learning.FeedbackLearner) *Capa
 func (c *CapabilityAgent) GetFeedbackLearner() *learning.FeedbackLearner {
 	return c.feedbackLearner
 }
+
+// ===== v3.3-v3.6 能力（自治 / 技能 / 实时） =====
+
+// WithAutonomy 注入长期自治运行时（AutonomyCapable）
+func (c *CapabilityAgent) WithAutonomy(rt *autonomy.AutonomyRuntime) *CapabilityAgent {
+	c.autonomyRT = rt
+	return c
+}
+
+// GetAutonomyRuntime 返回自治运行时（AutonomyCapable）
+func (c *CapabilityAgent) GetAutonomyRuntime() *autonomy.AutonomyRuntime { return c.autonomyRT }
+
+// WithSkills 注入技能库与匹配器（SkillsCapable）
+func (c *CapabilityAgent) WithSkills(store *skills.Store, matcher *skills.Matcher) *CapabilityAgent {
+	c.skillStore = store
+	c.skillMatch = matcher
+	return c
+}
+
+// GetSkillStore 返回技能库（SkillsCapable）
+func (c *CapabilityAgent) GetSkillStore() *skills.Store { return c.skillStore }
+
+// GetSkillMatcher 返回技能匹配器（SkillsCapable）
+func (c *CapabilityAgent) GetSkillMatcher() *skills.Matcher { return c.skillMatch }
+
+// WithRealtime 注入实时会话编排器（RealtimeCapable）
+func (c *CapabilityAgent) WithRealtime(hub *realtime.RealtimeHub) *CapabilityAgent {
+	c.realtimeHub = hub
+	return c
+}
+
+// GetRealtimeHub 返回实时会话编排器（RealtimeCapable）
+func (c *CapabilityAgent) GetRealtimeHub() *realtime.RealtimeHub { return c.realtimeHub }

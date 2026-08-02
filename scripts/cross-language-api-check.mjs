@@ -13,7 +13,7 @@
  * 用法：node scripts/cross-language-api-check.mjs
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -104,7 +104,48 @@ const SUITE_SYMBOLS = {
     ts: ['SQLiteCheckpointStore', 'AgentState'],
     tsSearchPaths: ['sdk/typescript/src/persist'],
   },
+  autonomy_goal: {
+    go: ['AgentGoal', 'NewAgentGoal', 'GoalState'],
+    ts: ['GoalState', 'createGoal', 'AgentGoal'],
+    tsSearchPaths: ['sdk/typescript/src/autonomy'],
+  },
+  skills_lifecycle: {
+    go: ['Skill', 'NewSkill', 'SkillStore'],
+    ts: ['createSkill', 'SkillStore', 'Skill'],
+    tsSearchPaths: ['sdk/typescript/src/skills'],
+  },
+  a2a_interop: {
+    go: ['OpenAgentCard', 'OpenInteropClient', 'GenerateInteropReport'],
+    ts: ['OpenAgentCard', 'OpenInteropClient', 'newTextMessage'],
+    tsSearchPaths: ['sdk/typescript/src/a2a'],
+  },
+  realtime_session: {
+    go: ['RealtimeHub', 'NewRealtimeHub', 'RealtimeSession'],
+    ts: ['SessionState', 'RealtimeSession', 'RealtimeHub'],
+    tsSearchPaths: ['sdk/typescript/src/realtime'],
+  },
 };
+
+// ===== 跨平台符号搜索（替代系统 grep，Windows/Linux 行为一致） =====
+// 递归搜索目录下 .ts/.tsx 文件，判断是否包含指定符号（子串匹配，
+// 与原 `grep -rl sym` 在标识符符号上语义等价）。
+function dirContainsSymbol(dir, sym) {
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  for (const e of entries) {
+    const full = resolve(dir, e.name);
+    if (e.isDirectory()) {
+      if (dirContainsSymbol(full, sym)) return true;
+    } else if (e.isFile() && (e.name.endsWith('.ts') || e.name.endsWith('.tsx'))) {
+      if (readFileSync(full, 'utf-8').includes(sym)) return true;
+    }
+  }
+  return false;
+}
 
 // ===== 主流程 =====
 
@@ -222,16 +263,9 @@ for (const suiteName of suiteNames) {
       if (!existsSync(fullDir)) continue;
 
       // 递归搜索 TS 源码文件中的符号声明
-      try {
-        const result = execFileSync('grep', ['-rl', sym, '--include=*.ts', '--include=*.tsx', fullDir],
-          { encoding: 'utf-8', timeout: 30000 }
-        );
-        if (result.trim().length > 0) {
-          found = true;
-          break;
-        }
-      } catch {
-        // grep 无结果不报错
+      if (dirContainsSymbol(fullDir, sym)) {
+        found = true;
+        break;
       }
     }
     if (!found) {

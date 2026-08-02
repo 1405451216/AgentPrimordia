@@ -13,6 +13,10 @@ import { ChaosLab } from './pages/ChaosLab';
 import { ClusterDashboard } from './pages/ClusterDashboard';
 import { LearningMonitor } from './pages/LearningMonitor';
 import { MarketplacePage } from './pages/MarketplacePage';
+import { AutonomyMonitor } from './pages/AutonomyMonitor';
+import { SkillLibrary } from './pages/SkillLibrary';
+import { A2AInterop } from './pages/A2AInterop';
+import { RealtimeConsole } from './pages/RealtimeConsole';
 
 export default function StudioApp() {
   return (
@@ -22,6 +26,10 @@ export default function StudioApp() {
         <Route path="cluster" element={<ClusterDashboard />} />
         <Route path="learning" element={<LearningMonitor />} />
         <Route path="marketplace" element={<MarketplacePage />} />
+        <Route path="autonomy" element={<AutonomyMonitor />} />
+        <Route path="skills" element={<SkillLibrary />} />
+        <Route path="a2a-interop" element={<A2AInterop />} />
+        <Route path="realtime" element={<RealtimeConsole />} />
         <Route path="*" element={<ChaosLab />} />
       </Route>
     </Routes>

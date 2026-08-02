@@ -127,5 +127,20 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 		cap = cap.WithLearning(cfg.Learning)
 	}
 
+	// 注入长期自治能力（v3.3）
+	if cfg.Autonomy.Runtime != nil {
+		cap = cap.WithAutonomy(cfg.Autonomy.Runtime)
+	}
+
+	// 注入技能进化能力（v3.4）
+	if cfg.Skills.Store != nil {
+		cap = cap.WithSkills(cfg.Skills.Store, cfg.Skills.Matcher)
+	}
+
+	// 注入多模态实时能力（v3.6）
+	if cfg.Realtime.Hub != nil {
+		cap = cap.WithRealtime(cfg.Realtime.Hub)
+	}
+
 	return cap, nil
 }

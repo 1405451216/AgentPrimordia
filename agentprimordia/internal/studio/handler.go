@@ -22,6 +22,20 @@ func (h *StudioHandler) registerRoutes() {
 	// Marketplace
 	h.mux.HandleFunc("GET /api/v1/marketplace/templates", h.marketplaceTemplates)
 	h.mux.HandleFunc("POST /api/v1/marketplace/deploy", h.marketplaceDeploy)
+	// Autonomy Monitor (v3.3)
+	h.mux.HandleFunc("GET /api/v1/autonomy/goals", h.autonomyGoals)
+	h.mux.HandleFunc("GET /api/v1/autonomy/alerts", h.autonomyAlerts)
+	h.mux.HandleFunc("POST /api/v1/autonomy/goals/{id}/resume", h.autonomyResume)
+	// Skill Library (v3.4)
+	h.mux.HandleFunc("GET /api/v1/skills", h.skillsList)
+	h.mux.HandleFunc("POST /api/v1/skills/{id}/verify", h.skillsVerify)
+	h.mux.HandleFunc("POST /api/v1/skills/{id}/deprecate", h.skillsDeprecate)
+	// A2A Interop (v3.5)
+	h.mux.HandleFunc("GET /api/v1/a2a/interop/status", h.a2aInteropStatus)
+	// Realtime Console (v3.6)
+	h.mux.HandleFunc("GET /api/v1/realtime/sessions", h.realtimeSessions)
+	h.mux.HandleFunc("GET /api/v1/realtime/events", h.realtimeEvents)
+	h.mux.HandleFunc("POST /api/v1/realtime/sessions/{id}/barge-in", h.realtimeBargeIn)
 }
 
 // ===== Chaos Lab =====

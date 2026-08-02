@@ -37,6 +37,12 @@ type OpenTaskState = a2a.OpenTaskState
 // OpenError 开放规范错误
 type OpenError = a2a.OpenError
 
+// OpenInteropServer 开放协议兼容服务器
+type OpenInteropServer = a2a.OpenInteropServer
+
+// OpenInteropClient 开放协议客户端
+type OpenInteropClient = a2a.OpenInteropClient
+
 // InteropConfig 互操作配置
 type InteropConfig = a2a.InteropConfig
 

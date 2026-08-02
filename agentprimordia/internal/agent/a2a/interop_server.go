@@ -1,6 +1,8 @@
 package a2a
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 )
@@ -139,10 +141,12 @@ func writeInteropJSONRPCError(w http.ResponseWriter, id any, code OpenErrorCode,
 	})
 }
 
+// randomHex 生成 n 字节随机数的十六进制字符串（加密安全随机源）
 func randomHex(n int) string {
 	b := make([]byte, n)
-	for i := range b {
-		b[i] = "0123456789abcdef"[i%16]
+	if _, err := rand.Read(b); err != nil {
+		// 加密随机源理论上不失败；极端情况下回退零填充，保证长度稳定
+		return hex.EncodeToString(make([]byte, n))
 	}
-	return string(b)
+	return hex.EncodeToString(b)
 }
