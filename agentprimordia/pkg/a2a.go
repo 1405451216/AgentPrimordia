@@ -2,8 +2,13 @@
 //
 // Stability: Experimental
 //
-// 自 v1.x 起，**A2A 的默认传输是 gRPC**（性能更优、二进制更小、内建拦截器链）。
-// JSON-RPC over HTTP 仅作为兼容旧客户端的传输层保留，会在 v2.0 移除。
+// 自 v1.x 起，**A2A 的内网高性能传输是 gRPC**（性能更优、二进制更小、内建拦截器链）。
+//
+// v3.5 口径统一：JSON-RPC over HTTP/SSE 经对齐开放 Agent2Agent 协议后，
+// **重新定位为开放协议的标准传输**（承载开放 A2A 的 JSON-RPC over HTTP/SSE），
+// 不再标记移除；gRPC 继续作为 ap 内网传输，两者并行。
+// 仅真正与开放规范冲突的私有扩展标 Deprecated 引导迁移。
+// 开放协议互操作见 pkg/a2a_interop.go（OpenInteropServer / OpenInteropClient）。
 // 推荐使用：
 //
 //	srv  := ap.NewA2AGRPCServer(service)

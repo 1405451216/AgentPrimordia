@@ -26,6 +26,8 @@ Commands:
   marketplace  manage agent templates
   autonomy     long-horizon autonomous goal execution
   skill        manage evolved skills (list/add/remove/verify)
+  a2a          A2A protocol interop (interop-check)
+  realtime     realtime multimodal session (voice)
   create-edge-agent  create an Edge Agent project
   doctor       health check
   completion   generate shell completion scripts
@@ -70,6 +72,10 @@ func main() {
 		err = runAutonomy(args)
 	case "skill":
 		err = runSkill(args)
+	case "a2a":
+		err = runA2A(args)
+	case "realtime":
+		err = runRealtime(args)
 	case "create-edge-agent":
 		err = runCreateEdgeAgent(args)
 	case "doctor":
