@@ -117,6 +117,7 @@ type AgentConfig struct {
 	Tools         ToolsConfig
 	Learning      LearningConfig
 	Autonomy      AutonomyConfig
+	Skills        SkillsConfig
 
 	// ===== 运行时辅助 =====
 	Lifecycle *Lifecycle

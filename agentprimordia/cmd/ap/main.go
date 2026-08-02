@@ -25,6 +25,7 @@ Commands:
   cluster      manage cluster (init/join/status/leave/scale)
   marketplace  manage agent templates
   autonomy     long-horizon autonomous goal execution
+  skill        manage evolved skills (list/add/remove/verify)
   create-edge-agent  create an Edge Agent project
   doctor       health check
   completion   generate shell completion scripts
@@ -67,6 +68,8 @@ func main() {
 		err = runMarketplace(args)
 	case "autonomy":
 		err = runAutonomy(args)
+	case "skill":
+		err = runSkill(args)
 	case "create-edge-agent":
 		err = runCreateEdgeAgent(args)
 	case "doctor":
