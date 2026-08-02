@@ -25,8 +25,12 @@ AgentPrimordia（AP）是一个用 Go 语言编写、同时提供 TypeScript SDK
 - **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护
 - **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard / pprof 性能分析 + 结构化日志（统一 `logger.Field*` 字段 + trace-id 注入）
 - **K8s Operator** — AgentDeployment CRD 声明式部署 + HPA（Behavior 精细化扩缩容）+ PDB（PodDisruptionBudget）+ 滚动升级（preStop hook）+ 自定义 Metrics Adapter
-- **TypeScript SDK** — 100% Go 功能对等，24 个模块全覆盖
-- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / config / completion`
+- **TypeScript SDK** — 100% Go 功能对等，24+ 模块全覆盖
+- **长期自治（v3.3）** — 目标驱动自主规划/执行/校验/重规划，崩溃恢复 + 幂等保护（`ap autonomy`）
+- **技能进化（v3.4）** — 运行中习得/验证/沉淀可复用技能，语义匹配自动调用（`ap skill`）
+- **协议互操作（v3.5）** — 对齐开放 Agent2Agent 协议，跨生态任务委托 + 符合性报告（`ap a2a interop-check`）
+- **多模态实时（v3.6）** — 语音/视觉实时双向流 + 打断，ASR/TTS 可插拔（`ap realtime`）
+- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / autonomy / skill / a2a / realtime / doctor / config / completion`
 
 ### v1.0.0 亮点
 

@@ -35,6 +35,17 @@
 
 **一句话**：AgentPrimordia 让你专注 Agent 的业务逻辑，基础设施我们包了。
 
+### 🚀 v3.3–v3.6 能力跃迁（已实现）
+
+| 版本 | 能力 | 一句话 | CLI |
+|------|------|--------|-----|
+| v3.3 | 长期自治 | 给定目标自主规划/执行/校验/重规划，崩溃恢复 + 幂等 | `ap autonomy` |
+| v3.4 | 技能进化 | 运行中习得/验证/沉淀可复用技能，语义匹配自动调用 | `ap skill` |
+| v3.5 | 协议互操作 | 对齐开放 Agent2Agent 协议，跨生态任务委托 + 符合性报告 | `ap a2a interop-check` |
+| v3.6 | 多模态实时 | 语音/视觉实时双向流 + 打断，ASR/TTS 可插拔 | `ap realtime` |
+
+> 详见 [`docs/V4-ROADMAP.md`](../docs/V4-ROADMAP.md)，模块概念 `docs/concepts/{autonomy,skills,realtime}.md`，使用指南 `docs/guides/{skill-format,a2a-interop,realtime}.md`。
+
 ---
 
 ## ✨ 核心特性
