@@ -7,12 +7,16 @@
  */
 
 // ===== v3.3 Autonomy（长期自治） =====
+// 注：autonomy 的 PlanStep 与既有 planning 模块的 PlanStep 同名不同义，
+// 在根命名空间重命名为 AutonomyPlanStep 以避免 TS2300 冲突；
+// 子模块路径（./autonomy/index.js）仍导出原名 PlanStep。
 export {
   GoalState, Priority, createGoal, transitionGoal, canRetry,
   createPlan, planProgress, isPlanComplete, readySteps,
 } from './autonomy/index.js';
 export type {
-  GoalConfig, AgentGoal, PlanStep, GoalPlan, StateChangeEvent,
+  GoalConfig, AgentGoal, GoalPlan, StateChangeEvent,
+  PlanStep as AutonomyPlanStep,
 } from './autonomy/index.js';
 
 // ===== v3.4 Skills（技能进化） =====
