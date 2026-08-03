@@ -104,10 +104,10 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | TS 补官方 OpenTelemetry SDK、checkpoint 持久化、guardrail-in-loop | TS 与 Go 治理能力对齐 |
-| 2 | 双线真实 LLM 集成测试建立基线 | 双线同一套基准分数可比 |
-| 3 | 跨语言 spec 45 用例双线全量 | cross-language-api-check 门全绿 |
-| 4 | React Hooks（useAgent / useReActLoop）补全 | 前端接入零样板 |
+| 1 | TS 补官方 OpenTelemetry SDK、checkpoint 持久化、guardrail-in-loop ✅（2026-08-04：`OfficialOTelBridge` 委托 @opentelemetry/api + 可选 peer 依赖；checkpoint/guardrail 已于 v3.4 对齐；commit 10fc7ad） | TS 与 Go 治理能力对齐 |
+| 2 | 双线真实 LLM 集成测试建立基线 ✅（2026-08-04：TS `bench/llm-bench` 报告结构对齐 Go + 集成基线测试 + nightly `ts-llm-benchmark` job；commit b4c4013） | 双线同一套基准分数可比 |
+| 3 | 跨语言 spec 45 用例双线全量 ✅（2026-08-04：cross-language-api-check 门全绿，Go/TS 0 缺失，符号搜索改 Node fs 跨平台；45 用例双线全绿；commit 73f5b2d） | cross-language-api-check 门全绿 |
+| 4 | React Hooks（useAgent / useReActLoop）补全 ✅（2026-08-04：`react/kit.ts` 零样板 useAgent/useReActLoop/useRemoteAgent + `./react` 子路径导出；commit 68e8fd8） | 前端接入零样板 |
 
 ### v3.8 — 规模化（多智能体大任务）
 
