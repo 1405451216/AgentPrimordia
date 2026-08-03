@@ -181,10 +181,10 @@ import { createAgent } from "@agentprimordia/sdk";
 // Deno / Bun 同样支持
 ```
 
-详见 [边缘部署指南](./guide/edge-deployment.md)。
+详见 [边缘部署指南](./edge-deployment-guide.md)。
 
 ## 下一步
 
 - [跨语言开发指南](./cross-language-guide.md) — 了解 Go 与 TS SDK 的分工
 - [功能差异分析](./gap-analysis.md) — 了解两端模块覆盖情况
-- [API Reference](./api-reference/) — 完整 API 文档
+- [API Reference](./api-reference/README.md) — 完整 API 文档
