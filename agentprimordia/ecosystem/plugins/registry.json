@@ -21,8 +21,8 @@
     },
     {
       "name": "git",
-      "version": "0.7.0",
-      "description": "Git 版本控制操作工具，支持 clone/status/log/diff/commit/branch 等操作",
+      "version": "0.8.0",
+      "description": "Git 版本控制操作工具，支持 clone/status/log/diff/commit/branch/tag/push 等操作",
       "category": "vcs",
       "import_path": "agentprimordia/ecosystem/plugins/git",
       "tools": ["git_tool"],
