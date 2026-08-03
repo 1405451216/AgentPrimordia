@@ -85,11 +85,11 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | eval 从 5 条 smoke 升级为真实 harness 基准集（编码任务数据集） | 基准集 ≥50 条真实任务 |
-| 2 | 真实 LLM 跑分（复用 nightly integration job），成功率/成本/耗时/恢复率作为版本门禁 | 每版发布附基准报告，分数只升不降 |
-| 3 | 补 Go 侧跨语言 11 套件（当前 4/15） | 45 用例双线全量覆盖 |
-| 4 | trace → 指标 → 审计全链路闭环 | 单请求可全链路回溯 |
-| 5 | 混沌注入常态化（harness 上跑 chaos-e2e） | 注入故障下成功率下降可量化 |
+| 1 | eval 从 5 条 smoke 升级为真实 harness 基准集（编码任务数据集） ✅（2026-08-04：`benchmark_cases.json` 60 条真实任务，Go embed `benchmark_cases.go` + TS 生成镜像 `benchmark-cases.ts`；`CodeConstructEvaluator`/`BenchmarkRunner` 双线 11+11 用例，commit f066fcc） | 基准集 ≥50 条真实任务 |
+| 2 | 真实 LLM 跑分（复用 nightly integration job），成功率/成本/耗时/恢复率作为版本门禁 ✅（2026-08-04：`eval/llm_bench.go` LLMBenchAgent+RunLLMBench+恢复率；CLI `bench/llm-bench` 基线门禁分数只升不降；nightly `llm-benchmark` job + release 附基准报告，commit 5462d07） | 每版发布附基准报告，分数只升不降 |
+| 3 | 补 Go 侧跨语言 11 套件（当前 4/15） ✅（2026-08-04：`pkg/cross_language_suites_test.go` 新增 11 套件；chaos Validate/Pipeline 空阶段/注入正则/maxTurns=50 等双线对齐；45 用例双线全绿，commit 1e56397） | 45 用例双线全量覆盖 |
+| 4 | trace → 指标 → 审计全链路闭环 ✅（2026-08-04：`internal/observability` CorrelationStore 以 trace_id 聚合 span/审计/指标 + `/traces` HTTP API；audit.Event.TraceID；agent ObservabilityCapable 全链注入，单请求同键回溯测试 3 用例，commit 51e8c2c） | 单请求可全链路回溯 |
+| 5 | 混沌注入常态化（harness 上跑 chaos-e2e） ✅（2026-08-04：`chaos/harness.go` FaultInjectingProvider+RunHarnessChaos 基线vs故障对比；常规确定性 5 用例 + e2e 真实基准集 baseline 1.0→0.5 下降 50% 可量化，commit d71ac7d） | 注入故障下成功率下降可量化 |
 
 ### v3.6 — 自适应（自愈与从经验学习）
 
