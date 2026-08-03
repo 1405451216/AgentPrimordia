@@ -48,7 +48,7 @@
 | agent（memory 回读） | loop 的 MemoryStore 接口仅 Add/UpdateSummary，**无 Search**，长期记忆不回流 | `react_loop.go:40-44` |
 | agent（上下文） | 子任务全量继承历史，100 条滑动窗口无压缩 | `react_persist.go:205` |
 | pool（dispatcher） | 仍固定 worker，未接入 `internal/concurrency` 动态协程池 | `pool/dispatcher.go` |
-| otel | 仅 `pkg/otel.go:9` re-export，无运行时接线 | `pkg/otel.go` |
+| otel | ✅ 已接线（2026-08-03）：`WithTelemetry(tp)` 把 Tracer+Metrics 注入 Agent，loop → OTLP 导出闭环 | `pkg/otel.go` |
 | eval | 框架完整但 CI 只跑单元自测，真实数据集仅 5 条 smoke | `bench/eval-ci/run_eval.sh:25`、`eval_cases.json` |
 | studio | 四面板全 demo 数据，真实引擎注入点未接线 | `studio/web/README.md:26`、`internal/studio/demo.go:41` |
 | marketplace | 内存 map 注册表，无远程协议/分发 | `internal/agent/marketplace/template.go:145` |

@@ -68,7 +68,7 @@
 | 1 | 逐项对账"声称完成"清单，产出能力实况清单（真实可用/部分/仅存在） | 能力清单 100% 有代码证据 |
 | 2 | 修复版本叙事矛盾：git tag / STATUS / VERSIONING / ROADMAP 四方对齐 | 文档互不矛盾，tag 与 `pkg.Version` 一致 |
 | 3 | `react.Engine` 接管主路径，或明确废弃回退 ✅（2026-08-03 已决策：废弃降级） | 主路径单一、可测试 |
-| 4 | otel 接入 metrics 真实上报（ReAct loop → OTel） | OTLP 导出有真实数据 |
+| 4 | otel 接入 metrics 真实上报（ReAct loop → OTel）✅（2026-08-03：WithTelemetry 接线完成） | OTLP 导出有真实数据 |
 
 ### v3.4 — 一体化不塌（Harness 可靠性）
 
