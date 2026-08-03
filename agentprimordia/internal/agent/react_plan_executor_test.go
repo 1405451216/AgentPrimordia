@@ -16,7 +16,7 @@ import (
 
 func TestRunSubtaskWithRetry_SuccessFirst(t *testing.T) {
 	attempts := 0
-	run := func() (*Response, error) {
+	run := func(_ string) (*Response, error) {
 		attempts++
 		return &Response{Content: "ok"}, nil
 	}
@@ -34,7 +34,7 @@ func TestRunSubtaskWithRetry_SuccessFirst(t *testing.T) {
 
 func TestRunSubtaskWithRetry_RetryThenSuccess(t *testing.T) {
 	attempts := 0
-	run := func() (*Response, error) {
+	run := func(_ string) (*Response, error) {
 		attempts++
 		if attempts < 2 {
 			return nil, errors.New("boom")
@@ -55,7 +55,7 @@ func TestRunSubtaskWithRetry_RetryThenSuccess(t *testing.T) {
 
 func TestRunSubtaskWithRetry_AllFail(t *testing.T) {
 	attempts := 0
-	run := func() (*Response, error) {
+	run := func(_ string) (*Response, error) {
 		attempts++
 		return nil, errors.New("always fails")
 	}

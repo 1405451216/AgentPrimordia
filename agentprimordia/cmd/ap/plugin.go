@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"agentprimordia/internal/marketplace"
 )
 
 // pluginRegistryEntry 表示 registry.json 中的单个插件条目。
@@ -140,10 +143,17 @@ Examples:
 
 func pluginInstall(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("please specify Go module path\nUsage: ap plugin install github.com/user/ap-plugin-xxx")
+		return fmt.Errorf("please specify Go module path or manifest URL\nUsage: ap plugin install github.com/user/ap-plugin-xxx\n       ap plugin install https://registry.example.com/plugins/xxx/manifest.json")
 	}
 
-	module := args[0]
+	target := args[0]
+
+	// v3.9-1：远程安装协议——https 清单 URL 走 marketplace（拉取 + cosign 验签）
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+		return pluginInstallRemote(target)
+	}
+
+	module := target
 	dir, err := findProjectDir()
 	if err != nil {
 		return err
@@ -175,6 +185,35 @@ func pluginInstall(args []string) error {
 	fmt.Printf("  // then in init(): pluginLoader.Load(%q.NewPlugin())\n", module)
 	fmt.Println()
 	fmt.Println("run ap run to activate the plugin")
+	return nil
+}
+
+// pluginInstallRemote 通过 marketplace 远程协议安装插件（v3.9-1）：
+// 拉取 Manifest → 拉取 artifact → cosign 验签 → 写入本地 → 注册到 config。
+func pluginInstallRemote(manifestURL string) error {
+	installer := marketplace.NewInstaller()
+	m, err := installer.FetchManifest(context.Background(), manifestURL)
+	if err != nil {
+		return fmt.Errorf("remote install: %w", err)
+	}
+	infof("remote manifest: %s %s (%s)", m.Name, m.Version, m.ImportPath)
+
+	outDir := filepath.Join(".", ".ap-plugins")
+	res, err := installer.Install(context.Background(), m, outDir)
+	if err != nil {
+		return err
+	}
+
+	successf("plugin %s installed (verified, %s)", res.Name, res.ArtifactPath)
+
+	config := loadAPConfig()
+	if config.Plugins == nil {
+		config.Plugins = []string{}
+	}
+	config.Plugins = append(config.Plugins, m.ImportPath)
+	if err := saveAPConfig(config); err != nil {
+		warnf("save config failed: %v", err)
+	}
 	return nil
 }
 
