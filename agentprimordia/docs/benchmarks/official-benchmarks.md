@@ -1,7 +1,7 @@
 # AgentPrimordia Official Performance Benchmarks
 
-**Version**: 3.1.0 (2026-Q2)
-**Report Date**: 2026-07-31
+**Version**: 4.0.0 (2026-Q4)
+**Report Date**: 2026-08-04
 **Status**: PASS (All benchmark suites completed)
 
 ---
@@ -15,6 +15,22 @@
 | Go | 1.26.5 |
 | Memory | 24GB |
 | Note | Development machine baseline; production standard: 4C/8GB/linux/amd64 |
+
+---
+
+## v4.0 关键路径 P95 延迟（新增）
+
+> 验收标准：关键路径 P95 达标。延迟分布由 `bench/suite/p95_latency_test.go` 测量，
+> 采用批次累积策略（Windows 时钟粒度下单次测时不可靠），P95 = 最慢 5% 批次的平均延迟。
+
+| 关键路径 | P50 (ns/op) | P95 (ns/op) | P99 (ns/op) | 说明 |
+|----------|-------------|-------------|-------------|------|
+| Agent 单轮 | 3,490 | 10,758 | 15,949 | MockLLM, MaxTurns=1 |
+| 工具调用 | 4,116 | 11,028 | 19,324 | MockLLM + 文件系统工具 |
+| 记忆检索（1K 条目 FTS） | 29,631 | 46,289 | 50,284 | InMemory SQLite FTS |
+
+> 基准文件：`agentprimordia/bench/results/2026-Q4.json`（v4.0 性能基线）。
+> 回归门：`scripts/bench-regression-check.sh`（默认基线 2026-Q4，P95 偏差 >20% 即失败）。
 
 ---
 

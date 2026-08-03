@@ -602,7 +602,7 @@ jobs:
       - name: Run benchmark subset
         working-directory: agentprimordia
         run: |
-          go test -bench='BenchmarkConsistentHash_GetNode|BenchmarkDistributedState|BenchmarkAgentRun|BenchmarkMemoryStore|BenchmarkMemoryLatency' \
+          go test -bench='BenchmarkConsistentHash_GetNode|BenchmarkDistributedState|BenchmarkAgentRun|BenchmarkMemoryStore|BenchmarkMemoryLatency|BenchmarkP95' \
             -benchmem -benchtime=500ms -run='^$' -count=3 ./bench/suite/ | tee /tmp/bench-output.txt
 
       - name: Check for regressions against baseline

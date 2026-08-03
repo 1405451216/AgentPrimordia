@@ -1,0 +1,97 @@
+{
+  "date": "2026-Q4",
+  "version": "4.0.0",
+  "environment": {
+    "go": "1.26.5",
+    "os": "windows/amd64",
+    "cpu": "Intel(R) Core(TM) Ultra 5 250K Plus",
+    "memory": "24GB",
+    "note": "开发机基准；生产标准化环境应为 4C/8GB/linux/amd64。v4.0 性能大版本基线，新增关键路径 P95 指标。"
+  },
+  "status": "completed",
+  "run_instructions": "cd agentprimordia && go test -bench=Benchmark -benchmem -benchtime=200ms -run=^$ -count=1 ./bench/suite",
+  "results": {
+    "agent_run_throughput": {
+      "description": "单 Agent 运行吞吐量（MockLLM）",
+      "unit": "ns/op",
+      "value": 3387,
+      "note": "BenchmarkAgentRun: 3387 ns/op, 4123 B/op, 24 allocs/op（MockLLM）"
+    },
+    "pool_10_concurrent": {
+      "description": "10 并发 Agent 吞吐量",
+      "unit": "ns/op",
+      "value": 4260,
+      "note": "BenchmarkQPS_PoolDispatch: 4260 ns/op（MockLLM, 10 并发 Dispatch）"
+    },
+    "vector_search_10k": {
+      "description": "10K 向量搜索延迟",
+      "unit": "ms",
+      "value": 1.561,
+      "note": "BenchmarkVectorSearch: 1561005 ns/op"
+    },
+    "memory_search_1k": {
+      "description": "1K 记忆搜索延迟",
+      "unit": "ms",
+      "value": 0.0286,
+      "note": "BenchmarkMemoryStore/Search: 28626 ns/op"
+    }
+  },
+  "v40_p95_suites": {
+    "agent_run": {
+      "description": "关键路径一：Agent 单轮运行延迟分布",
+      "file": "bench/suite/p95_latency_test.go",
+      "value": "PASS",
+      "details": "P50: 3490 ns; P95: 10758 ns; P99: 15949 ns（MockLLM, MaxTurns=1）"
+    },
+    "tool_call": {
+      "description": "关键路径二：工具调用延迟分布",
+      "file": "bench/suite/p95_latency_test.go",
+      "value": "PASS",
+      "details": "P50: 4116 ns; P95: 11028 ns; P99: 19324 ns（MockLLM + 文件系统工具）"
+    },
+    "memory_search": {
+      "description": "关键路径三：记忆检索延迟分布（1K 条目 FTS）",
+      "file": "bench/suite/p95_latency_test.go",
+      "value": "PASS",
+      "details": "P50: 29631 ns; P95: 46289 ns; P99: 50284 ns"
+    }
+  },
+  "v40_suites": {
+    "capacity": {
+      "description": "容量规划基准（Pool 并发上限 / 内存增长曲线）",
+      "file": "bench/suite/capacity_test.go",
+      "value": "PASS",
+      "details": "MemoryStore Add: 49.68 ns/op; Search: 28626 ns/op; AgentRun: 3387 ns/op"
+    },
+    "cluster": {
+      "description": "集群消息总线延迟与吞吐",
+      "file": "bench/suite/cluster_bench_test.go",
+      "value": "PASS",
+      "details": "ConsistentHash GetNode(10): 20.18 ns/op; GetNode(50): 26.53 ns/op; DistributedState SetGet: 96.32/53.03 ns/op"
+    },
+    "latency": {
+      "description": "端到端延迟分布（P50/P95/P99）",
+      "file": "bench/suite/latency_test.go",
+      "value": "PASS",
+      "details": "Agent 单轮延迟: 3621 ns/op（MockLLM）; FirstToken 流式延迟: 11800 ns/op"
+    },
+    "learning": {
+      "description": "知识蒸馏管道吞吐量",
+      "file": "bench/suite/learning_bench_test.go",
+      "value": "PASS",
+      "details": "Distill: 1793 ns/op; Pipeline: 15141 ns/op; BuildSystemPrompt: 16197 ns/op; FeedbackLearner: 740 ns/op; CapabilityEvolver: 584 ns/op"
+    },
+    "privacy": {
+      "description": "PII 检测 + 路由延迟",
+      "file": "bench/suite/privacy_bench_test.go",
+      "value": "PASS",
+      "details": "Route(NoPII): 62.05 ns/op; Route(WithPII): 918.5 ns/op; RegisterCapability: 73.74 ns/op"
+    },
+    "tool_calling": {
+      "description": "工具调用端到端延迟",
+      "file": "bench/suite/tool_calling_test.go",
+      "value": "PASS",
+      "details": "ToolCalling(MockLLM): 4154 ns/op, 5267 B/op, 34 allocs/op; 准确率需 LLM API Key"
+    }
+  }
+}

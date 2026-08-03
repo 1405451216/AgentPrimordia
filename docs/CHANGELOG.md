@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### Performance — v4.0-4 性能大版本（基准对比全量刷新 + 关键路径 P95）
+
+- 新增 `bench/suite/p95_latency_test.go`：Agent 单轮 / 工具调用 / 记忆检索三条关键路径的 P50/P95/P99 延迟分布基准（批次累积策略，规避 Windows 时钟粒度）
+- 全量刷新基准：新建 `bench/results/2026-Q4.json`（v4.0.0 基线），更新 `docs/benchmarks/official-benchmarks.md`（含 P95 表）
+- `scripts/bench-regression-check.sh`：默认基线切换到 2026-Q4，新增 P95/P99 回归基准解析；CI bench job 加入 BenchmarkP95 子集
+- 关键路径 P95 实测（MockLLM）：AgentRun 3.5µs / 10.8µs；ToolCall 4.1µs / 11.0µs；MemorySearch 29.6µs / 46.3µs
+
 ### Changed — v4.0-3 兼容性承诺收紧（稳定清单与实际一致）
 
 - `docs/VERSIONING.md`「稳定 API」表按实际 `pkg/` 源文件标注重写（21 个 Stable/混合模块），并注明"稳定性标注的唯一事实来源是源文件注释"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# bench-regression-check.sh — Compare benchmark output against baseline from 2026-Q2.json
-# Usage: bash scripts/bench-regression-check.sh <bench-output-file>
+# bench-regression-check.sh — Compare benchmark output against baseline
+# Usage: bash scripts/bench-regression-check.sh <bench-output-file> [baseline-json]
 #
 # Exit codes:
 #   0 - All within thresholds
@@ -9,32 +9,41 @@
 # Thresholds:
 #   >10% deviation → WARNING (printed but passes)
 #   >20% deviation → FAIL (exit 1)
+#
+# v4.0 更新：默认基线从 2026-Q2 切换到 2026-Q4（v4.0 性能大版本），
+# 并新增关键路径 P95/P99 回归基准（p95_latency_test.go）。
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-BASELINE_JSON="$ROOT_DIR/agentprimordia/bench/results/2026-Q2.json"
+BASELINE_JSON="${2:-$ROOT_DIR/agentprimordia/bench/results/2026-Q4.json}"
 
 WARN_THRESHOLD=10
 FAIL_THRESHOLD=20
 
-# --- Baseline values (extracted from 2026-Q2.json v31_suites) ---
+# --- Baseline values (extracted from baseline JSON) ---
 # Format: "benchmark_pattern:baseline_ns_op"
-# These are the authoritative numeric values from the Q2 baseline run.
+# 数值取自对应基线文件（默认 2026-Q4.json v4.0.0）。
 declare -A BASELINES=(
-  # cluster: ConsistentHash GetNode (v31_suites.cluster.details)
-  ["BenchmarkConsistentHash_GetNode/Nodes_10"]=25.65
-  ["BenchmarkConsistentHash_GetNode/Nodes_50"]=34.31
-  # cluster: DistributedState SetGet sub-benchmarks (v31_suites.cluster.details)
-  # JSON details: "89.22/52.17 ns/op" → Set=89.22, Get=52.17
-  ["BenchmarkDistributedState_SetGet/Set"]=89.22
-  ["BenchmarkDistributedState_SetGet/Get"]=52.17
-  # capacity: AgentRun (v31_suites.capacity.details)
-  ["BenchmarkAgentRun"]=4782
-  # capacity: MemoryStore Search & Add (v31_suites.capacity.details)
-  ["BenchmarkMemoryStore/Search"]=30019
-  ["BenchmarkMemoryStore/Add"]=46.28
+  # cluster: ConsistentHash GetNode
+  ["BenchmarkConsistentHash_GetNode/Nodes_10"]=20.18
+  ["BenchmarkConsistentHash_GetNode/Nodes_50"]=26.53
+  # cluster: DistributedState SetGet sub-benchmarks
+  ["BenchmarkDistributedState_SetGet/Set"]=96.32
+  ["BenchmarkDistributedState_SetGet/Get"]=53.03
+  # capacity: AgentRun
+  ["BenchmarkAgentRun"]=3387
+  # capacity: MemoryStore Search & Add
+  ["BenchmarkMemoryStore/Search"]=28626
+  ["BenchmarkMemoryStore/Add"]=49.68
+  # v4.0 关键路径 P95（p95_latency_test.go，最慢 5% 批次的平均延迟）
+  ["BenchmarkP95AgentRun"]=3491
+  ["BenchmarkP95AgentRun/p95_ns/op"]=10758
+  ["BenchmarkP95ToolCall"]=4116
+  ["BenchmarkP95ToolCall/p95_ns/op"]=11028
+  ["BenchmarkP95MemorySearch"]=29631
+  ["BenchmarkP95MemorySearch/p95_ns/op"]=46289
 )
 
 # Human-readable labels for reporting
@@ -46,6 +55,12 @@ declare -A LABELS=(
   ["BenchmarkAgentRun"]="AgentRun"
   ["BenchmarkMemoryStore/Search"]="MemoryStore Search"
   ["BenchmarkMemoryStore/Add"]="MemoryStore Add"
+  ["BenchmarkP95AgentRun"]="AgentRun P50"
+  ["BenchmarkP95AgentRun/p95_ns/op"]="AgentRun P95"
+  ["BenchmarkP95ToolCall"]="ToolCall P50"
+  ["BenchmarkP95ToolCall/p95_ns/op"]="ToolCall P95"
+  ["BenchmarkP95MemorySearch"]="MemorySearch P50"
+  ["BenchmarkP95MemorySearch/p95_ns/op"]="MemorySearch P95"
 )
 
 # --- Validate inputs ---
@@ -70,7 +85,7 @@ fi
 echo "=============================================="
 echo " Performance Regression Check"
 echo "=============================================="
-echo "Baseline: $BASELINE_JSON (2026-Q2, v3.1.0)"
+echo "Baseline: $BASELINE_JSON"
 echo "Input:    $BENCH_FILE"
 echo "Warn:     >${WARN_THRESHOLD}% deviation"
 echo "Fail:     >${FAIL_THRESHOLD}% deviation"
@@ -80,7 +95,8 @@ echo ""
 # --- Parse benchmark output ---
 # Go benchmark output lines look like:
 #   BenchmarkConsistentHash_GetNode/Nodes_10-8   50000000   26.1 ns/op   ...
-# We extract: benchmark_name → ns/op value
+#   BenchmarkP95AgentRun-8   70323   3062 ns/op   3061 p50_ns/op   10765 p95_ns/op ...
+# We extract: benchmark_name → ns/op value (main), plus p95_ns/op where present.
 declare -A CURRENT=()
 
 while IFS= read -r line; do
@@ -93,6 +109,14 @@ while IFS= read -r line; do
 
     if [ -n "$ns_val" ]; then
       CURRENT["$bench_name"]="$ns_val"
+    fi
+
+    # v4.0：额外提取 p95_ns/op（若存在）
+    if echo "$line" | grep -q 'p95_ns/op'; then
+      p95_val=$(echo "$line" | grep -oP '[0-9]+(\.[0-9]+)?\s+p95_ns/op' | awk '{print $1}')
+      if [ -n "$p95_val" ]; then
+        CURRENT["$bench_name/p95_ns/op"]="$p95_val"
+      fi
     fi
   fi
 done < "$BENCH_FILE"
