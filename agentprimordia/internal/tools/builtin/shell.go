@@ -270,12 +270,20 @@ func (s *Shell) Execute(ctx context.Context, args json.RawMessage) (*tools.Resul
 
 	cmd := exec.CommandContext(execCtx, name, cmdArgs...)
 
-	// 环境变量隔离：仅传递必要的安全环境变量
+	// 环境变量隔离：仅传递必要的安全环境变量。
+	// 除 PATH/HOME/TEMP/TMP 外，补充用户级缓存/系统目录变量——
+	// 编译器（go/node 等）定位构建缓存时依赖它们（如 Windows 的
+	// LOCALAPPDATA 决定 GOCACHE），缺失会导致「实施」环节运行代码失败。
 	cmd.Env = []string{
 		"PATH=" + os.Getenv("PATH"),
 		"HOME=" + os.Getenv("HOME"),
 		"TEMP=" + os.Getenv("TEMP"),
 		"TMP=" + os.Getenv("TMP"),
+	}
+	for _, key := range []string{"LOCALAPPDATA", "APPDATA", "USERPROFILE", "SystemRoot", "GOCACHE", "XDG_CACHE_HOME"} {
+		if v := os.Getenv(key); v != "" {
+			cmd.Env = append(cmd.Env, key+"="+v)
+		}
 	}
 
 	if workdir != "" {
