@@ -74,6 +74,32 @@ const resp = await agent.run('创建 hello.ts，验证工作区，审查后提�
 console.log(resp.content); // 发布完成：v1.0.0
 ```
 
+## 护栏入环（v3.4）
+
+Harness 全程由护栏保护，Go / TS 行为对齐：
+
+- **输入端**：用户输入进入循环前检查——PII 自动脱敏（邮箱/手机号/身份证等），高危注入（prompt injection 等）直接拒绝，不消耗任何 LLM 调用。
+- **输出端**：每轮 LLM 响应写入消息历史前检查——PII 脱敏、命中 block 规则立即终止运行。
+
+```go
+// Go 线：agent.WithInputGuard(g) + guardrail 包的 OutputGuard 接线
+ag := agent.NewAgent("coding-agent", "全自动编码助手", provider,
+    agent.WithInputGuard(myInputGuard), // 输入端脱敏/拒绝
+)
+```
+
+```typescript
+// TS 线：传入 GuardrailEngine 即同时启用输入端 + 输出端
+import { GuardrailEngine } from 'agentprimordia';
+
+const agent = new ReActAgent({
+  name: 'coding-agent',
+  model: provider,
+  toolkit: registry,
+  guardrail: new GuardrailEngine(), // 输入脱敏/拒绝 + 输出逐轮检查
+});
+```
+
 ## 协议格式（LLM 需遵守）
 
 | 能力 | 输出格式 |

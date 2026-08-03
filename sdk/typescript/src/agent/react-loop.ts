@@ -10,6 +10,7 @@ import type { SpeculativeExecutor } from './speculative-exec.js';
 import type { EnhancedToolLearner } from './tool-learning.js';
 import type { Planner, SubTask } from './planning.js';
 import type { Reflector, Severity } from './reflection.js';
+import type { GuardrailEngine } from '../security/guardrails.js';
 
 // 从拆分模块重新导出，保持向后兼容
 export type { StreamEvent, HookPoint, HookContext, HookFunc } from './hooks.js';
@@ -54,6 +55,8 @@ export interface ReActConfig {
   reflector?: Reflector;
   /** 触发 improve 改写的最低严重度，默认 high */
   reflectionSeverityThreshold?: Severity;
+  /** 护栏引擎（v3.4-5）：入口对用户输入脱敏/拒绝，LLM 输出逐轮检查（对齐 Go InputGuard/OutputGuard） */
+  guardrail?: GuardrailEngine;
 }
 
 export type { CapabilitiesCache };
@@ -89,6 +92,7 @@ export class ReActAgent {
   private planner?: Planner;
   private reflector?: Reflector;
   private reflectionSeverityThreshold: Severity;
+  private guardrail?: GuardrailEngine;
 
   constructor(config: ReActConfig) {
     if (!config.name?.trim()) throw new Error('Agent name is required');
@@ -120,6 +124,7 @@ export class ReActAgent {
     this.planner = config.planner;
     this.reflector = config.reflector;
     this.reflectionSeverityThreshold = config.reflectionSeverityThreshold ?? 'high';
+    this.guardrail = config.guardrail;
   }
 
   requestGracefulShutdown(): void {
@@ -223,6 +228,20 @@ export class ReActAgent {
       }
     }
 
+    // v3.4-5：输入端护栏——用户输入进入循环前检查（脱敏或拒绝，对齐 Go InputGuard）
+    if (this.guardrail) {
+      const gi = this.guardrail.checkInput(input);
+      if (!gi.passed) {
+        this.lifecycle.setStatus('error');
+        this.capCache.otelBridge?.endSpan(runSpanId!, 'error');
+        return {
+          content: 'input blocked by guardrail',
+          metrics: { totalTurns: 0, totalTools: 0, duration: Date.now() - startTime, llmLatency: 0, toolLatency: 0 },
+        };
+      }
+      input = gi.modifiedInput;
+    }
+
     this.messages.push({ role: 'user', content: input });
 
     await this.hooks.fireHook('before_run', {
@@ -258,7 +277,7 @@ export class ReActAgent {
         response = await this.runLoop(startTime, 0, options);
         // 完成路径自反思：批评最终输出，必要时改写
         if (this.reflector) {
-          response.content = await this.reflectAndImprove(response.content);
+          response.content = this.guardOutput(await this.reflectAndImprove(response.content));
         }
       }
 
@@ -353,6 +372,16 @@ export class ReActAgent {
     }
   }
 
+  /** v3.4-5：输出端护栏对改写后的内容复检（阻断时抛错由 runEngine 统一处理） */
+  private guardOutput(content: string): string {
+    if (!this.guardrail || !content) return content;
+    const result = this.guardrail.checkOutput(content);
+    if (!result.passed) {
+      throw new Error('output blocked by guardrail');
+    }
+    return result.modifiedOutput;
+  }
+
   /** 完成路径批评输出；severity ≥ 阈值时调用 improve 改写 */
   private async reflectAndImprove(content: string): Promise<string> {
     if (!this.reflector) return content;
@@ -420,7 +449,7 @@ export class ReActAgent {
         const resp = await this.runLoop(startTime, 0, options);
         let content = resp.content;
         if (this.reflector) {
-          content = await this.reflectAndImprove(content);
+          content = this.guardOutput(await this.reflectAndImprove(content));
         }
 
         task.status = 'completed';
@@ -531,6 +560,23 @@ export class ReActAgent {
       if (suggestion.shouldAdjust) {
         this.applyTuningSuggestion(suggestion);
       }
+    }
+
+    // v3.4-5：流式入口同样执行输入端护栏
+    if (this.guardrail) {
+      const gi = this.guardrail.checkInput(input);
+      if (!gi.passed) {
+        this.lifecycle.setStatus('error');
+        yield {
+          type: 'done',
+          response: {
+            content: 'input blocked by guardrail',
+            metrics: { totalTurns: 0, totalTools: 0, duration: Date.now() - startTime, llmLatency: 0, toolLatency: 0 },
+          },
+        };
+        return;
+      }
+      input = gi.modifiedInput;
     }
 
     this.messages.push({ role: 'user', content: input });
@@ -658,6 +704,11 @@ export class ReActAgent {
         maxParallelTools: this.maxParallelTools,
         maxMessages: this.maxMessages,
         isGracefulShutdownRequested: () => this.gracefulShutdownFlag,
+        // v3.4-5：输出端护栏逐轮检查（对齐 Go OutputGuard）
+        outputGuard: this.guardrail ? (content) => {
+          const result = this.guardrail!.checkOutput(content);
+          return { passed: result.passed, modified: result.modifiedOutput };
+        } : undefined,
       },
     );
   }

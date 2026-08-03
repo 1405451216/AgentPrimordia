@@ -74,11 +74,11 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | executePlan：子任务失败重试/降级 + plan 级 checkpoint（恢复续跑整计划） | 5 子任务 pipeline 中途故障可续跑，恢复率 100% |
-| 2 | 子任务上下文隔离 + 摘要压缩（替代全量继承 + 滑动窗口） | 长任务 context 不爆，规模翻倍成功率不降 |
-| 3 | memory 回读注入：`MemoryStore` 增加 `Search`，长期记忆进循环 | 跨 session 记忆可召回 |
-| 4 | tool 执行重试 + 并行 goroutine recover + 输入端护栏 | 混沌注入下无击穿 |
-| 5 | TS 同步 guardrail-in-loop | TS 与 Go 行为对齐 |
+| 1 | executePlan：子任务失败重试/降级 + plan 级 checkpoint（恢复续跑整计划）✅（2026-08-03：子任务重试 + plan 级 checkpoint，`react_plan_executor.go`，commit 10ee524） | 5 子任务 pipeline 中途故障可续跑，恢复率 100% |
+| 2 | 子任务上下文隔离 + 摘要压缩（替代全量继承 + 滑动窗口）✅（2026-08-03：前置结果摘要注入，commit d82f1bf） | 长任务 context 不爆，规模翻倍成功率不降 |
+| 3 | memory 回读注入：`MemoryStore` 增加 `Search`，长期记忆进循环 ✅（2026-08-03：每轮/每子任务注入召回，commit 311f98c） | 跨 session 记忆可召回 |
+| 4 | tool 执行重试 + 并行 goroutine recover + 输入端护栏 ✅（2026-08-03：`WithInputGuard` + `react_loop_engine.go:17` 入口检查，commit eed88e2） | 混沌注入下无击穿 |
+| 5 | TS 同步 guardrail-in-loop ✅（2026-08-03：`ReActConfig.guardrail` + 输入端 `react-loop.ts:231` / 逐轮输出端 `turn-executor.ts:183`，8 用例 `react-guardrail.test.ts`） | TS 与 Go 行为对齐 |
 | 6 | 失败重放与诊断工具 | 任意失败可一键重放定位 |
 
 ### v3.5 — 可证（评估与可观测闭环）
