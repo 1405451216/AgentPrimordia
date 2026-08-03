@@ -1,9 +1,11 @@
 // options.go — Functional Options for AgentConfig
-// v0.7.0 API 稳定化：提供 22 个 Option 函数（4 标量 + 14 顶层快捷注入 + 4 分组注入），
+// v0.7.0 API 稳定化：提供 Option 函数（标量 + 顶层快捷注入 + 分组注入），
 // 让用户通过 NewAgent(name, prompt, model, opts...) 一次性注入所有能力。
 package agent
 
 import (
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -109,6 +111,25 @@ func WithHITL(cfg *HITLConfig) Option {
 	return func(c *AgentConfig) { c.Resilience.HITL = cfg }
 }
 
+// WithPlanner 设置任务规划器（快捷方式：等价于 WithCognition 时仅设 Planner 字段）。
+// 注入后 ReAct 引擎在首轮对复杂任务自动分解为子任务，按依赖图分层执行。
+func WithPlanner(p planning.Planner) Option {
+	return func(c *AgentConfig) { c.Cognition.Planner = p }
+}
+
+// WithReflector 设置反思器（快捷方式：等价于 WithCognition 时仅设 Reflector 字段）。
+// 注入后完成路径上的最终输出会先经过批评，严重度达到阈值时自动改进。
+func WithReflector(r reflection.Reflector) Option {
+	return func(c *AgentConfig) { c.Cognition.Reflector = r }
+}
+
+// WithReflectionThreshold 设置触发 Reflection 改进的最低严重度
+// （快捷方式：等价于 WithCognition 时仅设 ReflectionSeverityThreshold 字段）。
+// 取值 low/medium/high/critical，空值时引擎默认 high。
+func WithReflectionThreshold(severity string) Option {
+	return func(c *AgentConfig) { c.Cognition.ReflectionSeverityThreshold = severity }
+}
+
 // ===== 4 个分组注入 Option =====
 
 // WithMemoryConfig 整体设置记忆能力分组配置（Store / Summarizer / FileScope）。
@@ -143,4 +164,18 @@ func WithToolsConfig(cfg ToolsConfig) Option {
 //	)
 func WithLearning(cfg LearningConfig) Option {
 	return func(c *AgentConfig) { c.Learning = cfg }
+}
+
+// WithCognition 整体设置认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold）。
+//
+// 使用方式：
+//
+//	agent, _ := NewAgent("bot", "prompt", provider,
+//	    WithCognition(CognitionConfig{
+//	        Planner:   planning.NewLLMPlanner(provider),
+//	        Reflector: reflection.NewLLMReflector(provider),
+//	    }),
+//	)
+func WithCognition(cfg CognitionConfig) Option {
+	return func(c *AgentConfig) { c.Cognition = cfg }
 }

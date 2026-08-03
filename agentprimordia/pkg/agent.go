@@ -284,6 +284,12 @@ var (
 	WithHITL = agent.WithHITL
 	// WithLearning 注入自适应学习配置（知识蒸馏/能力进化/反馈学习）
 	WithLearning = agent.WithLearning
+	// WithPlanner 注入任务规划器（首轮自动分解复杂任务为子任务 DAG）
+	WithPlanner = agent.WithPlanner
+	// WithReflector 注入反思器（完成路径上批评并改进最终输出）
+	WithReflector = agent.WithReflector
+	// WithReflectionThreshold 设置触发 Reflection 改进的最低严重度
+	WithReflectionThreshold = agent.WithReflectionThreshold
 
 	// ===== 分组注入 Option =====
 
@@ -295,6 +301,8 @@ var (
 	WithResilience = agent.WithResilience
 	// WithToolsConfig 一次性注入tool配置
 	WithToolsConfig = agent.WithToolsConfig
+	// WithCognition 一次性注入认知能力配置（Planner / Reflector / 阈值）
+	WithCognition = agent.WithCognition
 )
 
 // AgentOption 是 NewAgent 的函数式选项类型（v0.7.0 起等同于 agent.Option）
@@ -326,6 +334,9 @@ type HITLConfig = agent.HITLConfig
 
 // LearningConfig 自适应学习分组配置（Distiller / Evolver / FeedbackLearner）
 type LearningConfig = agent.LearningConfig
+
+// CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold）
+type CognitionConfig = agent.CognitionConfig
 
 // ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
 

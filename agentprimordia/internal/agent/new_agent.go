@@ -64,11 +64,21 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 		SessionID:      cfg.SessionID,
 		Lifecycle:      cfg.Lifecycle,
 		Logger:         cfg.Logger,
+		// 认知能力：Reflection 改进的严重度阈值
+		ReflectionSeverityThreshold: cfg.Cognition.ReflectionSeverityThreshold,
 	}
 	a := newReActAgent(reactCfg)
 
 	// 包装为 CapabilityAgent 以暴露链式 API
 	cap := a.AsCapability()
+
+	// 注入认知能力（Planning / Reflection）
+	if cfg.Cognition.Planner != nil {
+		cap = cap.WithPlanner(cfg.Cognition.Planner)
+	}
+	if cfg.Cognition.Reflector != nil {
+		cap = cap.WithReflector(cfg.Cognition.Reflector)
+	}
 
 	// 注入记忆能力
 	if cfg.Memory.Store != nil {
