@@ -78,10 +78,12 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 ### 当前废弃列表
 
-| API | 替代方案 | 计划移除版本 |
-|-----|---------|-------------|
-| `NewReActAgent()` | `NewAgent()` | v4.0.0 |
-| `RegisterPProf()` | `RegisterPProfSecure()` / `RegisterPProfStrict()` | v4.0.0 |
+（无——v4.0.0 已清理全部超期废弃 API）
+
+> **已移除记录**：
+> - `NewReActAgent()` — 已于 v3.x 移除，使用 `NewAgent()`（v4.0.0 正式清理文档残留）
+> - `RegisterPProf()` — 已于 v4.0.0 移除，使用 `RegisterPProfSecure()` / `RegisterPProfStrict()`
+> - `A2AServer()` / `A2AClient()` / `A2AServerOption` / `A2AClientOption` / `A2AJSONRPC*`（JSON-RPC 传输）— 已于 v4.0.0 移除，使用 `NewA2AGRPCServer()` / `NewA2AGRPCClient()`
 
 ## 模块迁移历史
 

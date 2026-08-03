@@ -16,6 +16,7 @@ import (
 // ReAct 循环实际由 reactLoopEngine（react_loop_engine.go）驱动，具备 checkpoint、
 // 成本预算、guardrail、RAG、planning、metrics 等完整能力。本方法仅作为实验性
 // 执行策略探索入口保留，不建议在生产依赖其行为。
+// Removed in v4.0.
 func (a *ReActAgent) ReactEngine() *react.Engine {
 	return react.NewEngine(react.Config{
 		AgentName:             a.config.Name,

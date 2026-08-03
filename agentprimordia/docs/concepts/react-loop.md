@@ -305,7 +305,7 @@ ap loop resume    # 从检查点恢复运行
 
 ```go
 mux := http.NewServeMux()
-ap.RegisterPProf(mux)
+ap.RegisterPProfSecure(mux)
 go http.ListenAndServe("127.0.0.1:6060", mux)
 ```
 

@@ -64,7 +64,7 @@ make pgo-clean
 
 ```go
 mux := http.NewServeMux()
-ap.RegisterPProf(mux)
+ap.RegisterPProfSecure(mux)
 go http.ListenAndServe("localhost:6060", mux)
 ```
 

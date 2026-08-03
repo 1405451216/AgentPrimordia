@@ -597,13 +597,6 @@ type HealthCheckable = health.Checker
 // NewHealthChecker 创建健康检查器
 var NewHealthChecker = health.NewChecker
 
-// RegisterPProf 将 pprof 性能分析端点注册到给定的 http.ServeMux。
-// 注册 /debug/pprof/ 下的所有标准 profile 路由（CPU、heap、goroutine 等）。
-//
-// Deprecated: 无鉴权版本，生产环境请使用 RegisterPProfSecure 或 RegisterPProfStrict。
-// Removed in v4.0.0.
-var RegisterPProf = health.RegisterPProf
-
 // PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。
 // 适用于仅需暴露 profiling 而无需自定义路由的场景。
 var PProfHandler = health.PProfHandler

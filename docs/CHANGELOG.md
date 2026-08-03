@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### Removed — v4.0-1 废弃 API 清理
+
+按 `docs/VERSIONING.md` 的废弃承诺，v4.0.0 清理全部超期废弃 API：
+
+- **`RegisterPProf()`** — 无鉴权 pprof 端点注册，已移除。替代：`RegisterPProfSecure()` / `RegisterPProfStrict()`
+- **`NewReActAgent()`** — 已无实现（v3.x 起移除），v4.0.0 清理全部文档残留
+- **A2A JSON-RPC 传输公共 API** — `A2AServer` / `A2AClient` / `A2AServerOption` / `A2AClientOption` / `NewA2AServer` / `NewA2AServerWithService` / `NewA2AClient` / `A2AJSONRPCRequest` / `A2AJSONRPCResponse` / `A2AJSONRPCError`，标记 `Removed in v2.0` 已超期，v4.0.0 移除。替代：`NewA2AGRPCServer()` / `NewA2AGRPCClient()`
+- **迁移指南** — 新增 `ecosystem/docs/migration/v4-deprecations.md`
+- **deprecation 检查强化** — `scripts/deprecation-check.sh` 新增 pkg/ 公共 API 超期残留门（Removed 版本不得早于当前主版本）；新增跨平台 Go 门 `pkg/deprecation_residual_test.go`（Windows 可跑）
+- 同步更新 `sdk/typescript/api-contract.json`（契约基线）与相关文档示例
+
 ### Fixed — CI 第二批缺陷修复（推送后全量验证暴露）
 
 首次推送修复后 CI 仍有多条失败，逐项定位并修复（本地全量验证门全绿）：

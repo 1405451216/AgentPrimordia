@@ -87,26 +87,6 @@
           "doc": "A2ADataPart 结构化数据片段"
         },
         {
-          "name": "A2AServer",
-          "kind": "alias",
-          "doc": "A2AServer JSON-RPC over HTTP 版的 A2A 服务端（兼容旧 API）"
-        },
-        {
-          "name": "A2AServerOption",
-          "kind": "alias",
-          "doc": "A2AServerOption JSON-RPC 服务端配置选项"
-        },
-        {
-          "name": "A2AClient",
-          "kind": "alias",
-          "doc": "A2AClient JSON-RPC over HTTP 版的 A2A 客户端（兼容旧 API）"
-        },
-        {
-          "name": "A2AClientOption",
-          "kind": "alias",
-          "doc": "A2AClientOption JSON-RPC 客户端配置选项"
-        },
-        {
           "name": "A2APrincipal",
           "kind": "alias",
           "doc": "A2APrincipal 认证主体"
@@ -160,21 +140,6 @@
           "name": "A2ALocalDiscovery",
           "kind": "alias",
           "doc": "A2ALocalDiscovery 本地服务发现实现"
-        },
-        {
-          "name": "A2AJSONRPCRequest",
-          "kind": "alias",
-          "doc": "A2AJSONRPCRequest JSON-RPC 2.0 请求"
-        },
-        {
-          "name": "A2AJSONRPCResponse",
-          "kind": "alias",
-          "doc": "A2AJSONRPCResponse JSON-RPC 2.0 响应"
-        },
-        {
-          "name": "A2AJSONRPCError",
-          "kind": "alias",
-          "doc": "A2AJSONRPCError JSON-RPC 2.0 错误"
         },
         {
           "name": "A2AMessageBridge",
@@ -306,39 +271,6 @@
             "A2ADataPart"
           ],
           "doc": "NewA2ADataPart 创建数据片段"
-        },
-        {
-          "name": "NewA2AServer",
-          "params": [
-            "tm A2ATaskManager",
-            "opts ...A2AServerOption"
-          ],
-          "returns": [
-            "*A2AServer"
-          ],
-          "doc": "NewA2AServer 创建 JSON-RPC over HTTP 版 A2A 服务端"
-        },
-        {
-          "name": "NewA2AServerWithService",
-          "params": [
-            "service *A2AService",
-            "opts ...A2AServerOption"
-          ],
-          "returns": [
-            "*A2AServer"
-          ],
-          "doc": "NewA2AServerWithService 使用已有的 A2AService 创建 JSON-RPC A2A 服务端"
-        },
-        {
-          "name": "NewA2AClient",
-          "params": [
-            "baseURL string",
-            "opts ...A2AClientOption"
-          ],
-          "returns": [
-            "*A2AClient"
-          ],
-          "doc": "NewA2AClient 创建 JSON-RPC over HTTP 版 A2A 客户端"
         },
         {
           "name": "NewA2ANoopAuthenticator",
@@ -838,6 +770,11 @@
           "doc": "AgentStatus 表示 Agent 的当前运行状态"
         },
         {
+          "name": "InputGuard",
+          "kind": "alias",
+          "doc": "InputGuard 输入端护栏检查函数（v3.4-4）：用户输入进入循环前调用"
+        },
+        {
           "name": "AgentStats",
           "kind": "alias",
           "doc": "AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、tool调用次数等"
@@ -1016,6 +953,11 @@
           "name": "LearningConfig",
           "kind": "alias",
           "doc": "LearningConfig 自适应学习分组配置（Distiller / Evolver / FeedbackLearner）"
+        },
+        {
+          "name": "CognitionConfig",
+          "kind": "alias",
+          "doc": "CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold）"
         },
         {
           "name": "CapabilityAgent",
@@ -1664,6 +1606,10 @@
           "doc": "WithMetrics 注入指标记录器"
         },
         {
+          "name": "WithInputGuard",
+          "doc": "WithInputGuard 注入输入端护栏（v3.4-4）：用户输入进入循环前检查"
+        },
+        {
           "name": "WithCheckpointStore",
           "doc": "WithCheckpointStore 注入检查点存储"
         },
@@ -1688,6 +1634,18 @@
           "doc": "WithLearning 注入自适应学习配置（知识蒸馏/能力进化/反馈学习）"
         },
         {
+          "name": "WithPlanner",
+          "doc": "WithPlanner 注入任务规划器（首轮自动分解复杂任务为子任务 DAG）"
+        },
+        {
+          "name": "WithReflector",
+          "doc": "WithReflector 注入反思器（完成路径上批评并改进最终输出）"
+        },
+        {
+          "name": "WithReflectionThreshold",
+          "doc": "WithReflectionThreshold 设置触发 Reflection 改进的最低严重度"
+        },
+        {
           "name": "WithMemoryConfig",
           "doc": "WithMemoryConfig 一次性注入记忆相关配置"
         },
@@ -1702,6 +1660,10 @@
         {
           "name": "WithToolsConfig",
           "doc": "WithToolsConfig 一次性注入tool配置"
+        },
+        {
+          "name": "WithCognition",
+          "doc": "WithCognition 一次性注入认知能力配置（Planner / Reflector / 阈值）"
         },
         {
           "name": "SessWithID",
@@ -1773,10 +1735,6 @@
         {
           "name": "NewHealthChecker",
           "doc": "NewHealthChecker 创建健康检查器"
-        },
-        {
-          "name": "RegisterPProf",
-          "doc": "RegisterPProf 将 pprof 性能分析端点注册到给定的 http.ServeMux。"
         },
         {
           "name": "PProfHandler",
@@ -4673,6 +4631,19 @@
         {
           "name": "TelemetryProvider",
           "kind": "alias"
+        }
+      ],
+      "functions": [
+        {
+          "name": "WithTelemetry",
+          "params": [
+            "tp *otel.TelemetryProvider"
+          ],
+          "returns": [
+            "agent.Option"
+          ],
+          "stability": "Experimental",
+          "doc": "WithTelemetry 将 TelemetryProvider 的 Tracer 与 Metrics 一次性注入 Agent，"
         }
       ],
       "variables": [
