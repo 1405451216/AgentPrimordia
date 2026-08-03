@@ -17,6 +17,7 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 	"agentprimordia/pkg/logger"
@@ -198,6 +199,8 @@ type loopConfig struct {
 // R1.2：新增 planner/reflector/toolLearner 字段，连接 G1-1/G1-2/G1-3 闭环。
 type capabilityCache struct {
 	requestID        string
+	traceID          string                         // v3.5-4：本次请求的分布式追踪 ID（关联键）
+	observability    *observability.CorrelationStore // v3.5-4：全链路关联存储
 	tracer           Tracer
 	costTracker      *CostTracker
 	memoryStore      MemoryStore
@@ -233,6 +236,7 @@ feedbackLearner *learning.FeedbackLearner   // 反馈学习器
 func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 	c := &capabilityCache{
 		requestID:       requestID,
+		observability:   a.getObservability(),
 		tracer:          a.getTracer(),
 		costTracker:     a.getCostTracker(),
 		memoryStore:     a.getMemoryStore(),

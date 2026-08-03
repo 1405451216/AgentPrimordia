@@ -6,6 +6,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"agentprimordia/internal/observability"
 )
 
 // reactLoopEngine ReAct 循环核心引擎
@@ -61,6 +63,10 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 			rootSpan.SetStatus(SpanStatusError, fmt.Sprintf("panic: %v", r))
 		}
 		rootSpan.End()
+		// v3.5-4：结束请求全链路关联（trace 闭合）
+		if a.capCache != nil && a.capCache.observability != nil && a.capCache.traceID != "" {
+			a.capCache.observability.End(a.capCache.traceID)
+		}
 		// 优化（Task 1）：flush 异步记忆写入队列，确保所有 saveMemory 调用完成
 		a.flushMemoryWriter()
 		// 清理 capCache，避免下次 Run() 误用旧引用
@@ -76,6 +82,23 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 
 	// 优化（Task 2）：Run() 入口处一次性查找所有能力引用，避免每轮重复类型断言
 	a.capCache = a.resolveCapabilities(cfg.requestID)
+
+	// v3.5-4：登记全链路关联——以 root span 的 trace_id 关联 trace/metrics/audit
+	if corr := a.capCache.observability; corr != nil {
+		traceID := rootSpan.SpanContext().TraceID
+		if traceID == "" {
+			traceID = cfg.requestID // 无 tracer 时回退到 request_id 作为关联键
+		}
+		a.capCache.traceID = traceID
+		corr.Start(traceID, a.config.Name, a.config.SessionID)
+		corr.AddSpan(traceID, observability.SpanRecord{
+			Name:       "agent.run",
+			Kind:       string(SpanKindServer),
+			SpanID:     rootSpan.SpanContext().SpanID,
+			Status:     string(SpanStatusOK),
+			Attributes: map[string]any{"agent": a.config.Name, "session": a.config.SessionID, "stream": cfg.stream},
+		})
+	}
 
 	if cfg.stream {
 		a.logger.Info("Agent 流式启动", "name", a.config.Name, "session", a.config.SessionID)

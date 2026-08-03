@@ -3,6 +3,7 @@ package agent
 import (
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 	"context"
@@ -134,6 +135,11 @@ func (a *ReActAgent) WithInputGuard(g InputGuard) *CapabilityAgent {
 // LLM 调用、tool调用、Agent 启动/停止等关键路径会自动写入审计事件
 func (a *ReActAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, auditLogger: l})
+}
+
+// WithObservability 注入全链路关联存储（v3.5-4），返回可链式调用的 CapabilityAgent
+func (a *ReActAgent) WithObservability(corr *observability.CorrelationStore) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, observability: corr})
 }
 
 // ===== RAG 简化 API =====

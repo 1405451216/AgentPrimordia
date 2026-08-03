@@ -7,6 +7,7 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 	"context"
@@ -48,6 +49,8 @@ type CapabilityAgent struct {
 	outputGuard OutputGuard
 	inputGuard  InputGuard
 	auditLogger AuditLogger
+	// v3.5-4：全链路关联存储（trace → 指标 → 审计 闭环）
+	observability *observability.CorrelationStore
 
 	// v3.0：自适应学习能力
 	distiller       *learning.KnowledgeDistiller
@@ -148,6 +151,16 @@ func (c *CapabilityAgent) GetCheckpointStore() persist.CheckpointStore { return 
 
 // GetFailureStore 返回失败记录存储（FailureCapable，v3.4-6）
 func (c *CapabilityAgent) GetFailureStore() persist.FailureStore { return c.failureStore }
+
+// WithObservability 注入全链路关联存储（v3.5-4）
+// 引擎将以 trace_id 聚合 trace/metrics/audit，支持单请求全链路回溯。
+func (c *CapabilityAgent) WithObservability(corr *observability.CorrelationStore) *CapabilityAgent {
+	c.observability = corr
+	return c
+}
+
+// GetObservability 返回全链路关联存储（ObservabilityCapable，v3.5-4）
+func (c *CapabilityAgent) GetObservability() *observability.CorrelationStore { return c.observability }
 
 // GetSummarizer 返回摘要提取器（SummarizerCapable）
 func (c *CapabilityAgent) GetSummarizer() memory.SummaryExtractor { return c.summarizer }

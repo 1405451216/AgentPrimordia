@@ -10,6 +10,7 @@ import (
 
 	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/llm"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/tools"
 )
 
@@ -58,7 +59,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 	}
 
 	// 优化（Task 3.5）：仅在需要记录 turn 延迟时获取时间戳
-	needTiming := a.getMetricsRecorder() != nil || a.getLabeledRecorder() != nil
+	// v3.5-4：启用全链路关联时也需计时（RecordTurn 关联到 trace）
+	needTiming := a.getMetricsRecorder() != nil || a.getLabeledRecorder() != nil ||
+		(a.capCache != nil && a.capCache.observability != nil)
 
 	for turn := startTurn; turn < a.config.MaxTurns; turn++ {
 		var turnStart time.Time
@@ -394,9 +397,28 @@ func (a *ReActAgent) writeAudit(ctx context.Context, event AuditEvent) {
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
+	// v3.5-4：将当前请求的 trace_id 注入审计事件，作为全链路回溯关联键
+	event.TraceID = a.capCache.traceID
 	if err := a.capCache.auditLogger.Log(ctx, event); err != nil {
 		a.logger.Warn("写入审计事件失败", "action", event.Action, "err", err)
 	}
+	// v3.5-4：同步写入全链路关联存储（trace → 审计 闭环）
+	a.recordAuditObservability(event)
+}
+
+// recordAuditObservability 将审计事件关联到当前请求 trace（全链路闭环）。
+func (a *ReActAgent) recordAuditObservability(event AuditEvent) {
+	if a.capCache == nil || a.capCache.observability == nil || a.capCache.traceID == "" {
+		return
+	}
+	a.capCache.observability.AddAuditEvent(a.capCache.traceID, observability.AuditEvent{
+		Timestamp: event.Timestamp,
+		Actor:     event.Actor,
+		Action:    event.Action,
+		Resource:  event.Resource,
+		Result:    event.Result,
+		Details:   event.Details,
+	})
 }
 
 // distillKnowledge 从本次交互中蒸馏知识（v3.0 自适应学习）。

@@ -10,6 +10,7 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 )
@@ -55,6 +56,8 @@ type AuditEvent struct {
 	Resource  string
 	Result    string
 	Details   map[string]any
+	// TraceID 关联的分布式追踪 ID（v3.5-4 全链路回溯关联键）
+	TraceID string
 }
 
 // AuditLogger 审计日志接口（agent 内部使用）
@@ -103,6 +106,13 @@ type HookCapable interface {
 // 引擎在 ReAct Loop 关键点自动创建 Span。
 type TraceCapable interface {
 	GetTracer() Tracer
+}
+
+// ObservabilityCapable 标识 Agent 具备全链路关联能力（v3.5-4）。
+// 引擎在请求开始时以 trace_id 登记 RequestTrace，并将 Span/审计事件/指标
+// 关联到同一 trace_id，实现"单请求可全链路回溯"。
+type ObservabilityCapable interface {
+	GetObservability() *observability.CorrelationStore
 }
 
 // CostCapable 标识 Agent 具备成本追踪能力。
