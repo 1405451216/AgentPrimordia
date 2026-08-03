@@ -149,6 +149,10 @@ type ReActAgent struct {
 	// 单次 Run() 期间不变的能力引用，reactLoopEngine 入口处一次性查找
 	// runLoop 内通过 capCache 访问，避免每轮重复类型断言
 	capCache *capabilityCache
+
+	// ===== v3.4-1: 子任务执行器可注入（测试/扩展） =====
+	// 为 nil 时 executePlan 走默认 executeSubTask；测试可注入可控执行器。
+	subtaskExecutor func(ctx context.Context, task planning.SubTask, history []Message, cfg loopConfig) (*Response, error)
 }
 
 // newReActAgent 创建基于 ReAct 循环的 Agent 实例（内部使用）

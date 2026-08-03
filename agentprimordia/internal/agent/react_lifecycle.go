@@ -8,6 +8,7 @@ import (
 	"maps"
 	"time"
 
+	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/llm"
 )
 
@@ -176,6 +177,14 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	// 因此这里显式清理，避免后续 Run() 误用本次恢复的旧引用。
 	a.capCache = a.resolveCapabilities(reqID)
 	defer func() { a.capCache = nil }()
+
+	// v3.4-1：若 checkpoint 含 plan 进度，从计划断点恢复——重建 plan 与进度，
+	// 跳过已完成子任务、沿用其结果，仅执行剩余子任务。
+	if state.Plan != nil {
+		pp := buildPlanProgressFromState(state.Plan)
+		plan := &planning.Plan{SubTasks: pp.subtasks}
+		return a.executePlanWithState(ctx, history, plan, loopConfig{requestID: reqID}, a.startTime, totalLLMLatency, totalToolLatency, toolCount, pp)
+	}
 
 	return a.runLoop(ctx, history, state.TurnCount, loopConfig{requestID: reqID}, totalLLMLatency, totalToolLatency, toolCount)
 }

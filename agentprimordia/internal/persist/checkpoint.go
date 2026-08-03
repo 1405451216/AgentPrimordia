@@ -28,7 +28,26 @@ type AgentState struct {
 	Messages  []CheckpointMessage `json:"messages"`
 	TurnCount int                 `json:"turn_count"`
 	Metrics   CheckpointMetrics   `json:"metrics"`
-	SavedAt   time.Time           `json:"saved_at"`
+	// Plan 保存 Plan（executePlan）执行的中间状态；非空表示从计划断点恢复。
+	Plan    *CheckpointPlan `json:"plan,omitempty"`
+	SavedAt time.Time       `json:"saved_at"`
+}
+
+// CheckpointPlan Plan 执行的持久化进度，用于断点续跑整个计划。
+type CheckpointPlan struct {
+	Subtasks     []CheckpointSubTask `json:"subtasks"`
+	Completed    []string            `json:"completed"`
+	Results      map[string]string   `json:"results"`
+	TotalTools   int                 `json:"total_tools"`
+	LLMLatencyNs int64               `json:"llm_latency_ns"`
+	ToolLatencyNs int64              `json:"tool_latency_ns"`
+}
+
+// CheckpointSubTask Plan 子任务的持久化表示。
+type CheckpointSubTask struct {
+	ID          string   `json:"id"`
+	Description string   `json:"description"`
+	DependsOn   []string `json:"depends_on"`
 }
 
 func (s *AgentState) Marshal() ([]byte, error) {
