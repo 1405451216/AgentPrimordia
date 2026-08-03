@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"agentprimordia/internal/memory"
 )
@@ -36,6 +37,76 @@ func (a *ReActAgent) searchMemoryContext(ctx context.Context, history []Message)
 		return ""
 	}
 	return formatMemoryContext(episodes)
+}
+
+// tryMemorySolution 尝试命中"已解任务"记忆（v3.6-3 跨任务记忆 fast-path）。
+//
+// 当历史中存在高度相关且标记 solved=true 的记忆片段时，直接复用其答案，
+// 跳过整个 ReAct 循环（0 次 LLM 调用），使相似任务第二次显著更快。
+// 未命中或不确定时返回 ("", false)，走正常推理。
+func (a *ReActAgent) tryMemorySolution(ctx context.Context, history []Message) (string, bool) {
+	store := a.getMemoryStore()
+	q, ok := store.(MemoryQuerier)
+	if !ok {
+		return "", false
+	}
+	query := extractUserInput(history)
+	if query == "" {
+		return "", false
+	}
+	episodes, err := q.Search(ctx, query, nil)
+	if err != nil || len(episodes) == 0 {
+		return "", false
+	}
+	// 扫描检索结果，取第一个标记为已解决且内容非空的片段（避免被普通消息片段抢占首位）
+	for _, top := range episodes {
+		if top == nil || top.Metadata == nil || top.Metadata["solved"] != "true" {
+			continue
+		}
+		answer := top.Content
+		if top.Summary != "" {
+			answer = top.Summary
+		}
+		if answer == "" {
+			continue
+		}
+		return answer, true
+	}
+	return "", false
+}
+
+// saveSolutionMemory 在 Agent 成功完成一次任务后，把任务+答案存为
+// "已解决"记忆（v3.6-3 跨任务记忆真正注入）。
+// 后续相似任务可通过 tryMemorySolution 命中该记忆，直接复用答案（0 轮推理）。
+func (a *ReActAgent) saveSolutionMemory(ctx context.Context, history []Message, answer string) {
+	store := a.getMemoryStore()
+	if store == nil || answer == "" {
+		return
+	}
+	goal := extractUserInput(history)
+	content := answer
+	if goal != "" {
+		content = "任务：" + goal + "\n解法：" + answer
+	}
+	sessionID := a.config.SessionID
+	if sessionID == "" {
+		sessionID = "task-solutions" // 跨任务共享的解决方案记忆桶
+	}
+	ep := &memory.Episode{
+		ID:         "solution_" + fmt.Sprintf("%d", time.Now().UnixNano()),
+		SessionID:  sessionID,
+		Role:       "solution",
+		Content:    content,
+		Summary:    answer,
+		Importance: 1.0,
+		Metadata:   map[string]string{"solved": "true"},
+		CreatedAt:  time.Now().Format(time.RFC3339),
+	}
+	if err := store.Add(ctx, ep); err != nil {
+		a.logger.Warn("保存已解记忆失败", "error", err)
+	} else {
+		a.logger.Debug("已解任务记忆已保存", "name", a.config.Name)
+	}
 }
 
 // formatMemoryContext 将检索到的记忆片段格式化为注入文本。

@@ -31,6 +31,8 @@ func (a *ReActAgent) Stats() AgentStats {
 	stats.PlanRecoveries = append([]PlanRecovery(nil), a.stats.PlanRecoveries...)
 	// v3.6-2：复制流程修正计数
 	stats.ProcessCorrections = a.stats.ProcessCorrections
+	// v3.6-3：复制跨任务记忆命中计数
+	stats.MemoryHits = a.stats.MemoryHits
 	a.statsMu.RUnlock()
 	stats.ToolsCalled = toolsCopy
 

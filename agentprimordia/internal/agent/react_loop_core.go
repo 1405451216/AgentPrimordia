@@ -124,6 +124,23 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 				a.logger.Debug("长期记忆已注入", "turn", turn)
 				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 长期记忆上下文已注入"})
 			}
+			// v3.6-3：跨任务记忆 fast-path——命中已解任务时直接复用答案
+			if answer, ok := a.tryMemorySolution(ctx, history); ok {
+				a.logger.Info("跨任务记忆命中，直接复用已解答案", "name", a.config.Name)
+				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 命中已解任务记忆，跳过推理"})
+				a.statsMu.Lock()
+				a.stats.MemoryHits++
+				a.statsMu.Unlock()
+				return &Response{
+					RequestID: cfg.requestID,
+					Content:   answer,
+					Metrics: Metrics{
+						TotalTurns:  0, // fast-path：0 轮 LLM 推理
+						Duration:    0,
+						MemoryHit:   true,
+					},
+				}, nil
+			}
 		}
 
 		var ragQuery string
@@ -324,6 +341,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			})
 			// v3.0：自适应学习——从本次交互中蒸馏知识
 			a.distillKnowledge(ctx, history, finalContent)
+			// v3.6-3：完成任务后把答案存为"已解决"记忆，供相似任务复用
+			a.saveSolutionMemory(ctx, history, finalContent)
 			return response, nil
 		}
 
