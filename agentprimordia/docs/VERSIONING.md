@@ -10,6 +10,9 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 当前版本：`3.2.0`（定义于 `pkg/agent.go`，git tag 管理）
 
+> 版本演化路线以 `docs/ROADMAP.md` 为权威（v3.3→v4.0），能力实况以 `docs/CAPABILITY-INVENTORY.md` 为准。
+> git tag 曾长期脱节（仅 v0.7.0），已在本文件维护规则中强制"发布即打 tag"。
+
 ## 版本信息单一事实来源
 
 > **重要**：本文件是版本信息的权威参考。其他文档（README、RELEASE-NOTES、ROADMAP）中的版本描述应与本文件保持一致。
