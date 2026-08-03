@@ -1,9 +1,9 @@
 /**
  * coding-agent — 一体化 Coding Harness 示例（TS 线，与 Go 线 coding-agent 镜像）
  *
- * 单个 Agent 端到端打通 计划 → 编写 → 测试 → 审查 → 发布 全流程：
- * - planner（LLMPlanner）：run 入口分解为 编写→测试→审查→发布 的 DAG
- * - filesystem/shell 内置工具：编写与测试
+ * 单个 Agent 端到端打通 计划 → 编写 → 实施 → 测试 → 审查 → 发布 全流程：
+ * - planner（LLMPlanner）：run 入口分解为 编写→实施→测试→审查→发布 的 DAG
+ * - filesystem/shell 内置工具：编写、实施（运行代码验证）与测试
  * - reflector（LLMReflector）：每个子任务完成路径批评，severity 达阈值才改写
  * - 发布：shell 驱动 git add/commit/tag
  *
@@ -62,9 +62,10 @@ class ScriptedProvider extends MockProvider {
 // 计划协议：JSON 数组 [{id, description, depends_on}]
 const pipelinePlan = JSON.stringify([
   { id: '1', description: '编写：创建 hello.ts 文件', depends_on: [] },
-  { id: '2', description: '测试：检查工作区确认文件已生成', depends_on: ['1'] },
-  { id: '3', description: '审查：评估代码质量并给出结论', depends_on: ['2'] },
-  { id: '4', description: '发布：git 提交并打标签 v1.0.0', depends_on: ['3'] },
+  { id: '2', description: '实施：运行 node hello.ts 验证可执行', depends_on: ['1'] },
+  { id: '3', description: '测试：检查工作区确认文件已生成', depends_on: ['2'] },
+  { id: '4', description: '审查：评估代码质量并给出结论', depends_on: ['3'] },
+  { id: '5', description: '发布：git 提交并打标签 v1.0.0', depends_on: ['4'] },
 ]);
 
 // 批评协议：severity low 低于阈值 high，不触发改写
@@ -105,7 +106,7 @@ async function main() {
       reflectionSeverityThreshold: 'high',
     });
 
-    const goal = '创建 hello.ts，验证工作区，审查代码，然后提交并打标签 v1.0.0';
+    const goal = '创建 hello.ts，运行验证，检查工作区，审查代码，然后提交并打标签 v1.0.0';
     console.log(`目标: ${goal}\n`);
 
     const resp = await agent.run(goal);
@@ -116,6 +117,9 @@ async function main() {
 
     console.log('产物 hello.ts:');
     console.log(fs.readFileSync(path.join(workdir, 'hello.ts'), 'utf-8').trim());
+
+    // 实施环节校验：程序真实可运行
+    console.log(`\nnode 运行输出: ${execFileSync('node', ['hello.ts'], { cwd: workdir, encoding: 'utf-8' }).trim()}`);
 
     console.log(`\ngit log: ${git(workdir, 'log', '--oneline').trim()}`);
     console.log(`git tag: ${git(workdir, 'tag', '-l').trim()}`);
@@ -131,9 +135,11 @@ async function main() {
 // - Complete 队列：Planner 根计划 + 每个子任务的 Critique
 function scriptLLM(workdir: string): ScriptedProvider {
   const p = new ScriptedProvider();
-  p.withResponse(pipelinePlan); // 根任务 Planning：分解为 4 个子任务
+  p.withResponse(pipelinePlan); // 根任务 Planning：分解为 5 个子任务
 
-  const fileContent = 'export const hello = (): string => "Hello from AgentPrimordia TS coding harness!";\n';
+  const fileContent =
+    "console.log('Hello from AgentPrimordia TS coding harness!');\n" +
+    "export const hello = (): string => 'Hello from AgentPrimordia TS coding harness!';\n";
 
   // 子任务1：编写（filesystem.write）
   p.withToolResponse([{
@@ -143,7 +149,15 @@ function scriptLLM(workdir: string): ScriptedProvider {
     .withToolResponse([], 'hello.ts 已创建')
     .withResponse(lowCritique);
 
-  // 子任务2：测试（shell 校验工作区）
+  // 子任务2：实施（shell 实际运行程序）
+  p.withToolResponse([{
+    id: 'call_run', name: 'shell',
+    arguments: JSON.stringify({ command: 'node hello.ts', cwd: workdir }),
+  }])
+    .withToolResponse([], '运行成功：Hello from AgentPrimordia TS coding harness!')
+    .withResponse(lowCritique);
+
+  // 子任务3：测试（shell 校验工作区）
   p.withToolResponse([{
     id: 'call_check', name: 'shell',
     arguments: JSON.stringify({ command: 'git status --short', cwd: workdir }),
@@ -151,11 +165,11 @@ function scriptLLM(workdir: string): ScriptedProvider {
     .withToolResponse([], '工作区检查通过：hello.ts 已生成')
     .withResponse(lowCritique);
 
-  // 子任务3：审查（纯推理，无工具）
+  // 子任务4：审查（纯推理，无工具）
   p.withToolResponse([], '审查通过：代码结构清晰，无高严重度问题')
     .withResponse(lowCritique);
 
-  // 子任务4：发布（git add+commit 同轮双调用，再 tag）
+  // 子任务5：发布（git add+commit 同轮双调用，再 tag）
   p.withToolResponse([
     { id: 'call_add', name: 'shell', arguments: JSON.stringify({ command: 'git add .', cwd: workdir }) },
     {

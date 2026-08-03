@@ -2,8 +2,8 @@
  * TS 线一体化 coding harness 端到端测试
  *
  * 与 Go 线 test/e2e/coding_pipeline_test.go 镜像：
- * 计划（LLMPlanner 分解 DAG）→ 编写（filesystem 写文件）→ 测试（shell 校验）
- * → 审查（LLMReflector 批评）→ 发布（shell 驱动 git add/commit/tag），
+ * 计划（LLMPlanner 分解 DAG）→ 编写（filesystem 写文件）→ 实施（shell 运行程序）
+ * → 测试（shell 校验）→ 审查（LLMReflector 批评）→ 发布（shell 驱动 git add/commit/tag），
  * 全部由脚本化 Provider 驱动，不依赖真实 LLM 与网络。
  */
 import { describe, it, expect } from 'vitest';
@@ -55,12 +55,13 @@ class ScriptedProvider extends MockProvider {
 
 // ===== 协议常量 =====
 
-// 根计划：编写 → 测试 → 审查 → 发布 依赖链
+// 根计划：编写 → 实施 → 测试 → 审查 → 发布 依赖链
 const pipelinePlan = JSON.stringify([
   { id: '1', description: '编写：创建 hello.ts 文件', depends_on: [] },
-  { id: '2', description: '测试：检查工作区确认文件已生成', depends_on: ['1'] },
-  { id: '3', description: '审查：评估代码质量并给出结论', depends_on: ['2'] },
-  { id: '4', description: '发布：git 提交并打标签 v1.0.0', depends_on: ['3'] },
+  { id: '2', description: '实施：运行 node hello.ts 验证可执行', depends_on: ['1'] },
+  { id: '3', description: '测试：检查工作区确认文件已生成', depends_on: ['2'] },
+  { id: '4', description: '审查：评估代码质量并给出结论', depends_on: ['3'] },
+  { id: '5', description: '发布：git 提交并打标签 v1.0.0', depends_on: ['4'] },
 ]);
 
 // 批评应答：severity low 低于阈值 high，不触发改写
@@ -82,7 +83,7 @@ function hasGit(): boolean {
 }
 
 describe('TS coding pipeline 端到端', () => {
-  it('计划→编写→测试→审查→发布全流程打通', async () => {
+  it('计划→编写→实施→测试→审查→发布全流程打通', async () => {
     if (!hasGit()) return; // 无 git 环境跳过
 
     const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-coding-pipeline-'));
@@ -92,9 +93,11 @@ describe('TS coding pipeline 端到端', () => {
       git(workdir, 'config', 'user.name', 'e2e-bot');
 
       const provider = new ScriptedProvider();
-      provider.withResponse(pipelinePlan); // 根任务 Planning：分解为 4 个子任务
+      provider.withResponse(pipelinePlan); // 根任务 Planning：分解为 5 个子任务
 
-      const fileContent = 'export const hello = (): string => "Hello from AgentPrimordia TS harness!";\n';
+      const fileContent =
+        "console.log('Hello from AgentPrimordia TS coding harness!');\n" +
+        "export const hello = (): string => 'Hello from AgentPrimordia TS coding harness!';\n";
 
       // 子任务1：编写（filesystem 写文件）
       provider
@@ -105,7 +108,16 @@ describe('TS coding pipeline 端到端', () => {
         .withToolResponse([], '已创建 hello.ts')
         .withResponse(lowCritique);
 
-      // 子任务2：测试（shell 校验工作区）
+      // 子任务2：实施（shell 实际运行程序，验证可执行）
+      provider
+        .withToolResponse([{
+          id: 'call_run', name: 'shell',
+          arguments: JSON.stringify({ command: 'node hello.ts', cwd: workdir }),
+        }])
+        .withToolResponse([], '运行成功：Hello from AgentPrimordia TS coding harness!')
+        .withResponse(lowCritique);
+
+      // 子任务3：测试（shell 校验工作区）
       provider
         .withToolResponse([{
           id: 'call_check', name: 'shell',
@@ -114,12 +126,12 @@ describe('TS coding pipeline 端到端', () => {
         .withToolResponse([], '工作区检查通过')
         .withResponse(lowCritique);
 
-      // 子任务3：审查（无工具，直接结论）
+      // 子任务4：审查（无工具，直接结论）
       provider
         .withToolResponse([], '审查通过：代码结构清晰')
         .withResponse(lowCritique);
 
-      // 子任务4：发布（git add + commit 同轮双调用，再 tag）
+      // 子任务5：发布（git add + commit 同轮双调用，再 tag）
       provider
         .withToolResponse([
           { id: 'call_add', name: 'shell', arguments: JSON.stringify({ command: 'git add .', cwd: workdir }) },
@@ -151,16 +163,19 @@ describe('TS coding pipeline 端到端', () => {
         reflectionSeverityThreshold: 'high',
       });
 
-      const resp = await agent.run('创建 hello.ts，验证工作区，审查代码，然后提交并打标签 v1.0.0');
+      const resp = await agent.run('创建 hello.ts，运行验证，检查工作区，审查代码，然后提交并打标签 v1.0.0');
 
       // ===== 断言 =====
       expect(resp.content).toBe('发布完成：v1.0.0');
       expect(fs.readFileSync(path.join(workdir, 'hello.ts'), 'utf-8')).toBe(fileContent);
+      // 实施环节：程序真实可执行且输出符合预期
+      expect(execFileSync('node', ['hello.ts'], { cwd: workdir, encoding: 'utf-8' }))
+        .toContain('Hello from AgentPrimordia TS coding harness!');
       expect(git(workdir, 'log', '--oneline')).toContain('feat: add hello.ts');
       expect(git(workdir, 'tag', '-l')).toContain('v1.0.0');
-      // write + status + add + commit + tag = 5 次工具调用
-      expect(resp.metrics.totalTools).toBe(5);
-      // 批评队列被 4 个子任务各消费一次
+      // write + run + status + add + commit + tag = 6 次工具调用
+      expect(resp.metrics.totalTools).toBe(6);
+      // 批评队列被 5 个子任务各消费一次
       expect(provider.completeQueue.length).toBe(0);
     } finally {
       fs.rmSync(workdir, { recursive: true, force: true });
