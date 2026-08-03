@@ -282,6 +282,7 @@ export type { AgentDeployment, AgentDeploymentSpec, AgentTemplateSpec, ToolSpec,
 
 // ===== Phase 17: OTel Extensions =====
 export { Baggage, BaggagePropagator, OTelBridge, OTLPExporter, MetricExporter } from './metrics/otel-extended.js';
+export { OfficialOTelBridge } from './metrics/otel-official.js';
 export type { BaggageEntry, OTelSpan as OTelBridgeSpan, OTLPExporterConfig, MetricDataPoint } from './metrics/otel-extended.js';
 
 // ===== Phase 18: Prompt Engine =====
