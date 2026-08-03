@@ -3,7 +3,7 @@ import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { CostTracker, Checkpoint, CheckpointStore } from './request-id.js';
 import type { Memory } from '../memory/store.js';
-import type { OTelBridge } from '../metrics/otel-extended.js';
+import type { OTelBridgeLike } from '../metrics/otel-extended.js';
 import { validateAgentInput } from '../validate.js';
 import type { AgentSelfTuner, RunMetrics, TuningSuggestion } from './self-tuning.js';
 import type { SpeculativeExecutor } from './speculative-exec.js';
@@ -43,7 +43,7 @@ export interface ReActConfig {
   costTracker?: CostTracker;
   memoryStore?: Memory;
   checkpointStore?: CheckpointStore;
-  otelBridge?: OTelBridge;
+  otelBridge?: OTelBridgeLike;
   parallelToolExecution?: boolean;
   maxParallelTools?: number;
   speculativeExecutor?: SpeculativeExecutor;
@@ -82,7 +82,7 @@ export class ReActAgent {
   private messages: Message[] = [];
   private capCache: CapabilitiesCache | null = null;
   private pendingMemoryWrites: Promise<void>[] = [];
-  private otelBridge?: OTelBridge;
+  private otelBridge?: OTelBridgeLike;
   private runMu: Promise<void> = Promise.resolve();
   private parallelToolExecution: boolean;
   private maxParallelTools: number;

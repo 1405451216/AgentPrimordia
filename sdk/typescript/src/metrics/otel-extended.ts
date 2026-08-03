@@ -81,6 +81,16 @@ export class BaggagePropagator {
 
 // ===== OTel Bridge — connects framework metrics to OTel =====
 
+/** OTel 桥接的结构化接口（v3.9-2 Studio 桥接等可结构实现）。 */
+export interface OTelBridgeLike {
+  startSpan(name: string, attributes?: Record<string, string | number | boolean>): string;
+  addAttribute(spanId: string, key: string, value: string | number | boolean): void;
+  addEvent(spanId: string, eventName: string, attributes?: Record<string, unknown>): void;
+  endSpan(spanId: string, status?: 'ok' | 'error'): void;
+  getSpans(): OTelSpan[];
+  clear(): void;
+}
+
 export interface OTelSpan {
   name: string;
   startTime: number;
@@ -90,7 +100,7 @@ export interface OTelSpan {
   status: 'ok' | 'error' | 'unset';
 }
 
-export class OTelBridge {
+export class OTelBridge implements OTelBridgeLike {
   private spans: OTelSpan[] = [];
   private activeSpans: Map<string, OTelSpan> = new Map();
 

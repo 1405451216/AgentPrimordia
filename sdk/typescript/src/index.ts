@@ -325,6 +325,7 @@ export type { AdminHandlerConfig, AdminTaskInfo, AdminPoolStats } from './admin/
 
 // Inspector & Debug Server
 export { Inspector, InspectorServer, DebugServer } from './debugger/server.js';
+export { StudioBridge, createStudioBridge } from './debugger/studio.js';
 export type { InspectorConfig, MemorySnapshot, SessionTrace } from './debugger/server.js';
 
 // SQLite Checkpoint Store

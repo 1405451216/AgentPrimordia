@@ -18,7 +18,7 @@ import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { CostTracker, Checkpoint, CheckpointStore } from './request-id.js';
 import type { Memory } from '../memory/store.js';
-import type { OTelBridge } from '../metrics/otel-extended.js';
+import type { OTelBridgeLike } from '../metrics/otel-extended.js';
 import type { StreamEvent } from './hooks.js';
 import type { HookManager } from './hooks.js';
 import { validateLLMCompletion, validateToolCallResponse } from '../schema/index.js';
@@ -30,7 +30,7 @@ export interface CapabilitiesCache {
   costTracker: CostTracker | null;
   memoryStore: Memory | null;
   checkpointStore: CheckpointStore | null;
-  otelBridge: OTelBridge | null;
+  otelBridge: OTelBridgeLike | null;
 }
 
 // ===== TurnExecutor 配置 =====
