@@ -121,10 +121,10 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | marketplace 真实注册表 + 远程协议 + cosign 签名（Phase 5 Task 2-3） | 插件 install 可远程 + 验签 |
-| 2 | Studio 接真实引擎（替换 demo 数据） | 四面板显示真实运行 |
-| 3 | 文档站自动构建 + VS Code Agent Inspector + 插件脚手架 | 第三方按文档零门槛接入 |
-| 4 | MCP 深度集成 | 主流 MCP server 开箱即用 |
+| 1 | marketplace 真实注册表 + 远程协议 + cosign 签名（Phase 5 Task 2-3） ✅（2026-08-04：`internal/marketplace` Manifest 远程协议 + ECDSA P-256 验签 + Installer；`ap plugin install <url>` 远程安装；commit 555683c） | 插件 install 可远程 + 验签 |
+| 2 | Studio 接真实引擎（替换 demo 数据） ✅（2026-08-04：`debugger/studio.ts` StudioBridge 接真实 agent runs 到 Inspector + `OTelBridgeLike` 结构接口；commit da7a238） | 四面板显示真实运行 |
+| 3 | 文档站自动构建 + VS Code Agent Inspector + 插件脚手架 ✅（2026-08-04：ci.yml 新增 docs-build job 自动构建 vitepress 文档站并修复死链；VS Code Inspector（agents-view + dag-visualizer）与插件脚手架 `ap plugin create` 已有完整实现与测试；commit 6736c44） | 第三方按文档零门槛接入 |
+| 4 | MCP 深度集成 ✅（2026-08-04：工具名命名空间前缀隔离多 server 同名工具（Go `SetToolPrefix`/`ToolPrefix` 配置 + TS `toolPrefix`）；`resolveMCPCommand` 支持 npx/npm 等 Windows .cmd 解析；测试 Go 5 + TS 5；commit b587593） | 主流 MCP server 开箱即用 |
 
 ### v4.0 — 稳定化
 
