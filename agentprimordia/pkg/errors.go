@@ -128,7 +128,7 @@ var (
 
 	// --- Guardrail 错误 ---
 	// ErrInputBlocked 表示输入被护栏拦截
-	ErrInputBlocked = errors.New("ap: input blocked by guardrail")
+	ErrInputBlocked = agent.ErrInputBlocked
 	// ErrOutputBlocked 表示输出被护栏拦截
 	ErrOutputBlocked = errors.New("ap: output blocked by guardrail")
 

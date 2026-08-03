@@ -119,6 +119,12 @@ func (a *ReActAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, outputGuard: g})
 }
 
+// WithInputGuard 注入输入端 Guardrail 检查函数，返回可链式调用的 CapabilityAgent
+// 用于在用户输入进入循环前自动进行注入拦截、脱敏等防护（v3.4-4）
+func (a *ReActAgent) WithInputGuard(g InputGuard) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, inputGuard: g})
+}
+
 // WithAuditLogger 注入审计日志器，返回可链式调用的 CapabilityAgent
 // LLM 调用、tool调用、Agent 启动/停止等关键路径会自动写入审计事件
 func (a *ReActAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {

@@ -74,6 +74,22 @@ func (a *ReActAgent) executeToolCallsParallel(ctx context.Context, history []Mes
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
+			// v3.4-4：单个 tool goroutine panic 不击穿整个循环，转为错误结果
+			defer func() {
+				if r := recover(); r != nil {
+					a.logger.Error("并行 tool 执行 panic 已恢复", "tool", tc.Name, "panic", r)
+					results[i] = execResult{
+						result: &ToolResult{
+							ToolCallID: tc.ID,
+							Content:    fmt.Sprintf("tool %s panic recovered: %v", tc.Name, r),
+							IsError:    true,
+						},
+						err:  fmt.Errorf("tool %s panic: %v", tc.Name, r),
+						latency: 0,
+						tc:   tc,
+					}
+				}
+			}()
 			result, err, latency := a.executeSingleTool(ctx, &tc, turn, cfg, tracer, turnSpan)
 			results[i] = execResult{result: result, err: err, latency: latency, tc: tc}
 		}()

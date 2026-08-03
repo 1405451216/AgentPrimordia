@@ -179,6 +179,15 @@ func (a *ReActAgent) getOutputGuard() OutputGuard {
 	return nil
 }
 
+// getInputGuard 获取输入端 Guardrail 检查函数，通过 InputGuardCapable 接口发现
+// 用于在用户输入进入循环前调用（v3.4-4）
+func (a *ReActAgent) getInputGuard() InputGuard {
+	if c, ok := a.self.(InputGuardCapable); ok {
+		return c.GetInputGuard()
+	}
+	return nil
+}
+
 // getAuditLogger 获取审计日志器，通过 AuditLoggerCapable 接口发现
 // 用于在 LLM 调用、tool调用、Agent 启动/停止时写入审计事件
 func (a *ReActAgent) getAuditLogger() AuditLogger {

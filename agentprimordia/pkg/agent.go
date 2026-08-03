@@ -59,6 +59,9 @@ type PromptTemplate = agent.PromptTemplate
 // AgentStatus 表示 Agent 的当前运行状态
 type AgentStatus = agent.AgentStatus
 
+// InputGuard 输入端护栏检查函数（v3.4-4）：用户输入进入循环前调用
+type InputGuard = agent.InputGuard
+
 // AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、tool调用次数等
 type AgentStats = agent.AgentStats
 
@@ -272,6 +275,8 @@ var (
 	WithEvents = agent.WithEvents
 	// WithMetrics 注入指标记录器
 	WithMetrics = agent.WithMetrics
+	// WithInputGuard 注入输入端护栏（v3.4-4）：用户输入进入循环前检查
+	WithInputGuard = agent.WithInputGuard
 	// WithCheckpointStore 注入检查点存储
 	WithCheckpointStore = agent.WithCheckpointStore
 	// WithSummarizer 注入摘要提取器

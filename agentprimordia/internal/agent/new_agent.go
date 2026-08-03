@@ -103,6 +103,9 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 	if cfg.Observability.Tracer != nil {
 		cap = cap.WithTracer(cfg.Observability.Tracer)
 	}
+	if cfg.Observability.InputGuard != nil {
+		cap = cap.WithInputGuard(cfg.Observability.InputGuard)
+	}
 	if cfg.Observability.Metrics != nil {
 		cap = cap.WithMetrics(cfg.Observability.Metrics)
 	}

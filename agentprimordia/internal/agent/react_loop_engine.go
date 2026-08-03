@@ -14,6 +14,25 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	a.runMu.Lock()
 	defer a.runMu.Unlock()
 
+	// v3.4-4：输入端护栏——用户输入进入循环前检查（脱敏或拒绝）
+	if guard := a.getInputGuard(); guard != nil {
+		sanitized, blocked, gerr := guard(input.Content)
+		if gerr != nil {
+			a.logger.Warn("输入端护栏检查失败", "error", gerr)
+			_ = a.lifecycle.SetStatus(StatusFailed)
+			return nil, fmt.Errorf("input guard check failed: %w", gerr)
+		}
+		if blocked {
+			a.logger.Warn("输入端护栏拒绝输入", "name", a.config.Name)
+			_ = a.lifecycle.SetStatus(StatusFailed)
+			return &Response{RequestID: cfg.requestID, Error: ErrInputBlocked}, ErrInputBlocked
+		}
+		if sanitized != "" && sanitized != input.Content {
+			a.logger.Debug("输入端护栏脱敏输入", "name", a.config.Name)
+			input.Content = sanitized
+		}
+	}
+
 	// 创建根 Span，包裹整个 Agent 执行生命周期
 	var rootSpan Span = &NoopSpan{}
 	if tracer := a.getTracer(); tracer != nil {

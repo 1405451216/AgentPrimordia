@@ -43,6 +43,9 @@ type ObservabilityConfig struct {
 	// Tracer 分布式追踪器
 	Tracer Tracer
 
+	// InputGuard 输入端护栏（v3.4-4）：用户输入进入循环前检查
+	InputGuard InputGuard
+
 	// Metrics 指标收集器
 	Metrics MetricsRecorder
 

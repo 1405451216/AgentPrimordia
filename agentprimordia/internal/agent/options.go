@@ -66,6 +66,11 @@ func WithTracer(t Tracer) Option {
 	return func(c *AgentConfig) { c.Observability.Tracer = t }
 }
 
+// WithInputGuard 设置输入端护栏（v3.4-4）：用户输入进入循环前检查。
+func WithInputGuard(g InputGuard) Option {
+	return func(c *AgentConfig) { c.Observability.InputGuard = g }
+}
+
 // WithCostTracker 设置成本追踪器（快捷方式：等价于 WithObservability 时仅设 CostTracker 字段）。
 func WithCostTracker(ct *CostTracker) Option {
 	return func(c *AgentConfig) { c.Observability.CostTracker = ct }

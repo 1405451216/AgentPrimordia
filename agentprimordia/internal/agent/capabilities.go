@@ -34,6 +34,18 @@ import (
 //	agent.WithOutputGuard(adapter)
 type OutputGuard func(content string) (sanitized string, blocked bool, err error)
 
+// InputGuard 是输入端 Guardrail 检查函数类型（user 输入检查，v3.4-4）。
+// 返回值语义与 OutputGuard 一致：
+//   - sanitized: 脱敏后的输入（空字符串表示无变化）
+//   - blocked: 是否拒绝输入（如注入攻击拦截）
+//   - err: 检查过程中的错误
+type InputGuard func(content string) (sanitized string, blocked bool, err error)
+
+// InputGuardCapable 标识 Agent 具备输入端护栏能力（v3.4-4）。
+type InputGuardCapable interface {
+	GetInputGuard() InputGuard
+}
+
 // AuditEvent 简化的审计事件结构（避免直接 import audit 包造成的循环依赖）
 // 完整定义见 internal/audit.Event
 type AuditEvent struct {

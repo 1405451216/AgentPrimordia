@@ -45,6 +45,7 @@ type CapabilityAgent struct {
 	reflector   reflection.Reflector
 	toolLearner tool_learning.ToolLearner
 	outputGuard OutputGuard
+	inputGuard  InputGuard
 	auditLogger AuditLogger
 
 	// v3.0：自适应学习能力
@@ -291,6 +292,18 @@ func (c *CapabilityAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
 // GetOutputGuard 返回输出端 Guardrail 检查函数
 func (c *CapabilityAgent) GetOutputGuard() OutputGuard {
 	return c.outputGuard
+}
+
+// WithInputGuard 注入输入端 Guardrail 检查函数（v3.4-4）
+// 在用户输入进入循环前调用，可脱敏或拒绝输入。
+func (c *CapabilityAgent) WithInputGuard(g InputGuard) *CapabilityAgent {
+	c.inputGuard = g
+	return c
+}
+
+// GetInputGuard 返回输入端 Guardrail 检查函数
+func (c *CapabilityAgent) GetInputGuard() InputGuard {
+	return c.inputGuard
 }
 
 // WithAuditLogger 注入审计日志器
