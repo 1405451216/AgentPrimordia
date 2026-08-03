@@ -135,6 +135,13 @@ type CheckpointCapable interface {
 	GetCheckpointStore() persist.CheckpointStore
 }
 
+// FailureCapable 标识 Agent 具备失败记录与重放能力（v3.4-6）。
+// 引擎在 Run 失败时自动记录 FailureRecord（含失败阶段、错误与可恢复检查点），
+// 并可通过 ReplayFailure 从内嵌检查点一键重放定位。
+type FailureCapable interface {
+	GetFailureStore() persist.FailureStore
+}
+
 // SummarizerCapable 标识 Agent 具备摘要提取能力。
 // 引擎在保存记忆后异步提取摘要和标签。
 type SummarizerCapable interface {

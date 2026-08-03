@@ -14,6 +14,10 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	a.runMu.Lock()
 	defer a.runMu.Unlock()
 
+	// v3.4-6：运行以失败结束时自动记录失败记录（含失败时检查点）。
+	// 最先注册、LIFO 最后执行——即使 panic 恢复后的 err 也能被捕获。
+	defer func() { a.recordFailure(ctx, input, err) }()
+
 	// v3.4-4：输入端护栏——用户输入进入循环前检查（脱敏或拒绝）
 	if guard := a.getInputGuard(); guard != nil {
 		sanitized, blocked, gerr := guard(input.Content)
@@ -159,4 +163,3 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 
 	return a.runLoop(ctx, history, 0, cfg, 0, 0, 0, rootSpan.SpanContext())
 }
-

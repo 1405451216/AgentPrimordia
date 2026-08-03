@@ -138,6 +138,14 @@ func (a *ReActAgent) getCheckpointStore() persist.CheckpointStore {
 	return nil
 }
 
+// getFailureStore 获取失败记录存储，通过 FailureCapable 接口发现（v3.4-6）
+func (a *ReActAgent) getFailureStore() persist.FailureStore {
+	if c, ok := a.self.(FailureCapable); ok {
+		return c.GetFailureStore()
+	}
+	return nil
+}
+
 // getContextWindowStrategy 获取上下文窗口策略，通过 ContextWindowCapable 接口发现
 func (a *ReActAgent) getContextWindowStrategy() ContextWindowStrategy {
 	if c, ok := a.self.(ContextWindowCapable); ok {

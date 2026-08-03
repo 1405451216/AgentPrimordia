@@ -37,6 +37,7 @@ type CapabilityAgent struct {
 	eventPub    EventPublisher
 	metrics     MetricsRecorder
 	checkpoint  persist.CheckpointStore
+	failureStore persist.FailureStore
 	summarizer  memory.SummaryExtractor
 	fileScope   []string
 	cache       llm.LLMCache
@@ -93,6 +94,11 @@ func (c *CapabilityAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, 
 	return c.inner.ResumeFromCheckpoint(ctx)
 }
 
+// ReplayFailure 从失败记录一键重放，委托给内部 ReActAgent（v3.4-6）
+func (c *CapabilityAgent) ReplayFailure(ctx context.Context, failureID string) (*Response, error) {
+	return c.inner.ReplayFailure(ctx, failureID)
+}
+
 // Pause 暂停 Agent，委托给内部 ReActAgent
 func (c *CapabilityAgent) Pause() {
 	c.inner.Pause()
@@ -139,6 +145,9 @@ func (c *CapabilityAgent) GetMetricsRecorder() MetricsRecorder { return c.metric
 
 // GetCheckpointStore 返回检查点存储（CheckpointCapable）
 func (c *CapabilityAgent) GetCheckpointStore() persist.CheckpointStore { return c.checkpoint }
+
+// GetFailureStore 返回失败记录存储（FailureCapable，v3.4-6）
+func (c *CapabilityAgent) GetFailureStore() persist.FailureStore { return c.failureStore }
 
 // GetSummarizer 返回摘要提取器（SummarizerCapable）
 func (c *CapabilityAgent) GetSummarizer() memory.SummaryExtractor { return c.summarizer }
@@ -214,6 +223,12 @@ func (c *CapabilityAgent) WithMetrics(m MetricsRecorder) *CapabilityAgent {
 // WithCheckpointStore 注入检查点存储
 func (c *CapabilityAgent) WithCheckpointStore(cs persist.CheckpointStore) *CapabilityAgent {
 	c.checkpoint = cs
+	return c
+}
+
+// WithFailureStore 注入失败记录存储（v3.4-6）
+func (c *CapabilityAgent) WithFailureStore(fs persist.FailureStore) *CapabilityAgent {
+	c.failureStore = fs
 	return c
 }
 

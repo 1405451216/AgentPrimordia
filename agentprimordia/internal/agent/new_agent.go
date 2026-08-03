@@ -120,6 +120,9 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 	if cfg.Resilience.CheckpointStore != nil {
 		cap = cap.WithCheckpointStore(cfg.Resilience.CheckpointStore)
 	}
+	if cfg.Resilience.FailureStore != nil {
+		cap = cap.WithFailureStore(cfg.Resilience.FailureStore)
+	}
 	if cfg.Resilience.HITL != nil {
 		cap = cap.WithHITL(*cfg.Resilience.HITL)
 	}

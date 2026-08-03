@@ -205,6 +205,7 @@ type capabilityCache struct {
 	labeledRecorder  LabeledMetricsRecorder
 	eventPublisher   EventPublisher
 	checkpointStore  persist.CheckpointStore
+	failureStore     persist.FailureStore // v3.4-6：失败记录存储（失败重放）
 	contextWindow    ContextWindowStrategy
 	summarizer       memory.SummaryExtractor
 	fileScope        []string
@@ -238,6 +239,7 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		metricsRecorder: a.getMetricsRecorder(),
 		eventPublisher:  a.getEventPublisher(),
 		checkpointStore: a.getCheckpointStore(),
+		failureStore:    a.getFailureStore(),
 		contextWindow:   a.getContextWindowStrategy(),
 		summarizer:      a.getSummarizer(),
 		fileScope:       a.getFileScope(),

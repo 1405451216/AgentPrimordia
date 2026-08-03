@@ -96,6 +96,13 @@ func WithCheckpointStore(cs persist.CheckpointStore) Option {
 	return func(c *AgentConfig) { c.Resilience.CheckpointStore = cs }
 }
 
+// WithFailureStore 设置失败记录存储（快捷方式：等价于 WithResilience 时仅设 FailureStore 字段）。
+// 注入后引擎在 Run 失败时自动记录 FailureRecord（含失败阶段与可恢复检查点），
+// 并可通过 ReplayFailure 一键重放定位（v3.4-6）。
+func WithFailureStore(fs persist.FailureStore) Option {
+	return func(c *AgentConfig) { c.Resilience.FailureStore = fs }
+}
+
 // WithSummarizer 设置记忆摘要生成器（快捷方式：等价于 WithMemoryConfig 时仅设 Summarizer 字段）。
 func WithSummarizer(s memory.SummaryExtractor) Option {
 	return func(c *AgentConfig) { c.Memory.Summarizer = s }

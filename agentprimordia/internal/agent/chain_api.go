@@ -90,6 +90,11 @@ func (a *ReActAgent) WithCheckpointStore(cs persist.CheckpointStore) *Capability
 	return a.wrapSelf(&CapabilityAgent{inner: a, checkpoint: cs})
 }
 
+// WithFailureStore 注入失败记录存储，返回可链式调用的 CapabilityAgent（v3.4-6）
+func (a *ReActAgent) WithFailureStore(fs persist.FailureStore) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, failureStore: fs})
+}
+
 // WithSummarizer 注入摘要提取器，返回可链式调用的 CapabilityAgent
 func (a *ReActAgent) WithSummarizer(s memory.SummaryExtractor) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, summarizer: s})

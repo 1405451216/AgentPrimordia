@@ -10,6 +10,7 @@ import (
 
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/llm"
+	"agentprimordia/internal/persist"
 )
 
 // Stats returns current agent statistics
@@ -110,6 +111,13 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 
 	a.logger.Info("Agent 从检查点恢复", "name", a.config.Name, "turn", state.TurnCount, "saved_at", state.SavedAt)
 
+	return a.resumeFromState(ctx, state)
+}
+
+// resumeFromState 从给定状态快照恢复执行（v3.4-6 提取）。
+// 检查点恢复（ResumeFromCheckpoint）与失败重放（ReplayFailure）共用。
+// 注意：调用方必须持有 a.runMu。
+func (a *ReActAgent) resumeFromState(ctx context.Context, state *persist.AgentState) (*Response, error) {
 	history := make([]Message, 0, len(state.Messages))
 	for _, m := range state.Messages {
 		history = append(history, Message{

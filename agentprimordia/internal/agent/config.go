@@ -61,6 +61,9 @@ type ResilienceConfig struct {
 	// CheckpointStore 状态持久化存储
 	CheckpointStore persist.CheckpointStore
 
+	// FailureStore 失败记录存储（v3.4-6：失败重放与诊断）
+	FailureStore persist.FailureStore
+
 	// HITL 人机协作配置
 	HITL *HITLConfig
 
