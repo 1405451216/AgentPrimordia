@@ -4,7 +4,7 @@
 > （三方取证：Go 核心循环、能力组件集成度、TS 线现状 + 规划文档对账）。
 >
 > **最后更新**：2026 年 8 月 3 日
-> **当前版本**：Go SDK v3.2.0（`pkg/agent.go`）/ TypeScript SDK v3.2.0（`sdk/typescript/package.json`）
+> **当前版本**：Go SDK v4.0.0（`pkg/agent.go`）/ TypeScript SDK v4.0.0（`sdk/typescript/package.json`）
 > **重要**：旧版"v2.1-v3.0 全部完成"叙事与代码实况不符，已废弃，见下文对账。
 
 ---

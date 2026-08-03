@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Added — v4.0-5 发布纪律固化（tag 自动化 CI）
+
+- 新增 `.github/workflows/tag-release.yml`：合并到 main 后读取 `pkg/agent.go` 的 `const Version`，
+  与最高既有 tag 对比，版本更高则自动打 tag（`v{MAJOR}.{MINOR}.{PATCH}`）并触发 `release.yml` 发布流程
+- 新增 `pkg/version_gate_test.go`：强制校验 `const Version` 格式合法（语义化版本）且与 VERSIONING.md 一致
+- **版本 bump 至 4.0.0**（v4.0 收官）：Go SDK / TS SDK / CLI / VERSIONING / api-contract 全线对齐
+- `scripts/version-sync-check.mjs` fallback 更新为 4.0.0
+- VERSIONING.md 版本发布纪律新增第 5-6 条（自动打 tag + 版本 gate）
+
 ### Performance — v4.0-4 性能大版本（基准对比全量刷新 + 关键路径 P95）
 
 - 新增 `bench/suite/p95_latency_test.go`：Agent 单轮 / 工具调用 / 记忆检索三条关键路径的 P50/P95/P99 延迟分布基准（批次累积策略，规避 Windows 时钟粒度）

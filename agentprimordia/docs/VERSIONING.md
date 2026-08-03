@@ -8,7 +8,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 - **次版本号（MINOR）**：向后兼容的功能新增
 - **修订号（PATCH）**：向后兼容的问题修复
 
-当前版本：`3.2.0`（定义于 `pkg/agent.go`，git tag 管理）
+当前版本：`4.0.0`（定义于 `pkg/agent.go`，git tag 管理）
 
 > 版本演化路线以 `docs/ROADMAP.md` 为权威（v3.3→v4.0），能力实况以 `docs/CAPABILITY-INVENTORY.md` 为准。
 > git tag 曾长期脱节（仅 v0.7.0），已在本文件维护规则中强制"发布即打 tag"。
@@ -19,11 +19,11 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 | 组件 | 当前版本 | 版本定义位置 |
 |------|----------|----------------|
-| Go SDK | v3.2.0 | `pkg/agent.go` + git tag |
-| TypeScript SDK | v3.2.0 | `sdk/typescript/package.json` |
+| Go SDK | v4.0.0 | `pkg/agent.go` + git tag |
+| TypeScript SDK | v4.0.0 | `sdk/typescript/package.json` |
 | Python 客户端 | v2.0.0 | `sdk/python/pyproject.toml` |
 | Rust 客户端 | v2.0.0 | `sdk/rust/Cargo.toml` |
-| CLI | v3.2.0 | `cmd/ap/version.go` |
+| CLI | v4.0.0 | `cmd/ap/version.go` |
 | K8s Operator | v2.0.0 | `operator/go.mod` |
 
 ### 版本发布纪律
@@ -32,6 +32,10 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 2. 每次发布必须打 git tag（格式：`v{MAJOR}.{MINOR}.{PATCH}`）
 3. 功能合并后应及时 bump 版本号，避免“功能已达 v3.1 但版本号仍为 v2.0”的脱节
 4. RELEASE-NOTES 为面向用户的摘要，CHANGELOG 为完整技术记录
+5. **tag 自动化（v4.0-5）**：`.github/workflows/tag-release.yml` 在合并到 `main` 后
+   读取 `pkg/agent.go` 的 `const Version`，与最高既有 tag 对比，版本更高则自动打 tag
+   并触发 `release.yml` 发布流程。**因此每次发布只需 bump `const Version` 即可自动完成**
+6. `pkg/version_gate_test.go` 强制校验版本格式合法且与 VERSIONING.md 一致（漂移即失败）
 
 ## 兼容性承诺
 
