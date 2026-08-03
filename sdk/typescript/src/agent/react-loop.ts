@@ -8,6 +8,8 @@ import { validateAgentInput } from '../validate.js';
 import type { AgentSelfTuner, RunMetrics, TuningSuggestion } from './self-tuning.js';
 import type { SpeculativeExecutor } from './speculative-exec.js';
 import type { EnhancedToolLearner } from './tool-learning.js';
+import type { Planner, SubTask } from './planning.js';
+import type { Reflector, Severity } from './reflection.js';
 
 // 从拆分模块重新导出，保持向后兼容
 export type { StreamEvent, HookPoint, HookContext, HookFunc } from './hooks.js';
@@ -46,6 +48,12 @@ export interface ReActConfig {
   selfTuner?: AgentSelfTuner;
   enhancedToolLearner?: EnhancedToolLearner;
   autoTune?: boolean;
+  /** 任务规划器：run 入口将目标分解为子任务 DAG 依次执行（>1 子任务才启用） */
+  planner?: Planner;
+  /** 自反思器：完成路径对输出批评，severity 达到阈值时改写 */
+  reflector?: Reflector;
+  /** 触发 improve 改写的最低严重度，默认 high */
+  reflectionSeverityThreshold?: Severity;
 }
 
 export type { CapabilitiesCache };
@@ -78,6 +86,9 @@ export class ReActAgent {
   private enhancedToolLearner?: EnhancedToolLearner;
   private autoTune: boolean;
   private lastRunMetrics?: RunMetrics;
+  private planner?: Planner;
+  private reflector?: Reflector;
+  private reflectionSeverityThreshold: Severity;
 
   constructor(config: ReActConfig) {
     if (!config.name?.trim()) throw new Error('Agent name is required');
@@ -106,6 +117,9 @@ export class ReActAgent {
     this.selfTuner = config.selfTuner;
     this.enhancedToolLearner = config.enhancedToolLearner;
     this.autoTune = config.autoTune ?? true;
+    this.planner = config.planner;
+    this.reflector = config.reflector;
+    this.reflectionSeverityThreshold = config.reflectionSeverityThreshold ?? 'high';
   }
 
   requestGracefulShutdown(): void {
@@ -226,7 +240,27 @@ export class ReActAgent {
     }
 
     try {
-      const response = await this.runLoop(startTime, 0, options);
+      // 计划分支：Planner 分解出 >1 子任务时走 DAG 执行，否则降级普通循环
+      let response: Response | undefined;
+      if (this.planner) {
+        let subtasks: SubTask[] = [];
+        try {
+          subtasks = await this.planner.decompose(input);
+        } catch {
+          // 规划失败回退普通 ReAct 循环
+        }
+        if (subtasks.length > 1) {
+          response = await this.executePlan(subtasks, startTime, options);
+        }
+      }
+
+      if (!response) {
+        response = await this.runLoop(startTime, 0, options);
+        // 完成路径自反思：批评最终输出，必要时改写
+        if (this.reflector) {
+          response.content = await this.reflectAndImprove(response.content);
+        }
+      }
 
       await this.hooks.fireHook('after_run', {
         agentID: this.name, sessionID: this.sessionId, turn: 0, response,
@@ -302,6 +336,113 @@ export class ReActAgent {
         duration,
         llmLatency: state.totalLLMLatency,
         toolLatency: state.totalToolLatency,
+      },
+    };
+  }
+
+  // ===== 计划与自反思 =====
+
+  /** 严重度排序，用于阈值比较 */
+  private severityRank(s: Severity): number {
+    switch (s) {
+      case 'low': return 0;
+      case 'medium': return 1;
+      case 'high': return 2;
+      case 'critical': return 3;
+      default: return 1;
+    }
+  }
+
+  /** 完成路径批评输出；severity ≥ 阈值时调用 improve 改写 */
+  private async reflectAndImprove(content: string): Promise<string> {
+    if (!this.reflector) return content;
+    try {
+      const critique = await this.reflector.critique(content);
+      if (this.severityRank(critique.severity) >= this.severityRank(this.reflectionSeverityThreshold)) {
+        return await this.reflector.improve(content, critique);
+      }
+    } catch {
+      // 反思失败不影响主流程
+    }
+    return content;
+  }
+
+  /** 子任务拓扑分层（Kahn）；遇环兜底按原顺序执行剩余子任务 */
+  private topoLayers(subtasks: SubTask[]): SubTask[][] {
+    const ids = new Set(subtasks.map((t) => t.id));
+    const done = new Set<string>();
+    const layers: SubTask[][] = [];
+    let remaining = [...subtasks];
+    while (remaining.length > 0) {
+      const ready = remaining.filter((t) => t.dependsOn.every((d) => done.has(d) || !ids.has(d)));
+      if (ready.length === 0) {
+        layers.push(remaining);
+        break;
+      }
+      layers.push(ready);
+      for (const t of ready) done.add(t.id);
+      remaining = remaining.filter((t) => !done.has(t.id));
+    }
+    return layers;
+  }
+
+  /** 按计划分层执行子任务；同层内顺序执行，保证队列式 Mock 的确定性 */
+  private async executePlan(subtasks: SubTask[], startTime: number, options?: RunOptions): Promise<Response> {
+    const results = new Map<string, string>();
+    let totalTurns = 0;
+    let totalTools = 0;
+    let llmLatency = 0;
+    let toolLatency = 0;
+    let finalContent = '';
+
+    outer: for (const layer of this.topoLayers(subtasks)) {
+      for (const task of layer) {
+        this.checkSignal(options?.signal);
+        if (this.lifecycle.isStopped()) break outer;
+        task.status = 'running';
+
+        // 组装子任务上下文：依赖结果 + 当前描述
+        const context = task.dependsOn
+          .map((d) => results.get(d))
+          .filter((v): v is string => !!v)
+          .join('\n');
+        const subInput = context
+          ? `前置子任务结果：\n${context}\n\n执行当前子任务：${task.description}`
+          : `执行当前子任务：${task.description}`;
+
+        // 子任务独立重建消息上下文，各自走完整 ReAct 循环
+        this.messages = [];
+        if (this.systemPrompt) {
+          this.messages.push({ role: 'system', content: this.systemPrompt });
+        }
+        this.messages.push({ role: 'user', content: subInput });
+
+        const resp = await this.runLoop(startTime, 0, options);
+        let content = resp.content;
+        if (this.reflector) {
+          content = await this.reflectAndImprove(content);
+        }
+
+        task.status = 'completed';
+        task.result = content;
+        results.set(task.id, content);
+        finalContent = content;
+        totalTurns += resp.metrics.totalTurns;
+        totalTools += resp.metrics.totalTools;
+        llmLatency += resp.metrics.llmLatency;
+        toolLatency += resp.metrics.toolLatency;
+      }
+    }
+
+    this.lifecycle.setStatus('completed');
+    return {
+      content: finalContent,
+      metrics: {
+        totalTurns,
+        totalTools,
+        duration: Date.now() - startTime,
+        llmLatency,
+        toolLatency,
       },
     };
   }
