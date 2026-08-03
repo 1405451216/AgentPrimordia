@@ -43,6 +43,30 @@ func (d *DemoLLM) WithToolCalls(calls ...llm.FunctionCall) *DemoLLM {
 	return d
 }
 
+// WithResponse 向 Complete 队列追加一条响应（脚本化多轮对话）
+func (d *DemoLLM) WithResponse(content string) *DemoLLM {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.responses = append(d.responses, &llm.CompletionResponse{
+		ID:      "demo-id",
+		Content: content,
+		Role:    "assistant",
+	})
+	return d
+}
+
+// WithToolResponse 向 CallTools 队列追加一条响应；
+// calls 为空表示本轮无工具调用（引擎将回退到 Complete 队列）
+func (d *DemoLLM) WithToolResponse(calls []llm.FunctionCall) *DemoLLM {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.toolResponses = append(d.toolResponses, &llm.ToolCallResponse{
+		Content:   "",
+		ToolCalls: calls,
+	})
+	return d
+}
+
 func (d *DemoLLM) WithDelay(delay time.Duration) *DemoLLM {
 	d.delay = delay
 	return d

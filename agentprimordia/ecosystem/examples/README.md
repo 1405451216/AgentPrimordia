@@ -42,6 +42,7 @@ make run-production   # = chain-production
 | `with-guardrails/` | 输入/输出护栏 | `ap.NewGuardrails` |
 | `web-chatbot/` | Web 聊天机器人 | `ap.NewHTTPServer` |
 | `github-issue-triage/` | **GitHub Issue Triage Bot**（Phase 18） | ReAct + 3 个自定义工具 + Mock Server |
+| `coding-agent/` | **一体化 Coding Harness**：计划→编写→测试→审查→发布 | `WithCognition` + filesystem/shell/git 插件 |
 
 ## 不在 examples 中的内容
 
