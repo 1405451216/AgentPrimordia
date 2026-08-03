@@ -290,6 +290,8 @@ type AgentStats struct {
 	StartTime     time.Time        `json:"start_time"`
 	// v3.6-1：自愈记录——plan 失败自动换路径/降级的明细
 	PlanRecoveries []PlanRecovery `json:"plan_recoveries,omitempty"`
+	// v3.6-2：流程修正——命中高频失败模式被自动规避的 tool 调用次数
+	ProcessCorrections int `json:"process_corrections"`
 }
 
 // PlanRecovery 记录一次自愈动作（v3.6-1）。

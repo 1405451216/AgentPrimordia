@@ -141,6 +141,32 @@ func (a *ReActAgent) executeSingleTool(ctx context.Context, tc *ToolCall, turn i
 			)
 			modifiedTC.Args = suggestion.ImprovedArgs
 		}
+
+		// v3.6-2：流程修正——命中高频失败模式时自动规避（失败模式被自动规避）
+		correction, corrErr := learner.SuggestProcessCorrection(ctx, modifiedTC.Name, modifiedTC.Args)
+		if corrErr == nil && correction != nil && correction.Avoid && correction.Confidence > threshold {
+			a.logger.Warn("ToolLearning 流程修正：规避已知失败调用",
+				"tool", modifiedTC.Name,
+				"confidence", correction.Confidence,
+				"reason", correction.Reason,
+			)
+			a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[ToolLearning 流程修正] 规避 %s：%s", modifiedTC.Name, correction.Reason)})
+			a.statsMu.Lock()
+			a.stats.ProcessCorrections++
+			a.statsMu.Unlock()
+			if correction.AlternativeArgs != "" && correction.AlternativeArgs != modifiedTC.Args {
+				a.logger.Info("ToolLearning 采用替代参数规避失败", "tool", modifiedTC.Name)
+				modifiedTC.Args = correction.AlternativeArgs
+			} else {
+				// 无替代参数：跳过该调用（不执行已知失败调用）
+				result := &ToolResult{
+					ToolCallID: modifiedTC.ID,
+					Content:    fmt.Sprintf("[ToolLearning 流程修正] 已规避已知失败调用 %s：%s", modifiedTC.Name, correction.Reason),
+					IsError:    false,
+				}
+				return result, nil, 0
+			}
+		}
 	}
 
 	toolStart := time.Now()

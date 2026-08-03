@@ -29,6 +29,8 @@ func (a *ReActAgent) Stats() AgentStats {
 	maps.Copy(toolsCopy, a.stats.ToolsCalled)
 	// v3.6-1：复制自愈记录（只读切片）
 	stats.PlanRecoveries = append([]PlanRecovery(nil), a.stats.PlanRecoveries...)
+	// v3.6-2：复制流程修正计数
+	stats.ProcessCorrections = a.stats.ProcessCorrections
 	a.statsMu.RUnlock()
 	stats.ToolsCalled = toolsCopy
 

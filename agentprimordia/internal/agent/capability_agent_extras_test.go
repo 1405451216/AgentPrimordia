@@ -60,6 +60,9 @@ func (s *stubToolLearner) GetBestPractices(_ context.Context, _ string) ([]tool_
 func (s *stubToolLearner) SuggestImprovement(_ context.Context, _, _ string) (*tool_learning.Suggestion, error) {
 	return &tool_learning.Suggestion{}, nil
 }
+func (s *stubToolLearner) SuggestProcessCorrection(_ context.Context, _, _ string) (*tool_learning.ProcessCorrection, error) {
+	return &tool_learning.ProcessCorrection{}, nil
+}
 
 // stubLLMCache 是 llm.LLMCache 的空实现。
 // a.config.Model 为 nil 时 llm.NewCachedProvider 会失败，但 WithCache 走 err 分支不 panic。

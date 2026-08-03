@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -38,7 +39,35 @@ type ToolLearner interface {
 	GetBestPractices(ctx context.Context, toolName string) ([]BestPractice, error)
 	// SuggestImprovement 基于历史经验建议改进
 	SuggestImprovement(ctx context.Context, toolName string, args string) (*Suggestion, error)
+	// SuggestProcessCorrection 基于历史失败模式建议流程修正（v3.6-2）：
+	// 当本次调用命中高频失败模式时返回 Avoid=true，使引擎自动规避已知失败调用。
+	SuggestProcessCorrection(ctx context.Context, toolName, args string) (*ProcessCorrection, error)
 }
+
+// FailurePattern 高频失败模式（流程修正的基础）。
+type FailurePattern struct {
+	ToolName   string    `json:"tool_name"`
+	ArgsMarker string    `json:"args_marker,omitempty"` // 命中失败记录的参数（规范化）
+	Error      string    `json:"error"`
+	Frequency  int       `json:"frequency"` // 该参数组合失败次数
+	LastSeen   time.Time `json:"last_seen"`
+}
+
+// ProcessCorrection 流程修正建议（v3.6-2）。
+// 相比 SuggestImprovement（参数建议），它直接建议"规避已知失败调用"，
+// 或在可换参数时给出规避失败的替代参数——即从流程层面修正。
+type ProcessCorrection struct {
+	ToolName        string  `json:"tool_name"`
+	Avoid           bool    `json:"avoid"`                      // 是否应规避本次调用
+	Reason          string  `json:"reason"`                     // 规避理由
+	Confidence      float64 `json:"confidence"`                 // 规避置信度
+	AlternativeArgs string  `json:"alternative_args,omitempty"` // 可规避失败的替代参数
+	ErrorPattern    string  `json:"error_pattern,omitempty"`    // 命中的失败错误（归一化）
+	Frequency       int     `json:"frequency,omitempty"`        // 该失败模式出现次数
+}
+
+// minFailureRepeat 失败模式判定：同一参数组合失败达到该次数即视为高频失败模式。
+const minFailureRepeat = 2
 
 // BestPractice 最佳实践
 type BestPractice struct {
@@ -218,4 +247,103 @@ func (l *MemoryToolLearner) SuggestImprovement(ctx context.Context, toolName str
 		Reason:       "基于历史成功记录（成功率 " + strconv.FormatFloat(practices[0].SuccessRate, 'f', 2, 64) + "）",
 		Confidence:   practices[0].SuccessRate,
 	}, nil
+}
+
+// normalizeArgs 规范化参数用于失败模式匹配。
+// JSON 参数中空白无意义，直接去除全部空白得到规范形。
+func normalizeArgs(args string) string {
+	var b strings.Builder
+	b.Grow(len(args))
+	for _, r := range args {
+		switch r {
+		case ' ', '\t', '\n', '\r':
+			continue
+		default:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// SuggestProcessCorrection 基于历史失败模式建议流程修正（v3.6-2）。
+//
+// 判定逻辑：
+//   - 查询该 tool 的历史失败记录；
+//   - 若当前参数（规范化后）在失败记录中出现 ≥ minFailureRepeat 次，
+//     判定为高频失败模式 → Avoid=true；
+//   - 提供替代参数：若存在该 tool 的成功记录且参数不同，则给出；
+//   - 未命中时返回 Avoid=false，不阻断执行。
+func (l *MemoryToolLearner) SuggestProcessCorrection(ctx context.Context, toolName, args string) (*ProcessCorrection, error) {
+	if l.memory == nil {
+		return &ProcessCorrection{ToolName: toolName}, nil
+	}
+	episodes, err := l.memory.Query(ctx, "tool_learning", map[string]string{
+		"tool_name": toolName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query tool usage history: %w", err)
+	}
+
+	current := normalizeArgs(args)
+	var failCount int
+	var failError string
+	var lastSeen time.Time
+	successArgs := ""
+
+	for _, ep := range episodes {
+		if ep == nil {
+			continue
+		}
+		var record ToolUsageRecord
+		if err := json.Unmarshal([]byte(ep.Content), &record); err != nil {
+			continue
+		}
+		if record.ToolName != toolName {
+			continue
+		}
+		if record.Success {
+			if successArgs == "" {
+				successArgs = record.Args
+			}
+			continue
+		}
+		if current != "" && normalizeArgs(record.Args) == current {
+			failCount++
+			failError = record.Error
+			if t, perr := time.Parse(time.RFC3339, ep.CreatedAt); perr == nil && t.After(lastSeen) {
+				lastSeen = t
+			}
+		}
+	}
+
+	if failCount < minFailureRepeat {
+		return &ProcessCorrection{ToolName: toolName}, nil
+	}
+
+	correction := &ProcessCorrection{
+		ToolName:     toolName,
+		Avoid:        true,
+		Reason:       fmt.Sprintf("参数组合已失败 %d 次（%s），应规避", failCount, truncate(failError, 80)),
+		Confidence:   minFloat(0.9, 0.5+0.1*float64(failCount)),
+		ErrorPattern: failError,
+		Frequency:    failCount,
+	}
+	if successArgs != "" && normalizeArgs(successArgs) != current {
+		correction.AlternativeArgs = successArgs
+	}
+	return correction, nil
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
