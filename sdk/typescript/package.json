@@ -103,6 +103,11 @@
             "types": "./dist/orchestration/index.d.ts",
             "import": "./dist/orchestration/index.js"
         },
+        "./react": {
+            "types": "./dist/react/index.d.ts",
+            "import": "./dist/react/index.js",
+            "default": "./dist/react/index.js"
+        },
         ".": {
             "browser": {
                 "types": "./dist/index.d.ts",
