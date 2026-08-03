@@ -110,6 +110,16 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			return &Response{RequestID: cfg.requestID, Error: ErrBudgetExceeded}, ErrBudgetExceeded
 		}
 
+		// v3.4-3：首轮注入长期记忆回读（跨 session 记忆召回）。
+		// memory store 实现 MemoryQuerier 时，以用户目标检索相关记忆并注入 system。
+		if turn == startTurn {
+			if memCtx := a.searchMemoryContext(ctx, history); memCtx != "" {
+				history = injectMemoryContext(history, memCtx)
+				a.logger.Debug("长期记忆已注入", "turn", turn)
+				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 长期记忆上下文已注入"})
+			}
+		}
+
 		var ragQuery string
 		if turn == startTurn && len(history) > 0 {
 			for i := len(history) - 1; i >= 0; i-- {
