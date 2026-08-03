@@ -245,3 +245,41 @@ jobs:
           else
             echo "未产生报告（无 API Key 或跳过）" >> $GITHUB_STEP_SUMMARY
           fi
+
+  # ===== TS 真实 LLM 跑分（v3.7-2 双线可比基线） =====
+  # 与 Go 端跑分同一套基准集，产出可比分数。
+  ts-llm-benchmark:
+    name: TS LLM Benchmark (v3.7-2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdk/typescript
+        run: npm ci
+
+      - name: Run TS real LLM benchmark
+        id: tsbench
+        working-directory: sdk/typescript
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "::warning::OPENAI_API_KEY 未配置，跳过 TS 真实跑分"
+            exit 0
+          fi
+          npx vitest run tests/integration/llm-bench.test.ts 2>&1 | tee ts-llm-bench-log.txt
+
+      - name: Upload TS benchmark log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts-llm-bench
+          path: sdk/typescript/ts-llm-bench-log.txt
+          if-no-files-found: ignore
