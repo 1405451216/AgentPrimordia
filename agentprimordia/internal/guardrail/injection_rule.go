@@ -46,7 +46,7 @@ func NewPromptInjectionRule(config PromptInjectionConfig) *PromptInjectionRule {
 		severity: config.Severity,
 		priority: priority,
 		patterns: []*regexp.Regexp{
-			regexp.MustCompile(`(?i)ignore\s+(previous|above|all)\s+instructions`),
+			regexp.MustCompile(`(?i)ignore\s+(previous|above|all|all\s+previous|all\s+above|any\s+previous)\s+instructions`),
 			regexp.MustCompile(`(?i)forget\s+(everything|all|previous)`),
 			regexp.MustCompile(`(?i)you\s+are\s+now\s+a`),
 			regexp.MustCompile(`(?i)pretend\s+(you\s+are|to\s+be)`),

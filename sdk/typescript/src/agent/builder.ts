@@ -212,7 +212,7 @@ export function createBasicAgent(
     name,
     model: provider,
     toolkit,
-    maxTurns: opts?.maxTurns ?? 10,
+    maxTurns: opts?.maxTurns ?? 50,
     ...opts,
   });
 }

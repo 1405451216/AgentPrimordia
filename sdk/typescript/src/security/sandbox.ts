@@ -379,8 +379,9 @@ export class ACL {
 
 function matchRule(ruleAgent: string, ruleResource: string, agentID: string, resource: string): boolean {
   if (ruleAgent !== '*' && ruleAgent !== agentID) return false;
-  const cleanResource = resource.replace(/\\/g, '/').replace(/\/+/g, '/');
-  const cleanRule = ruleResource.replace(/\\/g, '/').replace(/\/+$/, '');
+  // 统一折叠连续斜杠（对齐 Go 端 filepath.Clean 语义），避免 file:/// 前缀 URL 匹配失败
+  const cleanResource = resource.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/+$/, '');
+  const cleanRule = ruleResource.replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/+$/, '');
   if (cleanResource === cleanRule) return true;
   return cleanResource.startsWith(cleanRule + '/');
 }

@@ -111,7 +111,7 @@ export class ReActAgent {
     this.name = config.name;
     this.model = config.model;
     this.toolkit = config.toolkit;
-    this.maxTurns = config.maxTurns ?? 10;
+    this.maxTurns = config.maxTurns ?? 50;
     this.maxConsecutiveFailures = config.maxConsecutiveFailures ?? 3;
     this.maxMessages = config.maxMessages ?? 80;
     this.systemPrompt = config.systemPrompt ?? '';

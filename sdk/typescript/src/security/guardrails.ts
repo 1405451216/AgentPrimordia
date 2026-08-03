@@ -92,7 +92,7 @@ export interface InjectionDetectionResult {
 }
 
 const INJECTION_PATTERNS = [
-  { regex: /ignore\s+(previous|above|all)\s+(instructions?|prompts?|rules?)/gi, type: 'prompt_injection', severity: 'high' as const, description: 'Attempt to override system instructions' },
+  { regex: /ignore\s+(previous|above|all|all\s+previous|all\s+above|any\s+previous)\s+(instructions?|prompts?|rules?)/gi, type: 'prompt_injection', severity: 'high' as const, description: 'Attempt to override system instructions' },
   { regex: /disregard\s+(previous|above|all)\s+(instructions?|prompts?)/gi, type: 'prompt_injection', severity: 'high' as const, description: 'Attempt to bypass instructions' },
   { regex: /you\s+are\s+(now|actually)\s+/gi, type: 'role_hijack', severity: 'high' as const, description: 'Attempt to hijack agent role' },
   { regex: /system\s*:\s*/gi, type: 'role_spoof', severity: 'medium' as const, description: 'Attempt to spoof system role' },
@@ -513,7 +513,7 @@ export class PromptInjectionRule implements GuardrailRule {
     this.action = config?.action ?? 'reject';
     this.severity = config?.severity ?? 'high';
     this.patterns = [
-      /ignore\s+(previous|above|all)\s+instructions/i,
+      /ignore\s+(previous|above|all|all\s+previous|all\s+above|any\s+previous)\s+instructions/i,
       /forget\s+(everything|all|previous)/i,
       /you\s+are\s+now\s+a/i,
       /pretend\s+(you\s+are|to\s+be)/i,
@@ -566,6 +566,74 @@ export class PromptInjectionRule implements GuardrailRule {
       message: 'potential prompt injection detected',
       metadata: { matches: detected },
     };
+  }
+}
+
+// ===== PIIRule（与 Go 端 pii_rule.go 对齐） =====
+
+export interface PIIRuleConfig {
+  action?: GuardrailAction;
+  severity?: GuardrailSeverity;
+  detectEmail?: boolean;
+  detectPhone?: boolean;
+  detectSSN?: boolean;
+  detectCreditCard?: boolean;
+  detectIPAddress?: boolean;
+}
+
+/** PII 检测规则，与 Go 端 PIIRule 对齐。
+ *
+ * 检测邮箱/电话/SSN 等个人敏感信息；命中时按 action 处理
+ * （reject → 拦截，sanitize → 脱敏）。
+ */
+export class PIIRule implements GuardrailRule {
+  private action: GuardrailAction;
+  private severity: GuardrailSeverity;
+  private patterns: { name: string; regex: RegExp }[];
+
+  constructor(config?: PIIRuleConfig) {
+    this.action = config?.action ?? 'reject';
+    this.severity = config?.severity ?? 'high';
+    this.patterns = [];
+    if (config?.detectEmail ?? false) this.patterns.push({ name: 'email', regex: PII_PATTERNS.email.regex });
+    if (config?.detectPhone ?? false) this.patterns.push({ name: 'phone', regex: PII_PATTERNS.phone.regex });
+    if (config?.detectSSN ?? false) this.patterns.push({ name: 'ssn', regex: PII_PATTERNS.ssn.regex });
+    if (config?.detectCreditCard ?? false) this.patterns.push({ name: 'credit_card', regex: PII_PATTERNS.credit_card.regex });
+    if (config?.detectIPAddress ?? false) this.patterns.push({ name: 'ip_address', regex: PII_PATTERNS.ip_address.regex });
+  }
+
+  name(): string { return 'pii'; }
+
+  check(input: string, _point: CheckPoint): GuardrailRuleResult {
+    const findings: string[] = [];
+    let sanitized = input;
+
+    for (const p of this.patterns) {
+      p.regex.lastIndex = 0;
+      const matches = input.match(p.regex);
+      if (matches && matches.length > 0) {
+        findings.push(p.name);
+        if (this.action === 'sanitize') {
+          sanitized = sanitized.replace(p.regex, (m) => '*'.repeat(m.length));
+        }
+      }
+    }
+
+    if (findings.length === 0) {
+      return { ruleName: this.name(), action: 'pass', severity: this.severity, message: '' };
+    }
+
+    const result: GuardrailRuleResult = {
+      ruleName: this.name(),
+      action: this.action,
+      severity: this.severity,
+      message: `PII detected: ${findings.join(', ')}`,
+      metadata: { types: findings },
+    };
+    if (this.action === 'sanitize') {
+      result.sanitized = sanitized;
+    }
+    return result;
   }
 }
 

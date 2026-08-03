@@ -123,7 +123,7 @@ export class CapabilityAgent {
       name: opts.name,
       model: opts.model,
       toolkit: this._toolkit,
-      maxTurns: opts.maxTurns ?? 10,
+      maxTurns: opts.maxTurns ?? 50,
       systemPrompt: opts.systemPrompt ?? '',
       sessionId: opts.sessionId ?? '',
       hooks: this._hooks,

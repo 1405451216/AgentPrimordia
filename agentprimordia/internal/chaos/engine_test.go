@@ -310,3 +310,24 @@ func TestLLMFaultScenario(t *testing.T) {
 		t.Errorf("第三个故障类型 = %s", scenario.Faults[2].Type())
 	}
 }
+
+// TestExperimentValidate 验证实验定义校验（v3.5-3 跨语言混沌契约）。
+func TestExperimentValidate(t *testing.T) {
+	cases := []struct {
+		name       string
+		exp        Experiment
+		wantErr    bool
+	}{
+		{"合法实验", Experiment{Name: "valid", Hypothesis: "h"}, false},
+		{"空名称", Experiment{Name: "", Hypothesis: "h"}, true},
+		{"空假设", Experiment{Name: "valid", Hypothesis: "  "}, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.exp.Validate()
+			if (err != nil) != tc.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tc.wantErr)
+			}
+		})
+	}
+}

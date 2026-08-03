@@ -28,6 +28,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 )
@@ -59,6 +60,19 @@ type Experiment struct {
 	Duration time.Duration
 	// Tags 实验标签
 	Tags []string
+}
+
+// Validate 校验实验定义的合法性（与 TS 端混沌配置契约一致）：
+//   - 名称必填（空名称拒绝）
+//   - 假设必填
+func (e *Experiment) Validate() error {
+	if strings.TrimSpace(e.Name) == "" {
+		return fmt.Errorf("chaos: experiment name is required")
+	}
+	if strings.TrimSpace(e.Hypothesis) == "" {
+		return fmt.Errorf("chaos: experiment hypothesis is required")
+	}
+	return nil
 }
 
 // Fault 故障定义
@@ -163,6 +177,11 @@ func (e *ChaosEngine) WithLogger(logger *slog.Logger) *ChaosEngine {
 //  5. 实验后稳态检查
 //  6. 判定假设是否被验证
 func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResult, error) {
+	// 校验实验定义（空名称/空假设拒绝，与跨语言混沌契约一致）
+	if err := exp.Validate(); err != nil {
+		return nil, err
+	}
+
 	result := &ExperimentResult{
 		Experiment: exp,
 		Status:    StatusPending,
