@@ -9,6 +9,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -20,6 +22,44 @@ type MCPClient struct {
 	mu          sync.RWMutex
 	logger      *slog.Logger
 	initialized bool
+	toolPrefix  string // v3.9-4：工具名命名空间前缀，隔离多 server 同名工具
+}
+
+// resolveMCPCommand 解析 MCP 服务器启动命令。
+// 主流 MCP server 多通过 `npx -y @modelcontextprotocol/server-xxx` 启动，
+// 在 Windows 上 npx/npm 实为 .cmd 批处理，需显式补充扩展名才能被 exec 找到。
+func resolveMCPCommand(command string) string {
+	if command == "" {
+		return command
+	}
+	// 已有扩展名或非裸命令名（含路径分隔符），保持不变
+	lower := strings.ToLower(command)
+	if strings.ContainsAny(command, `/\`) || strings.HasSuffix(lower, ".cmd") ||
+		strings.HasSuffix(lower, ".exe") || strings.HasSuffix(lower, ".bat") {
+		return command
+	}
+	// Windows 下为常见包管理器命令补充 .cmd 扩展名
+	if runtime.GOOS == "windows" {
+		switch lower {
+		case "npx", "npm", "pnpm", "yarn", "bunx":
+			if _, err := exec.LookPath(command + ".cmd"); err == nil {
+				return command + ".cmd"
+			}
+			if _, err := exec.LookPath(command + ".exe"); err == nil {
+				return command + ".exe"
+			}
+		}
+	}
+	return command
+}
+
+// SetToolPrefix 设置工具名命名空间前缀（v3.9-4）。
+// 多个 MCP server 暴露同名工具（如 read_file / get_weather）时，
+// 使用前缀 `<serverName>_<toolName>` 隔离，避免注册时互相覆盖。
+func (c *MCPClient) SetToolPrefix(prefix string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.toolPrefix = strings.Trim(prefix, "_")
 }
 
 // NewMCPClient 创建 HTTP 模式 MCP 客户端
@@ -160,12 +200,14 @@ func (c *MCPClient) CallTool(ctx context.Context, name string, args map[string]a
 func (c *MCPClient) RegisterIntoRegistry(registry *Registry) error {
 	c.mu.RLock()
 	tools := c.tools
+	prefix := c.toolPrefix
 	c.mu.RUnlock()
 
 	for _, mcpTool := range tools {
 		tool := &mcpToolAdapter{
 			client: c,
 			def:    mcpTool,
+			prefix: prefix,
 		}
 		if err := registry.Register(tool); err != nil {
 			return fmt.Errorf("register MCP tool %q: %w", mcpTool.Name, err)
@@ -213,10 +255,14 @@ func (c *MCPClient) sendNotification(ctx context.Context, method string, params 
 type mcpToolAdapter struct {
 	client *MCPClient
 	def    MCPToolDefinition
+	prefix string // v3.9-4：命名空间前缀，为空时保持向后兼容
 }
 
 func (t *mcpToolAdapter) Name() string {
-	return t.def.Name
+	if t.prefix == "" {
+		return t.def.Name
+	}
+	return t.prefix + "_" + t.def.Name
 }
 
 func (t *mcpToolAdapter) Description() string {
