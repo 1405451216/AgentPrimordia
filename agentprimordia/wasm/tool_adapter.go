@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"agentprimordia/internal/tools"
 )
 
 // ToolMetadata WASM 工具元数据
@@ -149,6 +151,45 @@ func (a *WASMToolAdapter) GetTool(name string) (ToolMetadata, bool) {
 		return ToolMetadata{}, false
 	}
 	return entry.metadata, true
+}
+
+// wasmTool 把已注册的 WASM 工具适配为 tools.Tool 接口（v3.8-3）。
+type wasmTool struct {
+	adapter *WASMToolAdapter
+	name    string
+}
+
+// Name 实现 tools.Tool。
+func (w *wasmTool) Name() string { return w.name }
+
+// Description 实现 tools.Tool。
+func (w *wasmTool) Description() string {
+	meta, _ := w.adapter.GetTool(w.name)
+	return meta.Description
+}
+
+// Parameters 实现 tools.Tool。
+func (w *wasmTool) Parameters() json.RawMessage {
+	meta, _ := w.adapter.GetTool(w.name)
+	return meta.Parameters
+}
+
+// Execute 实现 tools.Tool：委托给适配器的 ExecuteTool。
+func (w *wasmTool) Execute(ctx context.Context, args json.RawMessage) (*tools.Result, error) {
+	res, err := w.adapter.ExecuteTool(ctx, w.name, args)
+	if err != nil {
+		return &tools.Result{Content: "wasm tool error: " + err.Error(), IsError: true}, nil
+	}
+	return &tools.Result{Content: res.Content, IsError: res.IsError}, nil
+}
+
+// AsTool 返回已注册 WASM 工具的 tools.Tool 适配（v3.8-3）。
+// 使自定义 WASM 工具可注册进 tools.Registry，被 ReActAgent 运行时直接调用。
+func (a *WASMToolAdapter) AsTool(name string) (tools.Tool, error) {
+	if _, ok := a.GetTool(name); !ok {
+		return nil, fmt.Errorf("wasm: tool %q not found", name)
+	}
+	return &wasmTool{adapter: a, name: name}, nil
 }
 
 // ExecuteTool 执行 WASM 工具（V3.1 真实内存传递实现）
