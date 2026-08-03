@@ -2,7 +2,7 @@
 
 > 运行方式：`npx tsx examples/<name>.ts`
 
-## 示例列表（19 个，对齐 Go SDK）
+## 示例列表（20 个，对齐 Go SDK）
 
 | # | 示例 | 文件 | 说明 |
 |---|------|------|------|
@@ -25,6 +25,7 @@
 | 17 | DAG 编排 | [orchestration-dag.ts](./orchestration-dag.ts) | 有向无环图工作流 |
 | 18 | 多模态 | [multimodal.ts](./multimodal.ts) | 视觉理解 + 多模态融合 |
 | 19 | 生产级 Agent | [production-agent.ts](./production-agent.ts) | 全能力集成（Agent+Tools+Memory+Hooks+Guardrails+Metrics） |
+| 20 | 一体化 Coding Harness | [coding-agent.ts](./coding-agent.ts) | 计划→编写→测试→审查→发布全流程（Planner+Reflector+filesystem/shell+git） |
 
 ## 前置条件
 
