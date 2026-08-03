@@ -162,6 +162,19 @@ func (c *CapabilityAgent) WithObservability(corr *observability.CorrelationStore
 // GetObservability 返回全链路关联存储（ObservabilityCapable，v3.5-4）
 func (c *CapabilityAgent) GetObservability() *observability.CorrelationStore { return c.observability }
 
+// WithPlanSubtaskRetries 设置子任务失败重试次数（v3.6-1 自愈）。
+func (c *CapabilityAgent) WithPlanSubtaskRetries(n int) *CapabilityAgent {
+	c.inner.config.PlanSubtaskRetries = n
+	return c
+}
+
+// WithPlanRecoveryMode 设置计划失败自愈模式（v3.6-1）：
+// "on"/"" 启用（默认，自动 replan/降级），"off" 关闭。
+func (c *CapabilityAgent) WithPlanRecoveryMode(mode string) *CapabilityAgent {
+	c.inner.config.PlanRecoveryMode = mode
+	return c
+}
+
 // GetSummarizer 返回摘要提取器（SummarizerCapable）
 func (c *CapabilityAgent) GetSummarizer() memory.SummaryExtractor { return c.summarizer }
 

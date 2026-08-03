@@ -143,6 +143,8 @@ func TestFailureRecord_PlanError_ExtractsSubtask(t *testing.T) {
 		}
 		return &Response{Content: "ok-" + task.ID}, nil
 	}
+	// v3.6-1：本测试聚焦失败记录，显式关闭自愈（否则计划失败会被降级恢复而不再报错）
+	ag.Inner().config.PlanRecoveryMode = "off"
 
 	_, runErr := ag.Run(context.Background(), UserMessage("run the plan"))
 	if runErr == nil {

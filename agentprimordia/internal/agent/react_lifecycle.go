@@ -27,6 +27,8 @@ func (a *ReActAgent) Stats() AgentStats {
 	stats.RequestID = a.stats.RequestID
 	toolsCopy := make(map[string]int, len(a.stats.ToolsCalled))
 	maps.Copy(toolsCopy, a.stats.ToolsCalled)
+	// v3.6-1：复制自愈记录（只读切片）
+	stats.PlanRecoveries = append([]PlanRecovery(nil), a.stats.PlanRecoveries...)
 	a.statsMu.RUnlock()
 	stats.ToolsCalled = toolsCopy
 

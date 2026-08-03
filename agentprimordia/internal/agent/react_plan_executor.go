@@ -30,6 +30,66 @@ func extractUserInput(history []Message) string {
 	return ""
 }
 
+// executePlanWithSelfHealing 执行计划，失败时自动换路径（v3.6-1）。
+//
+// 自愈流程（PlanRecoveryMode 非 "off" 时启用）：
+//  1. 先执行 executePlan；
+//  2. 失败后尝试 replan：带失败反馈重新生成计划并执行（换路径）；
+//  3. replan 不可用或仍失败则降级为普通 runLoop（整任务单循环），
+//     保证请求不因计划失败而中断（故障恢复不依赖人工）；
+//  4. 每次自愈动作记录到 stats.PlanRecoveries。
+func (a *ReActAgent) executePlanWithSelfHealing(ctx context.Context, history []Message, plan *planning.Plan, cfg loopConfig) (*Response, error) {
+	resp, err := a.executePlan(ctx, history, plan, cfg, a.startTime, 0, 0, 0)
+	if err == nil {
+		return resp, nil
+	}
+
+	if a.config.PlanRecoveryMode == "off" {
+		return nil, err
+	}
+
+	userInput := extractUserInput(history)
+
+	// 方案 1：replan——带失败反馈重新分解并执行
+	if planner := a.getPlannerOrNil(); planner != nil && userInput != "" {
+		a.logger.Warn("Plan 执行失败，尝试 replan 换路径", "error", err)
+		newPlan, planErr := planner.GeneratePlan(ctx,
+			userInput+"（注意：上次计划执行失败："+err.Error()+"，请重新设计更稳妥的步骤）")
+		if planErr == nil && newPlan != nil && len(newPlan.SubTasks) > 0 {
+			newResp, newErr := a.executePlan(ctx, history, newPlan, cfg, a.startTime, 0, 0, 0)
+			if newErr == nil {
+				a.recordPlanRecovery(PlanRecovery{Method: "replan", Success: true, Error: err.Error()})
+				return newResp, nil
+			}
+			a.recordPlanRecovery(PlanRecovery{Method: "replan", Success: false, Error: newErr.Error()})
+			err = newErr
+		} else if planErr != nil {
+			err = planErr
+		}
+	}
+
+	// 方案 2：降级——整任务回退到普通 runLoop（skipPlan 防止递归重入 plan 分支）
+	a.logger.Warn("replan 失败或不可用，降级到普通 runLoop", "error", err)
+	degradeCfg := cfg
+	degradeCfg.skipPlan = true
+	fallback, fbErr := a.runLoop(ctx, history, 0, degradeCfg, 0, 0, 0)
+	recoveryErr := err
+	if fbErr != nil {
+		recoveryErr = fbErr
+	}
+	a.recordPlanRecovery(PlanRecovery{Method: "degrade", Success: fbErr == nil, Error: recoveryErr.Error()})
+	return fallback, fbErr
+}
+
+// recordPlanRecovery 记录一次自愈动作到 stats（v3.6-1）。
+func (a *ReActAgent) recordPlanRecovery(rec PlanRecovery) {
+	rec.Timestamp = time.Now()
+	a.statsMu.Lock()
+	a.stats.PlanRecoveries = append(a.stats.PlanRecoveries, rec)
+	a.statsMu.Unlock()
+	a.logger.Warn("自愈动作已记录", "method", rec.Method, "success", rec.Success)
+}
+
 // executePlan 按依赖关系调度子任务，返回最终 Response。
 //
 // 行为契约：
@@ -60,31 +120,38 @@ type planProgress struct {
 
 // runSubtaskWithRetry 带重试地执行子任务执行函数。
 // 失败时最多额外重试 maxRetries 次（总计尝试 maxRetries+1 次）；ctx 取消时立即返回。
-func runSubtaskWithRetry(ctx context.Context, run func() (*Response, error), maxRetries int) (*Response, error) {
+// v3.6-1：每次重试会把上一次失败原因作为 hint 传入，驱动"换一种方案"。
+func runSubtaskWithRetry(ctx context.Context, run func(feedback string) (*Response, error), maxRetries int) (*Response, error) {
 	var lastErr error
+	feedback := ""
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		resp, err := run()
+		resp, err := run(feedback)
 		if err == nil {
 			return resp, nil
 		}
 		lastErr = err
+		feedback = fmt.Sprintf("上一次尝试失败：%v，请更换实现方案或改用其他工具。", err)
 	}
 	return nil, lastErr
 }
 
 // runPlanSubtask 执行单个子任务：优先使用注入的执行器（测试/扩展），
-// 否则走默认 executeSubTask；失败时按 defaultPlanSubtaskRetries 自动重试。
+// 否则走默认 executeSubTask；失败时按配置的重试次数自动重试并注入失败反馈。
 func (a *ReActAgent) runPlanSubtask(ctx context.Context, st planning.SubTask, history []Message, cfg loopConfig) (*Response, error) {
-	run := func() (*Response, error) {
+	maxRetries := a.config.PlanSubtaskRetries
+	if maxRetries <= 0 {
+		maxRetries = defaultPlanSubtaskRetries
+	}
+	run := func(feedback string) (*Response, error) {
 		if a.subtaskExecutor != nil {
 			return a.subtaskExecutor(ctx, st, history, cfg)
 		}
-		return a.executeSubTask(ctx, st, history, cfg)
+		return a.executeSubTask(ctx, st, history, cfg, feedback)
 	}
-	return runSubtaskWithRetry(ctx, run, defaultPlanSubtaskRetries)
+	return runSubtaskWithRetry(ctx, run, maxRetries)
 }
 
 // buildSubTaskHistory 构造子任务的隔离上下文（v3.4-2）：
@@ -280,10 +347,14 @@ func buildPlanProgressFromState(cp *persist.CheckpointPlan) *planProgress {
 //
 // 实现：把子任务描述追加为新的 UserMessage，然后递归调用 runLoop。
 // 这样每个子任务都可以独立调用tool、产生 ReAct 循环。
-func (a *ReActAgent) executeSubTask(ctx context.Context, task planning.SubTask, history []Message, cfg loopConfig) (*Response, error) {
-	taskHistory := make([]Message, 0, len(history)+1)
+// v3.6-1：feedback 携带上一次失败原因（换方案提示），为空时省略。
+func (a *ReActAgent) executeSubTask(ctx context.Context, task planning.SubTask, history []Message, cfg loopConfig, feedback ...string) (*Response, error) {
+	taskHistory := make([]Message, 0, len(history)+2)
 	taskHistory = append(taskHistory, history...)
 	taskHistory = append(taskHistory, UserMessage(task.Description))
+	if len(feedback) > 0 && feedback[0] != "" {
+		taskHistory = append(taskHistory, UserMessage(feedback[0]))
+	}
 	return a.runLoop(ctx, taskHistory, 0, cfg, 0, 0, 0)
 }
 

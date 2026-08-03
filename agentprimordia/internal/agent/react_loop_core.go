@@ -41,18 +41,21 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 	// R1.3 G1-1：Planning 接入（仅在第一轮且 planner 已配置时尝试）
 	// 用户输入可分解为多子任务时，走 DAG 执行；否则降级为正常 runLoop
 	if startTurn == 0 {
-		if planner := a.getPlannerOrNil(); planner != nil {
-			userInput := extractUserInput(history)
-			if userInput != "" {
-				plan, planErr := planner.GeneratePlan(ctx, userInput)
-				if planErr != nil {
-					a.logger.Warn("Planning 失败，降级到正常 runLoop", "error", planErr)
-				} else if plan != nil && len(plan.SubTasks) > 1 {
-					a.logger.Info("使用 Plan 执行",
-						"subtasks", len(plan.SubTasks),
-						"goal", plan.Goal,
-					)
-					return a.executePlan(ctx, history, plan, cfg, a.startTime, 0, 0, 0)
+		if !cfg.skipPlan { // v3.6-1：自愈降级路径跳过 plan 分支
+			if planner := a.getPlannerOrNil(); planner != nil {
+				userInput := extractUserInput(history)
+				if userInput != "" {
+					plan, planErr := planner.GeneratePlan(ctx, userInput)
+					if planErr != nil {
+						a.logger.Warn("Planning 失败，降级到正常 runLoop", "error", planErr)
+					} else if plan != nil && len(plan.SubTasks) > 1 {
+						a.logger.Info("使用 Plan 执行",
+							"subtasks", len(plan.SubTasks),
+							"goal", plan.Goal,
+						)
+						// v3.6-1：失败自动换路径（replan/降级），故障恢复不依赖人工
+						return a.executePlanWithSelfHealing(ctx, history, plan, cfg)
+					}
 				}
 			}
 		}

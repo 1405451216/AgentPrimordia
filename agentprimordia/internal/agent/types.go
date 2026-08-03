@@ -124,6 +124,9 @@ type Metrics = core.Metrics
 // 类型别名保持向后兼容
 type AgentStats = core.AgentStats
 
+// PlanRecovery 记录一次自愈动作（v3.6-1，agent 包别名）。
+type PlanRecovery = core.PlanRecovery
+
 // ===== 流式事件 =====
 
 // StreamEventType 标识流式事件的类型

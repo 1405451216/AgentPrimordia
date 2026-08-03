@@ -288,6 +288,22 @@ type AgentStats struct {
 	TotalMessages int              `json:"total_messages"`
 	ToolsCalled   map[string]int   `json:"tools_called"`
 	StartTime     time.Time        `json:"start_time"`
+	// v3.6-1：自愈记录——plan 失败自动换路径/降级的明细
+	PlanRecoveries []PlanRecovery `json:"plan_recoveries,omitempty"`
+}
+
+// PlanRecovery 记录一次自愈动作（v3.6-1）。
+type PlanRecovery struct {
+	// SubtaskID 触发自愈的子任务 ID（plan 级降级时为空）。
+	SubtaskID string `json:"subtask_id,omitempty"`
+	// Method 自愈方式：replan / degrade。
+	Method string `json:"method"`
+	// Success 自愈是否成功（换路径后请求正常完成）。
+	Success bool `json:"success"`
+	// Error 触发自愈的错误。
+	Error string `json:"error,omitempty"`
+	// Timestamp 自愈发生时间。
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // ===== 流式事件 =====

@@ -104,6 +104,13 @@ type ReActConfig struct {
 	// ToolLearningConfidenceThreshold 触发tool参数建议的最低置信度（G1-3）
 	// 范围 [0, 1]，默认 0.7
 	ToolLearningConfidenceThreshold float64
+
+	// v3.6-1 自愈配置：
+	// PlanSubtaskRetries 子任务失败时的额外重试次数（默认 1）。
+	PlanSubtaskRetries int
+	// PlanRecoveryMode 计划失败时自动换路径（replan / 降级到 runLoop）：
+	// 空值或 "on" 表示启用（默认），"off" 表示关闭——默认故障恢复不依赖人工。
+	PlanRecoveryMode string
 }
 
 // ReActAgent implements the ReAct (Reasoning + Acting) pattern
@@ -162,6 +169,10 @@ func newReActAgent(cfg ReActConfig) *ReActAgent {
 	if cfg.MaxTurns == 0 {
 		cfg.MaxTurns = 50
 	}
+	// v3.6-1：自愈默认值——子任务重试 1 次、失败自动换路径（replan/降级）
+	if cfg.PlanSubtaskRetries == 0 {
+		cfg.PlanSubtaskRetries = defaultPlanSubtaskRetries
+	}
 	if cfg.Lifecycle == nil {
 		cfg.Lifecycle = NewLifecycle()
 	}
@@ -190,6 +201,8 @@ type loopConfig struct {
 	streamCh  chan StreamEvent
 	streamCtx context.Context
 	requestID string
+	// v3.6-1：自愈降级时跳过 plan 分支，防止递归进入 executePlanWithSelfHealing
+	skipPlan bool
 }
 
 // capabilityCache 缓存单次 Run() 期间不变的能力查找结果。
