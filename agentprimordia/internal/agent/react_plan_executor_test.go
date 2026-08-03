@@ -4,6 +4,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,6 +145,84 @@ func TestExecutePlan_SubtaskRetryAndCheckpoint(t *testing.T) {
 	}
 	if saved.Plan.Results["2"] != "subtask 2 done" {
 		t.Fatalf("Results['2'] = %q", saved.Plan.Results["2"])
+	}
+}
+
+// TestExecutePlan_SubtaskIsolatedHistory 验证 v3.4-2：子任务不再全量继承历史，
+// 仅接收 目标 + 前置依赖子任务结果 的隔离上下文。
+func TestExecutePlan_SubtaskIsolatedHistory(t *testing.T) {
+	store, err := persist.InMemoryCheckpointStore()
+	if err != nil {
+		t.Fatalf("InMemoryCheckpointStore 失败: %v", err)
+	}
+	_ = store.Close()
+
+	a := newReActAgent(ReActConfig{Name: "plan-iso", MaxTurns: 10})
+
+	var received []Message
+	a.subtaskExecutor = func(_ context.Context, task planning.SubTask, history []Message, _ loopConfig) (*Response, error) {
+		received = history
+		return &Response{Content: "done-" + task.ID}, nil
+	}
+
+	plan := &planning.Plan{
+		SubTasks: []planning.SubTask{
+			{ID: "1", Description: "编写", DependsOn: []string{}},
+			{ID: "2", Description: "测试", DependsOn: []string{"1"}},
+		},
+	}
+	// 原始 history 含无关消息，验证不会全量传给子任务
+	baseHistory := []Message{
+		{Role: RoleUser, Content: "创建 hello 项目"},
+		{Role: RoleAssistant, Content: "开始处理"},
+		{Role: RoleTool, Content: "tool result noise"},
+	}
+
+	if _, err := a.executePlan(context.Background(), baseHistory, plan, loopConfig{requestID: "req-iso"}, time.Now(), 0, 0, 0); err != nil {
+		t.Fatalf("executePlan 失败: %v", err)
+	}
+
+	// 子任务 2 收到的 history 应只含：目标 + 前置结果（当前描述由 executeSubTask 追加）
+	if len(received) != 2 {
+		t.Fatalf("子任务 2 收到 %d 条消息, want 2（目标+前置结果）: %+v", len(received), received)
+	}
+	joined := received[0].Content + received[1].Content
+	if containsNoise(joined, "tool result noise") {
+		t.Fatalf("子任务上下文应隔离无关历史, got: %q", joined)
+	}
+	if !strings.Contains(joined, "done-1") {
+		t.Fatalf("子任务上下文应包含前置子任务 1 的结果, got: %q", joined)
+	}
+	if !strings.Contains(joined, "目标") {
+		t.Fatalf("子任务上下文应包含目标, got: %q", joined)
+	}
+}
+
+// containsNoise 检查字符串是否包含无关历史噪音
+func containsNoise(s, noise string) bool {
+	return strings.Contains(s, noise)
+}
+
+// TestBuildSubTaskHistory 直接验证隔离构造逻辑
+func TestBuildSubTaskHistory(t *testing.T) {
+	results := map[string]string{"1": "文件已创建"}
+	got := buildSubTaskHistory(
+		[]Message{{Role: RoleUser, Content: "创建项目"}},
+		planning.SubTask{ID: "2", Description: "测试", DependsOn: []string{"1"}},
+		results,
+	)
+	joined := ""
+	for _, m := range got {
+		joined += m.Content
+	}
+	if !strings.Contains(joined, "创建项目") {
+		t.Errorf("应包含目标, got %q", joined)
+	}
+	if !strings.Contains(joined, "文件已创建") {
+		t.Errorf("应包含前置结果, got %q", joined)
+	}
+	if strings.Contains(joined, "测试") {
+		t.Errorf("buildSubTaskHistory 不应包含当前描述（executeSubTask 会追加）, got %q", joined)
 	}
 }
 

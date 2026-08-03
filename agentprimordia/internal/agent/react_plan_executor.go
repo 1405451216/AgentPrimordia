@@ -87,6 +87,23 @@ func (a *ReActAgent) runPlanSubtask(ctx context.Context, st planning.SubTask, hi
 	return runSubtaskWithRetry(ctx, run, defaultPlanSubtaskRetries)
 }
 
+// buildSubTaskHistory 构造子任务的隔离上下文（v3.4-2）：
+// 仅注入 原始目标 + 前置依赖子任务的结果摘要，替代全量 history 继承，
+// 避免长 pipeline 中子任务间互相携带内部对话导致 context 膨胀。
+// 当前子任务描述由 executeSubTask 负责追加。
+func buildSubTaskHistory(history []Message, task planning.SubTask, results map[string]string) []Message {
+	ctx := make([]Message, 0, len(task.DependsOn)+2)
+	if goal := extractUserInput(history); goal != "" {
+		ctx = append(ctx, UserMessage("目标: "+goal))
+	}
+	for _, dep := range task.DependsOn {
+		if out, ok := results[dep]; ok && out != "" {
+			ctx = append(ctx, UserMessage(fmt.Sprintf("[前置子任务 %s 结果]\n%s", dep, out)))
+		}
+	}
+	return ctx
+}
+
 // executePlanWithState 是 executePlan 的实现，支持从既有进度（initial）恢复。
 // initial 为 nil 表示全新执行；恢复时跳过已完成子任务、沿用其结果。
 func (a *ReActAgent) executePlanWithState(ctx context.Context, history []Message, plan *planning.Plan, cfg loopConfig, startTime time.Time, totalLLMLatency time.Duration, totalToolLatency time.Duration, toolCount int, initial *planProgress) (*Response, error) {
@@ -140,7 +157,9 @@ func (a *ReActAgent) executePlanWithState(ctx context.Context, history []Message
 			}
 
 			a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: fmt.Sprintf("[Plan] 执行子任务 %s: %s", st.ID, st.Description)})
-			resp, err := a.runPlanSubtask(ctx, st, history, cfg)
+			// v3.4-2：子任务上下文隔离——仅注入目标 + 前置依赖结果，而非全量历史
+			subHistory := buildSubTaskHistory(history, st, pp.results)
+			resp, err := a.runPlanSubtask(ctx, st, subHistory, cfg)
 			if err != nil {
 				a.logger.Warn("Plan 子任务失败",
 					"subtask_id", st.ID,
