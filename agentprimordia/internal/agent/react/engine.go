@@ -1,5 +1,9 @@
 // engine.go — ReAct 循环状态机（B-3 包拆分核心）
 //
+// ⚠️ 实验性骨架：本引擎仅覆盖基础 turn 迭代，无 checkpoint/成本预算/
+// guardrail/RAG/planning/metrics。生产主路径为 internal/agent 的
+// reactLoopEngine，不经过本引擎。
+//
 // Engine 封装了 turn 迭代骨架：
 //
 //	for turn := 0; turn < maxTurns; turn++ {

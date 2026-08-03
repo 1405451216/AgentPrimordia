@@ -43,7 +43,7 @@
 
 | 包 | 缺口 | 证据 |
 |----|------|------|
-| agent（react.Engine） | 新状态机存在但**未接管 Run 主路径**（仍走旧 reactLoopEngine） | `react_bridge.go:15` 仅 getter |
+| agent（react.Engine） | ✅ 已决策（2026-08-03）：废弃降级为实验性骨架，`ReactEngine()` 标注 Deprecated，主路径保留 reactLoopEngine | `react_bridge.go:15` |
 | agent（executePlan） | 子任务失败 fast-fail 整体中断无重试；**plan 本身不可恢复**（checkpoint 不存 plan/子任务） | `react_plan_executor.go:73-80` |
 | agent（memory 回读） | loop 的 MemoryStore 接口仅 Add/UpdateSummary，**无 Search**，长期记忆不回流 | `react_loop.go:40-44` |
 | agent（上下文） | 子任务全量继承历史，100 条滑动窗口无压缩 | `react_persist.go:205` |

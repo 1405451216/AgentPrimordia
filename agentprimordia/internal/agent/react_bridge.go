@@ -11,7 +11,11 @@ import (
 )
 
 // ReactEngine 返回与此 Agent 关联的 react.Engine 实例。
-// 外部调用方可通过此方法获取引擎并自定义执行策略。
+//
+// Deprecated: react.Engine 为 B-3 包拆分的实验性重构骨架，非生产主路径。
+// ReAct 循环实际由 reactLoopEngine（react_loop_engine.go）驱动，具备 checkpoint、
+// 成本预算、guardrail、RAG、planning、metrics 等完整能力。本方法仅作为实验性
+// 执行策略探索入口保留，不建议在生产依赖其行为。
 func (a *ReActAgent) ReactEngine() *react.Engine {
 	return react.NewEngine(react.Config{
 		AgentName:             a.config.Name,
