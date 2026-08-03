@@ -113,9 +113,9 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | 多 Agent 分工做单 Agent 做不了的大任务（Go 编排 + TS 前端） | 任务规模×N 成功率不降 |
-| 2 | Pool × harness 多任务并发执行 | 并发吞吐线性扩展 |
-| 3 | WASM 工具生态 | 自定义工具运行时可用 |
+| 1 | 多 Agent 分工做单 Agent 做不了的大任务（Go 编排 + TS 前端） ✅（2026-08-04：`internal/multi_agent.Swarm` 专业 Specialist 路由+泛化兜底；规模 1/2/4/8 成功率不降且优于单 Agent；commit 7e95b49） | 任务规模×N 成功率不降 |
+| 2 | Pool × harness 多任务并发执行 ✅（2026-08-04：Pool SetModel/SetAgentFactory 跑 harness 基准任务；concurrency=4 吞吐 speedup≥2.5×，并发 8×16 全成功；commit 3e07fef） | 并发吞吐线性扩展 |
+| 3 | WASM 工具生态 ✅（2026-08-04：`WASMToolAdapter.AsTool` 桥进 tools.Registry；手构有效 WASM 模块 wazero 真实执行；commit c9b2b0c） | 自定义工具运行时可用 |
 
 ### v3.9 — 生态与开发者体验
 
