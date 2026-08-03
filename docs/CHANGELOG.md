@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Changed — v4.0-3 兼容性承诺收紧（稳定清单与实际一致）
+
+- `docs/VERSIONING.md`「稳定 API」表按实际 `pkg/` 源文件标注重写（21 个 Stable/混合模块），并注明"稳定性标注的唯一事实来源是源文件注释"
+- `pkg/a2a.go` 转正：gRPC 传输自 v1.x 为默认且生产验证，JSON-RPC 已在 v4.0-1 移除，标注 `Stability: Stable（gRPC 传输）`
+- 评审记录：planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 保持 Experimental；llm.go / tools.go / memory.go / otel.go / adapters.go 标注"混合"（核心 Stable + 子集 Experimental）
+- 新增 `pkg/stability_compliance_test.go`：VERSIONING.md 记录的 Stable 模块与实际 `// Stability: Stable` 标注互相比对，漂移即失败
+- 同步更新 `sdk/typescript/api-contract.json`（a2a.go Stability 变更）
+
 ### Removed — v4.0-1 废弃 API 清理
 
 按 `docs/VERSIONING.md` 的废弃承诺，v4.0.0 清理全部超期废弃 API：

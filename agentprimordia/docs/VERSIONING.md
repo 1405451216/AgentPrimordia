@@ -37,29 +37,54 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 ### 稳定 API（Stable）
 
-以下 API 在同一主版本号内保证向后兼容，变更时仅扩展不破坏：
+以下 API 在同一主版本号内保证向后兼容，变更时仅扩展不破坏。
+**稳定性标注的唯一事实来源是 `pkg/` 源文件顶部的 `// Stability: Stable` 注释**；
+本清单与 `pkg/deprecation_residual_test.go` / `pkg/stability_compliance_test.go`
+共同保证"清单与实际导出一致"（漂移即失败）。
 
-| 包 | API | 说明 |
-|----|-----|------|
-| `pkg/` | `NewAgent()` | Agent 创建主入口 |
-| `pkg/` | `Agent` 接口 | `Run()`、`WithXxx()` 链式 API |
-| `pkg/` | `NewPool()` | 任务池创建 |
-| `pkg/` | `Tool` / `ToolRegistry` | 工具注册与执行 |
-| `pkg/` | `llm.Provider` 接口 | LLM 提供者抽象 |
-| `pkg/` | `Memory` 接口 | 记忆存储抽象 |
-| `pkg/` | `NewCircuitBreaker()` | 断路器 |
-| `pkg/` | `NewRetrier()` | 重试策略 |
-| `pkg/` | `NewHealthChecker()` | 健康检查 |
-| `pkg/` | `NewMetrics()` | 指标收集 |
+| 模块文件 | 核心 API | 说明 |
+|---------|---------|------|
+| `pkg/a2a.go` | `NewA2AGRPCServer()` / `NewA2AGRPCClient()` / `A2AService` | Agent2Agent gRPC 协议（v4.0-3 转正：默认传输，生产验证） |
+| `pkg/agent.go` | `NewAgent()`、`Agent` 接口 | Agent 创建主入口 + `Run()` / `WithXxx()` 链式 API |
+| `pkg/adapters.go` | `AgentAdapter` / `LLMAdapter` / `MemoryAdapter` 等 | 适配器主接口与实现（高阶组合如 MultiAgentAdapter 为 Experimental 子集） |
+| `pkg/pool.go` | `NewPool()` | 任务池创建与调度 |
+| `pkg/tools.go` | `Tool` / `ToolRegistry` / `NewRegistry()` | 工具注册与执行（MCP/插件等 Experimental 子集除外） |
+| `pkg/llm.go` | `Provider` 接口、`NewOpenAIProvider()` 等 | LLM 提供者抽象（缓存等 Experimental 子集除外） |
+| `pkg/memory.go` | `Memory` 接口、`WithInMemory()` 等 | 记忆存储抽象（VectorStore 等 Experimental 子集除外） |
+| `pkg/persist.go` | `CheckpointStore` / `SQLiteCheckpointStore` | 状态检查点持久化 |
+| `pkg/pipeline.go` | `NewPipeline()` / `Handoff` / `GroupChat` | 编排模式（Pipeline / Handoff / Parallel / GroupChat） |
+| `pkg/llm.go`（Stable 子集） | `NewCircuitBreaker()` / `NewRetrier()` | 断路器与重试策略（位于 llm.go） |
+| `pkg/agent.go` | `NewHealthChecker()` | 健康检查（位于 agent.go） |
+| `pkg/metrics.go` | `NewMetrics()` / `PrometheusHandler` | 指标收集 |
+| `pkg/events.go` | `Bus` / `Event` | 内部事件总线 |
+| `pkg/hooks.go` | `HookManager` / `HookPoint` | 生命周期钩子 |
+| `pkg/options.go` | `WithTimeout()` 等 | 函数式选项 |
+| `pkg/errors.go` | `CodeError` / `WithCode()` / `GetErrorCode()` | 错误码与 sentinel 错误 |
+| `pkg/guardrail.go` | `NewGuardrailEngine()` 等 | Guardrail 引擎、规则、报告 |
+| `pkg/security.go` | `ACL` / `Sandbox` | ACL 与沙箱安全防护 |
+| `pkg/governance.go` | `TenantManager` / `QuotaManager` | 多租户治理与配额限流 |
+| `pkg/logger.go` | `NewLogger()` / `Logger` | 结构化日志 |
+| `pkg/chaos.go` | `NewChaosEngine()` 等 | 混沌工程框架 |
+| `pkg/cluster.go` | `ClusterManager` / `KVStore` | 分布式集群协调 |
+| `pkg/otel.go`（Stable 子集） | `WithTelemetry()` 相关 | OpenTelemetry 桥接（Experimental 子集除外） |
+
+> **评审记录（v4.0-3）**：以上 Stable 模块的清单由 `stability_compliance_test.go` 自动比对，
+> 新增 Stable 标注必须同步更新本表，否则测试失败（见 §"稳定清单一致性验证"）。
 
 ### 实验性 API（Experimental）
 
 标记为 `Experimental` 的 API 可能在次版本号更新时发生不兼容变更：
 
-- `pkg/` 中标注 `Experimental` 的类型和函数
-- `internal/agent/a2a/` — Agent2Agent 协议（gRPC + protobuf）
-- `internal/orchestration/` — 编排模式（Pipeline / Handoff / DAG / GroupChat / Debate）
+- `pkg/` 中标注 `Experimental` 的类型和函数（planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 模块）
+- `internal/agent/a2a/` — Agent2Agent 协议内部实现（公共 API 经 `pkg/a2a.go` 导出，v4.0-3 转正为 Stable）
+- `internal/orchestration/` — 编排模式内部实现（公共 API 经 `pkg/pipeline.go` 导出，Stable）
 - `operator/` — Kubernetes Operator
+- `pkg/` 中标注 `Experimental` 的混合模块子集（如 llm.go 的缓存、tools.go 的 MCP / 插件 / 数据处理、memory.go 的 VectorStore、otel.go 的桥接实现）
+
+> **v4.0-3 评审记录**：
+> - **转正**：`pkg/a2a.go`（gRPC 传输，自 v1.x 为默认且生产验证，JSON-RPC 已在 v4.0-1 移除）
+> - **保持 Experimental**：planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 模块，API 仍随使用场景演进
+> - **混合模块**：llm.go / tools.go / memory.go / otel.go / adapters.go 标注为"混合"（核心 Stable + 子集 Experimental），子集转正需逐一评审
 
 ### 内部 API（Internal）
 

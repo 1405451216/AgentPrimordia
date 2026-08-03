@@ -1,9 +1,9 @@
 // Package ap — A2A（Agent-to-Agent）协议公共 API 导出。
 //
-// Stability: Experimental
+// Stability: Stable（gRPC 传输）
 //
 // 自 v1.x 起，**A2A 的默认传输是 gRPC**（性能更优、二进制更小、内建拦截器链）。
-// JSON-RPC over HTTP 仅作为兼容旧客户端的传输层保留，会在 v2.0 移除。
+// v4.0.0 已移除 JSON-RPC over HTTP 兼容层（见 VERSIONING.md「已移除记录」）。
 // 推荐使用：
 //
 //	srv  := ap.NewA2AGRPCServer(service)
@@ -11,6 +11,8 @@
 //
 // 本文件将 internal/agent/a2a 包中的核心类型与构造函数通过类型别名导出，
 // 用户无需直接 import internal 包。
+//
+// v4.0-3 评审：gRPC 传输自 v1.x 为默认路径，经生产验证，转正为 Stable。
 
 package ap
 
