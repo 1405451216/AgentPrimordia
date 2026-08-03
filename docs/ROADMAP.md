@@ -79,7 +79,7 @@
 | 3 | memory 回读注入：`MemoryStore` 增加 `Search`，长期记忆进循环 ✅（2026-08-03：每轮/每子任务注入召回，commit 311f98c） | 跨 session 记忆可召回 |
 | 4 | tool 执行重试 + 并行 goroutine recover + 输入端护栏 ✅（2026-08-03：`WithInputGuard` + `react_loop_engine.go:17` 入口检查，commit eed88e2） | 混沌注入下无击穿 |
 | 5 | TS 同步 guardrail-in-loop ✅（2026-08-03：`ReActConfig.guardrail` + 输入端 `react-loop.ts:231` / 逐轮输出端 `turn-executor.ts:183`，8 用例 `react-guardrail.test.ts`） | TS 与 Go 行为对齐 |
-| 6 | 失败重放与诊断工具 | 任意失败可一键重放定位 |
+| 6 | 失败重放与诊断工具 ✅（2026-08-03：Go `persist/failure.go` FailureStore/Diagnose + `react_failure.go` 失败捕获/ReplayFailure + debugger `/api/failures` HTTP API（commit 7afb62d/f470696/9e13abd）；TS `agent/failure.ts` + react-loop 失败落盘/`replayFailure`（commit 1771dd3）） | 任意失败可一键重放定位 |
 
 ### v3.5 — 可证（评估与可观测闭环）
 
