@@ -38,6 +38,25 @@
 > AP 的问题不是缺能力，而是"声称的完成度"与"可运行的可信度"之间的鸿沟。
 > 最优路线 = 把"声称的能力"变成"可证明的能力"：**先可信 → 再可证 → 然后才能谈一体化、省 token、生态**。
 
+## 二.五、已验证为已存在的能力（无需重复建设）
+
+> 经 2026-08-03 实证审计，以下能力**已真实接入且可用**，后续版本只做增强/评测，不重复建设：
+
+| 能力 | 实况证据 | 状态 |
+|------|---------|------|
+| checkpoint 断点续跑 | 每轮 `saveCheckpoint`（`react_persist.go:167`）+ `ResumeFromCheckpoint`（`react_lifecycle.go:92`） | ✅ 已接入（缺 plan 级） |
+| 成本预算拦截 | CostTracker 执行中检查（`react_loop_core.go:107`），MaxTotalCostUSD/MaxTokensPerCall | ✅ 已接入 |
+| 多模型路由 | `internal/llm/model_router.go`（Cost/Quality/Balanced 策略） | ✅ 已存在 |
+| LLM 请求批量 | `internal/llm/batch.go` + `internal/pool/llm_batch_integration_test.go` | ✅ 已对接 Pool |
+| tool_learning 跨会话回注 | `react_loop_tools.go:113-128` 真实替换参数建议，跨会话成功率聚合 | ✅ 已接入（缺流程修正） |
+| metrics 真实上报 | `react_lifecycle.go:36-57` 每轮 RecordTokenUsage 到 Prometheus | ✅ 已接入 |
+| orchestration 完整实现 | Pipeline/Handoff/DAG/GroupChat/Debate + e2e 测试 + pkg 暴露 | ✅ 已产品化 |
+| debugger / admin | 真实 HTTP 服务（`internal/debugger/http.go`、`internal/admin/handler.go`） | ✅ 已产品化 |
+| chaos 注入引擎 | `internal/chaos/real_injector_linux.go`（tc netem / iptables）+ LLM 故障注入 | ✅ 真实可用 |
+| MCP 双向 | client（stdio JSON-RPC）+ server + adapter + registry | ✅ 已存在 |
+| TS 上下文压缩 | `KeepLastNStrategy`/`TokenBudgetStrategy`（`request-id.ts:31-75`） | ✅ 比 Go 更先进 |
+| TS checkpoint-resume | `react-loop.ts:450` resumeFromCheckpoint + 每轮 saveCheckpoint | ✅ 已接入 |
+
 ---
 
 ## 三、版本路线（v3.3 → v4.0）
@@ -113,8 +132,9 @@
 |---|------|---------|
 | 1 | 废弃 API 清理（`NewReActAgent` / `RegisterPProf`，VERSIONING 承诺） | 迁移指南就绪，deprecation 检查 0 残留 |
 | 2 | 契约基线锁定（api-contract 漂移门） | 漂移即失败 |
-| 3 | 性能大版本（基准对比全量刷新） | 关键路径 P95 达标 |
-| 4 | 发布纪律固化（tag 自动化 CI） | 每次发布自动打 tag |
+| 3 | 兼容性承诺收紧：评审稳定 API 清单，实验性 API 转正/降级并记录 | 稳定 API 列表与实际导出一致 |
+| 4 | 性能大版本（基准对比全量刷新） | 关键路径 P95 达标 |
+| 5 | 发布纪律固化（tag 自动化 CI） | 每次发布自动打 tag |
 
 ---
 
@@ -134,7 +154,7 @@
 | v3.7 | 双线产品化 | TS 治理补齐 + Hooks |
 | v3.8 | 规模化 | 多 Agent 大任务 |
 | v3.9 | 生态 | 市场 + Studio + 文档站 |
-| v4.0 | 稳定化 | 契约锁定 + 性能大版 |
+| v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 |
 
 ---
 
