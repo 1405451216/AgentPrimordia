@@ -95,10 +95,10 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | 自愈：plan 失败自动换路径、子任务级重试策略 | 故障恢复不依赖人工 |
-| 2 | tool_learning 从"参数建议"升级"流程修正"（`react_loop_tools.go:113-128` 扩展） | 失败模式被自动规避 |
-| 3 | 跨任务记忆真正注入（基于 v3.4 memory 回读） | 相似任务第二次显著更快 |
-| 4 | AP 用 AP 开发 AP（自举） | 成功率曲线可见上升 |
+| 1 | 自愈：plan 失败自动换路径、子任务级重试策略 ✅（2026-08-04：`executePlanWithSelfHealing` replan/降级 runLoop（skipPlan 防递归）+ 子任务重试注入失败反馈换方案；`stats.PlanRecoveries`；commit 23a3a47） | 故障恢复不依赖人工 |
+| 2 | tool_learning 从"参数建议"升级"流程修正"（`react_loop_tools.go:113-128` 扩展） ✅（2026-08-04：`SuggestProcessCorrection` 检测高频失败模式（≥2 次）自动规避/替代参数；`stats.ProcessCorrections`；commit 67f407d） | 失败模式被自动规避 |
+| 3 | 跨任务记忆真正注入（基于 v3.4 memory 回读） ✅（2026-08-04：`tryMemorySolution` fast-path 复用 solved 记忆（0 轮推理）+ `saveSolutionMemory` 完成任务自动存解；commit c68c882） | 相似任务第二次显著更快 |
+| 4 | AP 用 AP 开发 AP（自举） ✅（2026-08-04：`internal/self_bootstrap` ImprovingProvider+RunBootstrap 多轮自举 + CLI `bench/self-bootstrap`；真实基准集曲线 0.333→0.667→1.0；commit 0e3e3ec） | 成功率曲线可见上升 |
 
 ### v3.7 — 双线产品化
 
