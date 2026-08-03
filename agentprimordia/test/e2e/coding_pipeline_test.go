@@ -1,8 +1,8 @@
 // Package e2e 提供 AgentPrimordia 端到端集成测试。
 //
 // coding_pipeline_test.go 验证「一体化 coding harness」全流程：
-// 计划（Planner 分解 DAG）→ 编写（filesystem 写文件）→ 测试（shell 校验）
-// → 审查（Reflector 批评最终输出）→ 发布（git add/commit/tag），
+// 计划（Planner 分解 DAG）→ 编写（filesystem 写文件）→ 实施（shell 运行程序）
+// → 测试（shell 校验）→ 审查（Reflector 批评最终输出）→ 发布（git add/commit/tag），
 // 全部由 MockLLM 脚本化驱动，不依赖真实 LLM 与网络。
 package e2e
 
@@ -28,12 +28,13 @@ const singleSubtaskPlan = `[{"id": "1", "description": "直接执行当前步骤
 // 不触发 Improve 二次改写，保证最终输出可断言。
 const lowCritique = `{"issues": [], "severity": "low", "corrections": []}`
 
-// pipelinePlan 是根任务的分解计划：编写 → 测试 → 审查 → 发布 依赖链
+// pipelinePlan 是根任务的分解计划：编写 → 实施 → 测试 → 审查 → 发布 依赖链
 const pipelinePlan = `[
   {"id": "1", "description": "编写：创建 hello.go 文件", "depends_on": []},
-  {"id": "2", "description": "测试：检查工作区确认文件已生成", "depends_on": ["1"]},
-  {"id": "3", "description": "审查：评估代码质量并给出结论", "depends_on": ["2"]},
-  {"id": "4", "description": "发布：git 提交并打标签 v1.0.0", "depends_on": ["3"]}
+  {"id": "2", "description": "实施：运行 go run hello.go 验证可执行", "depends_on": ["1"]},
+  {"id": "3", "description": "测试：检查工作区确认文件已生成", "depends_on": ["2"]},
+  {"id": "4", "description": "审查：评估代码质量并给出结论", "depends_on": ["3"]},
+  {"id": "5", "description": "发布：git 提交并打标签 v1.0.0", "depends_on": ["4"]}
 ]`
 
 // initGitRepo 在指定目录初始化带用户配置的 Git 仓库
@@ -100,16 +101,17 @@ func scriptSubtask(mock *llm.MockLLM, conclusion string, toolRounds [][]llm.Func
 	mock.WithResponse(lowCritique)
 }
 
-// TestCodingPipeline_EndToEnd 验证计划→编写→测试→审查→发布全流程打通。
+// TestCodingPipeline_EndToEnd 验证计划→编写→实施→测试→审查→发布全流程打通。
 //
 // 执行时序（每个子任务都会重新进入 runLoop，startTurn=0 再次触发 Planning，
 // 用单子任务计划使其降级为普通 ReAct 循环）：
 //
-//	根 runLoop: Planner 分解为 4 子任务 → executePlan DAG 分层执行
+//	根 runLoop: Planner 分解为 5 子任务 → executePlan DAG 分层执行
 //	子任务1 编写: filesystem.write
-//	子任务2 测试: shell(git status)
-//	子任务3 审查: 无 tool 直接给结论
-//	子任务4 发布: git add + commit（同一轮两个调用）→ git tag
+//	子任务2 实施: shell(go run hello.go) 实际运行程序
+//	子任务3 测试: shell(git status)
+//	子任务4 审查: 无 tool 直接给结论
+//	子任务5 发布: git add + commit（同一轮两个调用）→ git tag
 //	每个子任务完成路径: Reflector.Critique（low → 不改写）
 func TestCodingPipeline_EndToEnd(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
@@ -120,9 +122,9 @@ func TestCodingPipeline_EndToEnd(t *testing.T) {
 	initGitRepo(t, workdir)
 
 	mock := llm.NewMockLLM(t)
-	mock.WithResponse(pipelinePlan) // 根任务 Planning：分解为 4 个子任务
+	mock.WithResponse(pipelinePlan) // 根任务 Planning：分解为 5 个子任务
 
-	fileContent := "package main\n\nfunc main() {}\n"
+	fileContent := "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello from AgentPrimordia coding harness!\")\n}\n"
 
 	// 子任务1：编写（filesystem 写文件）
 	scriptSubtask(mock, "已创建 hello.go", [][]llm.FunctionCall{{
@@ -133,7 +135,16 @@ func TestCodingPipeline_EndToEnd(t *testing.T) {
 		},
 	}})
 
-	// 子任务2：测试（shell 检查工作区）
+	// 子任务2：实施（shell 实际运行程序，验证可执行）
+	scriptSubtask(mock, "运行成功：Hello from AgentPrimordia coding harness!", [][]llm.FunctionCall{{
+		{
+			ID:        "call_run",
+			Name:      "shell",
+			Arguments: `{"action": "execute", "command": "go run hello.go", "workdir": ` + mustJSONString(workdir) + `}`,
+		},
+	}})
+
+	// 子任务3：测试（shell 检查工作区）
 	scriptSubtask(mock, "工作区检查通过", [][]llm.FunctionCall{{
 		{
 			ID:        "call_check",
@@ -142,10 +153,10 @@ func TestCodingPipeline_EndToEnd(t *testing.T) {
 		},
 	}})
 
-	// 子任务3：审查（无 tool，直接结论）
+	// 子任务4：审查（无 tool，直接结论）
 	scriptSubtask(mock, "审查通过：代码结构清晰", nil)
 
-	// 子任务4：发布（git add+commit 同轮双调用，再 tag）
+	// 子任务5：发布（git add+commit 同轮双调用，再 tag）
 	scriptSubtask(mock, "发布完成：v1.0.0", [][]llm.FunctionCall{
 		{
 			{
@@ -219,6 +230,17 @@ func TestCodingPipeline_EndToEnd(t *testing.T) {
 		t.Errorf("hello.go 内容 = %q, want %q", string(got), fileContent)
 	}
 
+	// 实施环节：程序真实可执行且输出符合预期
+	run := exec.Command("go", "run", "hello.go")
+	run.Dir = workdir
+	out, err := run.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go run hello.go 失败: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "Hello from AgentPrimordia coding harness!") {
+		t.Errorf("go run 输出 = %q, want 包含 Hello from AgentPrimordia coding harness!", string(out))
+	}
+
 	// 发布环节：提交与标签进入仓库
 	if log := gitOutput(t, workdir, "log", "--oneline"); !strings.Contains(log, "feat: add hello.go") {
 		t.Errorf("git log 缺少提交, got: %s", log)
@@ -227,8 +249,8 @@ func TestCodingPipeline_EndToEnd(t *testing.T) {
 		t.Errorf("git tag 缺少 v1.0.0, got: %s", tags)
 	}
 
-	// 指标：共执行 5 次 tool 调用（write/check/add/commit/tag）
-	if resp.Metrics.TotalTools != 5 {
-		t.Errorf("TotalTools = %d, want 5", resp.Metrics.TotalTools)
+	// 指标：共执行 6 次 tool 调用（write/run/check/add/commit/tag）
+	if resp.Metrics.TotalTools != 6 {
+		t.Errorf("TotalTools = %d, want 6", resp.Metrics.TotalTools)
 	}
 }

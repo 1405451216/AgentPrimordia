@@ -1,5 +1,5 @@
 // coding-agent 演示 AgentPrimordia 的一体化 coding harness：
-// 计划(Plan) → 编写(Write) → 测试(Test) → 审查(Review) → 发布(Release)
+// 计划(Plan) → 编写(Write) → 实施(Run) → 测试(Test) → 审查(Review) → 发布(Release)
 // 全流程由单个 Agent 端到端打通，无需人工接力。
 //
 // 运行（使用 DemoLLM 脚本化演示，无需 API Key）：
@@ -33,12 +33,13 @@ import (
 )
 
 // 计划协议：JSON 数组 [{id, description, depends_on}]。
-// 根计划分解为 编写→测试→审查→发布 依赖链。
+// 根计划分解为 编写→实施→测试→审查→发布 依赖链。
 const pipelinePlan = `[
   {"id": "1", "description": "编写：创建 hello.go 文件", "depends_on": []},
-  {"id": "2", "description": "测试：检查工作区确认文件已生成", "depends_on": ["1"]},
-  {"id": "3", "description": "审查：评估代码质量并给出结论", "depends_on": ["2"]},
-  {"id": "4", "description": "发布：git 提交并打标签 v1.0.0", "depends_on": ["3"]}
+  {"id": "2", "description": "实施：运行 go run hello.go 验证可执行", "depends_on": ["1"]},
+  {"id": "3", "description": "测试：检查工作区确认文件已生成", "depends_on": ["2"]},
+  {"id": "4", "description": "审查：评估代码质量并给出结论", "depends_on": ["3"]},
+  {"id": "5", "description": "发布：git 提交并打标签 v1.0.0", "depends_on": ["4"]}
 ]`
 
 // 子任务再次进入 runLoop 时的计划应答：仅 1 个子任务 → 引擎降级为普通 ReAct 循环，
@@ -103,10 +104,10 @@ func main() {
 		log.Fatalf("创建 Agent 失败: %v", err)
 	}
 
-	fmt.Println("目标: 创建 hello.go，验证工作区，审查代码，然后提交并打标签 v1.0.0")
+	fmt.Println("目标: 创建 hello.go，运行验证，检查工作区，审查代码，然后提交并打标签 v1.0.0")
 	fmt.Println()
 
-	resp, err := agent.Run(ctx, ap.UserMessage("创建 hello.go，验证工作区，审查代码，然后提交并打标签 v1.0.0"))
+	resp, err := agent.Run(ctx, ap.UserMessage("创建 hello.go，运行验证可执行，检查工作区，审查代码，然后提交并打标签 v1.0.0"))
 	if err != nil {
 		log.Fatalf("Agent 运行失败: %v", err)
 	}
@@ -121,6 +122,15 @@ func main() {
 	}
 	fmt.Println("产物 hello.go:")
 	fmt.Println(strings.TrimSpace(string(content)))
+
+	// 实施环节校验：程序真实可运行
+	run := exec.Command("go", "run", "hello.go")
+	run.Dir = workdir
+	if out, err := run.CombinedOutput(); err != nil {
+		log.Fatalf("go run hello.go 失败: %v\n%s", err, out)
+	} else {
+		fmt.Printf("\ngo run 输出: %s", strings.TrimSpace(string(out)))
+	}
 
 	fmt.Printf("\ngit log: %s\n", strings.TrimSpace(runGit(workdir, "log", "--oneline")))
 	fmt.Printf("git tag: %s\n", strings.TrimSpace(runGit(workdir, "tag", "-l")))
@@ -149,7 +159,7 @@ func jsonString(s string) string {
 //   - CallTools 队列：若干 tool 调用轮 + 末尾空响应（回退 Complete 给出结论）
 func scriptLLM(workdir string) *demo.DemoLLM {
 	d := demo.NewDemoLLM()
-	d.WithResponse(pipelinePlan) // 根任务 Planning：分解为 4 个子任务
+	d.WithResponse(pipelinePlan) // 根任务 Planning：分解为 5 个子任务
 
 	fileContent := "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello from AgentPrimordia coding harness!\")\n}\n"
 
@@ -159,16 +169,22 @@ func scriptLLM(workdir string) *demo.DemoLLM {
 			Arguments: `{"action": "write", "path": "hello.go", "content": ` + jsonString(fileContent) + `}`},
 	}})
 
-	// 子任务2：测试（shell 校验工作区）
+	// 子任务2：实施（shell 实际运行程序）
+	subtask(d, "运行成功：Hello from AgentPrimordia coding harness!", [][]llm.FunctionCall{{
+		{ID: "call_run", Name: "shell",
+			Arguments: `{"action": "execute", "command": "go run hello.go", "workdir": ` + jsonString(workdir) + `}`},
+	}})
+
+	// 子任务3：测试（shell 校验工作区）
 	subtask(d, "工作区检查通过：hello.go 已生成", [][]llm.FunctionCall{{
 		{ID: "call_check", Name: "shell",
 			Arguments: `{"action": "execute", "command": "git status --short", "workdir": ` + jsonString(workdir) + `}`},
 	}})
 
-	// 子任务3：审查（纯推理，无工具）
+	// 子任务4：审查（纯推理，无工具）
 	subtask(d, "审查通过：代码结构清晰，无高严重度问题", nil)
 
-	// 子任务4：发布（git add+commit 同轮双调用，再 tag）
+	// 子任务5：发布（git add+commit 同轮双调用，再 tag）
 	subtask(d, "发布完成：v1.0.0", [][]llm.FunctionCall{
 		{
 			{ID: "call_add", Name: "git_tool",
