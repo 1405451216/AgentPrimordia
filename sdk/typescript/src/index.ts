@@ -35,12 +35,14 @@ export type {
   InterruptReason, InterruptRequest, InterruptResponse, InterruptHandler, HITLConfig,
   ModelPricing, CostRecord, BudgetConfig, CostSummary,
 } from './agent/request-id.js';
+export { MemoryFailureStore, diagnoseFailure } from './agent/failure.js';
+export type { FailureRecord, FailureStore, FailurePhase, FailureFilter } from './agent/failure.js';
 export { CapabilityAgent, newAgent, NoopTracer } from './agent/capability-agent.js';
 export { AgentTool } from './agent/agent-tool.js';
 export type { AgentToolConfig } from './agent/agent-tool.js';
 export type {
   AgentOption, MemoryCapable, RAGCapable, HookCapable, TraceCapable,
-  CostCapable, CheckpointCapable, HITLCapable, ContextWindowCapable,
+  CostCapable, CheckpointCapable, HITLCapable, ContextWindowCapable, FailureCapable,
   Tracer, Span, SpanKind,
   RAGProvider, RAGDocument as RAGDocCap, RAGMode, RAGConfig,
 } from './agent/capability-agent.js';

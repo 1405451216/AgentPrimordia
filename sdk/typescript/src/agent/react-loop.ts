@@ -11,6 +11,7 @@ import type { EnhancedToolLearner } from './tool-learning.js';
 import type { Planner, SubTask } from './planning.js';
 import type { Reflector, Severity } from './reflection.js';
 import type { GuardrailEngine } from '../security/guardrails.js';
+import type { FailurePhase, FailureRecord, FailureStore } from './failure.js';
 
 // 从拆分模块重新导出，保持向后兼容
 export type { StreamEvent, HookPoint, HookContext, HookFunc } from './hooks.js';
@@ -57,6 +58,8 @@ export interface ReActConfig {
   reflectionSeverityThreshold?: Severity;
   /** 护栏引擎（v3.4-5）：入口对用户输入脱敏/拒绝，LLM 输出逐轮检查（对齐 Go InputGuard/OutputGuard） */
   guardrail?: GuardrailEngine;
+  /** 失败记录存储（v3.4-6d）：运行失败自动落盘完整上下文，支持一键重放（对齐 Go WithFailureStore） */
+  failureStore?: FailureStore;
 }
 
 export type { CapabilitiesCache };
@@ -93,6 +96,10 @@ export class ReActAgent {
   private reflector?: Reflector;
   private reflectionSeverityThreshold: Severity;
   private guardrail?: GuardrailEngine;
+  private failureStore?: FailureStore;
+  private currentTurn = 0;
+  private currentSubtaskId?: string;
+  private failureSeq = 0;
 
   constructor(config: ReActConfig) {
     if (!config.name?.trim()) throw new Error('Agent name is required');
@@ -125,6 +132,7 @@ export class ReActAgent {
     this.reflector = config.reflector;
     this.reflectionSeverityThreshold = config.reflectionSeverityThreshold ?? 'high';
     this.guardrail = config.guardrail;
+    this.failureStore = config.failureStore;
   }
 
   requestGracefulShutdown(): void {
@@ -309,6 +317,8 @@ export class ReActAgent {
       await this.hooks.fireHook('on_error', {
         agentID: this.name, sessionID: this.sessionId, turn: 0, error,
       });
+      // v3.4-6d：失败自动落盘（取消不记录），内嵌最近 checkpoint 供一键重放
+      await this.recordFailure(input, error);
       if (error.name === 'AbortError') {
         return {
           content: 'Agent run cancelled',
@@ -322,6 +332,7 @@ export class ReActAgent {
     } finally {
       await this.flushMemoryWriter();
       this.capCache = null;
+      this.currentSubtaskId = undefined;
     }
   }
 
@@ -334,6 +345,7 @@ export class ReActAgent {
 
     let turn: number;
     for (turn = startTurn; turn < this.maxTurns; turn++) {
+      this.currentTurn = turn;
       this.checkSignal(options?.signal);
       if (this.lifecycle.isStopped()) break;
 
@@ -429,6 +441,8 @@ export class ReActAgent {
         this.checkSignal(options?.signal);
         if (this.lifecycle.isStopped()) break outer;
         task.status = 'running';
+        // v3.4-6d：记录当前子任务，失败时可定位到 plan 阶段的具体子任务
+        this.currentSubtaskId = task.id;
 
         // 组装子任务上下文：依赖结果 + 当前描述
         const context = task.dependsOn
@@ -523,6 +537,46 @@ export class ReActAgent {
     } finally {
       runRelease();
     }
+  }
+
+  // ===== 失败记录与一键重放（v3.4-6d） =====
+
+  /** 失败自动落盘：跳过取消（AbortError）；内嵌最近 checkpoint 供重放（对齐 Go recordFailure） */
+  private async recordFailure(input: string, error: Error): Promise<void> {
+    if (!this.failureStore || error.name === 'AbortError') return;
+    try {
+      let state: Checkpoint | undefined;
+      const cpStore = this.capCache?.checkpointStore;
+      if (cpStore) {
+        const cps = await cpStore.list(this.sessionId);
+        if (cps.length > 0) state = cps[cps.length - 1];
+      }
+      const phase: FailurePhase = this.currentSubtaskId ? 'plan' : 'run';
+      const rec: FailureRecord = {
+        id: `fail-${Date.now()}-${this.failureSeq++}`,
+        agentId: this.name,
+        sessionId: this.sessionId,
+        phase,
+        error: error.message,
+        turn: this.currentTurn,
+        input,
+        createdAt: new Date().toISOString(),
+      };
+      if (this.currentSubtaskId) rec.subtaskId = this.currentSubtaskId;
+      if (state) rec.state = state;
+      await this.failureStore.record(rec);
+    } catch {
+      // 失败记录本身不影响主流程
+    }
+  }
+
+  /** 一键重放：从失败记录内嵌的 checkpoint 恢复运行（对齐 Go ReplayFailure） */
+  async replayFailure(failureID: string, options?: RunOptions): Promise<Response> {
+    if (!this.failureStore) throw new Error('no failure store configured');
+    const rec = await this.failureStore.get(failureID);
+    if (!rec) throw new Error(`failure record not found: ${failureID}`);
+    if (!rec.state) throw new Error(`failure record has no embedded checkpoint: ${failureID}`);
+    return this.resumeFromCheckpoint(rec.state, options);
   }
 
   async *stream(input: string, options?: RunOptions): AsyncIterable<string> {
