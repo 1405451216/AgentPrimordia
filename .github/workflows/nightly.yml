@@ -177,7 +177,7 @@ jobs:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
         run: |
           go test -tags=integration -count=1 -timeout=15m \
-            ./internal/llm/... ./internal/agent/... ./internal/guardrail/... ./pkg/...
+            ./internal/llm/... ./internal/agent/... ./internal/guardrail/... ./internal/eval/... ./pkg/...
 
       - name: Summary
         if: always()
@@ -186,3 +186,62 @@ jobs:
           echo "运行时间: $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
           echo "未配置 API Key 的 Provider 集成测试会跳过（SKIP）；" >> $GITHUB_STEP_SUMMARY
           echo "配置后跑真实调用，401/超时等凭据或服务问题会在此 job 暴露。" >> $GITHUB_STEP_SUMMARY
+
+  # ===== 真实 LLM 跑分门禁（v3.5-2） =====
+  #
+  # 对 60 条真实 harness 基准集跑真实 LLM，产出 成功率/成本/耗时/恢复率 报告。
+  # 版本门禁：通过率 ≥ max(基线, 阈值)，分数只升不降。
+  # 基线文件: agentprimordia/bench/llm-bench/baseline.json（发版时以 --update-baseline 刷新）。
+  # 未配置 OPENAI_API_KEY 时跳过（SKIP），不阻塞其余 nightly job。
+  llm-benchmark:
+    name: LLM Benchmark Gate (v3.5-2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Download dependencies
+        working-directory: agentprimordia
+        run: go mod download
+
+      - name: Run real LLM benchmark (gate vs baseline)
+        id: bench
+        working-directory: agentprimordia
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "::warning::OPENAI_API_KEY 未配置，跳过真实跑分门禁"
+            exit 0
+          fi
+          set +e
+          go run ./bench/llm-bench --provider openai --model gpt-4o-mini \
+            --version nightly --threshold 0.8 --retries 1 \
+            --out llm-bench-report.json 2>&1 | tee llm-bench-log.txt
+          BENCH_EXIT=${PIPESTATUS[0]}
+          set -e
+          echo "bench_exit=$BENCH_EXIT" >> $GITHUB_OUTPUT
+          exit $BENCH_EXIT
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-bench-report
+          path: |
+            agentprimordia/llm-bench-report.json
+            agentprimordia/llm-bench-log.txt
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 真实 LLM 跑分门禁" >> $GITHUB_STEP_SUMMARY
+          if [ -f agentprimordia/llm-bench-report.json ]; then
+            cat agentprimordia/llm-bench-report.json >> $GITHUB_STEP_SUMMARY
+          else
+            echo "未产生报告（无 API Key 或跳过）" >> $GITHUB_STEP_SUMMARY
+          fi

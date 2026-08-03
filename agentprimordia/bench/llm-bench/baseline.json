@@ -1,0 +1,10 @@
+{
+  "version": "seed",
+  "model": "gpt-4o-mini",
+  "provider": "openai",
+  "pass_rate": 0.0,
+  "cost_usd": 0.0,
+  "recovery_rate": 0.0,
+  "updated": "seed-baseline",
+  "_comment": "种子基线：首次 nightly 跑分后以 --update-baseline 覆盖为真实分数。门禁取 max(基线, 阈值)，未覆盖前等价于阈值门禁（默认 0.8）。"
+}
