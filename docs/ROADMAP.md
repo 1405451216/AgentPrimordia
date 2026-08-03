@@ -130,11 +130,11 @@
 
 | # | 任务 | 验收标准 |
 |---|------|---------|
-| 1 | 废弃 API 清理（`NewReActAgent` / `RegisterPProf`，VERSIONING 承诺） | 迁移指南就绪，deprecation 检查 0 残留 |
-| 2 | 契约基线锁定（api-contract 漂移门） | 漂移即失败 |
-| 3 | 兼容性承诺收紧：评审稳定 API 清单，实验性 API 转正/降级并记录 | 稳定 API 列表与实际导出一致 |
-| 4 | 性能大版本（基准对比全量刷新） | 关键路径 P95 达标 |
-| 5 | 发布纪律固化（tag 自动化 CI） | 每次发布自动打 tag |
+| 1 | 废弃 API 清理（`NewReActAgent` / `RegisterPProf`，VERSIONING 承诺） ✅（2026-08-04：移除 `RegisterPProf` 与 A2A JSON-RPC 全部超期导出；`NewReActAgent` 已无实现；新增迁移指南 v4-deprecations.md + 跨平台 deprecation 门（Go 测试 + 强化 bash 脚本）；commit b63aa54） | 迁移指南就绪，deprecation 检查 0 残留 |
+| 2 | 契约基线锁定（api-contract 漂移门） ✅（2026-08-04：`scripts/api-extract/main_test.go` 新增 TestAPIContractNoDrift 本地漂移门（Windows 可跑），与 CI contract-baseline 双保险；漂移即失败含负向验证；commit c40ed42） | 漂移即失败 |
+| 3 | 兼容性承诺收紧：评审稳定 API 清单，实验性 API 转正/降级并记录 ✅（2026-08-04：VERSIONING.md 稳定清单按实际 21 个 Stable/混合模块重写；`pkg/a2a.go` gRPC 转正；新增 `pkg/stability_compliance_test.go` 双向比对门；commit 5d6488c） | 稳定 API 列表与实际导出一致 |
+| 4 | 性能大版本（基准对比全量刷新） ✅（2026-08-04：新增 `bench/suite/p95_latency_test.go` 关键路径 P50/P95/P99 延迟分布；新建 2026-Q4.json 基线；bench-regression-check 切新基线 + P95 回归门；实测 AgentRun P95 10.8µs / ToolCall 11.0µs / MemorySearch 46.3µs；commit bec048c） | 关键路径 P95 达标 |
+| 5 | 发布纪律固化（tag 自动化 CI） ✅（2026-08-04：新增 `.github/workflows/tag-release.yml` 合并 main 自动打 tag；`pkg/version_gate_test.go` 版本一致性门；版本 bump 4.0.0 全线对齐；commit 2229ece） | 每次发布自动打 tag |
 
 ---
 
