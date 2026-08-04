@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -161,11 +162,21 @@ func parseECPublicKey(pemData string) (*ecdsa.PublicKey, error) {
 
 // InstallResult 远程安装结果。
 type InstallResult struct {
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	ImportPath string `json:"import_path"`
+	Name         string `json:"name"`
+	Version      string `json:"version"`
+	ImportPath   string `json:"import_path"`
 	ArtifactPath string `json:"artifact_path"`
-	Verified  bool   `json:"verified"`
+	Verified     bool   `json:"verified"`
+}
+
+// validatePathComponent 校验用于拼接本地路径的远程字段，防止路径穿越
+// （如 Name="../../evil" 将 artifact 写到 outDir 之外）。
+func validatePathComponent(s, field string) error {
+	if s == "" || s != filepath.Base(s) || strings.Contains(s, "..") ||
+		strings.ContainsAny(s, "/\\") {
+		return fmt.Errorf("marketplace: unsafe %s: %q", field, s)
+	}
+	return nil
 }
 
 // Installer 远程安装器。
@@ -210,6 +221,13 @@ func (i *Installer) FetchManifest(ctx context.Context, url string) (*Manifest, e
 func (i *Installer) Install(ctx context.Context, m *Manifest, outDir string) (*InstallResult, error) {
 	if m == nil {
 		return nil, fmt.Errorf("marketplace: nil manifest")
+	}
+	// 先校验远程字段，防止路径穿越写入 outDir 之外
+	if err := validatePathComponent(m.Name, "name"); err != nil {
+		return nil, err
+	}
+	if err := validatePathComponent(m.Version, "version"); err != nil {
+		return nil, err
 	}
 
 	// 拉取 artifact

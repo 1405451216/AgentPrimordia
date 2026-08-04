@@ -141,14 +141,19 @@ for key in "${!BASELINES[@]}"; do
   baseline="${BASELINES[$key]}"
   label="${LABELS[$key]:-$key}"
 
-  # Find matching current result (exact or prefix match)
+  # Find matching current result：先精确匹配，再前缀匹配
+  # （避免父 key 因迭代顺序误命中子 key，如 BenchmarkP95AgentRun 误取 p95 子项）
   current_val=""
-  for bench_key in "${!CURRENT[@]}"; do
-    if [ "$bench_key" = "$key" ] || [[ "$bench_key" == "$key/"* ]]; then
-      current_val="${CURRENT[$bench_key]}"
-      break
-    fi
-  done
+  if [ -n "${CURRENT[$key]:-}" ]; then
+    current_val="${CURRENT[$key]}"
+  else
+    for bench_key in "${!CURRENT[@]}"; do
+      if [[ "$bench_key" == "$key/"* ]]; then
+        current_val="${CURRENT[$bench_key]}"
+        break
+      fi
+    done
+  fi
 
   if [ -z "$current_val" ]; then
     printf "%-40s %12s %12s %10s %s\n" "$label" "$baseline" "N/A" "-" "MISSING"

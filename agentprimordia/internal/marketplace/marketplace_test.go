@@ -118,12 +118,12 @@ func TestInstaller_RemoteInstall(t *testing.T) {
 
 	// manifest 服务器
 	manifest := Manifest{
-		Name:       "http-plugin",
-		Version:    "1.0.0",
-		ImportPath: "github.com/example/ap-plugin-http",
+		Name:        "http-plugin",
+		Version:     "1.0.0",
+		ImportPath:  "github.com/example/ap-plugin-http",
 		ArtifactURL: artSrv.URL + "/artifact.tar.gz",
-		Signature:  sig,
-		PublicKey:  pubPEM,
+		Signature:   sig,
+		PublicKey:   pubPEM,
 	}
 	manifestData, _ := json.Marshal(manifest)
 	manSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,5 +179,36 @@ func TestInstaller_BadSignatureRejected(t *testing.T) {
 	_, err := installer.Install(context.Background(), &manifest, t.TempDir())
 	if err == nil {
 		t.Fatal("验签失败应拒绝安装")
+	}
+}
+
+// TestInstaller_PathTraversalRejected 远程 Name/Version 含路径穿越时拒绝安装。
+func TestInstaller_PathTraversalRejected(t *testing.T) {
+	cases := []struct {
+		name  string
+		mName string
+		mVer  string
+	}{
+		{"name 含 ..", "../../evil", "1.0.0"},
+		{"version 含 ..", "plugin", "../1.0.0"},
+		{"name 含斜杠", "a/b", "1.0.0"},
+		{"name 含反斜杠", "a\\b", "1.0.0"},
+		{"name 为空", "", "1.0.0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			installer := NewInstaller()
+			manifest := &Manifest{
+				Name:        tc.mName,
+				Version:     tc.mVer,
+				ImportPath:  "github.com/example/ap-plugin-x",
+				ArtifactURL: "http://127.0.0.1:1/a.tar.gz", // 不应真正发起请求
+				Signature:   "x",
+				PublicKey:   "x",
+			}
+			if _, err := installer.Install(context.Background(), manifest, t.TempDir()); err == nil {
+				t.Fatalf("应拒绝不安全的 Name=%q Version=%q", tc.mName, tc.mVer)
+			}
+		})
 	}
 }

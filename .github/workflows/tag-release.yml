@@ -38,7 +38,8 @@ jobs:
         id: latest_tag
         run: |
           # 最新 tag 与源码版本比较（无 tag 时用 0.0.0）
-          LATEST=$(git tag -l 'v*' | sort -V | tail -1 || echo "v0.0.0")
+          LATEST=$(git tag -l 'v*' | sort -V | tail -1)
+          LATEST=${LATEST:-v0.0.0}
           echo "latest_tag=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "最新 tag: ${LATEST}"
 
@@ -49,7 +50,6 @@ jobs:
         run: |
           set -e
           # 比较语义化版本：源码版本 > 最新 tag 版本 才打 tag
-          SOURCE_NORM="${SOURCE_VERSION%.*}.${SOURCE_VERSION##*.}"
           LATEST_NORM="${LATEST_TAG#v}"
           if [ "$LATEST_NORM" = "0.0.0" ]; then
             echo "无既有 tag，创建首个 tag v${SOURCE_VERSION}"
@@ -68,5 +68,5 @@ jobs:
           fi
 
       - name: Notify skipped
-        if: steps.version.outputs.source_version == steps.latest_tag.outputs.latest_tag
+        if: format('v{0}', steps.version.outputs.source_version) == steps.latest_tag.outputs.latest_tag
         run: echo "::notice::源码版本未更新，未自动打 tag（发布纪律：改版本号即触发发布）"
