@@ -9,9 +9,9 @@ export function NotFound() {
   return (
     <div className="panel not-found">
       <h2>页面不存在</h2>
-      <p className="error-msg">你访问的地址不存在，可能已被移动或删除。</p>
+      <p className="not-found-text">你访问的地址不存在，可能已被移动或删除。</p>
       <Link className="btn-secondary not-found-link" to="/">
-        返回 Chaos Lab
+        返回概览
       </Link>
     </div>
   );

@@ -1,0 +1,133 @@
+/**
+ * Studio 首页概览
+ *
+ * 聚合集群健康 / 学习脉动 / 近期实验，作为登录后的第一屏，
+ * 避免用户直接落进最危险的混沌实验页。
+ */
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { ErrorPanel, Staleness } from '../Status';
+import { experimentStatusLabel } from '../labels';
+
+interface ClusterState {
+  nodes: { id: string; status: string; role: string }[];
+  leaderId: string;
+  hashRingSize: number;
+  totalShards: number;
+}
+
+interface LearningStats {
+  totalInteractions: number;
+  totalDistilled: number;
+  totalKnowledgeItems: number;
+}
+
+interface ExperimentRow {
+  experiment: { name: string; status: string; hypothesisValidated: boolean };
+  startTime: string;
+}
+
+export function Overview() {
+  const [cluster, setCluster] = useState<ClusterState | null>(null);
+  const [learning, setLearning] = useState<LearningStats | null>(null);
+  const [experiments, setExperiments] = useState<ExperimentRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+
+  const refresh = async () => {
+    setError(null);
+    try {
+      const [clusterRes, learningRes, expRes] = await Promise.all([
+        fetch('/api/v1/cluster/status'),
+        fetch('/api/v1/learning/stats'),
+        fetch('/api/v1/chaos/experiments'),
+      ]);
+      if (!clusterRes.ok || !learningRes.ok || !expRes.ok) throw new Error('部分接口返回错误');
+      setCluster(await clusterRes.json());
+      setLearning(await learningRes.json());
+      setExperiments(await expRes.json());
+      setLastUpdatedAt(Date.now());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '未知错误');
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    const timer = setInterval(refresh, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const online = cluster?.nodes.filter((n) => n.status === 'online').length ?? 0;
+  const total = cluster?.nodes.length ?? 0;
+  const leader = cluster?.nodes.find((n) => n.id === cluster?.leaderId);
+  const recent = [...experiments].slice(-5).reverse();
+
+  return (
+    <div className="overview-page">
+      {error && (
+        <ErrorPanel message={`刷新失败：${error}`} onRetry={refresh} />
+      )}
+
+      <section className="overview-hero">
+        <h2>系统概览</h2>
+        <p className="overview-sub">集群、学习与实验的实时状态。</p>
+        <div className="overview-grid">
+          <div className="overview-card">
+            <span className="overview-card-label">在线节点</span>
+            <span className="overview-card-value">{total > 0 ? `${online}/${total}` : '—'}</span>
+            <span className="overview-card-meta">领导者 {leader?.id ?? '选举中...'}</span>
+          </div>
+          <div className="overview-card">
+            <span className="overview-card-label">知识蒸馏</span>
+            <span className="overview-card-value">{learning?.totalDistilled ?? '—'}</span>
+            <span className="overview-card-meta">
+              交互 {learning?.totalInteractions ?? 0} · 库存 {learning?.totalKnowledgeItems ?? 0}
+            </span>
+          </div>
+          <div className="overview-card">
+            <span className="overview-card-label">实验记录</span>
+            <span className="overview-card-value">{experiments.length}</span>
+            <span className="overview-card-meta">最近运行见下方</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="overview-panel">
+        <div className="overview-panel-header">
+          <h3>近期实验</h3>
+          <Staleness lastUpdatedAt={lastUpdatedAt} />
+        </div>
+        {experiments.length === 0 ? (
+          <p className="empty">暂无实验记录</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>状态</th>
+                <th>假设验证</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map((r, i) => (
+                <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
+                  <td>{r.experiment.name}</td>
+                  <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
+                  <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>
+                  <td>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="overview-actions">
+        <Link className="btn-secondary overview-action" to="/chaos">前往混沌实验</Link>
+        <Link className="btn-secondary overview-action" to="/cluster">查看集群</Link>
+      </section>
+    </div>
+  );
+}
