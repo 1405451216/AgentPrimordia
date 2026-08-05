@@ -19,6 +19,7 @@ func (h *StudioHandler) registerRoutes() {
 	// Learning Monitor
 	h.mux.HandleFunc("GET /api/v1/learning/stats", h.learningStats)
 	h.mux.HandleFunc("GET /api/v1/learning/capabilities", h.learningCapabilities)
+	h.mux.HandleFunc("GET /api/v1/learning/capability-history", h.learningCapabilityHistory)
 	h.mux.HandleFunc("GET /api/v1/learning/pipeline/stats", h.learningPipelineStats)
 	// Marketplace
 	h.mux.HandleFunc("GET /api/v1/marketplace/templates", h.marketplaceTemplates)
@@ -135,6 +136,20 @@ func (h *StudioHandler) learningPipelineStats(w http.ResponseWriter, r *http.Req
 		return
 	}
 	writeJSON(w, http.StatusOK, stats)
+}
+
+func (h *StudioHandler) learningCapabilityHistory(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	history, err := h.learning.CapabilityHistory(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if history == nil {
+		history = []CapabilityHistory{}
+	}
+	writeJSON(w, http.StatusOK, history)
 }
 
 // ===== Marketplace =====

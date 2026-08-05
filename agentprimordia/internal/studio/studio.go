@@ -61,6 +61,7 @@ type NodeInfo struct {
 	Status       string   `json:"status"` // online | offline | leaving
 	Capabilities []string `json:"capabilities"`
 	LastSeen     string   `json:"lastSeen"`
+	Shards       int      `json:"shards"` // 该节点持有的分片数
 }
 
 // ClusterStatus 集群状态快照。
@@ -76,6 +77,18 @@ type LearningStats struct {
 	TotalInteractions   int `json:"totalInteractions"`
 	TotalDistilled      int `json:"totalDistilled"`
 	TotalKnowledgeItems int `json:"totalKnowledgeItems"`
+}
+
+// CapabilityHistoryPoint 能力分数时间点。
+type CapabilityHistoryPoint struct {
+	Score     float64 `json:"score"`
+	RecordedAt string `json:"recordedAt"`
+}
+
+// CapabilityHistory 单个能力的历史分数序列。
+type CapabilityHistory struct {
+	Name    string                   `json:"name"`
+	History []CapabilityHistoryPoint `json:"history"`
 }
 
 // Capability 能力进化条目。
@@ -151,6 +164,7 @@ type LearningService interface {
 	Stats(ctx context.Context) (*LearningStats, error)
 	Capabilities(ctx context.Context) ([]Capability, error)
 	PipelineStats(ctx context.Context) (*PipelineStats, error)
+	CapabilityHistory(ctx context.Context) ([]CapabilityHistory, error)
 }
 
 // MarketplaceService 模板市场服务。
