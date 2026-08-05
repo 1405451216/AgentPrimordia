@@ -10,6 +10,7 @@
  *  - 实验历史区分 加载/空/错误 三种状态
  */
 import { useState, useEffect } from 'react';
+import { ErrorPanel, SuccessBanner } from '../Status';
 
 interface Experiment {
   name: string;
@@ -97,13 +98,12 @@ export function ChaosLab() {
       <section className="create-experiment">
         <h3>新建实验</h3>
         {submitError && (
-          <p className="error-msg" role="alert">提交失败：{submitError}</p>
+          <ErrorPanel message={`提交失败：${submitError}`} />
         )}
         {submittedName && (
-          <div className="success-banner" role="status">
-            <span>实验「{submittedName}」已提交</span>
-            <button className="banner-close" onClick={() => setSubmittedName(null)} aria-label="关闭">✕</button>
-          </div>
+          <SuccessBanner onDismiss={() => setSubmittedName(null)}>
+            实验「{submittedName}」已提交
+          </SuccessBanner>
         )}
         <div className="form-row">
           <input
@@ -137,10 +137,7 @@ export function ChaosLab() {
       <section className="experiment-list">
         <h3>实验历史</h3>
         {fetchError ? (
-          <div className="error-panel" role="alert">
-            <p className="error-msg">加载失败：{fetchError}</p>
-            <button className="btn-secondary" onClick={fetchExperiments}>重试</button>
-          </div>
+          <ErrorPanel message={`加载失败：${fetchError}`} onRetry={fetchExperiments} />
         ) : loading ? (
           <div className="skeleton-list" aria-busy="true">
             <div className="skeleton-row" />
@@ -162,7 +159,7 @@ export function ChaosLab() {
             </thead>
             <tbody>
               {experiments.map((r, i) => (
-                <tr key={r.experiment.name || i}>
+                <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
                   <td>{r.experiment.name}</td>
                   <td><span className={`status-${r.experiment.status}`}>{r.experiment.status}</span></td>
                   <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>

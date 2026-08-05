@@ -5,6 +5,7 @@
  *   /cluster           Cluster Dashboard（集群拓扑）
  *   /learning          Learning Monitor（知识蒸馏监控）
  *   /marketplace       Agent Marketplace（模板市场）
+ *   /*                  NotFound（未知路径）
  */
 import { Route, Routes } from 'react-router-dom';
 
@@ -13,6 +14,7 @@ import { ChaosLab } from './pages/ChaosLab';
 import { ClusterDashboard } from './pages/ClusterDashboard';
 import { LearningMonitor } from './pages/LearningMonitor';
 import { MarketplacePage } from './pages/MarketplacePage';
+import { NotFound } from './pages/NotFound';
 
 export default function StudioApp() {
   return (
@@ -22,7 +24,7 @@ export default function StudioApp() {
         <Route path="cluster" element={<ClusterDashboard />} />
         <Route path="learning" element={<LearningMonitor />} />
         <Route path="marketplace" element={<MarketplacePage />} />
-        <Route path="*" element={<ChaosLab />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );

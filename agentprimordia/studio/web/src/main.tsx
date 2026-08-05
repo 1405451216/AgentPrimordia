@@ -8,14 +8,17 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 
 import StudioApp from './router';
+import { ErrorBoundary } from './ErrorBoundary';
 import './styles.css';
 
 const root = createRoot(document.getElementById('root')!);
 
 root.render(
   <StrictMode>
-    <BrowserRouter>
-      <StudioApp />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <StudioApp />
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>,
 );

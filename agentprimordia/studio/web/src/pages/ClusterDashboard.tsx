@@ -8,6 +8,7 @@
  *  - 「上次刷新」陈旧提示
  */
 import { useState, useEffect } from 'react';
+import { ErrorPanel, Staleness } from '../Status';
 
 interface NodeInfo {
   id: string;
@@ -60,10 +61,7 @@ export function ClusterDashboard() {
       return (
         <div className="panel error">
           <h2>Cluster Dashboard</h2>
-          <div className="error-panel" role="alert">
-            <p className="error-msg">无法连接集群: {error}</p>
-            <button className="btn-secondary" onClick={fetchCluster}>重试</button>
-          </div>
+          <ErrorPanel message={`无法连接集群: ${error}`} onRetry={fetchCluster} />
         </div>
       );
     }
@@ -79,10 +77,7 @@ export function ClusterDashboard() {
 
       {/* 轮询失败提示：保留旧数据，仅提示刷新失败 */}
       {error && (
-        <div className="error-panel" role="alert">
-          <p className="error-msg">刷新失败：{error}（显示上次数据）</p>
-          <button className="btn-secondary" onClick={fetchCluster}>重试</button>
-        </div>
+        <ErrorPanel message={`刷新失败：${error}（显示上次数据）`} onRetry={fetchCluster} />
       )}
 
       {/* 概览 */}
@@ -155,14 +150,7 @@ export function ClusterDashboard() {
       </section>
 
       <footer className="dashboard-footer">
-        <span
-          className={`staleness${lastUpdatedAt && Date.now() - lastUpdatedAt > 30000 ? ' stale' : ''}`}
-          title="数据最后刷新时间"
-        >
-          {lastUpdatedAt
-            ? `上次刷新 ${Math.max(0, Math.round((Date.now() - lastUpdatedAt) / 1000))} 秒前`
-            : '尚未刷新'}
-        </span>
+        <Staleness lastUpdatedAt={lastUpdatedAt} />
         <button onClick={fetchCluster} disabled={refreshing}>
           {refreshing ? '刷新中...' : '刷新'}
         </button>

@@ -6,10 +6,11 @@
  * 加固点：
  *  - deploy 检查 res.ok，失败展示错误横幅
  *  - 部署成功展示成功横幅
- *  - 搜索输入 300ms 防抖，避免每次按键全量请求
+ *  - 搜索输入 300ms 防抖（清空即重置），AbortController 防乱序覆盖
  *  - 加载/空/错误 状态区分（骨架屏）
  */
 import { useState, useEffect, useRef } from 'react';
+import { ErrorPanel, SuccessBanner } from '../Status';
 
 interface AgentTemplate {
   id: string;
@@ -32,34 +33,43 @@ export function MarketplacePage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const debounceRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = async (overrides?: { q?: string; cat?: string }) => {
+    const q = overrides?.q ?? query;
+    const cat = overrides?.cat ?? category;
+    // 中止上一次未完成的请求，避免乱序响应覆盖新结果
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     setFetchError(null);
     try {
       const params = new URLSearchParams();
-      if (query) params.set('q', query);
-      if (category) params.set('category', category);
-      const res = await fetch(`/api/v1/marketplace/templates?${params}`);
+      if (q) params.set('q', q);
+      if (cat) params.set('category', cat);
+      const res = await fetch(`/api/v1/marketplace/templates?${params}`, { signal: controller.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setTemplates(await res.json());
     } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return; // 被新请求取代，静默
       setFetchError(e instanceof Error ? e.message : '未知错误');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchTemplates(); }, [category]);
+  useEffect(() => { fetchTemplates({ q: '', cat: category }); }, [category]);
 
-  // 搜索输入防抖：停止输入 300ms 后再请求
+  // 搜索输入防抖：停止输入 300ms 后再请求；清空输入=重置为全量列表
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      if (query) fetchTemplates();
+      fetchTemplates({ q: query, cat: category });
     }, 300);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
     };
   }, [query]);
 
@@ -99,31 +109,24 @@ export function MarketplacePage() {
           <option value="">全部分类</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <button onClick={fetchTemplates}>搜索</button>
+        <button onClick={() => fetchTemplates()}>搜索</button>
       </section>
 
       {/* 操作反馈横幅 */}
       {notice && (
         notice.kind === 'success' ? (
-          <div className="success-banner" role="status">
-            <span>{notice.text}</span>
-            <button className="banner-close" onClick={() => setNotice(null)} aria-label="关闭">✕</button>
-          </div>
+          <SuccessBanner onDismiss={() => setNotice(null)}>
+            {notice.text}
+          </SuccessBanner>
         ) : (
-          <div className="error-panel" role="alert">
-            <p className="error-msg">{notice.text}</p>
-            <button className="btn-secondary" onClick={() => setNotice(null)}>关闭</button>
-          </div>
+          <ErrorPanel message={notice.text} onDismiss={() => setNotice(null)} />
         )
       )}
 
       {/* 模板网格 */}
       <section className="template-grid">
         {fetchError ? (
-          <div className="error-panel" role="alert">
-            <p className="error-msg">加载失败：{fetchError}</p>
-            <button className="btn-secondary" onClick={fetchTemplates}>重试</button>
-          </div>
+          <ErrorPanel message={`加载失败：${fetchError}`} onRetry={() => fetchTemplates()} />
         ) : loading ? (
           <div className="skeleton-list" aria-busy="true">
             <div className="skeleton-row" />

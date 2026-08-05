@@ -9,6 +9,7 @@
  *  - 「上次刷新」陈旧提示
  */
 import { useState, useEffect } from 'react';
+import { ErrorPanel, Staleness } from '../Status';
 
 interface DistillerStats {
   totalInteractions: number;
@@ -88,10 +89,7 @@ export function LearningMonitor() {
       <h2>Learning Monitor</h2>
 
       {error && (
-        <div className="error-panel" role="alert">
-          <p className="error-msg">刷新失败：{error}</p>
-          <button className="btn-secondary" onClick={refresh}>重试</button>
-        </div>
+        <ErrorPanel message={`刷新失败：${error}`} onRetry={refresh} />
       )}
 
       {/* 蒸馏统计 */}
@@ -165,14 +163,7 @@ export function LearningMonitor() {
       </section>
 
       <footer className="dashboard-footer">
-        <span
-          className={`staleness${lastUpdatedAt && Date.now() - lastUpdatedAt > 30000 ? ' stale' : ''}`}
-          title="数据最后刷新时间"
-        >
-          {lastUpdatedAt
-            ? `上次刷新 ${Math.max(0, Math.round((Date.now() - lastUpdatedAt) / 1000))} 秒前`
-            : '尚未刷新'}
-        </span>
+        <Staleness lastUpdatedAt={lastUpdatedAt} />
       </footer>
     </div>
   );

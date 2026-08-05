@@ -8,18 +8,23 @@ import type { ReactNode } from 'react';
 interface ErrorPanelProps {
   message: string;
   onRetry?: () => void;
+  onDismiss?: () => void;
 }
 
-/** 内联错误面板：展示错误信息并提供重试入口 */
-export function ErrorPanel({ message, onRetry }: ErrorPanelProps) {
+/** 内联错误面板：展示错误信息，并提供重试或关闭入口 */
+export function ErrorPanel({ message, onRetry, onDismiss }: ErrorPanelProps) {
   return (
     <div className="error-panel" role="alert">
       <p className="error-msg">{message}</p>
-      {onRetry && (
+      {onRetry ? (
         <button className="btn-secondary" onClick={onRetry}>
           重试
         </button>
-      )}
+      ) : onDismiss ? (
+        <button className="btn-secondary" onClick={onDismiss}>
+          关闭
+        </button>
+      ) : null}
     </div>
   );
 }

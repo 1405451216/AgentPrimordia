@@ -611,3 +611,12 @@ a:focus-visible {
   justify-content: flex-end;
   gap: 10px;
 }
+
+/* ---------- 404 页 ---------- */
+.not-found-link {
+  display: inline-block;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+}

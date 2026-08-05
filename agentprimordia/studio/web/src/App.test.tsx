@@ -102,4 +102,12 @@ describe('Studio App 壳层', () => {
       await screen.findByRole('heading', { name: 'Cluster Dashboard' }),
     ).toBeInTheDocument();
   });
+
+  it('访问未知路径时渲染 NotFound 页面', async () => {
+    renderStudio('/definitely-not-a-route');
+    expect(
+      await screen.findByRole('heading', { name: '页面不存在' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/返回 Chaos Lab/)).toBeInTheDocument();
+  });
 });
