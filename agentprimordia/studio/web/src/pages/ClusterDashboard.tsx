@@ -21,6 +21,7 @@ interface NodeInfo {
   status: 'online' | 'offline' | 'leaving';
   capabilities: string[];
   lastSeen: string;
+  shards?: number;
 }
 
 interface ClusterState {
@@ -180,21 +181,25 @@ export function ClusterDashboard() {
 
       {/* 分片视图 */}
       <section className="shard-view">
-        <h3>分片分布</h3>
+        <h3>分片分布（共 {cluster.totalShards} 片）</h3>
         {onlineNodes.length === 0 ? (
           <p className="empty">暂无在线节点</p>
         ) : (
           <div className="shard-bar" role="img" aria-label="分片分布">
-            {onlineNodes.map((node, i) => (
-              <div
-                key={node.id}
-                className="shard-segment"
-                style={{ flex: 1, backgroundColor: `var(--shard-${i % 6})` }}
-                title={`${node.id}: ${Math.round(100 / onlineNodes.length)}%`}
-              >
-                {node.id}
-              </div>
-            ))}
+            {onlineNodes.map((node, i) => {
+              const shards = node.shards ?? 0;
+              const pct = shards > 0 ? Math.round((shards / cluster.totalShards) * 1000) / 10 : 0;
+              return (
+                <div
+                  key={node.id}
+                  className="shard-segment"
+                  style={{ flex: `${shards} ${shards} auto`, backgroundColor: `var(--shard-${i % 6})` }}
+                  title={`${node.id}: ${pct}%（${shards}/${cluster.totalShards} 片）`}
+                >
+                  {node.id}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

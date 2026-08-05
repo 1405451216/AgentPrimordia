@@ -14,8 +14,8 @@ import { ClusterDashboard } from './ClusterDashboard';
 
 const OFFLINE_CLUSTER = {
   nodes: [
-    { id: 'node-a', address: '1', role: 'leader', status: 'online', capabilities: [], lastSeen: new Date().toISOString() },
-    { id: 'node-b', address: '2', role: 'follower', status: 'offline', capabilities: [], lastSeen: new Date().toISOString() },
+    { id: 'node-a', address: '1', role: 'leader', status: 'online', capabilities: [], lastSeen: new Date().toISOString(), shards: 5 },
+    { id: 'node-b', address: '2', role: 'follower', status: 'offline', capabilities: [], lastSeen: new Date().toISOString(), shards: 3 },
   ],
   leaderId: 'node-a',
   hashRingSize: 128,
@@ -24,7 +24,7 @@ const OFFLINE_CLUSTER = {
 
 const ONLINE_CLUSTER = {
   nodes: [
-    { id: 'node-a', address: '1', role: 'leader', status: 'online', capabilities: [], lastSeen: new Date().toISOString() },
+    { id: 'node-a', address: '1', role: 'leader', status: 'online', capabilities: [], lastSeen: new Date().toISOString(), shards: 8 },
   ],
   leaderId: 'node-a',
   hashRingSize: 128,
@@ -93,5 +93,15 @@ describe('Cluster Dashboard 告警与排序', () => {
     await user.click(screen.getByRole('button', { name: /状态/ }));
     const rows = screen.getAllByRole('row');
     expect(rows[1]).toHaveTextContent('a-node');
+  });
+
+  it('分片视图按节点 shards 比例渲染并标注总量', async () => {
+    render(<ClusterDashboard />);
+
+    // 等待节点渲染，确认分片标题包含总量
+    expect(await screen.findByText(/分片分布（共 8 片）/)).toBeInTheDocument();
+    // 单节点 8 片 → 该节点 title 显示 8/8
+    const segment = document.querySelector('.shard-segment');
+    expect(segment?.getAttribute('title')).toContain('8/8');
   });
 });

@@ -11,6 +11,7 @@
 import { useState, useEffect } from 'react';
 import { ErrorPanel, Staleness } from '../Status';
 import { FlashValue } from '../useValueFlash';
+import { Sparkline } from '../Sparkline';
 
 interface DistillerStats {
   totalInteractions: number;
@@ -38,6 +39,8 @@ export function LearningMonitor() {
   const [stats, setStats] = useState<DistillerStats | null>(null);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [pipeline, setPipeline] = useState<PipelineStats | null>(null);
+  // 能力历史分数（趋势线数据）
+  const [history, setHistory] = useState<Record<string, { score: number }[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
@@ -47,28 +50,40 @@ export function LearningMonitor() {
     setLoading(stats === null && pipeline === null && capabilities.length === 0);
     setError(null);
     try {
-      const [statsRes, capRes, pipeRes] = await Promise.all([
+      const [statsRes, capRes, pipeRes, histRes] = await Promise.all([
         fetch('/api/v1/learning/stats'),
         fetch('/api/v1/learning/capabilities'),
         fetch('/api/v1/learning/pipeline/stats'),
+        fetch('/api/v1/learning/capability-history'),
       ]);
       const results = await Promise.all([
         statsRes.ok ? statsRes.json() : Promise.resolve(null),
         capRes.ok ? capRes.json() : Promise.resolve(null),
         pipeRes.ok ? pipeRes.json() : Promise.resolve(null),
+        histRes.ok ? histRes.json() : Promise.resolve(null),
       ]);
-      const [s, c, p] = results;
+      const [s, c, p, h] = results;
       // 逐端点提交成功数据：部分失败时仍保留已成功部分
       if (s !== null) setStats(s);
       if (c !== null) setCapabilities(c);
       if (p !== null) setPipeline(p);
+      if (h !== null && Array.isArray(h)) {
+        // 归并为 name → history 映射，供卡片趋势线查询
+        const map: Record<string, { score: number }[]> = {};
+        for (const item of h) {
+          if (item?.name && Array.isArray(item.history)) {
+            map[item.name] = item.history;
+          }
+        }
+        setHistory(map);
+      }
       // 任一接口成功即视为刷新成功，更新陈旧提示
-      if (s !== null || c !== null || p !== null) {
+      if (s !== null || c !== null || p !== null || h !== null) {
         setLastUpdatedAt(Date.now());
       }
-      if (!statsRes.ok || !capRes.ok || !pipeRes.ok) {
-        const failed = [statsRes, capRes, pipeRes]
-          .map((res, i) => (!res.ok ? ['统计', '能力', '管道'][i] : null))
+      if (!statsRes.ok || !capRes.ok || !pipeRes.ok || !histRes.ok) {
+        const failed = [statsRes, capRes, pipeRes, histRes]
+          .map((res, i) => (!res.ok ? ['统计', '能力', '管道', '趋势'][i] : null))
           .filter(Boolean)
           .join('、');
         setError(`部分接口返回异常（${failed}）`);
@@ -169,6 +184,14 @@ export function LearningMonitor() {
                 <div className="cap-meta">
                   测试 {cap.timesTested} 次 | 通过 {cap.timesPassed} 次
                 </div>
+                {history[cap.name] && history[cap.name].length >= 2 && (
+                  <div className="cap-trend">
+                    <Sparkline data={history[cap.name]} />
+                    <span className="cap-trend-label">
+                      近 {history[cap.name].length} 次评估趋势
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

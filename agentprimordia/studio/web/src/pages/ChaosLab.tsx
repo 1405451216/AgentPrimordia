@@ -145,7 +145,7 @@ export function ChaosLab() {
     }
   };
 
-  // 刷新实验历史：仅在无数据（首次/全空）时显示骨架，避免刷新闪烁
+  // 刷新实验历史：保留旧数据，仅首次/空态显示骨架，避免闪烁
   const refreshExperiments = async () => {
     setFetchError(null);
     try {
@@ -156,6 +156,12 @@ export function ChaosLab() {
       setFetchError(e instanceof Error ? e.message : '未知错误');
     }
   };
+
+  // 轮询实验历史：运行中的实验状态实时可见（5s 周期）
+  useEffect(() => {
+    const timer = setInterval(refreshExperiments, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   const faultLabel = (type: string) => FAULT_TYPES[type]?.label ?? type;
   const isDestructive = (type: string) => FAULT_TYPES[type]?.destructive ?? false;

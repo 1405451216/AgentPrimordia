@@ -167,7 +167,9 @@ export function MarketplacePage() {
     }
   };
 
-  const categories = ['research', 'coding', 'analysis', 'chat', 'automation'];
+  // 分类下拉：内置默认分类 + 从模板数据中出现的分类合并，避免硬编码漂移
+  const DEFAULT_CATEGORIES = ['research', 'coding', 'analysis', 'chat', 'automation'];
+  const categories = Array.from(new Set([...DEFAULT_CATEGORIES, ...templates.map((t) => t.category)])).filter(Boolean);
 
   return (
     <div className="panel marketplace">

@@ -399,6 +399,23 @@ th {
   color: var(--text-dim);
 }
 
+/* 能力趋势线 */
+.cap-trend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cap-trend .sparkline {
+  flex-shrink: 0;
+}
+
+.cap-trend-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 /* ---------- Marketplace ---------- */
 .search-bar {
   display: flex;
@@ -884,6 +901,21 @@ th.sortable {
 @keyframes value-flash {
   0% { background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 0 4px; }
   100% { background: transparent; color: inherit; }
+}
+
+/* 尊重系统「减少动画」设置 */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-row,
+  .skeleton-list,
+  .flash {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 /* ---------- 空状态引导 ---------- */
