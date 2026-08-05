@@ -80,6 +80,26 @@ func TestChaosExperiments_CreateInvalid(t *testing.T) {
 	}
 }
 
+func TestChaosExperiments_Abort(t *testing.T) {
+	h := NewStudioHandler()
+	// 空名称 → 400
+	rec := doJSON(t, h, "POST", "/api/v1/chaos/experiments/abort", `{"name":""}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("空名称 abort 状态码 = %d, want 400", rec.Code)
+	}
+	// 不存在的实验 → 409
+	rec = doJSON(t, h, "POST", "/api/v1/chaos/experiments/abort", `{"name":"不存在"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("不存在实验 abort 状态码 = %d, want 409", rec.Code)
+	}
+	// demo 实验创建后即 completed，无法中止 → 409
+	doJSON(t, h, "POST", "/api/v1/chaos/experiments", `{"name":"已完成实验","faultType":"latency"}`)
+	rec = doJSON(t, h, "POST", "/api/v1/chaos/experiments/abort", `{"name":"已完成实验"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("已完成实验 abort 状态码 = %d, want 409", rec.Code)
+	}
+}
+
 // ===== Cluster Dashboard =====
 
 func TestClusterStatus(t *testing.T) {

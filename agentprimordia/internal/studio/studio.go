@@ -127,6 +127,7 @@ type DeployRequest struct {
 type ChaosService interface {
 	ListExperiments(ctx context.Context) ([]ExperimentResult, error)
 	CreateExperiment(ctx context.Context, req CreateExperimentRequest) error
+	AbortExperiment(ctx context.Context, name string) error
 }
 
 // ClusterService 集群状态服务。

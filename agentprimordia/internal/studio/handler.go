@@ -13,6 +13,7 @@ func (h *StudioHandler) registerRoutes() {
 	// Chaos Lab
 	h.mux.HandleFunc("GET /api/v1/chaos/experiments", h.listExperiments)
 	h.mux.HandleFunc("POST /api/v1/chaos/experiments", h.createExperiment)
+	h.mux.HandleFunc("POST /api/v1/chaos/experiments/abort", h.abortExperiment)
 	// Cluster Dashboard
 	h.mux.HandleFunc("GET /api/v1/cluster/status", h.clusterStatus)
 	// Learning Monitor
@@ -57,6 +58,30 @@ func (h *StudioHandler) createExperiment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "created"})
+}
+
+// AbortRequest POST /api/v1/chaos/experiments/abort 请求体。
+type AbortRequest struct {
+	Name string `json:"name"`
+}
+
+func (h *StudioHandler) abortExperiment(w http.ResponseWriter, r *http.Request) {
+	var req AbortRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "请求体解析失败: " + err.Error()})
+		return
+	}
+	if req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "实验名称不能为空"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := h.chaos.AbortExperiment(ctx, req.Name); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "aborted", "name": req.Name})
 }
 
 // ===== Cluster Dashboard =====

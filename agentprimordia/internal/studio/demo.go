@@ -54,6 +54,24 @@ func (d *demoChaos) CreateExperiment(_ context.Context, req CreateExperimentRequ
 	return nil
 }
 
+// AbortExperiment 中止匹配名称且处于 running/pending 的实验。
+// demo 实现下实验立即完成，故返回 NotFound 语义的错误提示「无运行中实验」。
+func (d *demoChaos) AbortExperiment(_ context.Context, name string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.experiments {
+		if d.experiments[i].Experiment.Name == name {
+			st := d.experiments[i].Experiment.Status
+			if st == "running" || st == "pending" {
+				d.experiments[i].Experiment.Status = "aborted"
+				return nil
+			}
+			return fmt.Errorf("实验 %q 当前状态为 %s，无法中止", name, st)
+		}
+	}
+	return fmt.Errorf("实验 %q 不存在", name)
+}
+
 // ===== demoCluster =====
 
 type demoCluster struct{}
