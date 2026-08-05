@@ -25,6 +25,11 @@ interface LearningStats {
   totalKnowledgeItems: number;
 }
 
+interface Capability {
+  name: string;
+  score: number;
+}
+
 interface ExperimentRow {
   experiment: { name: string; status: string; hypothesisValidated: boolean };
   startTime: string;
@@ -33,6 +38,7 @@ interface ExperimentRow {
 export function Overview() {
   const [cluster, setCluster] = useState<ClusterState | null>(null);
   const [learning, setLearning] = useState<LearningStats | null>(null);
+  const [capabilities, setCapabilities] = useState<Capability[]>([]);
   const [experiments, setExperiments] = useState<ExperimentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
@@ -41,26 +47,29 @@ export function Overview() {
     setError(null);
     try {
       // 逐端点提交成功数据：单个接口失败不拖垮整个概览
-      const [clusterRes, learningRes, expRes] = await Promise.all([
+      const [clusterRes, learningRes, capRes, expRes] = await Promise.all([
         fetch('/api/v1/cluster/status'),
         fetch('/api/v1/learning/stats'),
+        fetch('/api/v1/learning/capabilities'),
         fetch('/api/v1/chaos/experiments'),
       ]);
       const results = await Promise.all([
         clusterRes.ok ? clusterRes.json() : Promise.resolve(null),
         learningRes.ok ? learningRes.json() : Promise.resolve(null),
+        capRes.ok ? capRes.json() : Promise.resolve(null),
         expRes.ok ? expRes.json() : Promise.resolve(null),
       ]);
-      const [c, l, e] = results;
+      const [c, l, caps, e] = results;
       if (c !== null) setCluster(c);
       if (l !== null) setLearning(l);
+      if (caps !== null && Array.isArray(caps)) setCapabilities(caps);
       if (e !== null) setExperiments(e);
-      if (c !== null || l !== null || e !== null) {
+      if (c !== null || l !== null || caps !== null || e !== null) {
         setLastUpdatedAt(Date.now());
       }
-      if (!clusterRes.ok || !learningRes.ok || !expRes.ok) {
-        const failed = [clusterRes, learningRes, expRes]
-          .map((res, i) => (!res.ok ? ['集群', '学习', '实验'][i] : null))
+      if (!clusterRes.ok || !learningRes.ok || !capRes.ok || !expRes.ok) {
+        const failed = [clusterRes, learningRes, capRes, expRes]
+          .map((res, i) => (!res.ok ? ['集群', '学习', '能力', '实验'][i] : null))
           .filter(Boolean)
           .join('、');
         setError(`部分接口返回异常（${failed}）`);
@@ -80,8 +89,10 @@ export function Overview() {
   const total = cluster?.nodes.length ?? 0;
   const leader = cluster?.nodes.find((n) => n.id === cluster?.leaderId);
   const recent = [...experiments].slice(-5).reverse();
-  // 原初体脉搏：能力平均分（无数据时取 0.5 中性值）
-  const pulse = learning ? Math.min(Math.max(learning.totalDistilled / 100, 0.15), 0.95) : 0.5;
+  // 原初体脉搏：真实能力平均分（无数据时取 0.5 中性值）
+  const pulse = capabilities.length > 0
+    ? Math.min(Math.max(capabilities.reduce((s, c) => s + c.score, 0) / capabilities.length, 0.15), 0.95)
+    : 0.5;
 
   return (
     <div className="overview-page">
@@ -92,7 +103,7 @@ export function Overview() {
       <section className="overview-hero">
         <div className="overview-hero-top">
           <div>
-            <PageTitle title="系统概览" />
+            <PageTitle title="系统概览" subtitle="Overview" />
             <p className="overview-sub">集群、学习与实验的实时状态。</p>
           </div>
         </div>

@@ -316,6 +316,21 @@ th {
   font-weight: 600;
 }
 
+/* 节点行状态（配合告警横幅，离线/离开节点一眼可辨） */
+.node-offline td {
+  opacity: 0.55;
+}
+
+.node-leaving td {
+  color: var(--yellow);
+}
+
+.node-leaving .status-badge,
+.node-leaving .node-id,
+.node-leaving .role-leader {
+  color: var(--yellow);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -681,6 +696,12 @@ a:focus-visible {
 .not-found-text {
   color: var(--text-dim);
   margin-bottom: 14px;
+}
+
+.not-found-glyph {
+  color: var(--accent);
+  opacity: 0.4;
+  margin-bottom: 12px;
 }
 
 .not-found-link {
@@ -1224,9 +1245,26 @@ th.has-tip {
   color: var(--text);
 }
 
-/* 尊重系统减少动画：原初体脉搏停止 */
-@media (prefers-reduced-motion: reduce) {
-  .primordium animate {
-    animation: none;
-  }
+/* 原初体脉搏：CSS transform 动画（受全局 prefers-reduced-motion 规则控制） */
+.primordium-pulse {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.pulse-core {
+  animation: primordium-pulse-core 3s ease-in-out infinite;
+}
+
+.pulse-ring {
+  animation: primordium-pulse-ring 3s ease-in-out infinite;
+}
+
+@keyframes primordium-pulse-core {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+}
+
+@keyframes primordium-pulse-ring {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.5); opacity: 0.1; }
 }

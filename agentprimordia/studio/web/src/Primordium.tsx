@@ -87,13 +87,11 @@ export function Primordium({ nodes, pulse = 0.5, size = 220 }: PrimordiumProps) 
         );
       })}
 
-      {/* 中心脉搏：能力平均分 */}
-      <circle cx={cx} cy={cy} r={pulseR} fill="#4f8cff" fillOpacity="0.85">
-        <animate attributeName="r" values={`${pulseR};${pulseR + 4};${pulseR}`} dur="3s" repeatCount="indefinite" />
-      </circle>
-      <circle cx={cx} cy={cy} r={pulseR + 6} fill="none" stroke="#4f8cff" strokeOpacity="0.4" strokeWidth="1">
-        <animate attributeName="r" values={`${pulseR + 6};${pulseR + 12};${pulseR + 6}`} dur="3s" repeatCount="indefinite" />
-      </circle>
+      {/* 中心脉搏：能力平均分（CSS 动画，受 reduced-motion 控制） */}
+      <g className="primordium-pulse">
+        <circle cx={cx} cy={cy} r={pulseR} fill="#4f8cff" fillOpacity="0.85" className="pulse-core" />
+        <circle cx={cx} cy={cy} r={pulseR + 6} fill="none" stroke="#4f8cff" strokeOpacity="0.4" strokeWidth="1" className="pulse-ring" />
+      </g>
     </svg>
   );
 }

@@ -10,7 +10,7 @@
  *  - 实验历史区分 加载/空/错误 三种状态
  */
 import { Fragment, useState, useEffect } from 'react';
-import { ErrorPanel, SuccessBanner } from '../Status';
+import { ErrorPanel, SuccessBanner, Staleness } from '../Status';
 import { experimentStatusLabel, experimentStatusGlyph } from '../labels';
 import { useTableSort, SortableTh } from '../useTableSort';
 import { PageTitle } from '../PageTitle';
@@ -48,6 +48,7 @@ export function ChaosLab() {
   const [running, setRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submittedName, setSubmittedName] = useState<string | null>(null);
   const [newExp, setNewExp] = useState({ name: '', hypothesis: '', faultType: 'latency' });
@@ -68,6 +69,7 @@ export function ChaosLab() {
       const res = await fetch('/api/v1/chaos/experiments');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setExperiments(await res.json());
+      setLastUpdatedAt(Date.now());
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : '未知错误');
     } finally {
@@ -77,8 +79,8 @@ export function ChaosLab() {
 
   useEffect(() => { fetchExperiments(); }, []);
 
-  // 中止运行中的实验
-  const abortExperiment = async (name: string) => {
+  // 中止运行中的实验；返回是否成功（失败时保留对话框展示错误）
+  const abortExperiment = async (name: string): Promise<boolean> => {
     setAbortingName(name);
     try {
       const res = await fetch('/api/v1/chaos/experiments/abort', {
@@ -88,8 +90,10 @@ export function ChaosLab() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await refreshExperiments();
+      return true;
     } catch (e) {
       setAbortError(e instanceof Error ? e.message : '未知错误');
+      return false;
     } finally {
       setAbortingName(null);
     }
@@ -137,6 +141,7 @@ export function ChaosLab() {
       const res = await fetch('/api/v1/chaos/experiments');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setExperiments(await res.json());
+      setLastUpdatedAt(Date.now());
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : '未知错误');
     }
@@ -151,10 +156,13 @@ export function ChaosLab() {
   const faultLabel = (type: string) => FAULT_TYPES[type]?.label ?? type;
   const isDestructive = (type: string) => FAULT_TYPES[type]?.destructive ?? false;
 
-  // 本地表格排序（实验历史）
+  // 本地表格排序（实验历史）；状态按生命周期序而非英文枚举
+  const STATUS_ORDER: Record<string, number> = {
+    pending: 0, running: 1, completed: 2, aborted: 3, failed: 4,
+  };
   const { sortedRows, sort, toggleSort } = useTableSort(experiments, {
     name: (r) => r.experiment.name,
-    status: (r) => r.experiment.status,
+    status: (r) => STATUS_ORDER[r.experiment.status] ?? 99,
     hypothesisValidated: (r) => (r.experiment.hypothesisValidated ? 1 : 0),
     startTime: (r) => r.startTime ?? '',
   });
@@ -166,9 +174,6 @@ export function ChaosLab() {
       {/* 创建实验 */}
       <section className="create-experiment">
         <h3>新建实验</h3>
-        {submitError && (
-          <ErrorPanel message={`提交失败：${submitError}`} />
-        )}
         {submittedName && (
           <SuccessBanner onDismiss={() => setSubmittedName(null)}>
             实验「{submittedName}」已提交
@@ -330,6 +335,10 @@ export function ChaosLab() {
         )}
       </section>
 
+      <footer className="dashboard-footer">
+        <Staleness lastUpdatedAt={lastUpdatedAt} />
+      </footer>
+
       {/* 两步确认对话框 */}
       {confirming && (
         <div className="modal-overlay" onClick={() => !running && runDialog.closeAndRestore()}>
@@ -356,6 +365,9 @@ export function ChaosLab() {
               <dt>假设</dt><dd>{confirming.hypothesis || '（未填写）'}</dd>
               <dt>故障类型</dt><dd>{faultLabel(confirming.faultType)}</dd>
             </dl>
+            {submitError && (
+              <p className="error-msg" role="alert">提交失败：{submitError}</p>
+            )}
             <div className="confirm-actions">
               <button className="btn-secondary" onClick={runDialog.closeAndRestore} disabled={running}>取消</button>
               <button
@@ -396,7 +408,11 @@ export function ChaosLab() {
               <button className="btn-secondary" onClick={abortDialog.closeAndRestore} disabled={abortingName !== null}>取消</button>
               <button
                 className="btn-danger"
-                onClick={() => { const name = confirmingAbort; setConfirmingAbort(null); abortExperiment(name); }}
+                onClick={async () => {
+                  const name = confirmingAbort;
+                  const ok = await abortExperiment(name);
+                  if (ok) setConfirmingAbort(null);
+                }}
                 disabled={abortingName !== null}
               >
                 {abortingName !== null ? '中止中...' : '确认中止'}

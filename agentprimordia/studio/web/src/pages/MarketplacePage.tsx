@@ -38,9 +38,11 @@ interface Deployment {
 }
 
 export function MarketplacePage() {
+  // query/category 从 URL 初始化（?q=&category=），支持跨刷新保留筛选
+  const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('');
+  const [query, setQuery] = useState(urlParams?.get('q') ?? '');
+  const [category, setCategory] = useState(urlParams?.get('category') ?? '');
   const [deploying, setDeploying] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -95,6 +97,15 @@ export function MarketplacePage() {
   };
 
   useEffect(() => { fetchTemplates({ q: '', cat: category }); }, [category]);
+
+  // 筛选变化时写入 URL（不触发导航）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (query) params.set('q', query); else params.delete('q');
+    if (category) params.set('category', category); else params.delete('category');
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [query, category]);
 
   // 搜索输入防抖：停止输入 300ms 后再请求；清空输入=重置为全量列表
   useEffect(() => {
@@ -182,6 +193,15 @@ export function MarketplacePage() {
   // 分类下拉：内置默认分类 + 从模板数据中出现的分类合并，避免硬编码漂移
   const DEFAULT_CATEGORIES = ['research', 'coding', 'analysis', 'chat', 'automation'];
   const categories = Array.from(new Set([...DEFAULT_CATEGORIES, ...templates.map((t) => t.category)])).filter(Boolean);
+  // 分类显示名本地化（避免裸英文破坏中文界面）
+  const CATEGORY_LABELS: Record<string, string> = {
+    research: '研究',
+    coding: '编码',
+    analysis: '分析',
+    chat: '对话',
+    automation: '自动化',
+  };
+  const categoryLabel = (c: string) => CATEGORY_LABELS[c] ?? c;
 
   return (
     <div className="panel marketplace">
@@ -197,7 +217,7 @@ export function MarketplacePage() {
         />
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">全部分类</option>
-          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categories.map((c) => <option key={c} value={c}>{categoryLabel(c)}</option>)}
         </select>
         <button onClick={() => fetchTemplates()}>搜索</button>
       </section>
@@ -295,14 +315,24 @@ export function MarketplacePage() {
             <div className="skeleton-row" />
           </div>
         ) : templates.length === 0 ? (
-          <p className="empty">未找到模板</p>
+          <div className="empty-state">
+            <p className="empty">未找到模板</p>
+            {(query || category) && (
+              <button
+                className="btn-secondary btn-sm empty-reset"
+                onClick={() => { setQuery(''); setCategory(''); }}
+              >
+                清空筛选
+              </button>
+            )}
+          </div>
         ) : (
           templates.map((tmpl) => (
             <div key={tmpl.id} className="template-card">
               <h3>{tmpl.name}</h3>
               <p className="desc">{tmpl.description}</p>
               <div className="meta">
-                <span className="category">{tmpl.category}</span>
+                <span className="category">{categoryLabel(tmpl.category)}</span>
                 <span className="rating"><IconStar size={12} /> {tmpl.rating.toFixed(1)}</span>
                 <span className="downloads"><IconDownload size={12} /> {tmpl.downloads}</span>
               </div>

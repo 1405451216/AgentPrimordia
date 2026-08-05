@@ -66,12 +66,16 @@ export function useConfirmDialog({ open, busy = false, focusTarget, onClose }: C
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      // 关闭后恢复焦点到触发元素
-      if (!open && triggerRef.current) {
-        triggerRef.current.focus();
-      }
     };
   }, [open, busy, focusTarget, onClose]);
+
+  // 独立 effect：对话框关闭（open → false）后恢复焦点到触发元素
+  useEffect(() => {
+    if (!open && triggerRef.current) {
+      triggerRef.current.focus();
+      triggerRef.current = null;
+    }
+  }, [open]);
 
   /** 关闭并恢复焦点 */
   const closeAndRestore = () => {
