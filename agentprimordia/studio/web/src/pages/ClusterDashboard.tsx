@@ -2,6 +2,10 @@
  * Phase 3.4: Studio Web UI — Cluster Dashboard
  *
  * 节点拓扑 + 分片视图 + 领导者状态
+ *
+ * 加固点：
+ *  - 轮询失败时保留旧数据，仅显示内联错误提示
+ *  - 「上次刷新」陈旧提示
  */
 import { useState, useEffect } from 'react';
 
@@ -25,6 +29,7 @@ export function ClusterDashboard() {
   const [cluster, setCluster] = useState<ClusterState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const fetchCluster = async () => {
     setRefreshing(true);
@@ -34,7 +39,9 @@ export function ClusterDashboard() {
       const data = await res.json();
       setCluster(data);
       setError(null);
+      setLastUpdatedAt(Date.now());
     } catch (e) {
+      // 保留旧数据，仅记录错误供顶部提示
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setRefreshing(false);
@@ -47,17 +54,19 @@ export function ClusterDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  if (error) {
-    return (
-      <div className="panel error">
-        <h2>Cluster Dashboard</h2>
-        <p className="error-msg">无法连接集群: {error}</p>
-        <button onClick={fetchCluster}>重试</button>
-      </div>
-    );
-  }
-
+  // 首次加载失败且无数据 → 整页错误
   if (!cluster) {
+    if (error) {
+      return (
+        <div className="panel error">
+          <h2>Cluster Dashboard</h2>
+          <div className="error-panel" role="alert">
+            <p className="error-msg">无法连接集群: {error}</p>
+            <button className="btn-secondary" onClick={fetchCluster}>重试</button>
+          </div>
+        </div>
+      );
+    }
     return <div className="panel loading">加载集群状态...</div>;
   }
 
@@ -67,6 +76,14 @@ export function ClusterDashboard() {
   return (
     <div className="panel cluster-dashboard">
       <h2>Cluster Dashboard</h2>
+
+      {/* 轮询失败提示：保留旧数据，仅提示刷新失败 */}
+      {error && (
+        <div className="error-panel" role="alert">
+          <p className="error-msg">刷新失败：{error}（显示上次数据）</p>
+          <button className="btn-secondary" onClick={fetchCluster}>重试</button>
+        </div>
+      )}
 
       {/* 概览 */}
       <section className="overview">
@@ -113,7 +130,7 @@ export function ClusterDashboard() {
                 <td><span className={`role-${node.role}`}>{node.role}</span></td>
                 <td><span className={`status-${node.status}`}>{node.status}</span></td>
                 <td>{node.capabilities?.join(', ') || '-'}</td>
-                <td>{new Date(node.lastSeen).toLocaleTimeString()}</td>
+                <td>{node.lastSeen ? new Date(node.lastSeen).toLocaleTimeString() : '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -137,7 +154,15 @@ export function ClusterDashboard() {
         </div>
       </section>
 
-      <footer>
+      <footer className="dashboard-footer">
+        <span
+          className={`staleness${lastUpdatedAt && Date.now() - lastUpdatedAt > 30000 ? ' stale' : ''}`}
+          title="数据最后刷新时间"
+        >
+          {lastUpdatedAt
+            ? `上次刷新 ${Math.max(0, Math.round((Date.now() - lastUpdatedAt) / 1000))} 秒前`
+            : '尚未刷新'}
+        </span>
         <button onClick={fetchCluster} disabled={refreshing}>
           {refreshing ? '刷新中...' : '刷新'}
         </button>

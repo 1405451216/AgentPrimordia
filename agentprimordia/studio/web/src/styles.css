@@ -442,3 +442,172 @@ th {
   font-size: 12px;
   color: var(--text-dim);
 }
+
+/* ---------- 加固：状态反馈（错误/成功/陈旧） ---------- */
+.error-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.error-panel .error-msg {
+  margin: 0;
+  flex: 1;
+}
+
+.success-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(39, 174, 96, 0.1);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  color: var(--green);
+}
+
+.banner-close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.banner-close:hover {
+  background: transparent;
+  opacity: 0.7;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  background: rgba(139, 151, 181, 0.12);
+  opacity: 1;
+}
+
+.btn-danger {
+  background: var(--red);
+}
+
+.btn-danger:hover {
+  opacity: 0.85;
+}
+
+.dashboard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.staleness {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.staleness.stale {
+  color: var(--yellow);
+}
+
+/* 键盘焦点可见性 */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 加固：骨架屏 ---------- */
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-row {
+  height: 40px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-wave {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---------- 加固：两步确认对话框 ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 12, 22, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: min(480px, calc(100vw - 48px));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.modal h3 {
+  font-size: 16px;
+  margin-bottom: 14px;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.confirm-warning {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--red);
+  color: var(--red);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.confirm-detail {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.confirm-detail dt {
+  color: var(--text-dim);
+}
+
+.confirm-detail dd {
+  word-break: break-word;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
