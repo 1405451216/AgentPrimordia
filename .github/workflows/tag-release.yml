@@ -1,0 +1,72 @@
+name: Tag Release
+
+# v4.0-5 发布纪律固化：每次发布自动打 tag。
+# 触发：main 分支合并后，若代码中的版本号（pkg/agent.go const Version）
+# 高于已存在的最高 tag，则自动创建对应 tag，触发 release.yml 发布流程。
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  auto-tag:
+    name: Auto-tag based on source version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Extract source version
+        id: version
+        working-directory: agentprimordia
+        run: |
+          # 从 pkg/agent.go const Version 提取版本号（单一事实来源）
+          VERSION=$(grep -oP 'const Version = "\K[0-9.]+' pkg/agent.go)
+          echo "source_version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "版本号（源码）: ${VERSION}"
+
+      - name: Find latest existing tag
+        id: latest_tag
+        run: |
+          # 最新 tag 与源码版本比较（无 tag 时用 0.0.0）
+          LATEST=$(git tag -l 'v*' | sort -V | tail -1)
+          LATEST=${LATEST:-v0.0.0}
+          echo "latest_tag=${LATEST}" >> "$GITHUB_OUTPUT"
+          echo "最新 tag: ${LATEST}"
+
+      - name: Compare and create tag
+        env:
+          SOURCE_VERSION: ${{ steps.version.outputs.source_version }}
+          LATEST_TAG: ${{ steps.latest_tag.outputs.latest_tag }}
+        run: |
+          set -e
+          # 比较语义化版本：源码版本 > 最新 tag 版本 才打 tag
+          LATEST_NORM="${LATEST_TAG#v}"
+          if [ "$LATEST_NORM" = "0.0.0" ]; then
+            echo "无既有 tag，创建首个 tag v${SOURCE_VERSION}"
+            git tag "v${SOURCE_VERSION}"
+            git push origin "v${SOURCE_VERSION}"
+            exit 0
+          fi
+          # 用 sort -V 判断源码版本是否更新
+          HIGHER=$(printf '%s\n%s\n' "$LATEST_NORM" "$SOURCE_VERSION" | sort -V | tail -1)
+          if [ "$HIGHER" = "$SOURCE_VERSION" ] && [ "$SOURCE_VERSION" != "$LATEST_NORM" ]; then
+            echo "检测到新版本: v${SOURCE_VERSION}（最新 tag: v${LATEST_NORM}），自动打 tag"
+            git tag "v${SOURCE_VERSION}"
+            git push origin "v${SOURCE_VERSION}"
+          else
+            echo "版本未变化（源码 v${SOURCE_VERSION} ≤ tag v${LATEST_NORM}），跳过"
+          fi
+
+      - name: Notify skipped
+        if: format('v{0}', steps.version.outputs.source_version) == steps.latest_tag.outputs.latest_tag
+        run: echo "::notice::源码版本未更新，未自动打 tag（发布纪律：改版本号即触发发布）"

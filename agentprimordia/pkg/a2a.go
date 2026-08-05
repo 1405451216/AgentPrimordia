@@ -1,9 +1,9 @@
 // Package ap — A2A（Agent-to-Agent）协议公共 API 导出。
 //
-// Stability: Experimental
+// Stability: Stable（gRPC 传输）
 //
 // 自 v1.x 起，**A2A 的默认传输是 gRPC**（性能更优、二进制更小、内建拦截器链）。
-// JSON-RPC over HTTP 仅作为兼容旧客户端的传输层保留，会在 v2.0 移除。
+// v4.0.0 已移除 JSON-RPC over HTTP 兼容层（见 VERSIONING.md「已移除记录」）。
 // 推荐使用：
 //
 //	srv  := ap.NewA2AGRPCServer(service)
@@ -11,6 +11,8 @@
 //
 // 本文件将 internal/agent/a2a 包中的核心类型与构造函数通过类型别名导出，
 // 用户无需直接 import internal 包。
+//
+// v4.0-3 评审：gRPC 传输自 v1.x 为默认路径，经生产验证，转正为 Stable。
 
 package ap
 
@@ -112,62 +114,6 @@ func NewA2ADataPart(data []byte) A2ADataPart {
 }
 
 // ============================================================================
-// Server
-// ============================================================================
-
-// A2AServer JSON-RPC over HTTP 版的 A2A 服务端（兼容旧 API）
-//
-// Deprecated: 自 v1.x 起 A2AGRPCServer 成为默认服务端；本类型保留到 v2.0 移除。
-// Removed in v2.0.
-type A2AServer = a2a.A2AServer
-
-// A2AServerOption JSON-RPC 服务端配置选项
-//
-// Deprecated: 请改用 A2AGRPCServerOption。
-// Removed in v2.0.
-type A2AServerOption = a2a.ServerOption
-
-// NewA2AServer 创建 JSON-RPC over HTTP 版 A2A 服务端
-//
-// Deprecated: 新代码请使用 NewA2AGRPCServer。
-// Removed in v2.0.
-func NewA2AServer(tm A2ATaskManager, opts ...A2AServerOption) *A2AServer {
-	return a2a.NewA2AServer(tm, opts...)
-}
-
-// NewA2AServerWithService 使用已有的 A2AService 创建 JSON-RPC A2A 服务端
-//
-// Deprecated: 新代码请使用 NewA2AGRPCServerWithService。
-// Removed in v2.0.
-func NewA2AServerWithService(service *A2AService, opts ...A2AServerOption) *A2AServer {
-	return a2a.NewA2AServerWithService(service, opts...)
-}
-
-// ============================================================================
-// Client
-// ============================================================================
-
-// A2AClient JSON-RPC over HTTP 版的 A2A 客户端（兼容旧 API）
-//
-// Deprecated: 自 v1.x 起 A2AGRPCClient 成为默认客户端；本类型保留到 v2.0 移除。
-// Removed in v2.0.
-type A2AClient = a2a.A2AClient
-
-// A2AClientOption JSON-RPC 客户端配置选项
-//
-// Deprecated: 请改用 A2AGRPCClientOption。
-// Removed in v2.0.
-type A2AClientOption = a2a.ClientOption
-
-// NewA2AClient 创建 JSON-RPC over HTTP 版 A2A 客户端
-//
-// Deprecated: 新代码请使用 NewA2AGRPCClient。
-// Removed in v2.0.
-func NewA2AClient(baseURL string, opts ...A2AClientOption) *A2AClient {
-	return a2a.NewA2AClient(baseURL, opts...)
-}
-
-// ============================================================================
 // 认证
 // ============================================================================
 
@@ -230,28 +176,6 @@ type A2ALocalDiscovery = a2a.LocalDiscovery
 func NewA2ALocalDiscovery() *A2ALocalDiscovery {
 	return a2a.NewLocalDiscovery()
 }
-
-// ============================================================================
-// JSON-RPC（兼容旧 API）
-// ============================================================================
-
-// A2AJSONRPCRequest JSON-RPC 2.0 请求
-//
-// Deprecated: JSON-RPC over HTTP 已被 gRPC 取代；本类型仅供序列化兼容。
-// Removed in v2.0.
-type A2AJSONRPCRequest = a2a.JSONRPCRequest
-
-// A2AJSONRPCResponse JSON-RPC 2.0 响应
-//
-// Deprecated: 详见 A2AJSONRPCRequest。
-// Removed in v2.0.
-type A2AJSONRPCResponse = a2a.JSONRPCResponse
-
-// A2AJSONRPCError JSON-RPC 2.0 错误
-//
-// Deprecated: 详见 A2AJSONRPCRequest。
-// Removed in v2.0.
-type A2AJSONRPCError = a2a.JSONRPCError
 
 // ============================================================================
 // 桥接

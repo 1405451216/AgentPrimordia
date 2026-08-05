@@ -23,6 +23,7 @@ import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { Memory } from '../memory/store.js';
 import type { CostTracker, CheckpointStore } from './request-id.js';
+import type { FailureStore } from './failure.js';
 import type { OTelBridge } from '../metrics/otel-extended.js';
 import { AgentSelfTuner } from './self-tuning.js';
 import type { SpeculativeExecutor } from './speculative-exec.js';
@@ -139,6 +140,11 @@ class AgentBuilderImpl<
     return this as unknown as AgentBuilder<P, T>;
   }
 
+  withFailureStore(store: FailureStore): AgentBuilder<P, T> {
+    this.config.failureStore = store;
+    return this as unknown as AgentBuilder<P, T>;
+  }
+
   withOTel(otel: OTelBridge): AgentBuilder<P, T> {
     this.config.otelBridge = otel;
     return this as unknown as AgentBuilder<P, T>;
@@ -206,7 +212,7 @@ export function createBasicAgent(
     name,
     model: provider,
     toolkit,
-    maxTurns: opts?.maxTurns ?? 10,
+    maxTurns: opts?.maxTurns ?? 50,
     ...opts,
   });
 }

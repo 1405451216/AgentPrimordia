@@ -10,6 +10,7 @@ import (
 
 	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/llm"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/tools"
 )
 
@@ -40,25 +41,30 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 	// R1.3 G1-1：Planning 接入（仅在第一轮且 planner 已配置时尝试）
 	// 用户输入可分解为多子任务时，走 DAG 执行；否则降级为正常 runLoop
 	if startTurn == 0 {
-		if planner := a.getPlannerOrNil(); planner != nil {
-			userInput := extractUserInput(history)
-			if userInput != "" {
-				plan, planErr := planner.GeneratePlan(ctx, userInput)
-				if planErr != nil {
-					a.logger.Warn("Planning 失败，降级到正常 runLoop", "error", planErr)
-				} else if plan != nil && len(plan.SubTasks) > 1 {
-					a.logger.Info("使用 Plan 执行",
-						"subtasks", len(plan.SubTasks),
-						"goal", plan.Goal,
-					)
-					return a.executePlan(ctx, history, plan, cfg, a.startTime, 0, 0, 0)
+		if !cfg.skipPlan { // v3.6-1：自愈降级路径跳过 plan 分支
+			if planner := a.getPlannerOrNil(); planner != nil {
+				userInput := extractUserInput(history)
+				if userInput != "" {
+					plan, planErr := planner.GeneratePlan(ctx, userInput)
+					if planErr != nil {
+						a.logger.Warn("Planning 失败，降级到正常 runLoop", "error", planErr)
+					} else if plan != nil && len(plan.SubTasks) > 1 {
+						a.logger.Info("使用 Plan 执行",
+							"subtasks", len(plan.SubTasks),
+							"goal", plan.Goal,
+						)
+						// v3.6-1：失败自动换路径（replan/降级），故障恢复不依赖人工
+						return a.executePlanWithSelfHealing(ctx, history, plan, cfg)
+					}
 				}
 			}
 		}
 	}
 
 	// 优化（Task 3.5）：仅在需要记录 turn 延迟时获取时间戳
-	needTiming := a.getMetricsRecorder() != nil || a.getLabeledRecorder() != nil
+	// v3.5-4：启用全链路关联时也需计时（RecordTurn 关联到 trace）
+	needTiming := a.getMetricsRecorder() != nil || a.getLabeledRecorder() != nil ||
+		(a.capCache != nil && a.capCache.observability != nil)
 
 	for turn := startTurn; turn < a.config.MaxTurns; turn++ {
 		var turnStart time.Time
@@ -108,6 +114,33 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			a.logger.Warn("Agent 超出预算", "name", a.config.Name)
 			_ = a.lifecycle.SetStatus(StatusFailed)
 			return &Response{RequestID: cfg.requestID, Error: ErrBudgetExceeded}, ErrBudgetExceeded
+		}
+
+		// v3.4-3：首轮注入长期记忆回读（跨 session 记忆召回）。
+		// memory store 实现 MemoryQuerier 时，以用户目标检索相关记忆并注入 system。
+		if turn == startTurn {
+			if memCtx := a.searchMemoryContext(ctx, history); memCtx != "" {
+				history = injectMemoryContext(history, memCtx)
+				a.logger.Debug("长期记忆已注入", "turn", turn)
+				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 长期记忆上下文已注入"})
+			}
+			// v3.6-3：跨任务记忆 fast-path——命中已解任务时直接复用答案
+			if answer, ok := a.tryMemorySolution(ctx, history); ok {
+				a.logger.Info("跨任务记忆命中，直接复用已解答案", "name", a.config.Name)
+				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 命中已解任务记忆，跳过推理"})
+				a.statsMu.Lock()
+				a.stats.MemoryHits++
+				a.statsMu.Unlock()
+				return &Response{
+					RequestID: cfg.requestID,
+					Content:   answer,
+					Metrics: Metrics{
+						TotalTurns:  0, // fast-path：0 轮 LLM 推理
+						Duration:    0,
+						MemoryHit:   true,
+					},
+				}, nil
+			}
 		}
 
 		var ragQuery string
@@ -308,6 +341,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			})
 			// v3.0：自适应学习——从本次交互中蒸馏知识
 			a.distillKnowledge(ctx, history, finalContent)
+			// v3.6-3：完成任务后把答案存为"已解决"记忆，供相似任务复用
+			a.saveSolutionMemory(ctx, history, finalContent)
 			return response, nil
 		}
 
@@ -384,9 +419,28 @@ func (a *ReActAgent) writeAudit(ctx context.Context, event AuditEvent) {
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
+	// v3.5-4：将当前请求的 trace_id 注入审计事件，作为全链路回溯关联键
+	event.TraceID = a.capCache.traceID
 	if err := a.capCache.auditLogger.Log(ctx, event); err != nil {
 		a.logger.Warn("写入审计事件失败", "action", event.Action, "err", err)
 	}
+	// v3.5-4：同步写入全链路关联存储（trace → 审计 闭环）
+	a.recordAuditObservability(event)
+}
+
+// recordAuditObservability 将审计事件关联到当前请求 trace（全链路闭环）。
+func (a *ReActAgent) recordAuditObservability(event AuditEvent) {
+	if a.capCache == nil || a.capCache.observability == nil || a.capCache.traceID == "" {
+		return
+	}
+	a.capCache.observability.AddAuditEvent(a.capCache.traceID, observability.AuditEvent{
+		Timestamp: event.Timestamp,
+		Actor:     event.Actor,
+		Action:    event.Action,
+		Resource:  event.Resource,
+		Result:    event.Result,
+		Details:   event.Details,
+	})
 }
 
 // distillKnowledge 从本次交互中蒸馏知识（v3.0 自适应学习）。

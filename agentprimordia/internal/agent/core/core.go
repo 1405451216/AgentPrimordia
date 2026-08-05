@@ -278,6 +278,8 @@ type Metrics struct {
 	Duration    time.Duration `json:"duration"`
 	LLMLatency  time.Duration `json:"llm_latency_ms"`
 	ToolLatency time.Duration `json:"tool_latency_ms"`
+	// v3.6-3：本次运行是否命中跨任务记忆 fast-path
+	MemoryHit bool `json:"memory_hit"`
 }
 
 // AgentStats provides runtime statistics about an agent
@@ -288,6 +290,26 @@ type AgentStats struct {
 	TotalMessages int              `json:"total_messages"`
 	ToolsCalled   map[string]int   `json:"tools_called"`
 	StartTime     time.Time        `json:"start_time"`
+	// v3.6-1：自愈记录——plan 失败自动换路径/降级的明细
+	PlanRecoveries []PlanRecovery `json:"plan_recoveries,omitempty"`
+	// v3.6-2：流程修正——命中高频失败模式被自动规避的 tool 调用次数
+	ProcessCorrections int `json:"process_corrections"`
+	// v3.6-3：跨任务记忆命中——相似任务直接复用已解答案（fast-path）的次数
+	MemoryHits int `json:"memory_hits"`
+}
+
+// PlanRecovery 记录一次自愈动作（v3.6-1）。
+type PlanRecovery struct {
+	// SubtaskID 触发自愈的子任务 ID（plan 级降级时为空）。
+	SubtaskID string `json:"subtask_id,omitempty"`
+	// Method 自愈方式：replan / degrade。
+	Method string `json:"method"`
+	// Success 自愈是否成功（换路径后请求正常完成）。
+	Success bool `json:"success"`
+	// Error 触发自愈的错误。
+	Error string `json:"error,omitempty"`
+	// Timestamp 自愈发生时间。
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // ===== 流式事件 =====

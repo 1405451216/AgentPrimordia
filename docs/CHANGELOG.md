@@ -4,6 +4,41 @@
 
 ## [Unreleased]
 
+### Added — v4.0-5 发布纪律固化（tag 自动化 CI）
+
+- 新增 `.github/workflows/tag-release.yml`：合并到 main 后读取 `pkg/agent.go` 的 `const Version`，
+  与最高既有 tag 对比，版本更高则自动打 tag（`v{MAJOR}.{MINOR}.{PATCH}`）并触发 `release.yml` 发布流程
+- 新增 `pkg/version_gate_test.go`：强制校验 `const Version` 格式合法（语义化版本）且与 VERSIONING.md 一致
+- **版本 bump 至 4.0.0**（v4.0 收官）：Go SDK / TS SDK / CLI / VERSIONING / api-contract 全线对齐
+- `scripts/version-sync-check.mjs` fallback 更新为 4.0.0
+- VERSIONING.md 版本发布纪律新增第 5-6 条（自动打 tag + 版本 gate）
+
+### Performance — v4.0-4 性能大版本（基准对比全量刷新 + 关键路径 P95）
+
+- 新增 `bench/suite/p95_latency_test.go`：Agent 单轮 / 工具调用 / 记忆检索三条关键路径的 P50/P95/P99 延迟分布基准（批次累积策略，规避 Windows 时钟粒度）
+- 全量刷新基准：新建 `bench/results/2026-Q4.json`（v4.0.0 基线），更新 `docs/benchmarks/official-benchmarks.md`（含 P95 表）
+- `scripts/bench-regression-check.sh`：默认基线切换到 2026-Q4，新增 P95/P99 回归基准解析；CI bench job 加入 BenchmarkP95 子集
+- 关键路径 P95 实测（MockLLM）：AgentRun 3.5µs / 10.8µs；ToolCall 4.1µs / 11.0µs；MemorySearch 29.6µs / 46.3µs
+
+### Changed — v4.0-3 兼容性承诺收紧（稳定清单与实际一致）
+
+- `docs/VERSIONING.md`「稳定 API」表按实际 `pkg/` 源文件标注重写（21 个 Stable/混合模块），并注明"稳定性标注的唯一事实来源是源文件注释"
+- `pkg/a2a.go` 转正：gRPC 传输自 v1.x 为默认且生产验证，JSON-RPC 已在 v4.0-1 移除，标注 `Stability: Stable（gRPC 传输）`
+- 评审记录：planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 保持 Experimental；llm.go / tools.go / memory.go / otel.go / adapters.go 标注"混合"（核心 Stable + 子集 Experimental）
+- 新增 `pkg/stability_compliance_test.go`：VERSIONING.md 记录的 Stable 模块与实际 `// Stability: Stable` 标注互相比对，漂移即失败
+- 同步更新 `sdk/typescript/api-contract.json`（a2a.go Stability 变更）
+
+### Removed — v4.0-1 废弃 API 清理
+
+按 `docs/VERSIONING.md` 的废弃承诺，v4.0.0 清理全部超期废弃 API：
+
+- **`RegisterPProf()`** — 无鉴权 pprof 端点注册，已移除。替代：`RegisterPProfSecure()` / `RegisterPProfStrict()`
+- **`NewReActAgent()`** — 已无实现（v3.x 起移除），v4.0.0 清理全部文档残留
+- **A2A JSON-RPC 传输公共 API** — `A2AServer` / `A2AClient` / `A2AServerOption` / `A2AClientOption` / `NewA2AServer` / `NewA2AServerWithService` / `NewA2AClient` / `A2AJSONRPCRequest` / `A2AJSONRPCResponse` / `A2AJSONRPCError`，标记 `Removed in v2.0` 已超期，v4.0.0 移除。替代：`NewA2AGRPCServer()` / `NewA2AGRPCClient()`
+- **迁移指南** — 新增 `ecosystem/docs/migration/v4-deprecations.md`
+- **deprecation 检查强化** — `scripts/deprecation-check.sh` 新增 pkg/ 公共 API 超期残留门（Removed 版本不得早于当前主版本）；新增跨平台 Go 门 `pkg/deprecation_residual_test.go`（Windows 可跑）
+- 同步更新 `sdk/typescript/api-contract.json`（契约基线）与相关文档示例
+
 ### Fixed — CI 第二批缺陷修复（推送后全量验证暴露）
 
 首次推送修复后 CI 仍有多条失败，逐项定位并修复（本地全量验证门全绿）：

@@ -18,7 +18,7 @@ import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { CostTracker, Checkpoint, CheckpointStore } from './request-id.js';
 import type { Memory } from '../memory/store.js';
-import type { OTelBridge } from '../metrics/otel-extended.js';
+import type { OTelBridgeLike } from '../metrics/otel-extended.js';
 import type { StreamEvent } from './hooks.js';
 import type { HookManager } from './hooks.js';
 import { validateLLMCompletion, validateToolCallResponse } from '../schema/index.js';
@@ -30,7 +30,7 @@ export interface CapabilitiesCache {
   costTracker: CostTracker | null;
   memoryStore: Memory | null;
   checkpointStore: CheckpointStore | null;
-  otelBridge: OTelBridge | null;
+  otelBridge: OTelBridgeLike | null;
 }
 
 // ===== TurnExecutor 配置 =====
@@ -44,6 +44,8 @@ export interface TurnExecutorConfig {
   maxMessages: number;
   /** 检查是否请求优雅关闭 */
   isGracefulShutdownRequested?: () => boolean;
+  /** 输出端护栏检查函数（v3.4-5）：每轮 LLM 响应写入历史前检查；返回放行与否与脱敏文本，阻断时抛错 */
+  outputGuard?: (content: string) => { passed: boolean; modified: string };
 }
 
 // ===== 运行时状态 =====
@@ -166,11 +168,6 @@ export class TurnExecutor {
         console.warn('[TurnExecutor] callTools 响应验证失败:', validation.errors.join('; '));
       }
       const resp = validation.ok ? validation.data : (rawResp as { content: string; toolCalls: ToolCall[] });
-      messages.push({
-        role: 'assistant',
-        content: resp.content,
-        toolCalls: resp.toolCalls.length > 0 ? resp.toolCalls : undefined,
-      });
       thought = { content: resp.content, toolCalls: resp.toolCalls };
     } else {
       const rawResp = await this.model.complete({ messages });
@@ -179,8 +176,26 @@ export class TurnExecutor {
         console.warn('[TurnExecutor] complete 响应验证失败:', validation.errors.join('; '));
       }
       const resp = validation.ok ? validation.data : (rawResp as { content: string });
-      messages.push({ role: 'assistant', content: resp.content });
       thought = { content: resp.content };
+    }
+
+    // v3.4-5：输出端护栏——逐轮检查 LLM 响应，写入消息历史前脱敏/拒绝（对齐 Go OutputGuard）
+    if (this.config.outputGuard && thought.content) {
+      const guarded = this.config.outputGuard(thought.content);
+      if (!guarded.passed) {
+        throw new Error('output blocked by guardrail');
+      }
+      thought.content = guarded.modified;
+    }
+
+    if (hasTools) {
+      messages.push({
+        role: 'assistant',
+        content: thought.content,
+        toolCalls: thought.toolCalls && thought.toolCalls.length > 0 ? thought.toolCalls : undefined,
+      });
+    } else {
+      messages.push({ role: 'assistant', content: thought.content });
     }
 
     state.totalLLMLatency += Date.now() - llmStart;

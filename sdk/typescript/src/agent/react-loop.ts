@@ -3,11 +3,15 @@ import type { Provider } from '../llm/provider.js';
 import type { ToolRegistry } from '../tools/registry.js';
 import type { CostTracker, Checkpoint, CheckpointStore } from './request-id.js';
 import type { Memory } from '../memory/store.js';
-import type { OTelBridge } from '../metrics/otel-extended.js';
+import type { OTelBridgeLike } from '../metrics/otel-extended.js';
 import { validateAgentInput } from '../validate.js';
 import type { AgentSelfTuner, RunMetrics, TuningSuggestion } from './self-tuning.js';
 import type { SpeculativeExecutor } from './speculative-exec.js';
 import type { EnhancedToolLearner } from './tool-learning.js';
+import type { Planner, SubTask } from './planning.js';
+import type { Reflector, Severity } from './reflection.js';
+import type { GuardrailEngine } from '../security/guardrails.js';
+import type { FailurePhase, FailureRecord, FailureStore } from './failure.js';
 
 // 从拆分模块重新导出，保持向后兼容
 export type { StreamEvent, HookPoint, HookContext, HookFunc } from './hooks.js';
@@ -39,13 +43,23 @@ export interface ReActConfig {
   costTracker?: CostTracker;
   memoryStore?: Memory;
   checkpointStore?: CheckpointStore;
-  otelBridge?: OTelBridge;
+  otelBridge?: OTelBridgeLike;
   parallelToolExecution?: boolean;
   maxParallelTools?: number;
   speculativeExecutor?: SpeculativeExecutor;
   selfTuner?: AgentSelfTuner;
   enhancedToolLearner?: EnhancedToolLearner;
   autoTune?: boolean;
+  /** 任务规划器：run 入口将目标分解为子任务 DAG 依次执行（>1 子任务才启用） */
+  planner?: Planner;
+  /** 自反思器：完成路径对输出批评，severity 达到阈值时改写 */
+  reflector?: Reflector;
+  /** 触发 improve 改写的最低严重度，默认 high */
+  reflectionSeverityThreshold?: Severity;
+  /** 护栏引擎（v3.4-5）：入口对用户输入脱敏/拒绝，LLM 输出逐轮检查（对齐 Go InputGuard/OutputGuard） */
+  guardrail?: GuardrailEngine;
+  /** 失败记录存储（v3.4-6d）：运行失败自动落盘完整上下文，支持一键重放（对齐 Go WithFailureStore） */
+  failureStore?: FailureStore;
 }
 
 export type { CapabilitiesCache };
@@ -68,7 +82,7 @@ export class ReActAgent {
   private messages: Message[] = [];
   private capCache: CapabilitiesCache | null = null;
   private pendingMemoryWrites: Promise<void>[] = [];
-  private otelBridge?: OTelBridge;
+  private otelBridge?: OTelBridgeLike;
   private runMu: Promise<void> = Promise.resolve();
   private parallelToolExecution: boolean;
   private maxParallelTools: number;
@@ -78,6 +92,14 @@ export class ReActAgent {
   private enhancedToolLearner?: EnhancedToolLearner;
   private autoTune: boolean;
   private lastRunMetrics?: RunMetrics;
+  private planner?: Planner;
+  private reflector?: Reflector;
+  private reflectionSeverityThreshold: Severity;
+  private guardrail?: GuardrailEngine;
+  private failureStore?: FailureStore;
+  private currentTurn = 0;
+  private currentSubtaskId?: string;
+  private failureSeq = 0;
 
   constructor(config: ReActConfig) {
     if (!config.name?.trim()) throw new Error('Agent name is required');
@@ -89,7 +111,7 @@ export class ReActAgent {
     this.name = config.name;
     this.model = config.model;
     this.toolkit = config.toolkit;
-    this.maxTurns = config.maxTurns ?? 10;
+    this.maxTurns = config.maxTurns ?? 50;
     this.maxConsecutiveFailures = config.maxConsecutiveFailures ?? 3;
     this.maxMessages = config.maxMessages ?? 80;
     this.systemPrompt = config.systemPrompt ?? '';
@@ -106,6 +128,11 @@ export class ReActAgent {
     this.selfTuner = config.selfTuner;
     this.enhancedToolLearner = config.enhancedToolLearner;
     this.autoTune = config.autoTune ?? true;
+    this.planner = config.planner;
+    this.reflector = config.reflector;
+    this.reflectionSeverityThreshold = config.reflectionSeverityThreshold ?? 'high';
+    this.guardrail = config.guardrail;
+    this.failureStore = config.failureStore;
   }
 
   requestGracefulShutdown(): void {
@@ -209,6 +236,20 @@ export class ReActAgent {
       }
     }
 
+    // v3.4-5：输入端护栏——用户输入进入循环前检查（脱敏或拒绝，对齐 Go InputGuard）
+    if (this.guardrail) {
+      const gi = this.guardrail.checkInput(input);
+      if (!gi.passed) {
+        this.lifecycle.setStatus('error');
+        this.capCache.otelBridge?.endSpan(runSpanId!, 'error');
+        return {
+          content: 'input blocked by guardrail',
+          metrics: { totalTurns: 0, totalTools: 0, duration: Date.now() - startTime, llmLatency: 0, toolLatency: 0 },
+        };
+      }
+      input = gi.modifiedInput;
+    }
+
     this.messages.push({ role: 'user', content: input });
 
     await this.hooks.fireHook('before_run', {
@@ -226,7 +267,27 @@ export class ReActAgent {
     }
 
     try {
-      const response = await this.runLoop(startTime, 0, options);
+      // 计划分支：Planner 分解出 >1 子任务时走 DAG 执行，否则降级普通循环
+      let response: Response | undefined;
+      if (this.planner) {
+        let subtasks: SubTask[] = [];
+        try {
+          subtasks = await this.planner.decompose(input);
+        } catch {
+          // 规划失败回退普通 ReAct 循环
+        }
+        if (subtasks.length > 1) {
+          response = await this.executePlan(subtasks, startTime, options);
+        }
+      }
+
+      if (!response) {
+        response = await this.runLoop(startTime, 0, options);
+        // 完成路径自反思：批评最终输出，必要时改写
+        if (this.reflector) {
+          response.content = this.guardOutput(await this.reflectAndImprove(response.content));
+        }
+      }
 
       await this.hooks.fireHook('after_run', {
         agentID: this.name, sessionID: this.sessionId, turn: 0, response,
@@ -256,6 +317,8 @@ export class ReActAgent {
       await this.hooks.fireHook('on_error', {
         agentID: this.name, sessionID: this.sessionId, turn: 0, error,
       });
+      // v3.4-6d：失败自动落盘（取消不记录），内嵌最近 checkpoint 供一键重放
+      await this.recordFailure(input, error);
       if (error.name === 'AbortError') {
         return {
           content: 'Agent run cancelled',
@@ -269,6 +332,7 @@ export class ReActAgent {
     } finally {
       await this.flushMemoryWriter();
       this.capCache = null;
+      this.currentSubtaskId = undefined;
     }
   }
 
@@ -281,6 +345,7 @@ export class ReActAgent {
 
     let turn: number;
     for (turn = startTurn; turn < this.maxTurns; turn++) {
+      this.currentTurn = turn;
       this.checkSignal(options?.signal);
       if (this.lifecycle.isStopped()) break;
 
@@ -302,6 +367,125 @@ export class ReActAgent {
         duration,
         llmLatency: state.totalLLMLatency,
         toolLatency: state.totalToolLatency,
+      },
+    };
+  }
+
+  // ===== 计划与自反思 =====
+
+  /** 严重度排序，用于阈值比较 */
+  private severityRank(s: Severity): number {
+    switch (s) {
+      case 'low': return 0;
+      case 'medium': return 1;
+      case 'high': return 2;
+      case 'critical': return 3;
+      default: return 1;
+    }
+  }
+
+  /** v3.4-5：输出端护栏对改写后的内容复检（阻断时抛错由 runEngine 统一处理） */
+  private guardOutput(content: string): string {
+    if (!this.guardrail || !content) return content;
+    const result = this.guardrail.checkOutput(content);
+    if (!result.passed) {
+      throw new Error('output blocked by guardrail');
+    }
+    return result.modifiedOutput;
+  }
+
+  /** 完成路径批评输出；severity ≥ 阈值时调用 improve 改写 */
+  private async reflectAndImprove(content: string): Promise<string> {
+    if (!this.reflector) return content;
+    try {
+      const critique = await this.reflector.critique(content);
+      if (this.severityRank(critique.severity) >= this.severityRank(this.reflectionSeverityThreshold)) {
+        return await this.reflector.improve(content, critique);
+      }
+    } catch {
+      // 反思失败不影响主流程
+    }
+    return content;
+  }
+
+  /** 子任务拓扑分层（Kahn）；遇环兜底按原顺序执行剩余子任务 */
+  private topoLayers(subtasks: SubTask[]): SubTask[][] {
+    const ids = new Set(subtasks.map((t) => t.id));
+    const done = new Set<string>();
+    const layers: SubTask[][] = [];
+    let remaining = [...subtasks];
+    while (remaining.length > 0) {
+      const ready = remaining.filter((t) => t.dependsOn.every((d) => done.has(d) || !ids.has(d)));
+      if (ready.length === 0) {
+        layers.push(remaining);
+        break;
+      }
+      layers.push(ready);
+      for (const t of ready) done.add(t.id);
+      remaining = remaining.filter((t) => !done.has(t.id));
+    }
+    return layers;
+  }
+
+  /** 按计划分层执行子任务；同层内顺序执行，保证队列式 Mock 的确定性 */
+  private async executePlan(subtasks: SubTask[], startTime: number, options?: RunOptions): Promise<Response> {
+    const results = new Map<string, string>();
+    let totalTurns = 0;
+    let totalTools = 0;
+    let llmLatency = 0;
+    let toolLatency = 0;
+    let finalContent = '';
+
+    outer: for (const layer of this.topoLayers(subtasks)) {
+      for (const task of layer) {
+        this.checkSignal(options?.signal);
+        if (this.lifecycle.isStopped()) break outer;
+        task.status = 'running';
+        // v3.4-6d：记录当前子任务，失败时可定位到 plan 阶段的具体子任务
+        this.currentSubtaskId = task.id;
+
+        // 组装子任务上下文：依赖结果 + 当前描述
+        const context = task.dependsOn
+          .map((d) => results.get(d))
+          .filter((v): v is string => !!v)
+          .join('\n');
+        const subInput = context
+          ? `前置子任务结果：\n${context}\n\n执行当前子任务：${task.description}`
+          : `执行当前子任务：${task.description}`;
+
+        // 子任务独立重建消息上下文，各自走完整 ReAct 循环
+        this.messages = [];
+        if (this.systemPrompt) {
+          this.messages.push({ role: 'system', content: this.systemPrompt });
+        }
+        this.messages.push({ role: 'user', content: subInput });
+
+        const resp = await this.runLoop(startTime, 0, options);
+        let content = resp.content;
+        if (this.reflector) {
+          content = this.guardOutput(await this.reflectAndImprove(content));
+        }
+
+        task.status = 'completed';
+        task.result = content;
+        results.set(task.id, content);
+        finalContent = content;
+        totalTurns += resp.metrics.totalTurns;
+        totalTools += resp.metrics.totalTools;
+        llmLatency += resp.metrics.llmLatency;
+        toolLatency += resp.metrics.toolLatency;
+      }
+    }
+
+    this.lifecycle.setStatus('completed');
+    return {
+      content: finalContent,
+      metrics: {
+        totalTurns,
+        totalTools,
+        duration: Date.now() - startTime,
+        llmLatency,
+        toolLatency,
       },
     };
   }
@@ -355,6 +539,46 @@ export class ReActAgent {
     }
   }
 
+  // ===== 失败记录与一键重放（v3.4-6d） =====
+
+  /** 失败自动落盘：跳过取消（AbortError）；内嵌最近 checkpoint 供重放（对齐 Go recordFailure） */
+  private async recordFailure(input: string, error: Error): Promise<void> {
+    if (!this.failureStore || error.name === 'AbortError') return;
+    try {
+      let state: Checkpoint | undefined;
+      const cpStore = this.capCache?.checkpointStore;
+      if (cpStore) {
+        const cps = await cpStore.list(this.sessionId);
+        if (cps.length > 0) state = cps[cps.length - 1];
+      }
+      const phase: FailurePhase = this.currentSubtaskId ? 'plan' : 'run';
+      const rec: FailureRecord = {
+        id: `fail-${Date.now()}-${this.failureSeq++}`,
+        agentId: this.name,
+        sessionId: this.sessionId,
+        phase,
+        error: error.message,
+        turn: this.currentTurn,
+        input,
+        createdAt: new Date().toISOString(),
+      };
+      if (this.currentSubtaskId) rec.subtaskId = this.currentSubtaskId;
+      if (state) rec.state = state;
+      await this.failureStore.record(rec);
+    } catch {
+      // 失败记录本身不影响主流程
+    }
+  }
+
+  /** 一键重放：从失败记录内嵌的 checkpoint 恢复运行（对齐 Go ReplayFailure） */
+  async replayFailure(failureID: string, options?: RunOptions): Promise<Response> {
+    if (!this.failureStore) throw new Error('no failure store configured');
+    const rec = await this.failureStore.get(failureID);
+    if (!rec) throw new Error(`failure record not found: ${failureID}`);
+    if (!rec.state) throw new Error(`failure record has no embedded checkpoint: ${failureID}`);
+    return this.resumeFromCheckpoint(rec.state, options);
+  }
+
   async *stream(input: string, options?: RunOptions): AsyncIterable<string> {
     for await (const event of this.streamEvents(input, options)) {
       if (event.type === 'token' && event.content) {
@@ -390,6 +614,23 @@ export class ReActAgent {
       if (suggestion.shouldAdjust) {
         this.applyTuningSuggestion(suggestion);
       }
+    }
+
+    // v3.4-5：流式入口同样执行输入端护栏
+    if (this.guardrail) {
+      const gi = this.guardrail.checkInput(input);
+      if (!gi.passed) {
+        this.lifecycle.setStatus('error');
+        yield {
+          type: 'done',
+          response: {
+            content: 'input blocked by guardrail',
+            metrics: { totalTurns: 0, totalTools: 0, duration: Date.now() - startTime, llmLatency: 0, toolLatency: 0 },
+          },
+        };
+        return;
+      }
+      input = gi.modifiedInput;
     }
 
     this.messages.push({ role: 'user', content: input });
@@ -517,6 +758,11 @@ export class ReActAgent {
         maxParallelTools: this.maxParallelTools,
         maxMessages: this.maxMessages,
         isGracefulShutdownRequested: () => this.gracefulShutdownFlag,
+        // v3.4-5：输出端护栏逐轮检查（对齐 Go OutputGuard）
+        outputGuard: this.guardrail ? (content) => {
+          const result = this.guardrail!.checkOutput(content);
+          return { passed: result.passed, modified: result.modifiedOutput };
+        } : undefined,
       },
     );
   }

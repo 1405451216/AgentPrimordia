@@ -1,236 +1,166 @@
 # AgentPrimordia 演化路线图
 
-> **文档定位**：本项目唯一的路线图权威文档。整合自三份技术评估报告，并经过代码库交叉验证（含未提交的工作区变更）。
+> **文档定位**：本文件为 AgentPrimordia 唯一的路线图权威文档，基于 2026-08-03 全项目实证审计重写
+> （三方取证：Go 核心循环、能力组件集成度、TS 线现状 + 规划文档对账）。
 >
-> **最后更新**：2026 年 7 月 26 日
-> **当前版本**：Go SDK v3.1.0 / TypeScript SDK v2.0.0
+> **最后更新**：2026 年 8 月 3 日
+> **当前版本**：Go SDK v4.0.0（`pkg/agent.go`）/ TypeScript SDK v4.0.0（`sdk/typescript/package.json`）
+> **重要**：旧版"v2.1-v3.0 全部完成"叙事与代码实况不符，已废弃，见下文对账。
 
 ---
 
-## 目录
+## 一、现状对账：声称 vs 实况（2026-08-03 实证审计）
 
-1. [v2.1 技术债清理与安全加固 ✅](#一v21-技术债清理与安全加固-)
-2. [v2.2 性能优化与成本控制 ✅](#二v22-性能优化与成本控制-)
-3. [v2.3 架构改进与配置统一 ✅](#三v23-架构改进与配置统一-)
-4. [v2.4 可观测性深化 ✅](#四v24-可观测性深化-)
-5. [v2.5 分布式安全与 Mesh 强化 ✅](#五v25-分布式安全与-mesh-强化-)
-6. [已验证的现有能力](#六已验证的现有能力)
-7. [长期愿景（v3.0+）](#七长期愿景v30)
-8. [版本里程碑速查](#八版本里程碑速查)
+> 本路线的前提不是"缺能力"，而是"文档声称的完成度"与"可运行的可信度"存在鸿沟。逐项对账如下：
 
----
+| 声称已完成 | 代码实况 | 差距 |
+|-----------|---------|------|
+| ReAct 引擎接口化拆分（react.Engine） | 新状态机存在但未接管主路径，`Run` 仍走旧 `reactLoopEngine`（`react_bridge.go:15` 仅 getter） | 🔴 功能悬空 |
+| 评测体系系统化（eval/matrix） | CI 只跑单元自测（`bench/eval-ci/run_eval.sh:25`），真实数据集仅 5 条 smoke（`eval_cases.json`）；官方基准自认 Skipped（`docs/benchmarks/official-benchmarks.md:269`） | 🔴 无真实评测 |
+| OTel 桥接 | 仅 `pkg/otel.go:9` re-export，无运行时接线 | 🔴 孤立组件 |
+| Studio 可视化 | 四面板全 demo 数据（`studio/web/README.md:26`），真实引擎注入点未接线 | 🟠 外壳 |
+| Agent 市场 | 内存 map 注册表（`internal/agent/marketplace/template.go:145`），无远程协议 | 🟠 外壳 |
+| 双语言对齐 15 套件/45 用例 | TS 全量实现；Go 侧仅 4 个测试函数（`pkg/cross_language_test.go`）覆盖 3 套件 | 🟠 单向对齐 |
+| v2.1-v3.0 全完成 / 版本 3.2.0 | git tag 仅 v0.7.0；`STATUS.md` 显示 Phase 3 仅 5/8 | 🔴 状态不可信 |
 
-## 一、v2.1 技术债清理与安全加固 ✅
+**核心引擎实测缺口**（`internal/agent/` 逐文件取证）：
 
-| # | 任务 | 优先级 | 验证方式 | 状态 |
-|---|------|--------|----------|------|
-| 1 | 清理不可达代码（2500+ 行死代码） | 🔴 P0 | git status 确认 `cmd/ap/autocomplete.go`、`cli_modern.go`、`middleware.go` 等已删除 | ✅ 完成 |
-| 2 | 清除误提交的 Windows 缓存文件 | 🔴 P0 | `internal/tools/builtin/` 下 `%SystemDrive%/` 目录已清空 | ✅ 完成 |
-| 3 | 统一 TS SDK 至 v2.0.0 | 🔴 P0 | `sdk/typescript/package.json` → `"version": "2.0.0"` | ✅ 完成 |
-| 4 | pprof 端点 Bearer Token 鉴权 | 🔴 P0 | `internal/health/pprof.go` → `pprofAuthMiddleware()` + `PPROF_TOKEN` 环境变量 | ✅ 完成 |
-| 5 | Linux CI 强制 `-race` 竞态检测 | 🔴 P0 | `.github/workflows/ci.yml` → `CGO_ENABLED=1 go test -race -coverprofile=coverage.out` | ✅ 完成 |
-| 6 | governance 覆盖率提升 | 🟡 P1 | 新增 6 个测试文件（untracked）：`audit_log_file_test.go`、`governance_metrics_test.go`、`policy_watcher_extra_test.go`、`resource_mgr_test.go`、`security_extra_test.go`、`tenant_manager_archive_test.go` | ✅ 完成 |
-| 7 | Deprecated 字段迁移至 `*Capable` 接口 | 🟡 P1 | `pkg/agent.go` → 12 个 `*Capable` 类型别名 + `CapabilityAgent` 链式 API | ✅ 完成 |
+- executePlan 子任务失败 fast-fail 整体中断且无重试（`react_plan_executor.go:73-80`），checkpoint 不存 plan/子任务状态
+- memory 只写不读：loop 的 `MemoryStore` 接口仅 `Add/UpdateSummary`，无 `Search`（`react_loop.go:40-44`）
+- 子任务上下文全量继承完整历史，100 条滑动窗口无压缩（`react_persist.go:205`）
+- tool 执行无重试、并行 tool goroutine 无 recover、无输入端护栏、security 沙箱未接入 loop
+- TS 线真实 LLM 集成测试为 0（全部 mock fetch）；guardrail 有实现但未接入 TS agent 循环
 
 ---
 
-## 二、v2.2 性能优化与成本控制 ✅
+## 二、核心命题
 
-| # | 任务 | 优先级 | 验证方式 | 状态 |
-|---|------|--------|----------|------|
-| 1 | ACL 性能优化（slice → map） | 🟡 P1 | `internal/security/sandbox.go` → `rules map[string][]ACLRule` + `deny map[string][]ACLRule`（O(1) agentID 查找） | ✅ 完成 |
-| 2 | Pool 事件背压 | 🟡 P1 | `internal/pool/dispatcher.go` → `droppedEvents atomic.Int64` + 满时 warning 日志 + `DroppedEvents()` 方法 | ✅ 完成 |
-| 3 | LLM 请求批量合并 | 🟡 P1 | `internal/llm/batch.go` + `internal/pool/llm_batch_integration_test.go`（Pool + BatchProcessor 集成） | ✅ 完成 |
-| 4 | RRF 生产调优 | 🟢 P2 | `internal/memory/rag.go` + `rag_fusion_test.go`（RRF k=60 + over-fetch 参数化） | ✅ 完成 |
-| 5 | 高并发压测套件 | 🟢 P2 | `internal/pool/bench_test.go`（10/100 Agent 并发）+ `internal/llm/bench_test.go` + `internal/agent/bench_test.go` | ✅ 完成 |
-| 6 | `provider_template.go` panic → error | 🟢 P2 | `internal/llm/openai_provider.go` → 返回 `ErrTemplateNotImplemented` error 而非 panic | ✅ 完成 |
+> AP 的问题不是缺能力，而是"声称的完成度"与"可运行的可信度"之间的鸿沟。
+> 最优路线 = 把"声称的能力"变成"可证明的能力"：**先可信 → 再可证 → 然后才能谈一体化、省 token、生态**。
 
----
+## 二.五、已验证为已存在的能力（无需重复建设）
 
-## 三、v2.3 架构改进与配置统一 ✅
+> 经 2026-08-03 实证审计，以下能力**已真实接入且可用**，后续版本只做增强/评测，不重复建设：
 
-| # | 任务 | 优先级 | 验证方式 | 状态 |
-|---|------|--------|----------|------|
-| 1 | 统一配置管理框架 | 🟡 P1 | `internal/config/loader.go`（untracked）→ YAML/ENV/flags 三来源 + `Validate()` 启动校验 + struct tag 驱动 | ✅ 完成 |
-| 2 | pgvector 向量后端 | 🟡 P1 | `internal/memory/pgvector_store.go`（untracked）→ `PgVectorVectorStore` + `PgVectorConfig` + `pgvector/` 独立模块 + 测试 | ✅ 完成 |
-| 3 | TS SDK 行为对齐测试套件 | 🟢 P2 | `sdk/typescript/tests/shared/cross-language.test.ts` + `internal/memory/cross_language_test.go`（Go/TS 余弦相似度/向量序列化/规范文件互验） | ✅ 完成 |
-| 4 | SecretsManager Vault 后端 | 🟢 P2 | `internal/security/vault_backend.go` → 完整 Vault KV v2 实现 + Token/AppRole 认证 + 测试 | ✅ 完成 |
-
----
-
-## 四、v2.4 可观测性深化 ✅
-
-| # | 任务 | 优先级 | 验证方式 | 状态 |
-|---|------|--------|----------|------|
-| 1 | 分布式追踪 Span 链路完善 | 🟡 P1 | `internal/agent/a2a/trace_propagation.go` + `trace_propagation_test.go` + `trace_propagation_e2e_test.go`（gRPC trace 传播） | ✅ 完成 |
-| 2 | eBPF 系统级追踪 | 🟢 P2 | `internal/otel/ebpf/tracer_linux.go`（untracked）→ `/proc/[pid]/io` 进程级 IO 追踪 + `tracer_other.go`（非 Linux 平台 stub） | ✅ 完成 |
+| 能力 | 实况证据 | 状态 |
+|------|---------|------|
+| checkpoint 断点续跑 | 每轮 `saveCheckpoint`（`react_persist.go:167`）+ `ResumeFromCheckpoint`（`react_lifecycle.go:92`） | ✅ 已接入（缺 plan 级） |
+| 成本预算拦截 | CostTracker 执行中检查（`react_loop_core.go:107`），MaxTotalCostUSD/MaxTokensPerCall | ✅ 已接入 |
+| 多模型路由 | `internal/llm/model_router.go`（Cost/Quality/Balanced 策略） | ✅ 已存在 |
+| LLM 请求批量 | `internal/llm/batch.go` + `internal/pool/llm_batch_integration_test.go` | ✅ 已对接 Pool |
+| tool_learning 跨会话回注 | `react_loop_tools.go:113-128` 真实替换参数建议，跨会话成功率聚合 | ✅ 已接入（缺流程修正） |
+| metrics 真实上报 | `react_lifecycle.go:36-57` 每轮 RecordTokenUsage 到 Prometheus | ✅ 已接入 |
+| orchestration 完整实现 | Pipeline/Handoff/DAG/GroupChat/Debate + e2e 测试 + pkg 暴露 | ✅ 已产品化 |
+| debugger / admin | 真实 HTTP 服务（`internal/debugger/http.go`、`internal/admin/handler.go`） | ✅ 已产品化 |
+| chaos 注入引擎 | `internal/chaos/real_injector_linux.go`（tc netem / iptables）+ LLM 故障注入 | ✅ 真实可用 |
+| MCP 双向 | client（stdio JSON-RPC）+ server + adapter + registry | ✅ 已存在 |
+| TS 上下文压缩 | `KeepLastNStrategy`/`TokenBudgetStrategy`（`request-id.ts:31-75`） | ✅ 比 Go 更先进 |
+| TS checkpoint-resume | `react-loop.ts:450` resumeFromCheckpoint + 每轮 saveCheckpoint | ✅ 已接入 |
 
 ---
 
-## 五、v2.5 分布式安全与 Mesh 强化 ✅
+## 三、版本路线（v3.3 → v4.0）
 
-| # | 任务 | 优先级 | 验证方式 | 状态 |
-|---|------|--------|----------|------|
-| 1 | Agent Mesh mTLS | 🟢 P2 | `internal/agent/a2a/mtls.go`（untracked）→ gRPC 双向 TLS + 证书自动轮换 + `mtls_test.go` | ✅ 完成 |
-| 2 | gRPC 熔断/限流联动 | 🟢 P2 | `internal/agent/a2a/grpc_circuit_breaker.go`（untracked）→ `CircuitBreakerInterceptor` + 基于 `internal/resilience.CircuitBreaker` | ✅ 完成 |
+### v3.3 — 可信化（对账与接线）
 
----
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | 逐项对账"声称完成"清单，产出能力实况清单（真实可用/部分/仅存在） | 能力清单 100% 有代码证据 |
+| 2 | 修复版本叙事矛盾：git tag / STATUS / VERSIONING / ROADMAP 四方对齐 | 文档互不矛盾，tag 与 `pkg.Version` 一致 |
+| 3 | `react.Engine` 接管主路径，或明确废弃回退 ✅（2026-08-03 已决策：废弃降级） | 主路径单一、可测试 |
+| 4 | otel 接入 metrics 真实上报（ReAct loop → OTel）✅（2026-08-03：WithTelemetry 接线完成） | OTLP 导出有真实数据 |
 
-## 六、已验证的现有能力
+### v3.4 — 一体化不塌（Harness 可靠性）
 
-> 以下能力已通过代码库文件验证，确认实际存在。
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | executePlan：子任务失败重试/降级 + plan 级 checkpoint（恢复续跑整计划）✅（2026-08-03：子任务重试 + plan 级 checkpoint，`react_plan_executor.go`，commit 10ee524） | 5 子任务 pipeline 中途故障可续跑，恢复率 100% |
+| 2 | 子任务上下文隔离 + 摘要压缩（替代全量继承 + 滑动窗口）✅（2026-08-03：前置结果摘要注入，commit d82f1bf） | 长任务 context 不爆，规模翻倍成功率不降 |
+| 3 | memory 回读注入：`MemoryStore` 增加 `Search`，长期记忆进循环 ✅（2026-08-03：每轮/每子任务注入召回，commit 311f98c） | 跨 session 记忆可召回 |
+| 4 | tool 执行重试 + 并行 goroutine recover + 输入端护栏 ✅（2026-08-03：`WithInputGuard` + `react_loop_engine.go:17` 入口检查，commit eed88e2） | 混沌注入下无击穿 |
+| 5 | TS 同步 guardrail-in-loop ✅（2026-08-03：`ReActConfig.guardrail` + 输入端 `react-loop.ts:231` / 逐轮输出端 `turn-executor.ts:183`，8 用例 `react-guardrail.test.ts`） | TS 与 Go 行为对齐 |
+| 6 | 失败重放与诊断工具 ✅（2026-08-03：Go `persist/failure.go` FailureStore/Diagnose + `react_failure.go` 失败捕获/ReplayFailure + debugger `/api/failures` HTTP API（commit 7afb62d/f470696/9e13abd）；TS `agent/failure.ts` + react-loop 失败落盘/`replayFailure`（commit 1771dd3）） | 任意失败可一键重放定位 |
 
-### 6.1 核心引擎 ✅
+### v3.5 — 可证（评估与可观测闭环）
 
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| ReAct 循环引擎 | `internal/agent/react_loop_engine.go`、`react_loop.go` | `runMu` 互斥锁 + 三级锁层级 |
-| 链式 API | `internal/agent/chain_api.go`、`capability_agent.go` | `WithXxx()` 链式注入 + 12 个 `*Capable` 接口 |
-| 基础任务规划 | `internal/agent/planning/planner.go` | `LLMPlanner` — 基于 LLM 的任务分解 + DAG 拓扑执行 |
-| RAG 检索 | `internal/agent/react_rag.go` | Auto/First/OnDemand 三种模式 |
-| 投机执行 | `internal/agent/speculative_exec.go` | `SpeculativeExecutor` + `ToolResultPredictor` |
-| Go 1.23 迭代器 | `internal/agent/stream_seq.go` | `StreamSeq()` range-over-func |
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | eval 从 5 条 smoke 升级为真实 harness 基准集（编码任务数据集） ✅（2026-08-04：`benchmark_cases.json` 60 条真实任务，Go embed `benchmark_cases.go` + TS 生成镜像 `benchmark-cases.ts`；`CodeConstructEvaluator`/`BenchmarkRunner` 双线 11+11 用例，commit f066fcc） | 基准集 ≥50 条真实任务 |
+| 2 | 真实 LLM 跑分（复用 nightly integration job），成功率/成本/耗时/恢复率作为版本门禁 ✅（2026-08-04：`eval/llm_bench.go` LLMBenchAgent+RunLLMBench+恢复率；CLI `bench/llm-bench` 基线门禁分数只升不降；nightly `llm-benchmark` job + release 附基准报告，commit 5462d07） | 每版发布附基准报告，分数只升不降 |
+| 3 | 补 Go 侧跨语言 11 套件（当前 4/15） ✅（2026-08-04：`pkg/cross_language_suites_test.go` 新增 11 套件；chaos Validate/Pipeline 空阶段/注入正则/maxTurns=50 等双线对齐；45 用例双线全绿，commit 1e56397） | 45 用例双线全量覆盖 |
+| 4 | trace → 指标 → 审计全链路闭环 ✅（2026-08-04：`internal/observability` CorrelationStore 以 trace_id 聚合 span/审计/指标 + `/traces` HTTP API；audit.Event.TraceID；agent ObservabilityCapable 全链注入，单请求同键回溯测试 3 用例，commit 51e8c2c） | 单请求可全链路回溯 |
+| 5 | 混沌注入常态化（harness 上跑 chaos-e2e） ✅（2026-08-04：`chaos/harness.go` FaultInjectingProvider+RunHarnessChaos 基线vs故障对比；常规确定性 5 用例 + e2e 真实基准集 baseline 1.0→0.5 下降 50% 可量化，commit d71ac7d） | 注入故障下成功率下降可量化 |
 
-### 6.2 LLM Provider ✅
+### v3.6 — 自适应（自愈与从经验学习）
 
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| 10+ Provider | `internal/llm/*_provider.go` | OpenAI/Anthropic/Gemini/Ollama/Azure/Qwen/GLM/Mistral/Cohere/DeepSeek |
-| ResilientProvider | `internal/llm/resilient.go` | 重试 + Fallback + 熔断三重保护 |
-| 细粒度错误分类 | `internal/llm/errors.go` | 5 种 ErrorKind + RetryableError + Retry-After |
-| 语义缓存 | `internal/llm/cache_enhanced.go`、`cache_sqlite.go` | 多级缓存 |
-| 速率限制 | `internal/llm/rate_limiter.go` | 令牌桶 |
-| 请求批量 | `internal/llm/batch.go` | BatchProcessor |
-| 模型路由 | `internal/llm/model_router.go` | Cost/Quality/Balanced 策略 |
-| 共享 HTTP Transport | `internal/llm/transport.go` | 连接池复用 + HTTP/2 |
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | 自愈：plan 失败自动换路径、子任务级重试策略 ✅（2026-08-04：`executePlanWithSelfHealing` replan/降级 runLoop（skipPlan 防递归）+ 子任务重试注入失败反馈换方案；`stats.PlanRecoveries`；commit 23a3a47） | 故障恢复不依赖人工 |
+| 2 | tool_learning 从"参数建议"升级"流程修正"（`react_loop_tools.go:113-128` 扩展） ✅（2026-08-04：`SuggestProcessCorrection` 检测高频失败模式（≥2 次）自动规避/替代参数；`stats.ProcessCorrections`；commit 67f407d） | 失败模式被自动规避 |
+| 3 | 跨任务记忆真正注入（基于 v3.4 memory 回读） ✅（2026-08-04：`tryMemorySolution` fast-path 复用 solved 记忆（0 轮推理）+ `saveSolutionMemory` 完成任务自动存解；commit c68c882） | 相似任务第二次显著更快 |
+| 4 | AP 用 AP 开发 AP（自举） ✅（2026-08-04：`internal/self_bootstrap` ImprovingProvider+RunBootstrap 多轮自举 + CLI `bench/self-bootstrap`；真实基准集曲线 0.333→0.667→1.0；commit 0e3e3ec） | 成功率曲线可见上升 |
 
-### 6.3 记忆系统 ✅
+### v3.7 — 双线产品化
 
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| HNSW 向量索引 | `internal/memory/hnsw.go` | 全内存 HNSW + 余弦相似度 |
-| SQLite FTS5 | `internal/memory/sqlite.go`、`sqlite_search.go` | 全文搜索 |
-| RAG 混合检索 | `internal/memory/rag.go`、`rag_pipeline.go` | Linear/RRF 融合 |
-| 三层记忆 | `working_memory.go` + `semantic_memory.go` + `memory_distiller.go` | Working/Episodic/Semantic + 自动蒸馏 |
-| 重要度评分 | `internal/memory/importance.go` | 四维加权 |
-| 语义聚类 | `internal/memory/clusterer.go` | DBSCAN / Agglomerative |
-| 多租户隔离 | `internal/memory/tenant.go` | 装饰器模式 |
-| pgvector 后端 | `internal/memory/pgvector_store.go` | PostgreSQL + pgvector |
-| 外部向量库 | `qdrant_provider.go`、`milvus_provider.go` | Qdrant + Milvus |
-| 跨语言一致性 | `internal/memory/cross_language_test.go` | Go/TS 行为对齐测试 |
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | TS 补官方 OpenTelemetry SDK、checkpoint 持久化、guardrail-in-loop ✅（2026-08-04：`OfficialOTelBridge` 委托 @opentelemetry/api + 可选 peer 依赖；checkpoint/guardrail 已于 v3.4 对齐；commit 10fc7ad） | TS 与 Go 治理能力对齐 |
+| 2 | 双线真实 LLM 集成测试建立基线 ✅（2026-08-04：TS `bench/llm-bench` 报告结构对齐 Go + 集成基线测试 + nightly `ts-llm-benchmark` job；commit b4c4013） | 双线同一套基准分数可比 |
+| 3 | 跨语言 spec 45 用例双线全量 ✅（2026-08-04：cross-language-api-check 门全绿，Go/TS 0 缺失，符号搜索改 Node fs 跨平台；45 用例双线全绿；commit 73f5b2d） | cross-language-api-check 门全绿 |
+| 4 | React Hooks（useAgent / useReActLoop）补全 ✅（2026-08-04：`react/kit.ts` 零样板 useAgent/useReActLoop/useRemoteAgent + `./react` 子路径导出；commit 68e8fd8） | 前端接入零样板 |
 
-### 6.4 编排与 Pool ✅
+### v3.8 — 规模化（多智能体大任务）
 
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| 统一执行引擎 | `internal/orchestration/` | 6 种编排模式 |
-| Pool 调度器 | `internal/pool/dispatcher.go` | `sync.Cond` 动态信号量 + 事件背压 |
-| AutoScaler | `internal/pool/autoscaler.go` | 自动扩缩容 |
-| 多租户 Pool | `internal/pool/tenant.go` | 租户级隔离 |
-| LLM Batch 集成 | `internal/pool/llm_batch_integration_test.go` | Pool + BatchProcessor |
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | 多 Agent 分工做单 Agent 做不了的大任务（Go 编排 + TS 前端） ✅（2026-08-04：`internal/multi_agent.Swarm` 专业 Specialist 路由+泛化兜底；规模 1/2/4/8 成功率不降且优于单 Agent；commit 7e95b49） | 任务规模×N 成功率不降 |
+| 2 | Pool × harness 多任务并发执行 ✅（2026-08-04：Pool SetModel/SetAgentFactory 跑 harness 基准任务；concurrency=4 吞吐 speedup≥2.5×，并发 8×16 全成功；commit 3e07fef） | 并发吞吐线性扩展 |
+| 3 | WASM 工具生态 ✅（2026-08-04：`WASMToolAdapter.AsTool` 桥进 tools.Registry；手构有效 WASM 模块 wazero 真实执行；commit c9b2b0c） | 自定义工具运行时可用 |
 
-### 6.5 A2A 通信 ✅
+### v3.9 — 生态与开发者体验
 
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| gRPC 通信 | `a2a/grpc_server.go`、`grpc_client.go` | gRPC + Protobuf |
-| mTLS | `a2a/mtls.go` | 双向 TLS + 证书自动轮换 |
-| 熔断拦截器 | `a2a/grpc_circuit_breaker.go` | `CircuitBreakerInterceptor` |
-| SSE 事件流 | `a2a/sse.go` | Server-Sent Events |
-| 认证 | `a2a/auth.go`、`grpc_auth.go` | 认证机制 |
-| 工具租赁 | `a2a/tool_lease.go` | 配额管理 + 过期回收 |
-| 追踪传播 | `a2a/trace_propagation.go` | gRPC trace 传播 |
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | marketplace 真实注册表 + 远程协议 + cosign 签名（Phase 5 Task 2-3） ✅（2026-08-04：`internal/marketplace` Manifest 远程协议 + ECDSA P-256 验签 + Installer；`ap plugin install <url>` 远程安装；commit 555683c） | 插件 install 可远程 + 验签 |
+| 2 | Studio 接真实引擎（替换 demo 数据） ✅（2026-08-04：`debugger/studio.ts` StudioBridge 接真实 agent runs 到 Inspector + `OTelBridgeLike` 结构接口；commit da7a238） | 四面板显示真实运行 |
+| 3 | 文档站自动构建 + VS Code Agent Inspector + 插件脚手架 ✅（2026-08-04：ci.yml 新增 docs-build job 自动构建 vitepress 文档站并修复死链；VS Code Inspector（agents-view + dag-visualizer）与插件脚手架 `ap plugin create` 已有完整实现与测试；commit 6736c44） | 第三方按文档零门槛接入 |
+| 4 | MCP 深度集成 ✅（2026-08-04：工具名命名空间前缀隔离多 server 同名工具（Go `SetToolPrefix`/`ToolPrefix` 配置 + TS `toolPrefix`）；`resolveMCPCommand` 支持 npx/npm 等 Windows .cmd 解析；测试 Go 5 + TS 5；commit b587593） | 主流 MCP server 开箱即用 |
 
-### 6.6 安全体系 ✅
+### v4.0 — 稳定化
 
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| ACL（map 优化） | `internal/security/sandbox.go` | `map[string][]ACLRule` O(1) 查找 |
-| Vault 后端 | `internal/security/vault_backend.go` | Vault KV v2 + Token/AppRole |
-| Guardrail 引擎 | `internal/guardrail/engine.go` | 优先级排序 + copy-on-write |
-| PII 检测 | `internal/guardrail/pii_trie.go` | Trie 树匹配 |
-| pprof 鉴权 | `internal/health/pprof.go` | Bearer Token 中间件 |
-
-### 6.7 配置与可观测性 ✅
-
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| 统一配置框架 | `internal/config/loader.go` | YAML/ENV/flags + Validate() |
-| eBPF 追踪 | `internal/otel/ebpf/tracer_linux.go` | 进程级 IO 追踪 |
-| CI 竞态检测 | `.github/workflows/ci.yml` | `CGO_ENABLED=1 go test -race` |
-
-### 6.8 开发者工具 ✅
-
-| 能力 | 验证位置 | 说明 |
-|------|----------|------|
-| Studio Web UI | `agentprimordia/studio/web/` | React + Vite |
-| VSCode 扩展 | `extensions/vscode/src/` | chatPanel/debugger/inspector/runHistory/statusBar |
-| Browser DevTools | `extensions/browser-extension/src/` | DevTools Panel + Background |
-| TS SDK 跨语言测试 | `sdk/typescript/tests/shared/` | cross-language.test.ts |
-
-### 6.9 已清理技术债（11 项 ✅）
-
-| # | 技术债 | 修复方式 | 涉及文件 |
-|---|--------|----------|----------|
-| 1 | `runLoop` 7 参数过多 | 封装 `loopState` 结构体 | `react_loop_core.go` |
-| 2 | RAG 查询提取重复 | 提取 `extractLastUserMessage` | `react_rag.go` 等 |
-| 3 | `Stream()` 重试不一致 | 复用 `executeWithRetry` 泛型 | `resilient.go` |
-| 4 | `math/rand` 锁竞争 | 迁移至 `math/rand/v2` | 9 个文件 |
-| 5 | `ReadAllPooled` 脏读 | 添加 `buf.Reset()` | `jsonutil/pool.go` |
-| 6 | symlink 逃逸 | `EvalSymlinks` 不放行 | `filesystem.go` |
-| 7 | 熔断器 HalfOpen 反转 | 修正状态转换 | `resilient.go` |
-| 8 | YAML 注入风险 | `yaml.Marshal` 替代 | Operator ConfigMap |
-| 9 | Pool Task Map 无界 | `MaxRetainedTasks` | `dispatcher.go` |
-| 10 | 编排循环缺 ctx.Done() | 添加取消检查 | `orchestrator.go` 等 |
-| 11 | Metrics label 缺失 | `LabeledMetricsRecorder` | `react_loop.go` |
+| # | 任务 | 验收标准 |
+|---|------|---------|
+| 1 | 废弃 API 清理（`NewReActAgent` / `RegisterPProf`，VERSIONING 承诺） ✅（2026-08-04：移除 `RegisterPProf` 与 A2A JSON-RPC 全部超期导出；`NewReActAgent` 已无实现；新增迁移指南 v4-deprecations.md + 跨平台 deprecation 门（Go 测试 + 强化 bash 脚本）；commit b63aa54） | 迁移指南就绪，deprecation 检查 0 残留 |
+| 2 | 契约基线锁定（api-contract 漂移门） ✅（2026-08-04：`scripts/api-extract/main_test.go` 新增 TestAPIContractNoDrift 本地漂移门（Windows 可跑），与 CI contract-baseline 双保险；漂移即失败含负向验证；commit c40ed42） | 漂移即失败 |
+| 3 | 兼容性承诺收紧：评审稳定 API 清单，实验性 API 转正/降级并记录 ✅（2026-08-04：VERSIONING.md 稳定清单按实际 21 个 Stable/混合模块重写；`pkg/a2a.go` gRPC 转正；新增 `pkg/stability_compliance_test.go` 双向比对门；commit 5d6488c） | 稳定 API 列表与实际导出一致 |
+| 4 | 性能大版本（基准对比全量刷新） ✅（2026-08-04：新增 `bench/suite/p95_latency_test.go` 关键路径 P50/P95/P99 延迟分布；新建 2026-Q4.json 基线；bench-regression-check 切新基线 + P95 回归门；实测 AgentRun P95 10.8µs / ToolCall 11.0µs / MemorySearch 46.3µs；commit bec048c） | 关键路径 P95 达标 |
+| 5 | 发布纪律固化（tag 自动化 CI） ✅（2026-08-04：新增 `.github/workflows/tag-release.yml` 合并 main 自动打 tag；`pkg/version_gate_test.go` 版本一致性门；版本 bump 4.0.0 全线对齐；commit 2229ece） | 每次发布自动打 tag |
 
 ---
 
-## 七、长期愿景（v3.0+）
+## 四、贯穿主线
 
-> v3.0 是面向未来的探索性版本，以下计划均为**方向性指引**。
+> **从"声称"到"证明"，再到"规模"**：v3.3 让项目可信，v3.4 让一体化不塌，v3.5 让省 token 变成数字，
+> v3.6 让 AP 自己成长，v3.7-v3.9 双线 + 生态放大价值，v4.0 收官稳定。
 
-| # | 方向 | 计划 | 预期收益 | 优先级 | 状态 |
-|---|------|------|----------|--------|------|
-| 1 | 扩展性 | WASM 自定义工具上传 | 用户自定义工具运行时 | 🔵 P3 | ✅ 已完成 |
-| 2 | 边缘计算 | Edge Agent 模板（CF Worker = Agent） | 边缘 Agent 开箱即用 | 🔵 P3 | ✅ 已完成 |
-| 3 | 智能提升 | Agent 自适应学习 + 知识蒸馏 | Agent 能力持续提升 | 🔵 P3 | ✅ 已完成 |
-| 4 | 水平扩展 | 分布式集群（跨节点 Agent 协作） | 突破单节点瓶颈 | 🔵 P3 | ✅ 已完成 |
-| 5 | 生产就绪 | SLA 保障 + 混沌工程验证 | 企业级可靠性 | 🔵 P3 | ✅ 已完成 |
-| 6 | 隐私保护 | 隐私优先混合推理（PII → 本地 WebGPU） | 数据不出域 | 🔵 P3 | ✅ 已完成 |
-| 7 | 协作创新 | 人机协作编辑（Agent 作为 CRDT 客户端） | Agent 与人平等参与 | 🔵 P3 | ✅ 已完成 |
-| 8 | 生态建设 | Agent 市场（可插拔 Agent 模板生态） | 社区驱动扩展 | 🔵 P3 | ✅ 已完成 |
+## 五、版本里程碑速查
 
----
-
-## 八、版本里程碑速查
-
-```
-v2.0.0 ──── 核心引擎 + 双语言 SDK
-    │
-    ├── v2.1 ✅ ── 技术债清理 + 安全加固 (P0 × 5 + P1 × 2)
-    │
-    ├── v2.2 ✅ ── 性能优化 + 成本控制 (P1 × 3 + P2 × 3)
-    │
-    ├── v2.3 ✅ ── 架构改进 + 配置统一 (P1 × 2 + P2 × 2)
-    │
-    ├── v2.4 ✅ ── 可观测性深化 (P1 × 1 + P2 × 1)
-    │
-    ├── v2.5 ✅ ── 分布式安全 + Mesh 强化 (P2 × 2)
-    │
-    └── v3.0 ─── 长期探索 (P3 × 8) ✅ 8/8 已完成
-```
-
-| 版本 | 范围 | 状态 | 完成项 |
-|------|------|------|--------|
-| v2.1 | 1-2 周 | ✅ 完成 | 7/7 |
-| v2.2 | 1 月 | ✅ 完成 | 6/6 |
-| v2.3 | 2 月 | ✅ 完成 | 4/4 |
-| v2.4 | 3 月 | ✅ 完成 | 2/2 |
-| v2.5 | 4 月 | ✅ 完成 | 2/2 |
-| v3.0 | 3-6 月 | ✅ 已完成 | 8/8 |
-| **v2 合计** | | **✅ 全部完成** | **21/21** |
+| 版本 | 主题 | 主线 |
+|------|------|------|
+| v3.3 | 可信化 | 对账 + 接线 |
+| v3.4 | 一体化不塌 | Harness 可靠性 + 重放 |
+| v3.5 | 可证 | 评估基准 + 可观测闭环 |
+| v3.6 | 自适应 | 自愈 + 从失败学习 |
+| v3.7 | 双线产品化 | TS 治理补齐 + Hooks |
+| v3.8 | 规模化 | 多 Agent 大任务 |
+| v3.9 | 生态 | 市场 + Studio + 文档站 |
+| v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 |
 
 ---
 
-*路线图维护规则：每次版本发布后更新对应任务状态。所有"已完成"声明须经过代码库文件验证（含工作区未提交变更）。v2.1-v2.5 的变更当前在 git 工作区中，部分尚未提交。*
+## 六、路线图维护规则
+
+1. 每次版本发布后更新对应任务状态；状态勾选前必须通过代码实况验证（附文件:行号证据）
+2. 本文件为唯一权威路线文档，`STATUS.md` / `VERSIONING.md` / `CHANGELOG.md` 与其保持一致
+3. 新增能力按"能力实况清单"流程：先登记 → 接线 → 评测 → 才可标记完成
+4. 所有"已完成"声明须附验证位置，防止回归"声称完成"陷阱

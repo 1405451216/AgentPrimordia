@@ -59,6 +59,9 @@ type PromptTemplate = agent.PromptTemplate
 // AgentStatus 表示 Agent 的当前运行状态
 type AgentStatus = agent.AgentStatus
 
+// InputGuard 输入端护栏检查函数（v3.4-4）：用户输入进入循环前调用
+type InputGuard = agent.InputGuard
+
 // AgentStats 提供 Agent 运行时的统计信息，包括状态、轮次、tool调用次数等
 type AgentStats = agent.AgentStats
 
@@ -272,6 +275,8 @@ var (
 	WithEvents = agent.WithEvents
 	// WithMetrics 注入指标记录器
 	WithMetrics = agent.WithMetrics
+	// WithInputGuard 注入输入端护栏（v3.4-4）：用户输入进入循环前检查
+	WithInputGuard = agent.WithInputGuard
 	// WithCheckpointStore 注入检查点存储
 	WithCheckpointStore = agent.WithCheckpointStore
 	// WithSummarizer 注入摘要提取器
@@ -284,6 +289,12 @@ var (
 	WithHITL = agent.WithHITL
 	// WithLearning 注入自适应学习配置（知识蒸馏/能力进化/反馈学习）
 	WithLearning = agent.WithLearning
+	// WithPlanner 注入任务规划器（首轮自动分解复杂任务为子任务 DAG）
+	WithPlanner = agent.WithPlanner
+	// WithReflector 注入反思器（完成路径上批评并改进最终输出）
+	WithReflector = agent.WithReflector
+	// WithReflectionThreshold 设置触发 Reflection 改进的最低严重度
+	WithReflectionThreshold = agent.WithReflectionThreshold
 
 	// ===== 分组注入 Option =====
 
@@ -295,6 +306,8 @@ var (
 	WithResilience = agent.WithResilience
 	// WithToolsConfig 一次性注入tool配置
 	WithToolsConfig = agent.WithToolsConfig
+	// WithCognition 一次性注入认知能力配置（Planner / Reflector / 阈值）
+	WithCognition = agent.WithCognition
 )
 
 // AgentOption 是 NewAgent 的函数式选项类型（v0.7.0 起等同于 agent.Option）
@@ -326,6 +339,9 @@ type HITLConfig = agent.HITLConfig
 
 // LearningConfig 自适应学习分组配置（Distiller / Evolver / FeedbackLearner）
 type LearningConfig = agent.LearningConfig
+
+// CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold）
+type CognitionConfig = agent.CognitionConfig
 
 // ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
 
@@ -581,13 +597,6 @@ type HealthCheckable = health.Checker
 // NewHealthChecker 创建健康检查器
 var NewHealthChecker = health.NewChecker
 
-// RegisterPProf 将 pprof 性能分析端点注册到给定的 http.ServeMux。
-// 注册 /debug/pprof/ 下的所有标准 profile 路由（CPU、heap、goroutine 等）。
-//
-// Deprecated: 无鉴权版本，生产环境请使用 RegisterPProfSecure 或 RegisterPProfStrict。
-// Removed in v4.0.0.
-var RegisterPProf = health.RegisterPProf
-
 // PProfHandler 返回一个包含 pprof 端点的独立 http.Handler。
 // 适用于仅需暴露 profiling 而无需自定义路由的场景。
 var PProfHandler = health.PProfHandler
@@ -630,7 +639,7 @@ var NewConfigLoader = config.New
 
 // Version 是 AgentPrimordia 框架的当前版本号
 // 与 VERSIONING.md 和 Release Notes 保持一致（v3.2.0）
-const Version = "3.2.0"
+const Version = "4.0.0"
 
 // Metadata 是消息的元数据，包含时间戳、跟踪 ID 和扩展键值对
 type Metadata = agent.Metadata

@@ -72,6 +72,8 @@ export interface MCPClientOptions {
   timeout?: number
   /** 日志函数 */
   logger?: (...args: unknown[]) => void
+  /** v3.9-4：工具名命名空间前缀，隔离多 MCP server 同名工具 */
+  toolPrefix?: string
 }
 
 // ===== HTTP/SSE 传输层 =====
@@ -167,9 +169,13 @@ export class MCPClient {
   private serverInfo?: MCPServerInfo
   private capabilities?: MCPCapabilities
   private requestID = 0
+  private toolPrefix = ''
 
   constructor(options: MCPClientOptions) {
     this.options = { timeout: 30000, ...options }
+    if (options.toolPrefix) {
+      this.toolPrefix = options.toolPrefix.replace(/^_+|_+$/g, '')
+    }
     if (options.transport === 'sse') {
       if (!options.url) throw new MCPError('url required for SSE transport', -32602)
       this.transport = new SSETransport(options.url)
@@ -177,6 +183,26 @@ export class MCPClient {
       if (!options.command) throw new MCPError('command required for stdio transport', -32602)
       this.transport = new StdioTransport(options.command, options.args)
     }
+  }
+
+  /** v3.9-4：设置工具名命名空间前缀（多 server 同名工具隔离） */
+  setToolPrefix(prefix: string): void {
+    this.toolPrefix = prefix.replace(/^_+|_+$/g, '')
+  }
+
+  /** v3.9-4：工具对外名（带前缀）→ MCP 原始工具名 */
+  private toRawName(prefixedName: string): string {
+    if (!this.toolPrefix) return prefixedName
+    const raw = prefixedName.startsWith(this.toolPrefix + '_')
+      ? prefixedName.slice(this.toolPrefix.length + 1)
+      : prefixedName
+    return raw
+  }
+
+  /** v3.9-4：MCP 原始工具名 → 工具对外名（带前缀） */
+  private toPublicName(rawName: string): string {
+    if (!this.toolPrefix) return rawName
+    return `${this.toolPrefix}_${rawName}`
   }
 
   get isInitialized(): boolean {
@@ -209,18 +235,20 @@ export class MCPClient {
     return this.serverInfo
   }
 
-  /** 列出所有可用工具 */
+  /** 列出所有可用工具（v3.9-4：返回带命名空间前缀的工具名） */
   async listTools(): Promise<MCPTool[]> {
     const resp = await this.sendRequest('tools/list', {})
     if (resp.error) {
       throw new MCPError(resp.error.message, resp.error.code)
     }
-    return (resp.result as { tools: MCPTool[] }).tools ?? []
+    const tools = (resp.result as { tools: MCPTool[] }).tools ?? []
+    return tools.map((t) => ({ ...t, name: this.toPublicName(t.name) }))
   }
 
-  /** 调用指定工具 */
+  /** 调用指定工具（v3.9-4：自动剥离前缀，以原始名调用 MCP server） */
   async callTool(name: string, arguments_?: Record<string, unknown>): Promise<MCPToolResult> {
-    const resp = await this.sendRequest('tools/call', { name, arguments: arguments_ })
+    const rawName = this.toRawName(name)
+    const resp = await this.sendRequest('tools/call', { name: rawName, arguments: arguments_ })
     if (resp.error) {
       throw new MCPError(resp.error.message, resp.error.code)
     }

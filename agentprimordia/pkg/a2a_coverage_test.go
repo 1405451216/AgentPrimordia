@@ -64,35 +64,6 @@ func TestNewA2ADataPart(t *testing.T) {
 	}
 }
 
-// ===== A2A Server tests =====
-
-func TestNewA2AServer(t *testing.T) {
-	tm := NewA2ATaskManager()
-	server := NewA2AServer(tm)
-	if server == nil {
-		t.Fatal("NewA2AServer returned nil")
-	}
-}
-
-func TestNewA2AServerWithService(t *testing.T) {
-	tm := NewA2ATaskManager()
-	card := NewA2AAgentCard("agent-1", "TestAgent")
-	service := NewA2AService(card, tm)
-	server := NewA2AServerWithService(service)
-	if server == nil {
-		t.Fatal("NewA2AServerWithService returned nil")
-	}
-}
-
-// ===== A2A Client tests =====
-
-func TestNewA2AClient(t *testing.T) {
-	client := NewA2AClient("http://localhost:8080")
-	if client == nil {
-		t.Fatal("NewA2AClient returned nil")
-	}
-}
-
 // ===== A2A Authenticator tests =====
 
 func TestNewA2ANoopAuthenticator(t *testing.T) {

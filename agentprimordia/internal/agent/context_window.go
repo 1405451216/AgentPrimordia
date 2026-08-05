@@ -18,3 +18,12 @@ type DefaultStrategy = context.DefaultStrategy
 func NewDefaultStrategy(keepLast int) *DefaultStrategy {
 	return context.NewDefaultStrategy(keepLast)
 }
+
+// SummarizingStrategy 摘要压缩策略：超出窗口时保留系统消息与目标，折叠中间历史。
+// 相比纯滑动窗口，长任务不丢失原始目标（v3.4-2）。
+type SummarizingStrategy = context.SummarizingStrategy
+
+// NewSummarizingStrategy 创建摘要压缩策略
+func NewSummarizingStrategy(keepLast int) *SummarizingStrategy {
+	return context.NewSummarizingStrategy(keepLast)
+}

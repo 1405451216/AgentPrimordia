@@ -537,6 +537,28 @@ jobs:
 
   # ===== Phase 4: 跨语言同步验证 =====
 
+  # ===== v3.9-3：文档站自动构建 =====
+  # vitepress 文档站每次 PR/推送自动构建，确保文档可发布、无断链错误。
+  docs-build:
+    name: Docs Build (vitepress)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdk/typescript
+        run: npm ci
+
+      - name: Build docs site
+        working-directory: sdk/typescript
+        run: npm run docs:build
+
   cross-language-check:
     name: Cross-Language API Compatibility
     runs-on: ubuntu-latest
@@ -580,7 +602,7 @@ jobs:
       - name: Run benchmark subset
         working-directory: agentprimordia
         run: |
-          go test -bench='BenchmarkConsistentHash_GetNode|BenchmarkDistributedState|BenchmarkAgentRun|BenchmarkMemoryStore|BenchmarkMemoryLatency' \
+          go test -bench='BenchmarkConsistentHash_GetNode|BenchmarkDistributedState|BenchmarkAgentRun|BenchmarkMemoryStore|BenchmarkMemoryLatency|BenchmarkP95' \
             -benchmem -benchtime=500ms -run='^$' -count=3 ./bench/suite/ | tee /tmp/bench-output.txt
 
       - name: Check for regressions against baseline

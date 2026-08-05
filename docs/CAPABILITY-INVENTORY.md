@@ -1,0 +1,112 @@
+# AgentPrimordia 能力实况清单
+
+> **文档定位**：v3.3 可信化任务 1 的正式产出——全项目能力三态清单（真实可用 / 部分 / 仅存在），
+> 每项附代码证据。基于 2026-08-03 全项目实证审计（三方取证 + 模块盘点）。
+>
+> **最后更新**：2026 年 8 月 3 日
+> **与 ROADMAP 的关系**：本清单是路线图「现状对账」章节的完整展开；所有"已完成"声明以此清单为准。
+
+---
+
+## 一、三态定义
+
+| 状态 | 定义 | 判定标准 |
+|------|------|---------|
+| ✅ 真实可用 | 已接入实际运行路径且有证据 | 有生产调用点 + 测试通过 |
+| 🟠 部分 | 实现存在但未接通关键路径 | 有实现/测试，缺运行时接线 |
+| 🔴 仅存在/缺失 | 文件存在但功能悬空，或能力完全缺失 | 无生产调用点 / 无实现 |
+
+---
+
+## 二、Go 引擎（internal/，29 包）
+
+### ✅ 真实可用（已接入主流程/已产品化）
+
+| 包 | 能力 | 证据 |
+|----|------|------|
+| agent（核心） | ReAct 主循环：每轮 checkpoint 保存 + Resume 断点续跑、成本预算拦截、LLM 重试、输出端 guardrail、Run 级 recover | `react_persist.go:167`、`react_loop_core.go:107,224`、`react_llm.go:91` |
+| llm | 10+ Provider、Resilient（重试+Fallback+熔断）、语义缓存、速率限制、批处理、多模型路由 | `internal/llm/*.go`、`model_router.go` |
+| tools | 注册表、执行器（panic recover）、Scope 策略、builtin 工具、MCP 双向 | `internal/tools/*`、`builtin/` |
+| memory | HNSW + FTS5 + RAG 混合 + 三层记忆 + pgvector + 多租户 | `hnsw.go`、`sqlite.go`、`rag.go`、`hierarchy.go` |
+| security | ACL（O(1) map）+ 命令沙箱 + Vault 后端 | `sandbox.go`、`vault_backend.go` |
+| guardrail | 引擎（4 动作）+ PII Trie，**已接入循环输出端** | `engine.go`、`react_loop_core.go:224` |
+| metrics | ReAct 循环每轮真实上报 token/LLM/turn | `react_lifecycle.go:36-57` |
+| orchestration | Pipeline/Handoff/DAG/GroupChat/Debate 完整实现 + e2e + pkg 暴露 | `orchestration/*` + `test/e2e/multi_agent_test.go` |
+| pool | 调度器（动态信号量 + 事件背压）+ AutoScaler + 多租户 + LLM Batch 集成 | `dispatcher.go`、`llm_batch_integration_test.go` |
+| persist | Checkpoint CRUD + etcd/redis 分布式后端（build-tag 门控） | `internal/persist/*` |
+| chaos | 真实注入引擎（tc netem / iptables）+ LLM 故障注入 | `real_injector_linux.go` |
+| debugger / admin | 真实 HTTP 服务 + 全量 API 测试 | `http.go`、`handler.go` |
+| tool_learning | 循环内记录 + 跨会话成功率聚合回注参数建议 | `react_loop_tools.go:113-128` |
+| 基础设施包 | config / health / events / logger / prompt / resilience / concurrency / governance / audit / jsonutil / registry / protocol | 各自有实现与测试（governance 覆盖率 67.2% 偏低） |
+
+### 🟠 部分（存在但未接通关键路径）
+
+| 包 | 缺口 | 证据 |
+|----|------|------|
+| agent（react.Engine） | ✅ 已决策（2026-08-03）：废弃降级为实验性骨架，`ReactEngine()` 标注 Deprecated，主路径保留 reactLoopEngine | `react_bridge.go:15` |
+| agent（executePlan） | 子任务失败 fast-fail 整体中断无重试；**plan 本身不可恢复**（checkpoint 不存 plan/子任务） | `react_plan_executor.go:73-80` |
+| agent（memory 回读） | loop 的 MemoryStore 接口仅 Add/UpdateSummary，**无 Search**，长期记忆不回流 | `react_loop.go:40-44` |
+| agent（上下文） | 子任务全量继承历史，100 条滑动窗口无压缩 | `react_persist.go:205` |
+| pool（dispatcher） | 仍固定 worker，未接入 `internal/concurrency` 动态协程池 | `pool/dispatcher.go` |
+| otel | ✅ 已接线（2026-08-03）：`WithTelemetry(tp)` 把 Tracer+Metrics 注入 Agent，loop → OTLP 导出闭环 | `pkg/otel.go` |
+| eval | 框架完整但 CI 只跑单元自测，真实数据集仅 5 条 smoke | `bench/eval-ci/run_eval.sh:25`、`eval_cases.json` |
+| studio | 四面板全 demo 数据，真实引擎注入点未接线 | `studio/web/README.md:26`、`internal/studio/demo.go:41` |
+| marketplace | 内存 map 注册表，无远程协议/分发 | `internal/agent/marketplace/template.go:145` |
+| 跨语言（Go 侧） | 规范 15 套件/45 用例，Go 侧仅覆盖 4 个测试函数 | `pkg/cross_language_test.go` |
+
+### 🔴 仅存在 / 缺失
+
+| 缺口 | 说明 | 证据 |
+|------|------|------|
+| 输入端护栏 | loop 无 user 消息输入检查（仅输出端 guardrail） | `react_loop_core.go:224` 仅输出侧 |
+| security 沙箱接入 loop | 命令沙箱独立存在，但 agent 循环内无调用 | agent 内 grep `security.` 无命中 |
+| tool 执行重试 | LLM 有重试，tool 无（失败仅记录继续） | `react_llm.go:85-110` vs `executeTool` |
+| 并行 tool recover | 并行 tool goroutine 无 recover，单 tool panic 击穿循环 | `react_loop_tools.go:74-80` |
+| 真实 LLM 评测基准 | 无真实任务数据集；官方基准文档自认 Skipped | `official-benchmarks.md:269` |
+
+---
+
+## 三、TypeScript 线（sdk/typescript/，40 目录）
+
+### ✅ 真实可用
+
+| 能力 | 证据 |
+|------|------|
+| ReActAgent（Planner/Reflector/checkpoint-resume/成本预算已接入） | `react-loop.ts:245,260,450`、`turn-executor.ts:523` |
+| 上下文压缩（KeepLastN/TokenBudget，**比 Go 更先进**） | `request-id.ts:31-75`、`context-compress.ts` |
+| 2552 测试全绿 / tsc / eslint 0 error / 可发布 npm | `vitest run`、`package.json`（@agentprimordia/sdk v3.2.0 + api-extractor） |
+| sandbox / MCP client / multi-agent orchestration / Edge / WebGPU / CRDT | `security/`、`mcp/`、`orchestration/`、`edge/`、`browser/` |
+| 跨语言规范 15 套件/45 用例全量实现 | `tests/shared/cross-language.test.ts` |
+
+### 🟠 部分 / 🔴 缺失
+
+| 缺口 | 说明 | 证据 |
+|------|------|------|
+| 🔴 真实 LLM 集成测试 = 0 | 所有 Provider 测试 mock fetch；coding harness 也脚本化 | `tests/unit/llm-providers.test.ts:358` 等 |
+| 🟠 guardrail 未接入 agent 循环 | 完整实现但 `src/agent/` 下 grep guardrail 0 命中 | `src/security/guardrails.ts:244` |
+| 🟠 metrics/otel 自研 | 非官方 OpenTelemetry SDK，自写 MetricsRegistry | `src/metrics/otel-prometheus.ts:21` |
+| 🟠 persist 弱 | 仅内存 + 单文件 SQLite checkpoint | `src/persist/sqlite-checkpoint.ts` |
+| 🟠 WASM 依赖 Go | TS 是消费方，运行时在 Go 编译产物 | `wasm/runtime.go`（Go 模块） |
+
+---
+
+## 四、运维/生态层
+
+| 模块 | 状态 | 证据 |
+|------|------|------|
+| K8s Operator | 🟠 部分（CRD+controller 完整，canary eval 基于 mock） | `operator/` |
+| wasm/ 模块 | ✅ 已存在（Go 纯运行时 + 工具执行） | `wasm/runtime.go` |
+| Studio | 🟠 demo 外壳 | 见上 |
+| VSCode / Browser 扩展 | ✅ 已实现 | `extensions/vscode/`、`extensions/browser-extension/` |
+
+---
+
+## 五、结论
+
+**已可信（22 项基础设施级能力）**：ReAct 主循环、LLM 全家桶、工具系统、记忆系统、安全体系、编排、Pool、checkpoint、混沌、调试/管理 API、双语言 SDK 骨架。
+
+**待接通（v3.3-v3.4 主攻）**：react.Engine 主路径、otel 接线、eval 真实基准、plan 级 checkpoint、memory 回读、输入端护栏、tool 重试、并行 recover、TS guardrail-in-loop、双线真实 LLM 验证。
+
+---
+
+*维护规则：本清单任何状态变更须附代码证据（文件:行号）并在当次 PR 中更新。*

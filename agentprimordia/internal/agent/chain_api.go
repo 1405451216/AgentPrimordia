@@ -3,6 +3,7 @@ package agent
 import (
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 	"context"
@@ -90,6 +91,11 @@ func (a *ReActAgent) WithCheckpointStore(cs persist.CheckpointStore) *Capability
 	return a.wrapSelf(&CapabilityAgent{inner: a, checkpoint: cs})
 }
 
+// WithFailureStore 注入失败记录存储，返回可链式调用的 CapabilityAgent（v3.4-6）
+func (a *ReActAgent) WithFailureStore(fs persist.FailureStore) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, failureStore: fs})
+}
+
 // WithSummarizer 注入摘要提取器，返回可链式调用的 CapabilityAgent
 func (a *ReActAgent) WithSummarizer(s memory.SummaryExtractor) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, summarizer: s})
@@ -119,10 +125,21 @@ func (a *ReActAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, outputGuard: g})
 }
 
+// WithInputGuard 注入输入端 Guardrail 检查函数，返回可链式调用的 CapabilityAgent
+// 用于在用户输入进入循环前自动进行注入拦截、脱敏等防护（v3.4-4）
+func (a *ReActAgent) WithInputGuard(g InputGuard) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, inputGuard: g})
+}
+
 // WithAuditLogger 注入审计日志器，返回可链式调用的 CapabilityAgent
 // LLM 调用、tool调用、Agent 启动/停止等关键路径会自动写入审计事件
 func (a *ReActAgent) WithAuditLogger(l AuditLogger) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, auditLogger: l})
+}
+
+// WithObservability 注入全链路关联存储（v3.5-4），返回可链式调用的 CapabilityAgent
+func (a *ReActAgent) WithObservability(corr *observability.CorrelationStore) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, observability: corr})
 }
 
 // ===== RAG 简化 API =====

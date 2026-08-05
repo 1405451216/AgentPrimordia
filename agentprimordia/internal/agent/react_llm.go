@@ -19,6 +19,9 @@ var ErrBudgetExceeded = errors.New("budget exceeded")
 
 var ErrNoToolkit = errors.New("no toolkit configured")
 
+// ErrInputBlocked 表示用户输入被输入端护栏拒绝（v3.4-4）
+var ErrInputBlocked = errors.New("input blocked by guardrail")
+
 // getOrInitExecutor 懒加载返回缓存的 Executor。优化（Task 1.5）：避免每轮tool调用都 NewExecutor。
 func (a *ReActAgent) getOrInitExecutor() *tools.Executor {
 	a.toolExecutorOnce.Do(func() {
@@ -63,21 +66,42 @@ func (a *ReActAgent) executeTool(ctx context.Context, tc ToolCall) (*ToolResult,
 		Args: tc.Args,
 	}
 
-	result, err := executor.Execute(ctx, &fc)
-	if err != nil {
-		return &ToolResult{
-			ToolCallID: tc.ID,
-			Content:    err.Error(),
-			IsError:    true,
-		}, err
+	// v3.4-4：tool 执行层失败自动重试（网络抖动/瞬时错误），最多 defaultToolRetries 次额外尝试。
+	// 注意：业务级拒绝（result.IsError）不触发重试，仅执行层 error 重试。
+	var lastErr error
+	for attempt := 0; attempt <= defaultToolRetries; attempt++ {
+		if ctx.Err() != nil {
+			return &ToolResult{
+				ToolCallID: tc.ID,
+				Content:    "tool execution cancelled",
+				IsError:    true,
+			}, ctx.Err()
+		}
+		result, err := executor.Execute(ctx, &fc)
+		if err == nil {
+			return &ToolResult{
+				ToolCallID: tc.ID,
+				Content:    result.Content,
+				IsError:    result.IsError,
+			}, nil
+		}
+		lastErr = err
+		a.logger.Debug("tool 执行失败，准备重试",
+			"tool", tc.Name,
+			"attempt", attempt+1,
+			"error", err,
+		)
 	}
 
 	return &ToolResult{
 		ToolCallID: tc.ID,
-		Content:    result.Content,
-		IsError:    result.IsError,
-	}, nil
+		Content:    lastErr.Error(),
+		IsError:    true,
+	}, lastErr
 }
+
+// defaultToolRetries tool 执行层失败时的额外重试次数（v3.4-4）
+const defaultToolRetries = 1
 
 // callToolsWithRetry calls LLM with function calling support, with retry on transient errors
 // 优化（Task 2.5）：直接接受 []llm.ToolDefinition 而非 []map[string]any，

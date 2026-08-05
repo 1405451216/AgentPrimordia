@@ -20,6 +20,7 @@ type MCPClientConfig struct {
 	Env       map[string]string `json:"env,omitempty"`       // 环境变量
 	AutoStart bool              `json:"autoStart,omitempty"` // Agent 启动时自动拉起
 	BaseURL   string            `json:"baseUrl,omitempty"`   // 已运行 Server 的 URL（跳过启动）
+	ToolPrefix string           `json:"toolPrefix,omitempty"` // v3.9-4：工具名命名空间前缀，隔离多 server 同名工具
 }
 
 // MCPClientStatus 描述 MCP Server 的运行状态
@@ -104,6 +105,9 @@ func (r *MCPRegistry) Start(ctx context.Context, name string) error {
 	if entry.Config.BaseURL != "" {
 		return r.connectExisting(ctx, name, entry)
 	}
+
+	// v3.9-4：解析启动命令（Windows npx.cmd 兼容）
+	entry.Config.Command = resolveMCPCommand(entry.Config.Command)
 
 	return r.startProcess(ctx, name, entry)
 }
@@ -306,6 +310,14 @@ func (r *MCPRegistry) RegisterIntoRegistry(registry *Registry) error {
 	for name, entry := range r.servers {
 		if entry.Status != MCPClientRunning || entry.Client == nil {
 			continue
+		}
+
+		// v3.9-4：应用命名空间前缀，隔离多 server 同名工具
+		if entry.Config.ToolPrefix != "" {
+			entry.Client.SetToolPrefix(entry.Config.ToolPrefix)
+		} else if entry.Config.Name != "" {
+			// 未显式指定前缀时，用服务器名作为默认前缀，避免同名工具互相覆盖
+			entry.Client.SetToolPrefix(entry.Config.Name)
 		}
 
 		if err := entry.Client.RegisterIntoRegistry(registry); err != nil {

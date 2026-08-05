@@ -127,6 +127,7 @@ nav:
     - 添加工具: guides/add-tools.md
     - 配置记忆: guides/configure-memory.md
     - 配置护栏: guides/configure-guardrail.md
+    - 一体化 Coding Harness: guides/coding-harness.md
     - 多Agent协作: guides/multi-agent.md
     - 多租户部署: guides/multi-tenant.md
     - 并发调度: guides/pool.md

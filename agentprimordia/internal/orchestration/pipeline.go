@@ -141,7 +141,15 @@ func (p *Pipeline) AddStage(stage *Stage) error {
 
 // Execute 执行流水线
 // 按顺序执行每个阶段，前一阶段的输出作为下一阶段的输入
+// 空流水线（无任何阶段）返回错误。
 func (p *Pipeline) Execute(ctx context.Context, input string) (*PipelineResult, error) {
+	p.mu.RLock()
+	stageCount := len(p.stages)
+	p.mu.RUnlock()
+	if stageCount == 0 {
+		return nil, fmt.Errorf("pipeline: no stages defined")
+	}
+
 	startTime := time.Now()
 
 	result := &PipelineResult{

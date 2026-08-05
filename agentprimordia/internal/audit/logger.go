@@ -25,6 +25,8 @@ type Event struct {
 	Details map[string]any `json:"details,omitempty"`
 	// Result 操作结果（如 success、denied、error）
 	Result string `json:"result"`
+	// TraceID 关联的分布式追踪 ID（v3.5-4 全链路回溯关联键）
+	TraceID string `json:"trace_id,omitempty"`
 }
 
 // QueryFilter 用于筛选审计事件的查询条件。

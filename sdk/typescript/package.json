@@ -1,6 +1,6 @@
 {
     "name": "@agentprimordia/sdk",
-    "version": "3.2.0",
+    "version": "4.0.0",
     "description": "AgentPrimordia - Universal AI Agent Development Framework for TypeScript",
     "type": "module",
     "main": "dist/index.js",
@@ -61,12 +61,14 @@
     },
     "peerDependencies": {
         "@xenova/transformers": "^2.17.0",
-        "better-sqlite3": "^11.0.0",
         "react": "^18.0.0 || ^19.0.0",
         "react-dom": "^18.0.0 || ^19.0.0"
     },
     "peerDependenciesMeta": {
         "@xenova/transformers": {
+            "optional": true
+        },
+        "@opentelemetry/api": {
             "optional": true
         },
         "better-sqlite3": {
@@ -101,6 +103,11 @@
             "types": "./dist/orchestration/index.d.ts",
             "import": "./dist/orchestration/index.js"
         },
+        "./react": {
+            "types": "./dist/react/index.d.ts",
+            "import": "./dist/react/index.js",
+            "default": "./dist/react/index.js"
+        },
         ".": {
             "browser": {
                 "types": "./dist/index.d.ts",
@@ -111,5 +118,9 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js"
         }
+    },
+    "optionalDependencies": {
+        "@opentelemetry/api": "^1.9.1",
+        "better-sqlite3": "^11.10.0"
     }
 }

@@ -35,12 +35,14 @@ export type {
   InterruptReason, InterruptRequest, InterruptResponse, InterruptHandler, HITLConfig,
   ModelPricing, CostRecord, BudgetConfig, CostSummary,
 } from './agent/request-id.js';
+export { MemoryFailureStore, diagnoseFailure } from './agent/failure.js';
+export type { FailureRecord, FailureStore, FailurePhase, FailureFilter } from './agent/failure.js';
 export { CapabilityAgent, newAgent, NoopTracer } from './agent/capability-agent.js';
 export { AgentTool } from './agent/agent-tool.js';
 export type { AgentToolConfig } from './agent/agent-tool.js';
 export type {
   AgentOption, MemoryCapable, RAGCapable, HookCapable, TraceCapable,
-  CostCapable, CheckpointCapable, HITLCapable, ContextWindowCapable,
+  CostCapable, CheckpointCapable, HITLCapable, ContextWindowCapable, FailureCapable,
   Tracer, Span, SpanKind,
   RAGProvider, RAGDocument as RAGDocCap, RAGMode, RAGConfig,
 } from './agent/capability-agent.js';
@@ -280,6 +282,7 @@ export type { AgentDeployment, AgentDeploymentSpec, AgentTemplateSpec, ToolSpec,
 
 // ===== Phase 17: OTel Extensions =====
 export { Baggage, BaggagePropagator, OTelBridge, OTLPExporter, MetricExporter } from './metrics/otel-extended.js';
+export { OfficialOTelBridge } from './metrics/otel-official.js';
 export type { BaggageEntry, OTelSpan as OTelBridgeSpan, OTLPExporterConfig, MetricDataPoint } from './metrics/otel-extended.js';
 
 // ===== Phase 18: Prompt Engine =====
@@ -322,6 +325,7 @@ export type { AdminHandlerConfig, AdminTaskInfo, AdminPoolStats } from './admin/
 
 // Inspector & Debug Server
 export { Inspector, InspectorServer, DebugServer } from './debugger/server.js';
+export { StudioBridge, createStudioBridge } from './debugger/studio.js';
 export type { InspectorConfig, MemorySnapshot, SessionTrace } from './debugger/server.js';
 
 // SQLite Checkpoint Store

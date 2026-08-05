@@ -11,6 +11,7 @@ import {
   type HITLManager,
   type CostTracker,
 } from './request-id.js';
+import type { FailureStore } from './failure.js';
 import { Session } from './session.js';
 
 // ===== Capability Interfaces =====
@@ -21,6 +22,7 @@ export interface HookCapable { getHooks(): HookManager; }
 export interface TraceCapable { getTracer(): Tracer | undefined; }
 export interface CostCapable { getCostTracker(): CostTracker | undefined; }
 export interface CheckpointCapable { getCheckpointStore(): CheckpointStore | undefined; }
+export interface FailureCapable { getFailureStore(): FailureStore | undefined; }
 export interface HITLCapable { getHITLManager(): HITLManager | undefined; }
 export interface ContextWindowCapable { getContextWindowStrategy(): ContextWindowStrategy | undefined; }
 
@@ -102,6 +104,7 @@ export class CapabilityAgent {
   private _tracer?: Tracer;
   private _costTracker?: CostTracker;
   private _checkpointStore?: CheckpointStore;
+  private _failureStore?: FailureStore;
   private _contextWindow?: ContextWindowStrategy;
   private _hitl?: HITLManager;
   private _rag?: RAGConfig;
@@ -120,7 +123,7 @@ export class CapabilityAgent {
       name: opts.name,
       model: opts.model,
       toolkit: this._toolkit,
-      maxTurns: opts.maxTurns ?? 10,
+      maxTurns: opts.maxTurns ?? 50,
       systemPrompt: opts.systemPrompt ?? '',
       sessionId: opts.sessionId ?? '',
       hooks: this._hooks,
@@ -169,6 +172,13 @@ export class CapabilityAgent {
     return this;
   }
 
+  /** v3.4-6d：注入失败记录存储，运行失败自动落盘并支持一键重放 */
+  withFailureStore(store: FailureStore): CapabilityAgent {
+    this._failureStore = store;
+    this.rebuildAgent();
+    return this;
+  }
+
   withContextWindow(strategy: ContextWindowStrategy): CapabilityAgent {
     this._contextWindow = strategy;
     return this;
@@ -203,6 +213,7 @@ export class CapabilityAgent {
       maxMessages: this._maxMessages,
       costTracker: this._costTracker,
       checkpointStore: this._checkpointStore ?? undefined,
+      failureStore: this._failureStore,
     });
   }
 
@@ -242,6 +253,11 @@ export class CapabilityAgent {
     yield* this.agent.streamEvents(input);
   }
 
+  /** v3.4-6d：一键重放失败记录（委托内部 ReActAgent） */
+  async replayFailure(failureID: string): Promise<Response> {
+    return this.agent.replayFailure(failureID);
+  }
+
   stop(): void {
     this._lifecycle.stop();
   }
@@ -261,6 +277,7 @@ export class CapabilityAgent {
   getTracer(): Tracer | undefined { return this._tracer; }
   getCostTracker(): CostTracker | undefined { return this._costTracker; }
   getCheckpointStore(): CheckpointStore | undefined { return this._checkpointStore; }
+  getFailureStore(): FailureStore | undefined { return this._failureStore; }
   getHITLManager(): HITLManager | undefined { return this._hitl; }
   getContextWindowStrategy(): ContextWindowStrategy | undefined { return this._contextWindow; }
   getRAGConfig(): RAGConfig | undefined { return this._rag; }

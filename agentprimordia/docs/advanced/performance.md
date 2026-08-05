@@ -255,8 +255,8 @@ mux := http.NewServeMux()
 hc := ap.NewHealthChecker()
 mux.Handle("/healthz", hc)
 
-// 注册 pprof 端点（所有标准 profile 类型）
-ap.RegisterPProf(mux)
+// 注册 pprof 端点（所有标准 profile 类型，生产环境强制鉴权）
+ap.RegisterPProfStrict(mux)
 
 // 生产环境仅监听 localhost，避免暴露进程内部信息
 go http.ListenAndServe("127.0.0.1:6060", mux)

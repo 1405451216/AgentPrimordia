@@ -17,6 +17,7 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 	"agentprimordia/pkg/logger"
@@ -103,6 +104,13 @@ type ReActConfig struct {
 	// ToolLearningConfidenceThreshold 触发tool参数建议的最低置信度（G1-3）
 	// 范围 [0, 1]，默认 0.7
 	ToolLearningConfidenceThreshold float64
+
+	// v3.6-1 自愈配置：
+	// PlanSubtaskRetries 子任务失败时的额外重试次数（默认 1）。
+	PlanSubtaskRetries int
+	// PlanRecoveryMode 计划失败时自动换路径（replan / 降级到 runLoop）：
+	// 空值或 "on" 表示启用（默认），"off" 表示关闭——默认故障恢复不依赖人工。
+	PlanRecoveryMode string
 }
 
 // ReActAgent implements the ReAct (Reasoning + Acting) pattern
@@ -149,6 +157,10 @@ type ReActAgent struct {
 	// 单次 Run() 期间不变的能力引用，reactLoopEngine 入口处一次性查找
 	// runLoop 内通过 capCache 访问，避免每轮重复类型断言
 	capCache *capabilityCache
+
+	// ===== v3.4-1: 子任务执行器可注入（测试/扩展） =====
+	// 为 nil 时 executePlan 走默认 executeSubTask；测试可注入可控执行器。
+	subtaskExecutor func(ctx context.Context, task planning.SubTask, history []Message, cfg loopConfig) (*Response, error)
 }
 
 // newReActAgent 创建基于 ReAct 循环的 Agent 实例（内部使用）
@@ -156,6 +168,10 @@ type ReActAgent struct {
 func newReActAgent(cfg ReActConfig) *ReActAgent {
 	if cfg.MaxTurns == 0 {
 		cfg.MaxTurns = 50
+	}
+	// v3.6-1：自愈默认值——子任务重试 1 次、失败自动换路径（replan/降级）
+	if cfg.PlanSubtaskRetries == 0 {
+		cfg.PlanSubtaskRetries = defaultPlanSubtaskRetries
 	}
 	if cfg.Lifecycle == nil {
 		cfg.Lifecycle = NewLifecycle()
@@ -185,6 +201,8 @@ type loopConfig struct {
 	streamCh  chan StreamEvent
 	streamCtx context.Context
 	requestID string
+	// v3.6-1：自愈降级时跳过 plan 分支，防止递归进入 executePlanWithSelfHealing
+	skipPlan bool
 }
 
 // capabilityCache 缓存单次 Run() 期间不变的能力查找结果。
@@ -194,6 +212,8 @@ type loopConfig struct {
 // R1.2：新增 planner/reflector/toolLearner 字段，连接 G1-1/G1-2/G1-3 闭环。
 type capabilityCache struct {
 	requestID        string
+	traceID          string                         // v3.5-4：本次请求的分布式追踪 ID（关联键）
+	observability    *observability.CorrelationStore // v3.5-4：全链路关联存储
 	tracer           Tracer
 	costTracker      *CostTracker
 	memoryStore      MemoryStore
@@ -201,6 +221,7 @@ type capabilityCache struct {
 	labeledRecorder  LabeledMetricsRecorder
 	eventPublisher   EventPublisher
 	checkpointStore  persist.CheckpointStore
+	failureStore     persist.FailureStore // v3.4-6：失败记录存储（失败重放）
 	contextWindow    ContextWindowStrategy
 	summarizer       memory.SummaryExtractor
 	fileScope        []string
@@ -228,12 +249,14 @@ feedbackLearner *learning.FeedbackLearner   // 反馈学习器
 func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 	c := &capabilityCache{
 		requestID:       requestID,
+		observability:   a.getObservability(),
 		tracer:          a.getTracer(),
 		costTracker:     a.getCostTracker(),
 		memoryStore:     a.getMemoryStore(),
 		metricsRecorder: a.getMetricsRecorder(),
 		eventPublisher:  a.getEventPublisher(),
 		checkpointStore: a.getCheckpointStore(),
+		failureStore:    a.getFailureStore(),
 		contextWindow:   a.getContextWindowStrategy(),
 		summarizer:      a.getSummarizer(),
 		fileScope:       a.getFileScope(),

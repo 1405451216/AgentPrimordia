@@ -1,5 +1,10 @@
 // Package react 提供接口驱动的 ReAct 循环引擎（B-3 包拆分）。
 //
+// ⚠️ 实验性骨架：本包是 ReAct 循环接口化拆分的重构探索，仅覆盖基础 turn
+// 迭代状态机（无 checkpoint、成本预算、guardrail、RAG、planning、metrics 等能力）。
+// Agent 生产主路径为 internal/agent 的 reactLoopEngine，不经过本引擎。
+// 本包保留供外部自定义执行策略探索，不作为 Agent 默认运行路径。
+//
 // 设计目标：
 //   - 将 ReAct 循环骨架（turn 迭代状态机）从 internal/agent 包提取为独立子包
 //   - 通过 Delegate 接口解耦循环逻辑与 Agent 内部实现

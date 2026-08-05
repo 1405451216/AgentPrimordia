@@ -13,14 +13,44 @@
  * 用法：node scripts/cross-language-api-check.mjs
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
+
+// 跨平台符号搜索：递归遍历目录，检查 TS 源码是否声明了目标符号。
+function searchSymbolInDir(dir, symbol) {
+  const stack = [dir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    let entries;
+    try {
+      entries = readdirSync(current, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = join(current, entry.name);
+      if (entry.isDirectory()) {
+        // 跳过 node_modules 与构建产物
+        if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '__tests__') continue;
+        stack.push(full);
+      } else if (entry.isFile() && /\.(ts|tsx)$/.test(entry.name)) {
+        try {
+          const content = readFileSync(full, 'utf-8');
+          if (content.includes(symbol)) return true;
+        } catch {
+          // 忽略不可读文件
+        }
+      }
+    }
+  }
+  return false;
+}
 
 // ===== 测试套件 → Go/TS 符号映射 =====
 // 每个测试套件声明了它所依赖的 Go 公共符号和 TS 导出。
@@ -220,18 +250,10 @@ for (const suiteName of suiteNames) {
     for (const searchPath of searchPaths) {
       const fullDir = resolve(REPO_ROOT, searchPath);
       if (!existsSync(fullDir)) continue;
-
-      // 递归搜索 TS 源码文件中的符号声明
-      try {
-        const result = execFileSync('grep', ['-rl', sym, '--include=*.ts', '--include=*.tsx', fullDir],
-          { encoding: 'utf-8', timeout: 30000 }
-        );
-        if (result.trim().length > 0) {
-          found = true;
-          break;
-        }
-      } catch {
-        // grep 无结果不报错
+      // 跨平台递归搜索：Node fs 遍历，不依赖 grep 命令
+      if (searchSymbolInDir(fullDir, sym)) {
+        found = true;
+        break;
       }
     }
     if (!found) {

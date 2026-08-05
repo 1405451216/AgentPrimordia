@@ -8,7 +8,9 @@ import (
 	"maps"
 	"time"
 
+	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/llm"
+	"agentprimordia/internal/persist"
 )
 
 // Stats returns current agent statistics
@@ -25,6 +27,12 @@ func (a *ReActAgent) Stats() AgentStats {
 	stats.RequestID = a.stats.RequestID
 	toolsCopy := make(map[string]int, len(a.stats.ToolsCalled))
 	maps.Copy(toolsCopy, a.stats.ToolsCalled)
+	// v3.6-1：复制自愈记录（只读切片）
+	stats.PlanRecoveries = append([]PlanRecovery(nil), a.stats.PlanRecoveries...)
+	// v3.6-2：复制流程修正计数
+	stats.ProcessCorrections = a.stats.ProcessCorrections
+	// v3.6-3：复制跨任务记忆命中计数
+	stats.MemoryHits = a.stats.MemoryHits
 	a.statsMu.RUnlock()
 	stats.ToolsCalled = toolsCopy
 
@@ -109,6 +117,13 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 
 	a.logger.Info("Agent 从检查点恢复", "name", a.config.Name, "turn", state.TurnCount, "saved_at", state.SavedAt)
 
+	return a.resumeFromState(ctx, state)
+}
+
+// resumeFromState 从给定状态快照恢复执行（v3.4-6 提取）。
+// 检查点恢复（ResumeFromCheckpoint）与失败重放（ReplayFailure）共用。
+// 注意：调用方必须持有 a.runMu。
+func (a *ReActAgent) resumeFromState(ctx context.Context, state *persist.AgentState) (*Response, error) {
 	history := make([]Message, 0, len(state.Messages))
 	for _, m := range state.Messages {
 		history = append(history, Message{
@@ -176,6 +191,14 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 	// 因此这里显式清理，避免后续 Run() 误用本次恢复的旧引用。
 	a.capCache = a.resolveCapabilities(reqID)
 	defer func() { a.capCache = nil }()
+
+	// v3.4-1：若 checkpoint 含 plan 进度，从计划断点恢复——重建 plan 与进度，
+	// 跳过已完成子任务、沿用其结果，仅执行剩余子任务。
+	if state.Plan != nil {
+		pp := buildPlanProgressFromState(state.Plan)
+		plan := &planning.Plan{SubTasks: pp.subtasks}
+		return a.executePlanWithState(ctx, history, plan, loopConfig{requestID: reqID}, a.startTime, totalLLMLatency, totalToolLatency, toolCount, pp)
+	}
 
 	return a.runLoop(ctx, history, state.TurnCount, loopConfig{requestID: reqID}, totalLLMLatency, totalToolLatency, toolCount)
 }

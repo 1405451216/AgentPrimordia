@@ -33,6 +33,9 @@ export {
   type UseStreamRunResult,
 } from './use-stream-run.js';
 
+// v3.7-4：零样板 React Hooks（自动绑定 React 实例 + 进程内 ReActAgent）
+export { useAgent, useReActLoop, useRemoteAgent } from './kit.js';
+
 import {
   useAgentImpl,
   type UseAgentOptions,

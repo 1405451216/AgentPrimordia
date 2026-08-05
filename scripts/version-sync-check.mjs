@@ -38,7 +38,7 @@ try {
     }).trim().replace(/^v/, '');
   } catch {
     // 最终回退：与 agentprimordia/VERSION 与 pkg/agent.go 保持同步的已知版本
-    goVersion = '3.2.0';
+    goVersion = '4.0.0';
   }
 }
 

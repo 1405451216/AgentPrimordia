@@ -217,11 +217,11 @@ JSON-RPC over HTTP 仅作为兼容旧客户端保留，将于 v2.0 移除。
     resp, _ := cli.GetAgentCard(ctx, &ap.A2AGetAgentCardRequest{})
     ```
 
-=== "Go（兼容旧 JSON-RPC，已 Deprecated）"
+=== "Go（gRPC Server，推荐）"
 
     ```go
-    // Deprecated: 自 v1.x 起请改用 NewA2AGRPCServer
-    srv := ap.NewA2AServer(taskManager)
+    // 推荐：gRPC 传输（v1.x 起为默认）
+    srv := ap.NewA2AGRPCServer(service)
     ```
 
 ## 文档导览

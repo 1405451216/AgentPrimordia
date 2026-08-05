@@ -79,6 +79,20 @@ func (tp *TelemetryProvider) LoggingTracer() (*agent.LoggingTracer, bool) {
 	return lt, ok
 }
 
+// Metrics 返回底层指标收集器，供注入 Agent（WithTelemetry）或读取快照使用。
+func (tp *TelemetryProvider) Metrics() *metrics.AgentMetrics {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+	return tp.metrics
+}
+
+// MetricsEnabled 返回指标采集是否启用（对应 TelemetryConfig.EnableMetrics）。
+func (tp *TelemetryProvider) MetricsEnabled() bool {
+	tp.mu.RLock()
+	defer tp.mu.RUnlock()
+	return tp.config.EnableMetrics
+}
+
 // BridgeEnabled 返回 OTel SDK 桥接是否启用
 func (tp *TelemetryProvider) BridgeEnabled() bool {
 	return BridgeEnabled

@@ -9,6 +9,8 @@ import (
 	"log/slog"
 
 	"agentprimordia/internal/agent/learning"
+	"agentprimordia/internal/agent/planning"
+	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -41,6 +43,9 @@ type ObservabilityConfig struct {
 	// Tracer 分布式追踪器
 	Tracer Tracer
 
+	// InputGuard 输入端护栏（v3.4-4）：用户输入进入循环前检查
+	InputGuard InputGuard
+
 	// Metrics 指标收集器
 	Metrics MetricsRecorder
 
@@ -55,6 +60,9 @@ type ObservabilityConfig struct {
 type ResilienceConfig struct {
 	// CheckpointStore 状态持久化存储
 	CheckpointStore persist.CheckpointStore
+
+	// FailureStore 失败记录存储（v3.4-6：失败重放与诊断）
+	FailureStore persist.FailureStore
 
 	// HITL 人机协作配置
 	HITL *HITLConfig
@@ -87,6 +95,23 @@ type LearningConfig struct {
 	FeedbackLearner *learning.FeedbackLearner
 }
 
+// CognitionConfig 认知能力分组配置（Planning / Reflection）。
+//
+// 注入 Planner 后，ReAct 引擎在首轮对复杂任务自动分解为子任务并按
+// 依赖图（DAG）分层调度执行；注入 Reflector 后，完成路径上的最终
+// 输出会先经过批评（Critique），严重度达到阈值时自动改进（Improve）。
+type CognitionConfig struct {
+	// Planner 任务规划器（nil 表示不启用计划分解）
+	Planner planning.Planner
+
+	// Reflector 反思器（nil 表示不启用输出反思）
+	Reflector reflection.Reflector
+
+	// ReflectionSeverityThreshold 触发 Reflection 改进的最低严重度
+	// （low/medium/high/critical，空值时引擎默认 high）
+	ReflectionSeverityThreshold string
+}
+
 // AgentConfig 是 Agent 的分组式配置结构。
 //
 // v0.7.0 引入，替代 ReActConfig 的扁平字段布局。字段按职责分组：
@@ -116,6 +141,7 @@ type AgentConfig struct {
 	Resilience    ResilienceConfig
 	Tools         ToolsConfig
 	Learning      LearningConfig
+	Cognition     CognitionConfig
 
 	// ===== 运行时辅助 =====
 	Lifecycle *Lifecycle

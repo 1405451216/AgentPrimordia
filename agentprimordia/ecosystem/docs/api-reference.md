@@ -1124,22 +1124,12 @@ tm := ap.NewA2ATaskManager()
 defer tm.Cleanup()
 
 card := ap.NewA2AAgentCard("my-agent", "My Agent")
-server := ap.NewA2AServer(tm,
-    ap.WithCard(card),
-    ap.WithTaskHandler(myHandler),  // 可选
-    ap.WithAuth(myAuthenticator),   // 可选
+service := ap.NewA2AService(card, tm)
+
+// 推荐：gRPC Server（v1.x 起为默认传输）
+grpcServer := ap.NewA2AGRPCServerWithService(service,
+    ap.WithGRPCLogger(slog.Default()),
 )
-
-http.ListenAndServe(":8082", server.Handler())
-```
-
-当 HTTP 与 gRPC 需要共享同一业务核心时，使用 `NewA2AServerWithService`：
-
-```go
-service := ap.NewA2AService(card, tm, ap.WithA2AServiceTaskHandler(myHandler))
-
-httpServer := ap.NewA2AServerWithService(service)
-grpcServer := ap.NewA2AGRPCServerWithService(service)
 ```
 
 ### A2A HTTP API

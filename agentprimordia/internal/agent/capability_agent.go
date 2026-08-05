@@ -7,6 +7,7 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 	"context"
@@ -37,6 +38,7 @@ type CapabilityAgent struct {
 	eventPub    EventPublisher
 	metrics     MetricsRecorder
 	checkpoint  persist.CheckpointStore
+	failureStore persist.FailureStore
 	summarizer  memory.SummaryExtractor
 	fileScope   []string
 	cache       llm.LLMCache
@@ -45,7 +47,10 @@ type CapabilityAgent struct {
 	reflector   reflection.Reflector
 	toolLearner tool_learning.ToolLearner
 	outputGuard OutputGuard
+	inputGuard  InputGuard
 	auditLogger AuditLogger
+	// v3.5-4：全链路关联存储（trace → 指标 → 审计 闭环）
+	observability *observability.CorrelationStore
 
 	// v3.0：自适应学习能力
 	distiller       *learning.KnowledgeDistiller
@@ -90,6 +95,11 @@ func (c *CapabilityAgent) GracefulShutdown(ctx context.Context) error {
 // ResumeFromCheckpoint 从检查点恢复，委托给内部 ReActAgent
 func (c *CapabilityAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error) {
 	return c.inner.ResumeFromCheckpoint(ctx)
+}
+
+// ReplayFailure 从失败记录一键重放，委托给内部 ReActAgent（v3.4-6）
+func (c *CapabilityAgent) ReplayFailure(ctx context.Context, failureID string) (*Response, error) {
+	return c.inner.ReplayFailure(ctx, failureID)
 }
 
 // Pause 暂停 Agent，委托给内部 ReActAgent
@@ -138,6 +148,32 @@ func (c *CapabilityAgent) GetMetricsRecorder() MetricsRecorder { return c.metric
 
 // GetCheckpointStore 返回检查点存储（CheckpointCapable）
 func (c *CapabilityAgent) GetCheckpointStore() persist.CheckpointStore { return c.checkpoint }
+
+// GetFailureStore 返回失败记录存储（FailureCapable，v3.4-6）
+func (c *CapabilityAgent) GetFailureStore() persist.FailureStore { return c.failureStore }
+
+// WithObservability 注入全链路关联存储（v3.5-4）
+// 引擎将以 trace_id 聚合 trace/metrics/audit，支持单请求全链路回溯。
+func (c *CapabilityAgent) WithObservability(corr *observability.CorrelationStore) *CapabilityAgent {
+	c.observability = corr
+	return c
+}
+
+// GetObservability 返回全链路关联存储（ObservabilityCapable，v3.5-4）
+func (c *CapabilityAgent) GetObservability() *observability.CorrelationStore { return c.observability }
+
+// WithPlanSubtaskRetries 设置子任务失败重试次数（v3.6-1 自愈）。
+func (c *CapabilityAgent) WithPlanSubtaskRetries(n int) *CapabilityAgent {
+	c.inner.config.PlanSubtaskRetries = n
+	return c
+}
+
+// WithPlanRecoveryMode 设置计划失败自愈模式（v3.6-1）：
+// "on"/"" 启用（默认，自动 replan/降级），"off" 关闭。
+func (c *CapabilityAgent) WithPlanRecoveryMode(mode string) *CapabilityAgent {
+	c.inner.config.PlanRecoveryMode = mode
+	return c
+}
 
 // GetSummarizer 返回摘要提取器（SummarizerCapable）
 func (c *CapabilityAgent) GetSummarizer() memory.SummaryExtractor { return c.summarizer }
@@ -216,6 +252,12 @@ func (c *CapabilityAgent) WithCheckpointStore(cs persist.CheckpointStore) *Capab
 	return c
 }
 
+// WithFailureStore 注入失败记录存储（v3.4-6）
+func (c *CapabilityAgent) WithFailureStore(fs persist.FailureStore) *CapabilityAgent {
+	c.failureStore = fs
+	return c
+}
+
 // WithSummarizer 注入摘要提取器
 func (c *CapabilityAgent) WithSummarizer(s memory.SummaryExtractor) *CapabilityAgent {
 	c.summarizer = s
@@ -291,6 +333,18 @@ func (c *CapabilityAgent) WithOutputGuard(g OutputGuard) *CapabilityAgent {
 // GetOutputGuard 返回输出端 Guardrail 检查函数
 func (c *CapabilityAgent) GetOutputGuard() OutputGuard {
 	return c.outputGuard
+}
+
+// WithInputGuard 注入输入端 Guardrail 检查函数（v3.4-4）
+// 在用户输入进入循环前调用，可脱敏或拒绝输入。
+func (c *CapabilityAgent) WithInputGuard(g InputGuard) *CapabilityAgent {
+	c.inputGuard = g
+	return c
+}
+
+// GetInputGuard 返回输入端 Guardrail 检查函数
+func (c *CapabilityAgent) GetInputGuard() InputGuard {
+	return c.inputGuard
 }
 
 // WithAuditLogger 注入审计日志器

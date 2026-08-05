@@ -437,25 +437,19 @@ func TestPipeline_ContextCancellation(t *testing.T) {
 }
 
 // TestPipeline_EmptyPipeline 测试空流水线
+// 与跨语言契约一致（cross-language-spec.json orchestration/pipeline_empty_stages）：
+// 空流水线（无任何阶段）应返回错误。
 func TestPipeline_EmptyPipeline(t *testing.T) {
 	pipeline := NewPipeline(10 * time.Second)
 
-	result, err := pipeline.Execute(context.Background(), "start")
+	_, err := pipeline.Execute(context.Background(), "start")
 
-	// 验证成功（空流水线应该成功）
-	if err != nil {
-		t.Errorf("空流水线应该成功, 但返回错误: %v", err)
+	// 验证报错（空流水线应返回错误，符合双线契约）
+	if err == nil {
+		t.Error("空流水线应返回错误, 但执行成功")
 	}
 
-	if result.Status != PipelineStatusSuccess {
-		t.Errorf("期望状态 %s, 得到 %s", PipelineStatusSuccess, result.Status)
-	}
-
-	if result.FinalOutput != "start" {
-		t.Errorf("期望输出 %q, 得到 %q", "start", result.FinalOutput)
-	}
-
-	t.Logf("✓ 空流水线正确处理")
+	t.Logf("✓ 空流水线正确处理: %v", err)
 }
 
 // TestPipeline_DuplicateStageName 测试重复的阶段名称

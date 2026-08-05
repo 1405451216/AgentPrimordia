@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -466,5 +467,35 @@ func TestShell_WithScopePolicy_Denied(t *testing.T) {
 	result, _ := sh.Execute(context.Background(), args)
 	if !result.IsError {
 		t.Fatalf("expected scope policy to deny access, got: %s", result.Content)
+	}
+}
+
+// TestExecute_GoRun 回归：shell 工具 env 隔离策略必须保留用户级缓存变量
+// （如 Windows 的 LOCALAPPDATA），否则 go run 无法定位 GOCACHE 而失败，
+// 导致「实施」环节（运行所写代码）不可用。
+func TestExecute_GoRun(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("go not available")
+	}
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "hello.go"),
+		[]byte("package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"hello-shell-go-run\")\n}\n"), 0o644); err != nil {
+		t.Fatalf("写测试文件失败: %v", err)
+	}
+	sh := NewShell().WithWhitelist([]string{"go"})
+	args, _ := json.Marshal(map[string]any{
+		"action":  "execute",
+		"command": "go run hello.go",
+		"workdir": tmpDir,
+	})
+	result, err := sh.Execute(context.Background(), args)
+	if err != nil {
+		t.Fatalf("execute 失败: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("go run 不应失败, 结果: %s", result.Content)
+	}
+	if !strings.Contains(result.Content, "hello-shell-go-run") {
+		t.Errorf("go run 输出 = %q, want 包含 hello-shell-go-run", result.Content)
 	}
 }

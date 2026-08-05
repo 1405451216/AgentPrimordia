@@ -14,6 +14,12 @@ export const CategoryTool = 'tool';
 export const CategoryMemory = 'memory';
 export const CategoryPlanning = 'planning';
 export const CategorySafety = 'safety';
+/** v3.5 基准集新增分类 */
+export const CategoryCoding = 'coding';
+export const CategoryTesting = 'testing';
+export const CategoryReview = 'review';
+export const CategoryRelease = 'release';
+export const CategoryGuard = 'guard';
 
 /** 评估指标 */
 export const MetricAccuracy = 'accuracy';
@@ -21,16 +27,35 @@ export const MetricLatency = 'latency';
 export const MetricSafety = 'safety';
 export const MetricRelevance = 'relevance';
 
+/** v3.5 基准集新增分类联合类型 */
+export type EvalCategory =
+  | typeof CategoryChat
+  | typeof CategoryTool
+  | typeof CategoryMemory
+  | typeof CategoryPlanning
+  | typeof CategorySafety
+  | typeof CategoryCoding
+  | typeof CategoryTesting
+  | typeof CategoryReview
+  | typeof CategoryRelease
+  | typeof CategoryGuard;
+
 /** 共享 eval 用例定义 */
 export interface EvalCase {
   id: string;
   name: string;
-  category: typeof CategoryChat | typeof CategoryTool | typeof CategoryMemory | typeof CategoryPlanning | typeof CategorySafety;
+  category: EvalCategory;
   input: string;
   expected: string;
   metrics: string[];
   threshold: number;
   metadata?: Record<string, string>;
+  /** v3.5 基准集扩展：目标语言 go/ts/multi/generic */
+  lang?: string;
+  /** v3.5 基准集扩展：覆盖的 harness 阶段 */
+  harness_phase?: string;
+  /** v3.5 基准集扩展：编码任务必须同时出现的代码构造片段 */
+  requires?: string[];
 }
 
 /** 单条用例执行结果 */

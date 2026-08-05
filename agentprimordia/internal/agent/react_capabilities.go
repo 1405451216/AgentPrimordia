@@ -11,6 +11,7 @@ import (
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 )
@@ -69,12 +70,11 @@ func (a *ReActAgent) getLabeledRecorder() LabeledMetricsRecorder {
 
 // recordLLM 记录 LLM 调用，优先使用带标签的记录器（内部已调用 RecordLLMCall）
 // 优化（Task 2）：当 capCache 可用时使用缓存的 provider/model，避免重复 Model.Info() 调用。
+// v3.5-4：同时将指标关联到当前请求的 trace_id（全链路闭环）。
 func (a *ReActAgent) recordLLM(duration time.Duration, err error) {
 	if a.capCache != nil && a.capCache.labeledRecorder != nil {
 		a.capCache.labeledRecorder.RecordLLMCallWithLabels(duration, err, a.capCache.provider, a.capCache.model)
-		return
-	}
-	if lm := a.getLabeledRecorder(); lm != nil {
+	} else if lm := a.getLabeledRecorder(); lm != nil {
 		provider, model := "", ""
 		if info := a.config.Model.Info(); info.Name != "" {
 			provider = info.Provider
@@ -84,33 +84,46 @@ func (a *ReActAgent) recordLLM(duration time.Duration, err error) {
 	} else if m := a.getMetricsRecorder(); m != nil {
 		m.RecordLLMCall(duration, err)
 	}
+	a.recordLLMObservability(duration, err)
+}
+
+// recordLLMObservability 将 LLM 指标关联到当前请求 trace（仅统计成功调用）。
+func (a *ReActAgent) recordLLMObservability(duration time.Duration, err error) {
+	if a.capCache == nil || a.capCache.observability == nil || a.capCache.traceID == "" || err != nil {
+		return
+	}
+	a.capCache.observability.RecordLLM(a.capCache.traceID, duration, 0, 0, 0)
 }
 
 // recordTool 记录tool调用，优先使用带标签的记录器（内部已调用 RecordToolCall）
 // 优化（Task 2）：使用缓存的 labeledRecorder。
+// v3.5-4：同时将指标关联到当前请求的 trace_id。
 func (a *ReActAgent) recordTool(duration time.Duration, err error, toolName string) {
 	if a.capCache != nil && a.capCache.labeledRecorder != nil {
 		a.capCache.labeledRecorder.RecordToolCallWithLabels(duration, err, toolName)
-		return
-	}
-	if lm := a.getLabeledRecorder(); lm != nil {
+	} else if lm := a.getLabeledRecorder(); lm != nil {
 		lm.RecordToolCallWithLabels(duration, err, toolName)
 	} else if m := a.getMetricsRecorder(); m != nil {
 		m.RecordToolCall(duration, err)
+	}
+	if a.capCache != nil && a.capCache.observability != nil && a.capCache.traceID != "" && err == nil {
+		a.capCache.observability.RecordTool(a.capCache.traceID, duration)
 	}
 }
 
 // recordTurn 记录 Turn 耗时，优先使用带标签的记录器（内部已调用 RecordTurn）
 // 优化（Task 2）：使用缓存的 labeledRecorder。
+// v3.5-4：同时将指标关联到当前请求的 trace_id。
 func (a *ReActAgent) recordTurn(duration time.Duration) {
 	if a.capCache != nil && a.capCache.labeledRecorder != nil {
 		a.capCache.labeledRecorder.RecordTurnWithAgent(duration, a.config.Name)
-		return
-	}
-	if lm := a.getLabeledRecorder(); lm != nil {
+	} else if lm := a.getLabeledRecorder(); lm != nil {
 		lm.RecordTurnWithAgent(duration, a.config.Name)
 	} else if m := a.getMetricsRecorder(); m != nil {
 		m.RecordTurn(duration)
+	}
+	if a.capCache != nil && a.capCache.observability != nil && a.capCache.traceID != "" {
+		a.capCache.observability.RecordTurn(a.capCache.traceID)
 	}
 }
 
@@ -118,6 +131,14 @@ func (a *ReActAgent) recordTurn(duration time.Duration) {
 func (a *ReActAgent) getTracer() Tracer {
 	if c, ok := a.self.(TraceCapable); ok {
 		return c.GetTracer()
+	}
+	return nil
+}
+
+// getObservability 获取全链路关联存储，通过 ObservabilityCapable 接口发现（v3.5-4）
+func (a *ReActAgent) getObservability() *observability.CorrelationStore {
+	if c, ok := a.self.(ObservabilityCapable); ok {
+		return c.GetObservability()
 	}
 	return nil
 }
@@ -134,6 +155,14 @@ func (a *ReActAgent) getCostTracker() *CostTracker {
 func (a *ReActAgent) getCheckpointStore() persist.CheckpointStore {
 	if c, ok := a.self.(CheckpointCapable); ok {
 		return c.GetCheckpointStore()
+	}
+	return nil
+}
+
+// getFailureStore 获取失败记录存储，通过 FailureCapable 接口发现（v3.4-6）
+func (a *ReActAgent) getFailureStore() persist.FailureStore {
+	if c, ok := a.self.(FailureCapable); ok {
+		return c.GetFailureStore()
 	}
 	return nil
 }
@@ -175,6 +204,15 @@ func (a *ReActAgent) getToolkit() *tools.Registry {
 func (a *ReActAgent) getOutputGuard() OutputGuard {
 	if c, ok := a.self.(GuardrailCapable); ok {
 		return c.GetOutputGuard()
+	}
+	return nil
+}
+
+// getInputGuard 获取输入端 Guardrail 检查函数，通过 InputGuardCapable 接口发现
+// 用于在用户输入进入循环前调用（v3.4-4）
+func (a *ReActAgent) getInputGuard() InputGuard {
+	if c, ok := a.self.(InputGuardCapable); ok {
+		return c.GetInputGuard()
 	}
 	return nil
 }

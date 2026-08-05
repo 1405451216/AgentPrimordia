@@ -10,6 +10,7 @@ import (
 	"agentprimordia/internal/agent/tool_learning"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
+	"agentprimordia/internal/observability"
 	"agentprimordia/internal/persist"
 	"agentprimordia/internal/tools"
 )
@@ -34,6 +35,18 @@ import (
 //	agent.WithOutputGuard(adapter)
 type OutputGuard func(content string) (sanitized string, blocked bool, err error)
 
+// InputGuard 是输入端 Guardrail 检查函数类型（user 输入检查，v3.4-4）。
+// 返回值语义与 OutputGuard 一致：
+//   - sanitized: 脱敏后的输入（空字符串表示无变化）
+//   - blocked: 是否拒绝输入（如注入攻击拦截）
+//   - err: 检查过程中的错误
+type InputGuard func(content string) (sanitized string, blocked bool, err error)
+
+// InputGuardCapable 标识 Agent 具备输入端护栏能力（v3.4-4）。
+type InputGuardCapable interface {
+	GetInputGuard() InputGuard
+}
+
 // AuditEvent 简化的审计事件结构（避免直接 import audit 包造成的循环依赖）
 // 完整定义见 internal/audit.Event
 type AuditEvent struct {
@@ -43,6 +56,8 @@ type AuditEvent struct {
 	Resource  string
 	Result    string
 	Details   map[string]any
+	// TraceID 关联的分布式追踪 ID（v3.5-4 全链路回溯关联键）
+	TraceID string
 }
 
 // AuditLogger 审计日志接口（agent 内部使用）
@@ -93,6 +108,13 @@ type TraceCapable interface {
 	GetTracer() Tracer
 }
 
+// ObservabilityCapable 标识 Agent 具备全链路关联能力（v3.5-4）。
+// 引擎在请求开始时以 trace_id 登记 RequestTrace，并将 Span/审计事件/指标
+// 关联到同一 trace_id，实现"单请求可全链路回溯"。
+type ObservabilityCapable interface {
+	GetObservability() *observability.CorrelationStore
+}
+
 // CostCapable 标识 Agent 具备成本追踪能力。
 // 引擎自动记录每轮 LLM Usage 并追踪成本。
 type CostCapable interface {
@@ -121,6 +143,13 @@ type MetricsCapable interface {
 // 引擎在每轮结束后自动保存 Agent 状态。
 type CheckpointCapable interface {
 	GetCheckpointStore() persist.CheckpointStore
+}
+
+// FailureCapable 标识 Agent 具备失败记录与重放能力（v3.4-6）。
+// 引擎在 Run 失败时自动记录 FailureRecord（含失败阶段、错误与可恢复检查点），
+// 并可通过 ReplayFailure 从内嵌检查点一键重放定位。
+type FailureCapable interface {
+	GetFailureStore() persist.FailureStore
 }
 
 // SummarizerCapable 标识 Agent 具备摘要提取能力。
