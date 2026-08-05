@@ -26,6 +26,7 @@ func (h *StudioHandler) registerRoutes() {
 	h.mux.HandleFunc("POST /api/v1/marketplace/deploy", h.marketplaceDeploy)
 	h.mux.HandleFunc("GET /api/v1/marketplace/deployments", h.marketplaceDeployments)
 	h.mux.HandleFunc("POST /api/v1/marketplace/deployments/{id}/stop", h.marketplaceStopDeployment)
+	h.mux.HandleFunc("POST /api/v1/marketplace/deployments/{id}/start", h.marketplaceStartDeployment)
 }
 
 // ===== Chaos Lab =====
@@ -213,6 +214,17 @@ func (h *StudioHandler) marketplaceStopDeployment(w http.ResponseWriter, r *http
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "stopped", "id": id})
+}
+
+func (h *StudioHandler) marketplaceStartDeployment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := h.marketplace.StartDeployment(ctx, id); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "running", "id": id})
 }
 
 // ===== 工具函数 =====

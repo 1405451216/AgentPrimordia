@@ -248,3 +248,15 @@ func (d *demoMarketplace) StopDeployment(_ context.Context, id string) error {
 	}
 	return fmt.Errorf("部署 %q 不存在", id)
 }
+
+func (d *demoMarketplace) StartDeployment(_ context.Context, id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.deployments {
+		if d.deployments[i].ID == id {
+			d.deployments[i].Status = "running"
+			return nil
+		}
+	}
+	return fmt.Errorf("部署 %q 不存在", id)
+}

@@ -140,8 +140,9 @@ func TestLearningEndpoints(t *testing.T) {
 	}
 	var caps []Capability
 	_ = json.Unmarshal(rec.Body.Bytes(), &caps)
-	if len(caps) != 0 {
-		t.Errorf("capabilities 数 = %d, want 0", len(caps))
+	// demo 提供 3 个演示能力；非空即可
+	if len(caps) == 0 {
+		t.Error("capabilities 数 = 0, want 非空 demo 数据")
 	}
 
 	rec = doJSON(t, h, "GET", "/api/v1/learning/pipeline/stats", "")

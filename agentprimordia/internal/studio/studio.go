@@ -173,6 +173,7 @@ type MarketplaceService interface {
 	Deploy(ctx context.Context, templateID string) (Deployment, error)
 	ListDeployments(ctx context.Context) ([]Deployment, error)
 	StopDeployment(ctx context.Context, id string) error
+	StartDeployment(ctx context.Context, id string) error
 }
 
 // ===== StudioHandler =====
