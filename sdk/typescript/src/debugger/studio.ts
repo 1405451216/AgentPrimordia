@@ -7,7 +7,7 @@
  */
 import type { OTelBridgeLike } from '../metrics/otel-extended.js';
 import type { OTelSpan } from '../metrics/otel-prometheus.js';
-import { Inspector } from './server.js';
+import type { Inspector } from './server.js';
 
 let seq = 0;
 
