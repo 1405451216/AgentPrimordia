@@ -32,17 +32,22 @@ export function MarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const [deployedTemplate, setDeployedTemplate] = useState<AgentTemplate | null>(null);
+  // 待确认部署的模板：非空时弹出确认对话框
+  const [confirming, setConfirming] = useState<AgentTemplate | null>(null);
   const debounceRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  const fetchTemplates = async (overrides?: { q?: string; cat?: string }) => {
+  const fetchTemplates = async (overrides?: { q?: string; cat?: string; keepData?: boolean }) => {
     const q = overrides?.q ?? query;
     const cat = overrides?.cat ?? category;
     // 中止上一次未完成的请求，避免乱序响应覆盖新结果
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setLoading(true);
+    // 已有数据时保留旧数据，避免每次按键/搜索都闪烁成骨架屏
+    setLoading(templates.length === 0 || overrides?.keepData !== true);
     setFetchError(null);
     try {
       const params = new URLSearchParams();
@@ -65,7 +70,7 @@ export function MarketplacePage() {
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
-      fetchTemplates({ q: query, cat: category });
+      fetchTemplates({ q: query, cat: category, keepData: true });
     }, 300);
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
@@ -73,17 +78,49 @@ export function MarketplacePage() {
     };
   }, [query]);
 
-  const deploy = async (id: string, name: string) => {
-    setDeploying(id);
+  // 部署确认对话框：打开时聚焦确认按钮，Esc 关闭，Tab 陷阱
+  useEffect(() => {
+    if (!confirming) return;
+    const confirmBtn = modalRef.current?.querySelector<HTMLButtonElement>('button.btn-primary');
+    confirmBtn?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !deploying) {
+        setConfirming(null);
+        return;
+      }
+      if (e.key !== 'Tab' || !modalRef.current) return;
+      const focusables = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [confirming, deploying]);
+
+  const deploy = async (tmpl: AgentTemplate) => {
+    setDeploying(tmpl.id);
     setNotice(null);
+    setDeployedTemplate(null);
     try {
       const res = await fetch(`/api/v1/marketplace/deploy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template_id: id }),
+        body: JSON.stringify({ template_id: tmpl.id }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setNotice({ kind: 'success', text: `模板「${name}」部署成功` });
+      setDeployedTemplate(tmpl);
+      setNotice({ kind: 'success', text: `模板「${tmpl.name}」部署成功` });
+      setConfirming(null);
     } catch (e) {
       setNotice({ kind: 'error', text: `部署失败：${e instanceof Error ? e.message : '未知错误'}` });
     } finally {
@@ -123,6 +160,20 @@ export function MarketplacePage() {
         )
       )}
 
+      {/* 部署状态反馈 */}
+      {deployedTemplate && (
+        <div className="deploy-status" role="status">
+          <div className="deploy-status-icon" aria-hidden="true">✓</div>
+          <div className="deploy-status-body">
+            <p className="deploy-status-title">「{deployedTemplate.name}」已部署到集群</p>
+            <p className="deploy-status-meta">
+              模板 {deployedTemplate.version} · 分类 {deployedTemplate.category} · 可在集群中查看运行状态
+            </p>
+          </div>
+          <button className="banner-close" onClick={() => setDeployedTemplate(null)} aria-label="关闭">✕</button>
+        </div>
+      )}
+
       {/* 模板网格 */}
       <section className="template-grid">
         {fetchError ? (
@@ -151,7 +202,7 @@ export function MarketplacePage() {
               <footer>
                 <span className="author">by {tmpl.author}</span>
                 <button
-                  onClick={() => deploy(tmpl.id, tmpl.name)}
+                  onClick={() => setConfirming(tmpl)}
                   disabled={deploying === tmpl.id}
                 >
                   {deploying === tmpl.id ? '部署中...' : '一键部署'}
@@ -161,6 +212,41 @@ export function MarketplacePage() {
           ))
         )}
       </section>
+
+      {/* 部署确认对话框 */}
+      {confirming && (
+        <div className="modal-overlay" onClick={() => !deploying && setConfirming(null)}>
+          <div
+            ref={modalRef}
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deploy-confirm-title"
+            aria-describedby="deploy-confirm-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="deploy-confirm-title">确认部署模板</h3>
+            <p id="deploy-confirm-desc" className="confirm-desc">
+              将把模板部署到当前集群，创建对应的 Agent 实例。
+            </p>
+            <dl className="confirm-detail">
+              <dt>模板</dt><dd>{confirming.name} v{confirming.version}</dd>
+              <dt>作者</dt><dd>{confirming.author}</dd>
+              <dt>分类</dt><dd>{confirming.category}</dd>
+            </dl>
+            <div className="confirm-actions">
+              <button className="btn-secondary" onClick={() => setConfirming(null)} disabled={deploying !== null}>取消</button>
+              <button
+                className="btn-primary"
+                onClick={() => deploy(confirming)}
+                disabled={deploying !== null}
+              >
+                {deploying !== null ? '部署中...' : '确认部署'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

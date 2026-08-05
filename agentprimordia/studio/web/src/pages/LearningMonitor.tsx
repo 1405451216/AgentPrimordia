@@ -42,7 +42,8 @@ export function LearningMonitor() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const refresh = async () => {
-    setLoading(true);
+    // 已有数据时不闪骨架，仅首次加载显示
+    setLoading(stats === null && pipeline === null && capabilities.length === 0);
     setError(null);
     try {
       const [statsRes, capRes, pipeRes] = await Promise.all([
@@ -50,16 +51,27 @@ export function LearningMonitor() {
         fetch('/api/v1/learning/capabilities'),
         fetch('/api/v1/learning/pipeline/stats'),
       ]);
-      const [s, c, p] = await Promise.all([
-        statsRes.json(), capRes.json(), pipeRes.json(),
+      const results = await Promise.all([
+        statsRes.ok ? statsRes.json() : Promise.resolve(null),
+        capRes.ok ? capRes.json() : Promise.resolve(null),
+        pipeRes.ok ? pipeRes.json() : Promise.resolve(null),
       ]);
-      if (statsRes.ok) setStats(s);
-      if (capRes.ok) setCapabilities(c);
-      if (pipeRes.ok) setPipeline(p);
-      if (!statsRes.ok || !capRes.ok || !pipeRes.ok) {
-        throw new Error('部分接口返回非 2xx');
+      const [s, c, p] = results;
+      // 逐端点提交成功数据：部分失败时仍保留已成功部分
+      if (s !== null) setStats(s);
+      if (c !== null) setCapabilities(c);
+      if (p !== null) setPipeline(p);
+      // 任一接口成功即视为刷新成功，更新陈旧提示
+      if (s !== null || c !== null || p !== null) {
+        setLastUpdatedAt(Date.now());
       }
-      setLastUpdatedAt(Date.now());
+      if (!statsRes.ok || !capRes.ok || !pipeRes.ok) {
+        const failed = [statsRes, capRes, pipeRes]
+          .map((res, i) => (!res.ok ? ['统计', '能力', '管道'][i] : null))
+          .filter(Boolean)
+          .join('、');
+        setError(`部分接口返回异常（${failed}）`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '未知错误');
     } finally {

@@ -9,8 +9,9 @@
  *  - 提交成功后展示持久「实验已提交」横幅
  *  - 实验历史区分 加载/空/错误 三种状态
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ErrorPanel, SuccessBanner } from '../Status';
+import { experimentStatusLabel } from '../labels';
 
 interface Experiment {
   name: string;
@@ -49,6 +50,8 @@ export function ChaosLab() {
   const [newExp, setNewExp] = useState({ name: '', hypothesis: '', faultType: 'latency' });
   // 待确认的实验：非空时弹出两步确认对话框
   const [confirming, setConfirming] = useState<typeof newExp | null>(null);
+  const runButtonRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const fetchExperiments = async () => {
     setLoading(true);
@@ -66,6 +69,39 @@ export function ChaosLab() {
 
   useEffect(() => { fetchExperiments(); }, []);
 
+  // 对话框焦点管理：打开时聚焦取消按钮，Esc 关闭，Tab 陷阱，关闭后恢复焦点
+  useEffect(() => {
+    if (!confirming) return;
+    const cancelBtn = modalRef.current?.querySelector<HTMLButtonElement>('button:first-of-type');
+    cancelBtn?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !running) {
+        setConfirming(null);
+        runButtonRef.current?.focus();
+        return;
+      }
+      if (e.key !== 'Tab' || !modalRef.current) return;
+      const focusables = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (!confirming) runButtonRef.current?.focus();
+    };
+  }, [confirming, running]);
+
   const runExperiment = async (draft: typeof newExp) => {
     setRunning(true);
     setSubmitError(null);
@@ -77,13 +113,25 @@ export function ChaosLab() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSubmittedName(draft.name);
-      await fetchExperiments();
+      await refreshExperiments();
       setNewExp({ name: '', hypothesis: '', faultType: 'latency' });
       setConfirming(null);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : '未知错误');
     } finally {
       setRunning(false);
+    }
+  };
+
+  // 刷新实验历史：仅在无数据（首次/全空）时显示骨架，避免刷新闪烁
+  const refreshExperiments = async () => {
+    setFetchError(null);
+    try {
+      const res = await fetch('/api/v1/chaos/experiments');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setExperiments(await res.json());
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : '未知错误');
     }
   };
 
@@ -125,6 +173,7 @@ export function ChaosLab() {
             ))}
           </select>
           <button
+            ref={runButtonRef}
             onClick={() => newExp.name.trim() && setConfirming(newExp)}
             disabled={running || !newExp.name.trim()}
           >
@@ -138,7 +187,7 @@ export function ChaosLab() {
         <h3>实验历史</h3>
         {fetchError ? (
           <ErrorPanel message={`加载失败：${fetchError}`} onRetry={fetchExperiments} />
-        ) : loading ? (
+        ) : loading && experiments.length === 0 ? (
           <div className="skeleton-list" aria-busy="true">
             <div className="skeleton-row" />
             <div className="skeleton-row" />
@@ -161,7 +210,7 @@ export function ChaosLab() {
               {experiments.map((r, i) => (
                 <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
                   <td>{r.experiment.name}</td>
-                  <td><span className={`status-${r.experiment.status}`}>{r.experiment.status}</span></td>
+                  <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
                   <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>
                   <td>{r.preSteadyState?.met ? '✅' : '❌'}</td>
                   <td>{r.postSteadyState?.met ? '✅' : '❌'}</td>
@@ -177,13 +226,18 @@ export function ChaosLab() {
       {confirming && (
         <div className="modal-overlay" onClick={() => !running && setConfirming(null)}>
           <div
+            ref={modalRef}
             className="modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-title"
+            aria-describedby="confirm-desc"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 id="confirm-title">确认运行混沌实验</h3>
+            <p id="confirm-desc" className="confirm-desc">
+              即将提交以下实验；{isDestructive(confirming.faultType) ? '该故障类型为破坏性操作。' : ''}
+            </p>
             {isDestructive(confirming.faultType) && (
               <p className="confirm-warning" role="alert">
                 该实验将注入「{faultLabel(confirming.faultType)}」，可能中断集群服务或终止节点进程。请确认影响范围。
@@ -195,7 +249,7 @@ export function ChaosLab() {
               <dt>故障类型</dt><dd>{faultLabel(confirming.faultType)}</dd>
             </dl>
             <div className="confirm-actions">
-              <button className="btn-secondary" onClick={() => setConfirming(null)} disabled={running}>取消</button>
+              <button className="btn-secondary" onClick={() => { setConfirming(null); runButtonRef.current?.focus(); }} disabled={running}>取消</button>
               <button
                 className={isDestructive(confirming.faultType) ? 'btn-danger' : ''}
                 onClick={() => runExperiment(confirming)}

@@ -9,6 +9,8 @@
  */
 import { useState, useEffect } from 'react';
 import { ErrorPanel, Staleness } from '../Status';
+import { nodeStatusLabel, nodeRoleLabel, nodeStatusGlyph } from '../labels';
+import { IconLeader } from '../icons';
 
 interface NodeInfo {
   id: string;
@@ -65,7 +67,16 @@ export function ClusterDashboard() {
         </div>
       );
     }
-    return <div className="panel loading">加载集群状态...</div>;
+    return (
+      <div className="panel cluster-dashboard">
+        <h2>Cluster Dashboard</h2>
+        <div className="skeleton-list" aria-busy="true">
+          <div className="skeleton-row" />
+          <div className="skeleton-row" />
+          <div className="skeleton-row" />
+        </div>
+      </div>
+    );
   }
 
   const leader = cluster.nodes.find((n) => n.id === cluster.leaderId);
@@ -118,12 +129,22 @@ export function ClusterDashboard() {
             {cluster.nodes.map((node) => (
               <tr key={node.id} className={`node-${node.status}`}>
                 <td className="node-id">
-                  {node.id === cluster.leaderId && <span className="badge leader">👑</span>}
+                  {node.id === cluster.leaderId && (
+                    <span className="badge leader" aria-label="领导者"><IconLeader size={12} /></span>
+                  )}
                   {node.id}
                 </td>
                 <td>{node.address}</td>
-                <td><span className={`role-${node.role}`}>{node.role}</span></td>
-                <td><span className={`status-${node.status}`}>{node.status}</span></td>
+                <td><span className={`role-${node.role}`}>{nodeRoleLabel(node.role)}</span></td>
+                <td>
+                  <span
+                    className={`status-badge status-${node.status}`}
+                    aria-label={nodeStatusLabel(node.status)}
+                  >
+                    <span aria-hidden="true">{nodeStatusGlyph(node.status)}</span>
+                    {nodeStatusLabel(node.status)}
+                  </span>
+                </td>
                 <td>{node.capabilities?.join(', ') || '-'}</td>
                 <td>{node.lastSeen ? new Date(node.lastSeen).toLocaleTimeString() : '-'}</td>
               </tr>
@@ -135,18 +156,22 @@ export function ClusterDashboard() {
       {/* 分片视图 */}
       <section className="shard-view">
         <h3>分片分布</h3>
-        <div className="shard-bar">
-          {onlineNodes.map((node, i) => (
-            <div
-              key={node.id}
-              className="shard-segment"
-              style={{ flex: 1, backgroundColor: `hsl(${i * 60}, 70%, 60%)` }}
-              title={`${node.id}: ${Math.round(100 / onlineNodes.length)}%`}
-            >
-              {node.id}
-            </div>
-          ))}
-        </div>
+        {onlineNodes.length === 0 ? (
+          <p className="empty">暂无在线节点</p>
+        ) : (
+          <div className="shard-bar" role="img" aria-label="分片分布">
+            {onlineNodes.map((node, i) => (
+              <div
+                key={node.id}
+                className="shard-segment"
+                style={{ flex: 1, backgroundColor: `var(--shard-${i % 6})` }}
+                title={`${node.id}: ${Math.round(100 / onlineNodes.length)}%`}
+              >
+                {node.id}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <footer className="dashboard-footer">

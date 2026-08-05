@@ -48,14 +48,35 @@ afterEach(() => {
 });
 
 describe('Marketplace 加固', () => {
-  it('部署成功展示成功横幅', async () => {
+  it('部署需两步确认，确认后展示成功横幅', async () => {
     const user = userEvent.setup();
     render(<MarketplacePage />);
 
     const deployBtn = await screen.findByRole('button', { name: '一键部署' });
     await user.click(deployBtn);
 
+    // 确认对话框出现
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '确认部署' }));
+
     expect(await screen.findByText(/部署成功/)).toBeInTheDocument();
+  });
+
+  it('部署确认框可取消，不发起请求', async () => {
+    const user = userEvent.setup();
+    render(<MarketplacePage />);
+
+    const deployBtn = await screen.findByRole('button', { name: '一键部署' });
+    await user.click(deployBtn);
+
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: '取消' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/deploy'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   it('部署失败展示错误横幅，点击关闭后消失', async () => {
@@ -73,6 +94,9 @@ describe('Marketplace 加固', () => {
 
     const deployBtn = await screen.findByRole('button', { name: '一键部署' });
     await user.click(deployBtn);
+
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: '确认部署' }));
 
     expect(await screen.findByText(/部署失败：HTTP 503/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '关闭' }));
