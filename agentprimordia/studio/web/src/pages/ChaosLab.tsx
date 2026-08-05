@@ -9,7 +9,7 @@
  *  - 提交成功后展示持久「实验已提交」横幅
  *  - 实验历史区分 加载/空/错误 三种状态
  */
-import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { ErrorPanel, SuccessBanner } from '../Status';
 import { experimentStatusLabel } from '../labels';
 import { useTableSort, SortableTh } from '../useTableSort';
@@ -52,6 +52,8 @@ export function ChaosLab() {
   // 待确认的实验：非空时弹出两步确认对话框
   const [confirming, setConfirming] = useState<typeof newExp | null>(null);
   const [abortingName, setAbortingName] = useState<string | null>(null);
+  // 详情面板展开的实验（null = 收起）
+  const [detailIndex, setDetailIndex] = useState<number | null>(null);
   const runButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -243,25 +245,75 @@ export function ChaosLab() {
             </thead>
             <tbody>
               {sortedRows.map((r, i) => (
-                <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
-                  <td>{r.experiment.name}</td>
-                  <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
-                  <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>
-                  <td>{r.preSteadyState?.met ? '✅' : '❌'}</td>
-                  <td>{r.postSteadyState?.met ? '✅' : '❌'}</td>
-                  <td>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</td>
-                  <td>
-                    {(r.experiment.status === 'running' || r.experiment.status === 'pending') && (
+                <Fragment key={`${r.experiment.name}-${r.startTime}-${i}`}>
+                  <tr className={detailIndex === i ? 'row-expanded' : ''}>
+                    <td>{r.experiment.name}</td>
+                    <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
+                    <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>
+                    <td>{r.preSteadyState?.met ? '✅' : '❌'}</td>
+                    <td>{r.postSteadyState?.met ? '✅' : '❌'}</td>
+                    <td>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</td>
+                    <td className="row-actions">
                       <button
-                        className="btn-danger btn-sm"
-                        onClick={() => abortExperiment(r.experiment.name)}
-                        disabled={abortingName === r.experiment.name}
+                        className="btn-secondary btn-sm"
+                        onClick={() => setDetailIndex(detailIndex === i ? null : i)}
                       >
-                        {abortingName === r.experiment.name ? '中止中...' : '中止'}
+                        {detailIndex === i ? '收起' : '详情'}
                       </button>
-                    )}
-                  </td>
-                </tr>
+                      {(r.experiment.status === 'running' || r.experiment.status === 'pending') && (
+                        <button
+                          className="btn-danger btn-sm"
+                          onClick={() => abortExperiment(r.experiment.name)}
+                          disabled={abortingName === r.experiment.name}
+                        >
+                          {abortingName === r.experiment.name ? '中止中...' : '中止'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                  {detailIndex === i && (
+                    <tr className="detail-row">
+                      <td colSpan={7}>
+                        <div className="experiment-detail">
+                          <dl className="detail-grid">
+                            <dt>描述</dt><dd>{r.experiment.description || '（无）'}</dd>
+                            <dt>假设</dt><dd>{r.experiment.hypothesis || '（未填写）'}</dd>
+                            <dt>时长</dt><dd>{r.experiment.duration || '-'}</dd>
+                            <dt>开始</dt><dd>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</dd>
+                            <dt>结束</dt><dd>{r.endTime ? new Date(r.endTime).toLocaleString() : '-'}</dd>
+                            <dt>稳态(前)</dt>
+                            <dd>
+                              <span className={r.preSteadyState?.met ? 'text-ok' : 'text-bad'}>
+                                {r.preSteadyState?.met ? '✓ 达成' : '✕ 未达成'}
+                              </span>
+                              {r.preSteadyState?.message && <span className="detail-msg"> — {r.preSteadyState.message}</span>}
+                            </dd>
+                            <dt>稳态(后)</dt>
+                            <dd>
+                              <span className={r.postSteadyState?.met ? 'text-ok' : 'text-bad'}>
+                                {r.postSteadyState?.met ? '✓ 达成' : '✕ 未达成'}
+                              </span>
+                              {r.postSteadyState?.message && <span className="detail-msg"> — {r.postSteadyState.message}</span>}
+                            </dd>
+                          </dl>
+                          <h4 className="detail-heading">故障注入</h4>
+                          {r.experiment.faults?.length ? (
+                            <ul className="fault-list">
+                              {r.experiment.faults.map((f, fi) => (
+                                <li key={fi}>
+                                  <span className="tag">{faultLabel(f.type)}</span>
+                                  <span className="fault-desc">{f.description || '（无描述）'}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="empty">无故障注入记录</p>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

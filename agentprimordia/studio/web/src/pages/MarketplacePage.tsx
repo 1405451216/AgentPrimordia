@@ -24,6 +24,16 @@ interface AgentTemplate {
   downloads: number;
 }
 
+interface Deployment {
+  id: string;
+  templateId: string;
+  name: string;
+  version: string;
+  category: string;
+  status: 'running' | 'stopped';
+  deployedAt: string;
+}
+
 export function MarketplacePage() {
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [query, setQuery] = useState('');
@@ -33,11 +43,22 @@ export function MarketplacePage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [deployedTemplate, setDeployedTemplate] = useState<AgentTemplate | null>(null);
+  const [deployments, setDeployments] = useState<Deployment[]>([]);
+  const [stoppingId, setStoppingId] = useState<string | null>(null);
   // 待确认部署的模板：非空时弹出确认对话框
   const [confirming, setConfirming] = useState<AgentTemplate | null>(null);
   const debounceRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  const fetchDeployments = async () => {
+    try {
+      const res = await fetch('/api/v1/marketplace/deployments');
+      if (res.ok) setDeployments(await res.json());
+    } catch { /* 展示时静默，部署面板为空即可 */ }
+  };
+
+  useEffect(() => { fetchDeployments(); }, []);
 
   const fetchTemplates = async (overrides?: { q?: string; cat?: string; keepData?: boolean }) => {
     const q = overrides?.q ?? query;
@@ -121,10 +142,28 @@ export function MarketplacePage() {
       setDeployedTemplate(tmpl);
       setNotice({ kind: 'success', text: `模板「${tmpl.name}」部署成功` });
       setConfirming(null);
+      await fetchDeployments();
     } catch (e) {
       setNotice({ kind: 'error', text: `部署失败：${e instanceof Error ? e.message : '未知错误'}` });
     } finally {
       setDeploying(null);
+    }
+  };
+
+  // 停止（卸载）已部署的 Agent
+  const stopDeployment = async (dep: Deployment) => {
+    setStoppingId(dep.id);
+    try {
+      const res = await fetch(`/api/v1/marketplace/deployments/${dep.id}/stop`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setNotice({ kind: 'success', text: `「${dep.name}」已停止` });
+      await fetchDeployments();
+    } catch (e) {
+      setNotice({ kind: 'error', text: `停止失败：${e instanceof Error ? e.message : '未知错误'}` });
+    } finally {
+      setStoppingId(null);
     }
   };
 
@@ -172,6 +211,52 @@ export function MarketplacePage() {
           </div>
           <button className="banner-close" onClick={() => setDeployedTemplate(null)} aria-label="关闭">✕</button>
         </div>
+      )}
+
+      {/* 部署历史与治理 */}
+      {deployments.length > 0 && (
+        <section className="deployments-panel">
+          <h3>已部署 Agent（{deployments.length}）</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>版本</th>
+                <th>分类</th>
+                <th>状态</th>
+                <th>部署时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deployments.map((dep) => (
+                <tr key={dep.id}>
+                  <td>{dep.name}</td>
+                  <td>{dep.version}</td>
+                  <td>{dep.category}</td>
+                  <td>
+                    <span className={`status-badge status-${dep.status}`} aria-label={dep.status === 'running' ? '运行中' : '已停止'}>
+                      <span aria-hidden="true">{dep.status === 'running' ? '●' : '○'}</span>
+                      {dep.status === 'running' ? '运行中' : '已停止'}
+                    </span>
+                  </td>
+                  <td>{dep.deployedAt ? new Date(dep.deployedAt).toLocaleString() : '-'}</td>
+                  <td>
+                    {dep.status === 'running' && (
+                      <button
+                        className="btn-secondary btn-sm"
+                        onClick={() => stopDeployment(dep)}
+                        disabled={stoppingId === dep.id}
+                      >
+                        {stoppingId === dep.id ? '停止中...' : '停止'}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       )}
 
       {/* 模板网格 */}

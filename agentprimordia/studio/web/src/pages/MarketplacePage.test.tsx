@@ -37,6 +37,9 @@ beforeEach(() => {
     if (url.includes('/templates')) {
       return { ok: true, json: async () => TEMPLATES } as Response;
     }
+    if (url.includes('/deployments')) {
+      return { ok: true, json: async () => [] } as Response;
+    }
     return { ok: true, json: async () => ({}) } as Response;
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -185,5 +188,42 @@ describe('Marketplace 加固', () => {
       // 快请求的模板仍在（未被慢响应 [] 覆盖）
       expect(screen.getByRole('button', { name: '一键部署' })).toBeInTheDocument();
     });
+  });
+
+  it('已部署面板展示运行中 Agent，可点击停止', async () => {
+    const runningDep = {
+      id: 'dep-1',
+      templateId: 'code-reviewer',
+      name: 'Code Reviewer',
+      version: '1.0.0',
+      category: 'coding',
+      status: 'running',
+      deployedAt: new Date().toISOString(),
+    };
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/deployments/') && url.includes('/stop') && init?.method === 'POST') {
+        return { ok: true, json: async () => ({ status: 'stopped', id: 'dep-1' }) } as Response;
+      }
+      if (url.includes('/deployments')) {
+        // 停止后返回 stopped 状态
+        if (String(input).includes('/stop')) {
+          return { ok: true, json: async () => [] } as Response;
+        }
+        return { ok: true, json: async () => [runningDep] } as Response;
+      }
+      if (url.includes('/templates')) {
+        return { ok: true, json: async () => TEMPLATES } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    const user = userEvent.setup();
+    render(<MarketplacePage />);
+
+    expect(await screen.findByText('已部署 Agent（1）')).toBeInTheDocument();
+    expect(screen.getByText('运行中')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '停止' }));
+    expect(await screen.findByText(/已停止/)).toBeInTheDocument();
   });
 });

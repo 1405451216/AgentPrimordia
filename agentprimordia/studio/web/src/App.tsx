@@ -6,7 +6,7 @@
  */
 import { NavLink, Outlet } from 'react-router-dom';
 import { IconOverview, IconChaos, IconCluster, IconLearning, IconMarket, IconBrand } from './icons';
-
+import { ShortcutPalette } from './ShortcutPalette';
 const NAV_ITEMS = [
   { to: '/', label: '概览', icon: IconOverview, end: true },
   { to: '/chaos', label: '混沌实验', icon: IconChaos, end: false },
@@ -39,11 +39,18 @@ export default function App() {
             );
           })}
         </nav>
-        <footer className="sidebar-footer">Studio v3.2.0</footer>
+        <footer className="sidebar-footer">
+          <a className="help-link" href="docs/CHANGELOG.md" target="_blank" rel="noreferrer">
+            帮助文档
+          </a>
+          <span className="help-hint">Shift + / 查看快捷键</span>
+          <span>Studio v3.2.0</span>
+        </footer>
       </aside>
       <main className="content">
         <Outlet />
       </main>
+      <ShortcutPalette />
     </div>
   );
 }
