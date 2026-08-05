@@ -6,7 +6,7 @@
  *  - /           聚焦搜索框（若当前页存在）
  *  - g 然后 1-5  导航到对应页面（概览/混沌/集群/学习/市场）
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const SHORTCUTS = [
@@ -23,6 +23,7 @@ export function ShortcutPalette() {
   const navigate = useNavigate();
   // g 键待组合状态
   const [pendingG, setPendingG] = useState(false);
+  const paletteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -73,10 +74,48 @@ export function ShortcutPalette() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [pendingG, navigate]);
 
+  // g 键等待状态 1.5s 后自动超时，避免误导航
+  useEffect(() => {
+    if (!pendingG) return;
+    const t = window.setTimeout(() => setPendingG(false), 1500);
+    return () => window.clearTimeout(t);
+  }, [pendingG]);
+
+  // 面板打开时的焦点管理：初始聚焦关闭按钮，Tab 陷阱，关闭后恢复
+  useEffect(() => {
+    if (!open) return;
+    const closeBtn = paletteRef.current?.querySelector<HTMLButtonElement>('button');
+    closeBtn?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !paletteRef.current) return;
+      const focusables = paletteRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]);
+
+  const close = () => {
+    setOpen(false);
+    setPendingG(false);
+  };
+
   if (!open) return null;
   return (
-    <div className="modal-overlay" onClick={() => { setOpen(false); setPendingG(false); }}>
+    <div className="modal-overlay" onClick={close}>
       <div
+        ref={paletteRef}
         className="modal shortcut-palette"
         role="dialog"
         aria-modal="true"
@@ -95,7 +134,7 @@ export function ShortcutPalette() {
           </tbody>
         </table>
         <div className="confirm-actions">
-          <button className="btn-secondary" onClick={() => { setOpen(false); setPendingG(false); }}>
+          <button className="btn-secondary" onClick={close}>
             关闭
           </button>
         </div>

@@ -11,6 +11,8 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { ErrorPanel, SuccessBanner } from '../Status';
+import { PageTitle } from '../PageTitle';
+import { IconStar, IconDownload } from '../icons';
 
 interface AgentTemplate {
   id: string;
@@ -44,7 +46,10 @@ export function MarketplacePage() {
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [deployedTemplate, setDeployedTemplate] = useState<AgentTemplate | null>(null);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
+  const [deployError, setDeployError] = useState<string | null>(null);
   const [stoppingId, setStoppingId] = useState<string | null>(null);
+  // 待确认停止的部署：非空时弹出确认对话框
+  const [confirmingStop, setConfirmingStop] = useState<Deployment | null>(null);
   // 待确认部署的模板：非空时弹出确认对话框
   const [confirming, setConfirming] = useState<AgentTemplate | null>(null);
   const debounceRef = useRef<number | null>(null);
@@ -52,10 +57,14 @@ export function MarketplacePage() {
   const modalRef = useRef<HTMLDivElement>(null);
 
   const fetchDeployments = async () => {
+    setDeployError(null);
     try {
       const res = await fetch('/api/v1/marketplace/deployments');
-      if (res.ok) setDeployments(await res.json());
-    } catch { /* 展示时静默，部署面板为空即可 */ }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDeployments(await res.json());
+    } catch (e) {
+      setDeployError(e instanceof Error ? e.message : '未知错误');
+    }
   };
 
   useEffect(() => { fetchDeployments(); }, []);
@@ -150,7 +159,7 @@ export function MarketplacePage() {
     }
   };
 
-  // 停止（卸载）已部署的 Agent
+  // 执行停止（卸载）已部署的 Agent
   const stopDeployment = async (dep: Deployment) => {
     setStoppingId(dep.id);
     try {
@@ -159,9 +168,27 @@ export function MarketplacePage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setNotice({ kind: 'success', text: `「${dep.name}」已停止` });
+      setConfirmingStop(null);
       await fetchDeployments();
     } catch (e) {
       setNotice({ kind: 'error', text: `停止失败：${e instanceof Error ? e.message : '未知错误'}` });
+    } finally {
+      setStoppingId(null);
+    }
+  };
+
+  // 重启（恢复）已停止的 Agent
+  const startDeployment = async (dep: Deployment) => {
+    setStoppingId(dep.id);
+    try {
+      const res = await fetch(`/api/v1/marketplace/deployments/${dep.id}/start`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setNotice({ kind: 'success', text: `「${dep.name}」已启动` });
+      await fetchDeployments();
+    } catch (e) {
+      setNotice({ kind: 'error', text: `启动失败：${e instanceof Error ? e.message : '未知错误'}` });
     } finally {
       setStoppingId(null);
     }
@@ -173,7 +200,7 @@ export function MarketplacePage() {
 
   return (
     <div className="panel marketplace">
-      <h2>Agent Marketplace</h2>
+      <PageTitle title="Agent 市场" subtitle="Agent Marketplace" />
 
       {/* 搜索栏 */}
       <section className="search-bar">
@@ -216,9 +243,12 @@ export function MarketplacePage() {
       )}
 
       {/* 部署历史与治理 */}
-      {deployments.length > 0 && (
+      {(deployments.length > 0 || deployError) && (
         <section className="deployments-panel">
-          <h3>已部署 Agent（{deployments.length}）</h3>
+          <h3>已部署 Agent{deployments.length > 0 ? `（${deployments.length}）` : ''}</h3>
+          {deployError && (
+            <ErrorPanel message={`加载部署失败：${deployError}`} onRetry={fetchDeployments} />
+          )}
           <table>
             <thead>
               <tr>
@@ -244,13 +274,21 @@ export function MarketplacePage() {
                   </td>
                   <td>{dep.deployedAt ? new Date(dep.deployedAt).toLocaleString() : '-'}</td>
                   <td>
-                    {dep.status === 'running' && (
+                    {dep.status === 'running' ? (
                       <button
-                        className="btn-secondary btn-sm"
-                        onClick={() => stopDeployment(dep)}
+                        className="btn-danger btn-sm"
+                        onClick={() => setConfirmingStop(dep)}
                         disabled={stoppingId === dep.id}
                       >
                         {stoppingId === dep.id ? '停止中...' : '停止'}
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-secondary btn-sm"
+                        onClick={() => startDeployment(dep)}
+                        disabled={stoppingId === dep.id}
+                      >
+                        {stoppingId === dep.id ? '启动中...' : '启动'}
                       </button>
                     )}
                   </td>
@@ -280,8 +318,8 @@ export function MarketplacePage() {
               <p className="desc">{tmpl.description}</p>
               <div className="meta">
                 <span className="category">{tmpl.category}</span>
-                <span className="rating">⭐ {tmpl.rating.toFixed(1)}</span>
-                <span className="downloads">⬇ {tmpl.downloads}</span>
+                <span className="rating"><IconStar size={12} /> {tmpl.rating.toFixed(1)}</span>
+                <span className="downloads"><IconDownload size={12} /> {tmpl.downloads}</span>
               </div>
               <div className="tags">
                 {tmpl.tags?.map((tag) => <span key={tag} className="tag">{tag}</span>)}
@@ -329,6 +367,40 @@ export function MarketplacePage() {
                 disabled={deploying !== null}
               >
                 {deploying !== null ? '部署中...' : '确认部署'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 停止部署确认对话框 */}
+      {confirmingStop && (
+        <div className="modal-overlay" onClick={() => !stoppingId && setConfirmingStop(null)}>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="stop-confirm-title"
+            aria-describedby="stop-confirm-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="stop-confirm-title">确认停止 Agent</h3>
+            <p id="stop-confirm-desc" className="confirm-desc">
+              停止后该 Agent 将不再处理请求，可在列表中随时重新启动。
+            </p>
+            <dl className="confirm-detail">
+              <dt>Agent</dt><dd>{confirmingStop.name} v{confirmingStop.version}</dd>
+              <dt>分类</dt><dd>{confirmingStop.category}</dd>
+              <dt>部署时间</dt><dd>{confirmingStop.deployedAt ? new Date(confirmingStop.deployedAt).toLocaleString() : '-'}</dd>
+            </dl>
+            <div className="confirm-actions">
+              <button className="btn-secondary" onClick={() => setConfirmingStop(null)} disabled={stoppingId !== null}>取消</button>
+              <button
+                className="btn-danger"
+                onClick={() => stopDeployment(confirmingStop)}
+                disabled={stoppingId !== null}
+              >
+                {stoppingId !== null ? '停止中...' : '确认停止'}
               </button>
             </div>
           </div>

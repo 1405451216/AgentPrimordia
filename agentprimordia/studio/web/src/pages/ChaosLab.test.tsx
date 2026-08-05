@@ -144,6 +144,10 @@ describe('Chaos Lab 加固', () => {
     const abortBtn = await screen.findByRole('button', { name: '中止' });
     await user.click(abortBtn);
 
+    // 两步确认：先弹确认对话框
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: '确认中止' }));
+
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/v1/chaos/experiments/abort',

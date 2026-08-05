@@ -108,7 +108,7 @@ body {
 }
 
 .nav-item.active {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
 }
 
@@ -171,7 +171,7 @@ body {
 }
 
 button {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -456,6 +456,14 @@ th {
   gap: 10px;
   font-size: 12px;
   color: var(--text-dim);
+  align-items: center;
+}
+
+.template-card .meta .rating,
+.template-card .meta .downloads {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
 }
 
 .template-card .tags {
@@ -669,7 +677,7 @@ a:focus-visible {
 
 /* ---------- 主操作按钮（显式声明，与默认按钮一致但可被引用） ---------- */
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-strong);
   color: #fff;
 }
 
@@ -704,6 +712,17 @@ a:focus-visible {
 .status-badge.status-stopped {
   color: var(--text-dim);
   border-color: var(--border);
+}
+
+/* 表格 ✓/✕ 字形 */
+.glyph-ok {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.glyph-bad {
+  color: var(--red);
+  font-weight: 700;
 }
 
 /* ---------- 部署治理面板 ---------- */
@@ -776,6 +795,24 @@ a:focus-visible {
 .overview-hero h2 {
   font-size: 24px;
   margin-bottom: 4px;
+}
+
+/* 页面标题：中文主标题 + 英文副行 */
+.page-title {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.page-title h2 {
+  margin-bottom: 0;
+}
+
+.page-title-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
 }
 
 .overview-sub {
@@ -899,8 +936,8 @@ th.sortable {
 }
 
 @keyframes value-flash {
-  0% { background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 0 4px; }
-  100% { background: transparent; color: inherit; }
+  0% { box-shadow: 0 0 0 3px var(--accent-soft); color: var(--accent); border-radius: 4px; }
+  100% { box-shadow: 0 0 0 0 transparent; color: inherit; }
 }
 
 /* 尊重系统「减少动画」设置 */

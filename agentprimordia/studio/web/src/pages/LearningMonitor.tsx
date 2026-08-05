@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { ErrorPanel, Staleness } from '../Status';
 import { FlashValue } from '../useValueFlash';
 import { Sparkline } from '../Sparkline';
+import { PageTitle } from '../PageTitle';
 
 interface DistillerStats {
   totalInteractions: number;
@@ -114,7 +115,7 @@ export function LearningMonitor() {
 
   return (
     <div className="panel learning-monitor">
-      <h2>Learning Monitor</h2>
+      <PageTitle title="学习监控" subtitle="Learning Monitor" />
 
       {error && (
         <ErrorPanel message={`刷新失败：${error}`} onRetry={refresh} />

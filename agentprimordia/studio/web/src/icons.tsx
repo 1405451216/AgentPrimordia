@@ -107,3 +107,23 @@ export function IconLeader({ size, className }: IconProps) {
     </svg>
   );
 }
+
+/** 评分星标 */
+export function IconStar({ size, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 3l2.2 5.4 5.8.6-4.3 3.9 1.2 5.7L12 15.9 7.1 18.6l1.2-5.7L4 9l5.8-.6L12 3z" />
+    </svg>
+  );
+}
+
+/** 下载计数 */
+export function IconDownload({ size, className }: IconProps) {
+  return (
+    <svg {...base(size, className)}>
+      <path d="M12 3v11" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M4 20h16" />
+    </svg>
+  );
+}

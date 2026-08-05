@@ -72,7 +72,7 @@ describe('Studio App 壳层', () => {
   it('访问 /chaos 渲染 Chaos Lab', async () => {
     renderStudio('/chaos');
     expect(
-      await screen.findByRole('heading', { name: 'Chaos Lab' }),
+      await screen.findByRole('heading', { name: '混沌实验' }),
     ).toBeInTheDocument();
     expect(screen.getByText('新建实验')).toBeInTheDocument();
   });
@@ -83,7 +83,7 @@ describe('Studio App 壳层', () => {
     const nav = screen.getByRole('navigation');
     await user.click(within(nav).getByRole('link', { name: '混沌实验' }));
     expect(
-      await screen.findByRole('heading', { name: 'Chaos Lab' }),
+      await screen.findByRole('heading', { name: '混沌实验' }),
     ).toBeInTheDocument();
   });
 
@@ -93,7 +93,7 @@ describe('Studio App 壳层', () => {
     const nav = screen.getByRole('navigation');
     await user.click(within(nav).getByRole('link', { name: '集群' }));
     expect(
-      await screen.findByRole('heading', { name: 'Cluster Dashboard' }),
+      await screen.findByRole('heading', { name: '集群' }),
     ).toBeInTheDocument();
   });
 
@@ -103,7 +103,7 @@ describe('Studio App 壳层', () => {
     const nav = screen.getByRole('navigation');
     await user.click(within(nav).getByRole('link', { name: '学习' }));
     expect(
-      await screen.findByRole('heading', { name: 'Learning Monitor' }),
+      await screen.findByRole('heading', { name: '学习监控' }),
     ).toBeInTheDocument();
   });
 
@@ -113,7 +113,7 @@ describe('Studio App 壳层', () => {
     const nav = screen.getByRole('navigation');
     await user.click(within(nav).getByRole('link', { name: '市场' }));
     expect(
-      await screen.findByRole('heading', { name: 'Agent Marketplace' }),
+      await screen.findByRole('heading', { name: 'Agent 市场' }),
     ).toBeInTheDocument();
   });
 
@@ -121,7 +121,7 @@ describe('Studio App 壳层', () => {
     renderStudio('/cluster');
     // ClusterDashboard 初始为加载态，待 fetch 返回后渲染标题，故用 findByRole 等待
     expect(
-      await screen.findByRole('heading', { name: 'Cluster Dashboard' }),
+      await screen.findByRole('heading', { name: '集群' }),
     ).toBeInTheDocument();
   });
 

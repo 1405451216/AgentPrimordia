@@ -224,6 +224,9 @@ describe('Marketplace 加固', () => {
     expect(screen.getByText('运行中')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '停止' }));
+    // 两步确认
+    await screen.findByRole('dialog');
+    await user.click(screen.getByRole('button', { name: '确认停止' }));
     expect(await screen.findByText(/已停止/)).toBeInTheDocument();
   });
 });

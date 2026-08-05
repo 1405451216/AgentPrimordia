@@ -8,6 +8,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorPanel, Staleness } from '../Status';
 import { experimentStatusLabel } from '../labels';
+import { FlashValue } from '../useValueFlash';
+import { PageTitle } from '../PageTitle';
 
 interface ClusterState {
   nodes: { id: string; status: string; role: string }[];
@@ -70,24 +72,24 @@ export function Overview() {
       )}
 
       <section className="overview-hero">
-        <h2>系统概览</h2>
+        <PageTitle title="系统概览" />
         <p className="overview-sub">集群、学习与实验的实时状态。</p>
         <div className="overview-grid">
           <div className="overview-card">
             <span className="overview-card-label">在线节点</span>
-            <span className="overview-card-value">{total > 0 ? `${online}/${total}` : '—'}</span>
+            <FlashValue className="overview-card-value" value={total > 0 ? `${online}/${total}` : '—'} />
             <span className="overview-card-meta">领导者 {leader?.id ?? '选举中...'}</span>
           </div>
           <div className="overview-card">
             <span className="overview-card-label">知识蒸馏</span>
-            <span className="overview-card-value">{learning?.totalDistilled ?? '—'}</span>
+            <FlashValue className="overview-card-value" value={learning?.totalDistilled ?? '—'} />
             <span className="overview-card-meta">
               交互 {learning?.totalInteractions ?? 0} · 库存 {learning?.totalKnowledgeItems ?? 0}
             </span>
           </div>
           <div className="overview-card">
             <span className="overview-card-label">实验记录</span>
-            <span className="overview-card-value">{experiments.length}</span>
+            <FlashValue className="overview-card-value" value={experiments.length} />
             <span className="overview-card-meta">最近运行见下方</span>
           </div>
         </div>
@@ -115,7 +117,9 @@ export function Overview() {
                 <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
                   <td>{r.experiment.name}</td>
                   <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
-                  <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>
+                  <td className={r.experiment.hypothesisValidated ? 'glyph-ok' : 'glyph-bad'} aria-label={r.experiment.hypothesisValidated ? '已验证' : '未验证'}>
+                    {r.experiment.hypothesisValidated ? '✓' : '✕'}
+                  </td>
                   <td>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</td>
                 </tr>
               ))}

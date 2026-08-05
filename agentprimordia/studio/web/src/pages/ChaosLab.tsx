@@ -9,10 +9,11 @@
  *  - 提交成功后展示持久「实验已提交」横幅
  *  - 实验历史区分 加载/空/错误 三种状态
  */
-import { Fragment, useState, useEffect, useRef } from 'react';
+import { Fragment, useCallback, useState, useEffect, useRef } from 'react';
 import { ErrorPanel, SuccessBanner } from '../Status';
 import { experimentStatusLabel } from '../labels';
 import { useTableSort, SortableTh } from '../useTableSort';
+import { PageTitle } from '../PageTitle';
 
 interface Experiment {
   name: string;
@@ -51,6 +52,8 @@ export function ChaosLab() {
   const [newExp, setNewExp] = useState({ name: '', hypothesis: '', faultType: 'latency' });
   // 待确认的实验：非空时弹出两步确认对话框
   const [confirming, setConfirming] = useState<typeof newExp | null>(null);
+  // 待确认中止的实验名：非空时弹出中止确认
+  const [confirmingAbort, setConfirmingAbort] = useState<string | null>(null);
   const [abortingName, setAbortingName] = useState<string | null>(null);
   // 详情面板展开的实验（null = 收起）
   const [detailIndex, setDetailIndex] = useState<number | null>(null);
@@ -91,6 +94,12 @@ export function ChaosLab() {
     }
   };
 
+  // 关闭确认框并恢复焦点到触发按钮（供 Esc / 取消 / 遮罩点击共用）
+  const closeConfirm = useCallback(() => {
+    setConfirming(null);
+    runButtonRef.current?.focus();
+  }, []);
+
   // 对话框焦点管理：打开时聚焦取消按钮，Esc 关闭，Tab 陷阱，关闭后恢复焦点
   useEffect(() => {
     if (!confirming) return;
@@ -98,8 +107,7 @@ export function ChaosLab() {
     cancelBtn?.focus();
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !running) {
-        setConfirming(null);
-        runButtonRef.current?.focus();
+        closeConfirm();
         return;
       }
       if (e.key !== 'Tab' || !modalRef.current) return;
@@ -118,11 +126,8 @@ export function ChaosLab() {
       }
     };
     document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      if (!confirming) runButtonRef.current?.focus();
-    };
-  }, [confirming, running]);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [confirming, running, closeConfirm]);
 
   const runExperiment = async (draft: typeof newExp) => {
     setRunning(true);
@@ -176,7 +181,7 @@ export function ChaosLab() {
 
   return (
     <div className="panel chaos-lab">
-      <h2>Chaos Lab</h2>
+      <PageTitle title="混沌实验" subtitle="Chaos Lab" />
 
       {/* 创建实验 */}
       <section className="create-experiment">
@@ -255,9 +260,15 @@ export function ChaosLab() {
                   <tr className={detailIndex === i ? 'row-expanded' : ''}>
                     <td>{r.experiment.name}</td>
                     <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
-                    <td>{r.experiment.hypothesisValidated ? '✅' : '❌'}</td>
-                    <td>{r.preSteadyState?.met ? '✅' : '❌'}</td>
-                    <td>{r.postSteadyState?.met ? '✅' : '❌'}</td>
+                    <td className={r.experiment.hypothesisValidated ? 'glyph-ok' : 'glyph-bad'} aria-label={r.experiment.hypothesisValidated ? '已验证' : '未验证'}>
+                      {r.experiment.hypothesisValidated ? '✓' : '✕'}
+                    </td>
+                    <td className={r.preSteadyState?.met ? 'glyph-ok' : 'glyph-bad'} aria-label={r.preSteadyState?.met ? '稳态达成' : '稳态未达成'}>
+                      {r.preSteadyState?.met ? '✓' : '✕'}
+                    </td>
+                    <td className={r.postSteadyState?.met ? 'glyph-ok' : 'glyph-bad'} aria-label={r.postSteadyState?.met ? '稳态达成' : '稳态未达成'}>
+                      {r.postSteadyState?.met ? '✓' : '✕'}
+                    </td>
                     <td>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</td>
                     <td className="row-actions">
                       <button
@@ -269,7 +280,7 @@ export function ChaosLab() {
                       {(r.experiment.status === 'running' || r.experiment.status === 'pending') && (
                         <button
                           className="btn-danger btn-sm"
-                          onClick={() => abortExperiment(r.experiment.name)}
+                          onClick={() => setConfirmingAbort(r.experiment.name)}
                           disabled={abortingName === r.experiment.name}
                         >
                           {abortingName === r.experiment.name ? '中止中...' : '中止'}
@@ -328,7 +339,7 @@ export function ChaosLab() {
 
       {/* 两步确认对话框 */}
       {confirming && (
-        <div className="modal-overlay" onClick={() => !running && setConfirming(null)}>
+        <div className="modal-overlay" onClick={() => !running && closeConfirm()}>
           <div
             ref={modalRef}
             className="modal"
@@ -353,13 +364,45 @@ export function ChaosLab() {
               <dt>故障类型</dt><dd>{faultLabel(confirming.faultType)}</dd>
             </dl>
             <div className="confirm-actions">
-              <button className="btn-secondary" onClick={() => { setConfirming(null); runButtonRef.current?.focus(); }} disabled={running}>取消</button>
+              <button className="btn-secondary" onClick={closeConfirm} disabled={running}>取消</button>
               <button
                 className={isDestructive(confirming.faultType) ? 'btn-danger' : ''}
                 onClick={() => runExperiment(confirming)}
                 disabled={running}
               >
                 {running ? '提交中...' : '确认运行'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 中止实验确认对话框 */}
+      {confirmingAbort && (
+        <div className="modal-overlay" onClick={() => !abortingName && setConfirmingAbort(null)}>
+          <div
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="abort-confirm-title"
+            aria-describedby="abort-confirm-desc"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="abort-confirm-title">确认中止实验</h3>
+            <p id="abort-confirm-desc" className="confirm-desc">
+              中止后该实验将立即停止注入故障，实验状态标记为已中止。
+            </p>
+            <dl className="confirm-detail">
+              <dt>实验名称</dt><dd>{confirmingAbort}</dd>
+            </dl>
+            <div className="confirm-actions">
+              <button className="btn-secondary" onClick={() => setConfirmingAbort(null)} disabled={abortingName !== null}>取消</button>
+              <button
+                className="btn-danger"
+                onClick={() => { const name = confirmingAbort; setConfirmingAbort(null); abortExperiment(name); }}
+                disabled={abortingName !== null}
+              >
+                {abortingName !== null ? '中止中...' : '确认中止'}
               </button>
             </div>
           </div>

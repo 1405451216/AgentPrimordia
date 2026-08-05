@@ -13,6 +13,7 @@ import { nodeStatusLabel, nodeRoleLabel, nodeStatusGlyph } from '../labels';
 import { IconLeader } from '../icons';
 import { useTableSort, SortableTh } from '../useTableSort';
 import { FlashValue } from '../useValueFlash';
+import { PageTitle } from '../PageTitle';
 
 interface NodeInfo {
   id: string;
@@ -75,14 +76,14 @@ export function ClusterDashboard() {
     if (error) {
       return (
         <div className="panel error">
-          <h2>Cluster Dashboard</h2>
+          <PageTitle title="集群" subtitle="Cluster Dashboard" />
           <ErrorPanel message={`无法连接集群: ${error}`} onRetry={fetchCluster} />
         </div>
       );
     }
     return (
       <div className="panel cluster-dashboard">
-        <h2>Cluster Dashboard</h2>
+        <PageTitle title="集群" subtitle="Cluster Dashboard" />
         <div className="skeleton-list" aria-busy="true">
           <div className="skeleton-row" />
           <div className="skeleton-row" />
@@ -98,7 +99,7 @@ export function ClusterDashboard() {
 
   return (
     <div className="panel cluster-dashboard">
-      <h2>Cluster Dashboard</h2>
+      <PageTitle title="集群" subtitle="Cluster Dashboard" />
 
       {/* 轮询失败提示：保留旧数据，仅提示刷新失败 */}
       {error && (

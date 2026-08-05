@@ -15,9 +15,10 @@ import './styles.css';
 /** 每次路由变化重置错误边界，避免导航后仍停留在降级界面 */
 function ResetOnRouteChange({ children }: { children: React.ReactNode }) {
   const location = useLocation();
-  const [key, setKey] = useState(0);
+  // 初始化 key 从当前路径，避免首屏额外重挂载
+  const [key, setKey] = useState(location.pathname);
   useEffect(() => {
-    setKey((k) => k + 1);
+    setKey((k) => (k === location.pathname ? k : location.pathname));
   }, [location.pathname]);
   return <ErrorBoundary key={key}>{children}</ErrorBoundary>;
 }

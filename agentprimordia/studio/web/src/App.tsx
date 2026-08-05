@@ -40,7 +40,7 @@ export default function App() {
           })}
         </nav>
         <footer className="sidebar-footer">
-          <a className="help-link" href="docs/CHANGELOG.md" target="_blank" rel="noreferrer">
+          <a className="help-link" href="help.md" target="_blank" rel="noreferrer">
             帮助文档
           </a>
           <span className="help-hint">Shift + / 查看快捷键</span>
