@@ -2,10 +2,12 @@
 
 > 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证
 > **Go + TypeScript 双语言 SDK，功能对等，34 模块全覆盖**
+> **当前版本：Go SDK v4.0.0 / TypeScript SDK v4.0.0**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Go%20Parity-3178C6.svg)](sdk/typescript/)
+[![Version](https://img.shields.io/badge/version-4.0.0-2ea44f.svg)](docs/ROADMAP.md)
 
 ![Architecture](agentprimordia/docs/ap-architecture.png)
 
@@ -28,6 +30,38 @@
 - **TypeScript SDK** — Go 功能对等，34 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Edge / Visual / Infrastructure）
 - **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
 - **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite（modernc.org/sqlite）+ YAML（gopkg.in/yaml.v3）；可选 gRPC/Protobuf（A2A 传输）、Redis（缓存后端）、etcd（服务发现）、wazero（WASM 沙箱）按需引入
+
+## v4.0.0 Highlights — 全路线收官（v3.3 → v4.0）
+
+v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成"，全部 35 项任务通过代码实况验证。
+
+- **v3.3 可信化** — 能力实况清单（100% 代码证据）、版本叙事四方对齐（git tag/STATUS/VERSIONING/ROADMAP）、react.Engine 废弃降级、otel→metrics 真实上报（WithTelemetry）
+- **v3.4 一体化不塌** — executePlan 子任务重试 + plan 级 checkpoint、子任务上下文摘要压缩、MemoryStore.Search 长期记忆回读注入、tool 重试 + 并行 recover + 输入端护栏、TS guardrail-in-loop、失败重放四件套（FailureStore / ReplayFailure / HTTP API / TS replay）
+- **v3.5 可证** — 60 条真实编码基准集（Go+TS 双线共用）、真实 LLM 跑分版本门禁、Go 跨语言 11 套件补齐（45 用例双线全绿）、trace→指标→审计全链路闭环（CorrelationStore）、混沌注入常态化（基线 vs 故障对比可量化）
+- **v3.6 自适应** — 自愈 replan（故障恢复不依赖人工）、tool_learning 流程修正（高频失败模式自动规避）、跨任务记忆注入（相似任务 0 轮推理复用）、AP 用 AP 自举（成功率曲线 0.333→0.667→1.0）
+- **v3.7 双线产品化** — TS 官方 OpenTelemetry SDK、双线真实 LLM 集成基线（分数可比）、cross-language-api-check 门全绿、React Hooks（useAgent / useReActLoop 零样板）
+- **v3.8 规模化** — 多 Agent 分工大任务（Swarm，规模×N 成功率不降）、Pool×harness 并发吞吐线性扩展、WASM 工具生态（AsTool 桥 + wazero 真实执行）
+- **v3.9 生态** — marketplace 远程协议 + cosign 验签（`ap plugin install <url>`）、Studio 接真实引擎（StudioBridge）、文档站自动构建 + VS Code Inspector、MCP 深度集成（工具名命名空间 + npx 兼容）
+- **v4.0 稳定化** — 废弃 API 清理（RegisterPProf / JSON-RPC 移除）、api-contract 契约基线漂移门、兼容性承诺收紧（21 Stable 模块 + stability 双向比对门）、性能大版（关键路径 P95 基线）、发布纪律固化（tag 自动化 CI + 版本一致性门）
+
+### 完整版本路线总览
+
+| 版本 | 主题 | 主线 | 状态 |
+|------|------|------|------|
+| v0.1 → v0.8 | 孵化期 | 核心引擎 + 微内核架构 | ✅ 历史轨迹 |
+| 1.0.0 | 首个稳定版 | API 稳定承诺 | ✅ |
+| v2.0 → v2.5 | 生产化 | 生产就绪 + 技术债清理 + 性能/可观测/安全 | ✅ |
+| v3.0 → v3.2 | 框架化 | 八大方向 + 真实后端 + 双语言对齐 | ✅ |
+| v3.3 | 可信化 | 对账 + 接线 | ✅ 4/4 |
+| v3.4 | 一体化不塌 | Harness 可靠性 + 重放 | ✅ 6/6 |
+| v3.5 | 可证 | 评估基准 + 可观测闭环 | ✅ 5/5 |
+| v3.6 | 自适应 | 自愈 + 从失败学习 | ✅ 4/4 |
+| v3.7 | 双线产品化 | TS 治理补齐 + Hooks | ✅ 4/4 |
+| v3.8 | 规模化 | 多 Agent 大任务 | ✅ 3/3 |
+| v3.9 | 生态 | 市场 + Studio + 文档站 | ✅ 4/4 |
+| v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 | ✅ 5/5 |
+
+> 详细路线见 [docs/ROADMAP.md](docs/ROADMAP.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v4.0.0）。
 
 ## v3.2.0 Highlights — 架构解耦与双语言对齐
 
