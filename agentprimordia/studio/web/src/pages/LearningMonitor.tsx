@@ -10,6 +10,7 @@
  */
 import { useState, useEffect } from 'react';
 import { ErrorPanel, Staleness } from '../Status';
+import { FlashValue } from '../useValueFlash';
 
 interface DistillerStats {
   totalInteractions: number;
@@ -90,7 +91,7 @@ export function LearningMonitor() {
       {items.map(([label, value]) => (
         <div className="stat" key={label}>
           <span className="label">{label}</span>
-          <span className="value">{value ?? 0}</span>
+          <FlashValue value={value ?? 0} />
         </div>
       ))}
     </div>

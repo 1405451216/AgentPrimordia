@@ -119,4 +119,69 @@ describe('Chaos Lab 加固', () => {
     await user.click(screen.getByRole('button', { name: '重试' }));
     expect(await screen.findByText('暂无实验记录')).toBeInTheDocument();
   });
+
+  it('运行中实验展示中止按钮，点击后调用 abort 端点', async () => {
+    const runningExp = {
+      experiment: { name: '运行中实验', status: 'running', hypothesisValidated: false },
+      startTime: new Date().toISOString(),
+      endTime: '',
+      preSteadyState: { met: true, message: '' },
+      postSteadyState: { met: false, message: '' },
+    };
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (init?.method === 'POST' && url.includes('/abort')) {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      if (url.includes('/chaos/experiments')) {
+        return { ok: true, json: async () => [runningExp] } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    const user = userEvent.setup();
+    render(<ChaosLab />);
+
+    const abortBtn = await screen.findByRole('button', { name: '中止' });
+    await user.click(abortBtn);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v1/chaos/experiments/abort',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+  });
+
+  it('点击名称表头按名称排序', async () => {
+    const experiments = [
+      {
+        experiment: { name: '乙实验', status: 'failed', hypothesisValidated: false },
+        startTime: '2026-01-02T00:00:00Z',
+        endTime: '',
+        preSteadyState: { met: false, message: '' },
+        postSteadyState: { met: false, message: '' },
+      },
+      {
+        experiment: { name: '甲实验', status: 'running', hypothesisValidated: true },
+        startTime: '2026-01-01T00:00:00Z',
+        endTime: '',
+        preSteadyState: { met: true, message: '' },
+        postSteadyState: { met: false, message: '' },
+      },
+    ];
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input).includes('/chaos/experiments')) {
+        return { ok: true, json: async () => experiments } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+    const user = userEvent.setup();
+    render(<ChaosLab />);
+
+    await screen.findByText('乙实验');
+    // 点击「名称」表头 → 升序（甲实验在前）
+    await user.click(screen.getByRole('button', { name: /名称/ }));
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('甲实验');
+  });
 });

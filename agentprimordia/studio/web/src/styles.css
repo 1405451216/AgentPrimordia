@@ -829,3 +829,97 @@ td.value,
 .overview-card-value {
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- 表格排序 ---------- */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sort-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.sort-btn:hover {
+  opacity: 0.8;
+}
+
+.sort-arrow {
+  display: inline-block;
+  width: 12px;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* ---------- 轮询数字增量高亮 ---------- */
+.flash {
+  animation: value-flash 1.2s ease-out;
+}
+
+@keyframes value-flash {
+  0% { background: var(--accent-soft); color: var(--accent); border-radius: 4px; padding: 0 4px; }
+  100% { background: transparent; color: inherit; }
+}
+
+/* ---------- 空状态引导 ---------- */
+.empty-state {
+  padding: 8px 0;
+}
+
+.empty-hint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+/* ---------- 列头 tooltip ---------- */
+th.has-tip {
+  cursor: help;
+}
+
+.tip-mark {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 2px;
+}
+
+/* ---------- 告警横幅 ---------- */
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.alert-danger {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--red);
+  color: #ff9b8a;
+}
+
+.alert-glyph {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+/* ---------- 小号按钮 ---------- */
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}

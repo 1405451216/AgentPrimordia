@@ -12,6 +12,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ErrorPanel, SuccessBanner } from '../Status';
 import { experimentStatusLabel } from '../labels';
+import { useTableSort, SortableTh } from '../useTableSort';
 
 interface Experiment {
   name: string;
@@ -50,6 +51,7 @@ export function ChaosLab() {
   const [newExp, setNewExp] = useState({ name: '', hypothesis: '', faultType: 'latency' });
   // 待确认的实验：非空时弹出两步确认对话框
   const [confirming, setConfirming] = useState<typeof newExp | null>(null);
+  const [abortingName, setAbortingName] = useState<string | null>(null);
   const runButtonRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +70,24 @@ export function ChaosLab() {
   };
 
   useEffect(() => { fetchExperiments(); }, []);
+
+  // 中止运行中的实验
+  const abortExperiment = async (name: string) => {
+    setAbortingName(name);
+    try {
+      const res = await fetch('/api/v1/chaos/experiments/abort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await refreshExperiments();
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : '未知错误');
+    } finally {
+      setAbortingName(null);
+    }
+  };
 
   // 对话框焦点管理：打开时聚焦取消按钮，Esc 关闭，Tab 陷阱，关闭后恢复焦点
   useEffect(() => {
@@ -138,6 +158,14 @@ export function ChaosLab() {
   const faultLabel = (type: string) => FAULT_TYPES[type]?.label ?? type;
   const isDestructive = (type: string) => FAULT_TYPES[type]?.destructive ?? false;
 
+  // 本地表格排序（实验历史）
+  const { sortedRows, sort, toggleSort } = useTableSort(experiments, {
+    name: (r) => r.experiment.name,
+    status: (r) => r.experiment.status,
+    hypothesisValidated: (r) => (r.experiment.hypothesisValidated ? 1 : 0),
+    startTime: (r) => r.startTime ?? '',
+  });
+
   return (
     <div className="panel chaos-lab">
       <h2>Chaos Lab</h2>
@@ -193,21 +221,28 @@ export function ChaosLab() {
             <div className="skeleton-row" />
           </div>
         ) : experiments.length === 0 ? (
-          <p className="empty">暂无实验记录</p>
+          <div className="empty-state">
+            <p className="empty">暂无实验记录</p>
+            <p className="empty-hint">
+              混沌实验用于验证系统在故障注入下的稳态表现。
+              填写上方表单并选择故障类型即可创建第一个实验。
+            </p>
+          </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>名称</th>
-                <th>状态</th>
-                <th>假设验证</th>
-                <th>稳态(前)</th>
-                <th>稳态(后)</th>
-                <th>时间</th>
+                <SortableTh sortKey="name" sort={sort} onToggle={toggleSort}>名称</SortableTh>
+                <SortableTh sortKey="status" sort={sort} onToggle={toggleSort}>状态</SortableTh>
+                <th className="has-tip" title="实验结束后判断假设是否被验证">假设验证 <span className="tip-mark" aria-hidden="true">ⓘ</span></th>
+                <th className="has-tip" title="故障注入前系统是否处于稳态基线">稳态(前) <span className="tip-mark" aria-hidden="true">ⓘ</span></th>
+                <th className="has-tip" title="故障恢复后系统是否回到稳态">稳态(后) <span className="tip-mark" aria-hidden="true">ⓘ</span></th>
+                <SortableTh sortKey="startTime" sort={sort} onToggle={toggleSort}>时间</SortableTh>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              {experiments.map((r, i) => (
+              {sortedRows.map((r, i) => (
                 <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
                   <td>{r.experiment.name}</td>
                   <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
@@ -215,6 +250,17 @@ export function ChaosLab() {
                   <td>{r.preSteadyState?.met ? '✅' : '❌'}</td>
                   <td>{r.postSteadyState?.met ? '✅' : '❌'}</td>
                   <td>{r.startTime ? new Date(r.startTime).toLocaleString() : '-'}</td>
+                  <td>
+                    {(r.experiment.status === 'running' || r.experiment.status === 'pending') && (
+                      <button
+                        className="btn-danger btn-sm"
+                        onClick={() => abortExperiment(r.experiment.name)}
+                        disabled={abortingName === r.experiment.name}
+                      >
+                        {abortingName === r.experiment.name ? '中止中...' : '中止'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
