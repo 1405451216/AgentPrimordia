@@ -121,6 +121,17 @@ type DeployRequest struct {
 	TemplateID string `json:"template_id"`
 }
 
+// Deployment 已部署的 Agent 实例记录。
+type Deployment struct {
+	ID         string `json:"id"`
+	TemplateID string `json:"templateId"`
+	Name       string `json:"name"`
+	Version    string `json:"version"`
+	Category   string `json:"category"`
+	Status     string `json:"status"` // running | stopped
+	DeployedAt string `json:"deployedAt"`
+}
+
 // ===== 服务接口（可注入真实引擎） =====
 
 // ChaosService 混沌实验服务。
@@ -145,7 +156,9 @@ type LearningService interface {
 // MarketplaceService 模板市场服务。
 type MarketplaceService interface {
 	SearchTemplates(ctx context.Context, query, category string) ([]AgentTemplate, error)
-	Deploy(ctx context.Context, templateID string) error
+	Deploy(ctx context.Context, templateID string) (Deployment, error)
+	ListDeployments(ctx context.Context) ([]Deployment, error)
+	StopDeployment(ctx context.Context, id string) error
 }
 
 // ===== StudioHandler =====

@@ -23,6 +23,8 @@ func (h *StudioHandler) registerRoutes() {
 	// Marketplace
 	h.mux.HandleFunc("GET /api/v1/marketplace/templates", h.marketplaceTemplates)
 	h.mux.HandleFunc("POST /api/v1/marketplace/deploy", h.marketplaceDeploy)
+	h.mux.HandleFunc("GET /api/v1/marketplace/deployments", h.marketplaceDeployments)
+	h.mux.HandleFunc("POST /api/v1/marketplace/deployments/{id}/stop", h.marketplaceStopDeployment)
 }
 
 // ===== Chaos Lab =====
@@ -165,11 +167,37 @@ func (h *StudioHandler) marketplaceDeploy(w http.ResponseWriter, r *http.Request
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	if err := h.marketplace.Deploy(ctx, req.TemplateID); err != nil {
+	dep, err := h.marketplace.Deploy(ctx, req.TemplateID)
+	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deployed", "template_id": req.TemplateID})
+	writeJSON(w, http.StatusOK, dep)
+}
+
+func (h *StudioHandler) marketplaceDeployments(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	deps, err := h.marketplace.ListDeployments(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if deps == nil {
+		deps = []Deployment{}
+	}
+	writeJSON(w, http.StatusOK, deps)
+}
+
+func (h *StudioHandler) marketplaceStopDeployment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := h.marketplace.StopDeployment(ctx, id); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "stopped", "id": id})
 }
 
 // ===== 工具函数 =====

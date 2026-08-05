@@ -155,9 +155,15 @@ var demoTemplates = []AgentTemplate{
 	},
 }
 
-type demoMarketplace struct{}
+type demoMarketplace struct {
+	mu          sync.Mutex
+	deployments []Deployment
+	nextID      int
+}
 
-func newDemoMarketplace() *demoMarketplace { return &demoMarketplace{} }
+func newDemoMarketplace() *demoMarketplace {
+	return &demoMarketplace{nextID: 1}
+}
 
 func (d *demoMarketplace) SearchTemplates(_ context.Context, query, category string) ([]AgentTemplate, error) {
 	out := make([]AgentTemplate, 0, len(demoTemplates))
@@ -176,11 +182,44 @@ func (d *demoMarketplace) SearchTemplates(_ context.Context, query, category str
 	return out, nil
 }
 
-func (d *demoMarketplace) Deploy(_ context.Context, templateID string) error {
+func (d *demoMarketplace) Deploy(_ context.Context, templateID string) (Deployment, error) {
 	for _, t := range demoTemplates {
 		if t.ID == templateID {
+			d.mu.Lock()
+			defer d.mu.Unlock()
+			dep := Deployment{
+				ID:         fmt.Sprintf("dep-%d", d.nextID),
+				TemplateID: t.ID,
+				Name:       t.Name,
+				Version:    t.Version,
+				Category:   t.Category,
+				Status:     "running",
+				DeployedAt: time.Now().Format(time.RFC3339),
+			}
+			d.nextID++
+			d.deployments = append(d.deployments, dep)
+			return dep, nil
+		}
+	}
+	return Deployment{}, fmt.Errorf("模板 %q 不存在", templateID)
+}
+
+func (d *demoMarketplace) ListDeployments(_ context.Context) ([]Deployment, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	out := make([]Deployment, len(d.deployments))
+	copy(out, d.deployments)
+	return out, nil
+}
+
+func (d *demoMarketplace) StopDeployment(_ context.Context, id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.deployments {
+		if d.deployments[i].ID == id {
+			d.deployments[i].Status = "stopped"
 			return nil
 		}
 	}
-	return fmt.Errorf("模板 %q 不存在", templateID)
+	return fmt.Errorf("部署 %q 不存在", id)
 }
