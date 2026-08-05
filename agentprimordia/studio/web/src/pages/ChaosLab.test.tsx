@@ -40,7 +40,7 @@ describe('Chaos Lab 加固', () => {
     const user = userEvent.setup();
     render(<ChaosLab />);
 
-    await user.type(screen.getByPlaceholderText('实验名称'), 'kill 实验');
+    await user.type(screen.getByLabelText('实验名称'), 'kill 实验');
     await user.selectOptions(screen.getByRole('combobox'), 'kill');
     await user.click(screen.getByRole('button', { name: '运行实验' }));
 
@@ -56,7 +56,7 @@ describe('Chaos Lab 加固', () => {
     const user = userEvent.setup();
     render(<ChaosLab />);
 
-    await user.type(screen.getByPlaceholderText('实验名称'), '延迟实验');
+    await user.type(screen.getByLabelText('实验名称'), '延迟实验');
     await user.click(screen.getByRole('button', { name: '运行实验' }));
     await user.click(screen.getByRole('button', { name: '确认运行' }));
 
@@ -73,7 +73,7 @@ describe('Chaos Lab 加固', () => {
     const user = userEvent.setup();
     render(<ChaosLab />);
 
-    await user.type(screen.getByPlaceholderText('实验名称'), '取消实验');
+    await user.type(screen.getByLabelText('实验名称'), '取消实验');
     await user.click(screen.getByRole('button', { name: '运行实验' }));
     await user.click(screen.getByRole('button', { name: '取消' }));
 
@@ -94,7 +94,7 @@ describe('Chaos Lab 加固', () => {
     const user = userEvent.setup();
     render(<ChaosLab />);
 
-    await user.type(screen.getByPlaceholderText('实验名称'), '失败实验');
+    await user.type(screen.getByLabelText('实验名称'), '失败实验');
     await user.click(screen.getByRole('button', { name: '运行实验' }));
     await user.click(screen.getByRole('button', { name: '确认运行' }));
 

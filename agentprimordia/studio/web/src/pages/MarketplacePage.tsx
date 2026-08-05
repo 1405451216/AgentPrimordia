@@ -13,6 +13,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ErrorPanel, SuccessBanner } from '../Status';
 import { PageTitle } from '../PageTitle';
 import { IconStar, IconDownload } from '../icons';
+import { useConfirmDialog } from '../useConfirmDialog';
 
 interface AgentTemplate {
   id: string;
@@ -54,7 +55,6 @@ export function MarketplacePage() {
   const [confirming, setConfirming] = useState<AgentTemplate | null>(null);
   const debounceRef = useRef<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
   const fetchDeployments = async () => {
     setDeployError(null);
@@ -108,34 +108,20 @@ export function MarketplacePage() {
     };
   }, [query]);
 
-  // 部署确认对话框：打开时聚焦确认按钮，Esc 关闭，Tab 陷阱
-  useEffect(() => {
-    if (!confirming) return;
-    const confirmBtn = modalRef.current?.querySelector<HTMLButtonElement>('button.btn-primary');
-    confirmBtn?.focus();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !deploying) {
-        setConfirming(null);
-        return;
-      }
-      if (e.key !== 'Tab' || !modalRef.current) return;
-      const focusables = modalRef.current.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [confirming, deploying]);
+  // 部署确认对话框：统一焦点管理（初始聚焦、Esc、Tab 陷阱）
+  const deployDialog = useConfirmDialog({
+    open: confirming !== null,
+    busy: deploying !== null,
+    focusTarget: 'button.btn-primary',
+    onClose: () => setConfirming(null),
+  });
+
+  // 停止部署确认对话框：统一焦点管理
+  const stopDialog = useConfirmDialog({
+    open: confirmingStop !== null,
+    busy: stoppingId !== null,
+    onClose: () => setConfirmingStop(null),
+  });
 
   const deploy = async (tmpl: AgentTemplate) => {
     setDeploying(tmpl.id);
@@ -149,7 +135,6 @@ export function MarketplacePage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setDeployedTemplate(tmpl);
-      setNotice({ kind: 'success', text: `模板「${tmpl.name}」部署成功` });
       setConfirming(null);
       await fetchDeployments();
     } catch (e) {
@@ -325,7 +310,7 @@ export function MarketplacePage() {
                 {tmpl.tags?.map((tag) => <span key={tag} className="tag">{tag}</span>)}
               </div>
               <footer>
-                <span className="author">by {tmpl.author}</span>
+                <span className="author">作者 {tmpl.author}</span>
                 <button
                   onClick={() => setConfirming(tmpl)}
                   disabled={deploying === tmpl.id}
@@ -340,9 +325,9 @@ export function MarketplacePage() {
 
       {/* 部署确认对话框 */}
       {confirming && (
-        <div className="modal-overlay" onClick={() => !deploying && setConfirming(null)}>
+        <div className="modal-overlay" onClick={() => !deploying && deployDialog.closeAndRestore()}>
           <div
-            ref={modalRef}
+            ref={deployDialog.dialogRef}
             className="modal"
             role="dialog"
             aria-modal="true"
@@ -360,7 +345,7 @@ export function MarketplacePage() {
               <dt>分类</dt><dd>{confirming.category}</dd>
             </dl>
             <div className="confirm-actions">
-              <button className="btn-secondary" onClick={() => setConfirming(null)} disabled={deploying !== null}>取消</button>
+              <button className="btn-secondary" onClick={deployDialog.closeAndRestore} disabled={deploying !== null}>取消</button>
               <button
                 className="btn-primary"
                 onClick={() => deploy(confirming)}
@@ -375,8 +360,9 @@ export function MarketplacePage() {
 
       {/* 停止部署确认对话框 */}
       {confirmingStop && (
-        <div className="modal-overlay" onClick={() => !stoppingId && setConfirmingStop(null)}>
+        <div className="modal-overlay" onClick={() => !stoppingId && stopDialog.closeAndRestore()}>
           <div
+            ref={stopDialog.dialogRef}
             className="modal"
             role="dialog"
             aria-modal="true"
@@ -394,7 +380,7 @@ export function MarketplacePage() {
               <dt>部署时间</dt><dd>{confirmingStop.deployedAt ? new Date(confirmingStop.deployedAt).toLocaleString() : '-'}</dd>
             </dl>
             <div className="confirm-actions">
-              <button className="btn-secondary" onClick={() => setConfirmingStop(null)} disabled={stoppingId !== null}>取消</button>
+              <button className="btn-secondary" onClick={stopDialog.closeAndRestore} disabled={stoppingId !== null}>取消</button>
               <button
                 className="btn-danger"
                 onClick={() => stopDeployment(confirmingStop)}

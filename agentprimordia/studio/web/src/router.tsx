@@ -16,6 +16,7 @@ import { ChaosLab } from './pages/ChaosLab';
 import { ClusterDashboard } from './pages/ClusterDashboard';
 import { LearningMonitor } from './pages/LearningMonitor';
 import { MarketplacePage } from './pages/MarketplacePage';
+import { HelpPage } from './pages/HelpPage';
 import { NotFound } from './pages/NotFound';
 
 export default function StudioApp() {
@@ -27,6 +28,7 @@ export default function StudioApp() {
         <Route path="cluster" element={<ClusterDashboard />} />
         <Route path="learning" element={<LearningMonitor />} />
         <Route path="marketplace" element={<MarketplacePage />} />
+        <Route path="help" element={<HelpPage />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

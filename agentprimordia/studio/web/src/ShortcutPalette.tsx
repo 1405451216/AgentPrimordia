@@ -6,8 +6,9 @@
  *  - /           聚焦搜索框（若当前页存在）
  *  - g 然后 1-5  导航到对应页面（概览/混沌/集群/学习/市场）
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useConfirmDialog } from './useConfirmDialog';
 
 const SHORTCUTS = [
   { keys: 'Shift + /', desc: '打开/关闭快捷键面板' },
@@ -23,7 +24,6 @@ export function ShortcutPalette() {
   const navigate = useNavigate();
   // g 键待组合状态
   const [pendingG, setPendingG] = useState(false);
-  const paletteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -81,30 +81,11 @@ export function ShortcutPalette() {
     return () => window.clearTimeout(t);
   }, [pendingG]);
 
-  // 面板打开时的焦点管理：初始聚焦关闭按钮，Tab 陷阱，关闭后恢复
-  useEffect(() => {
-    if (!open) return;
-    const closeBtn = paletteRef.current?.querySelector<HTMLButtonElement>('button');
-    closeBtn?.focus();
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab' || !paletteRef.current) return;
-      const focusables = paletteRef.current.querySelectorAll<HTMLElement>(
-        'button, [href], [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  // 面板焦点管理：统一 useConfirmDialog（初始聚焦、Tab 陷阱、Esc 关闭、焦点恢复）
+  const paletteDialog = useConfirmDialog({
+    open,
+    onClose: () => { setOpen(false); setPendingG(false); },
+  });
 
   const close = () => {
     setOpen(false);
@@ -115,7 +96,7 @@ export function ShortcutPalette() {
   return (
     <div className="modal-overlay" onClick={close}>
       <div
-        ref={paletteRef}
+        ref={paletteDialog.dialogRef}
         className="modal shortcut-palette"
         role="dialog"
         aria-modal="true"

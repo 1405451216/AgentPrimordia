@@ -130,7 +130,7 @@ export function ClusterDashboard() {
         </div>
         <div className="stat">
           <span className="label">哈希环</span>
-          <FlashValue value={`${cluster.hashRingSize} vnodes`} />
+          <FlashValue value={`${cluster.hashRingSize} 个虚拟节点`} />
         </div>
         <div className="stat">
           <span className="label">分片数</span>

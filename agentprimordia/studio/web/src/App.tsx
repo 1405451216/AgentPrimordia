@@ -4,7 +4,7 @@
  * 导航使用 SVG 线性图标（见 icons.tsx），以 1.5px 圆角描边
  * 建立统一视觉身份，替代 emoji。
  */
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, Link } from 'react-router-dom';
 import { IconOverview, IconChaos, IconCluster, IconLearning, IconMarket, IconBrand } from './icons';
 import { ShortcutPalette } from './ShortcutPalette';
 const NAV_ITEMS = [
@@ -40,9 +40,9 @@ export default function App() {
           })}
         </nav>
         <footer className="sidebar-footer">
-          <a className="help-link" href="help.md" target="_blank" rel="noreferrer">
+          <Link className="help-link" to="/help">
             帮助文档
-          </a>
+          </Link>
           <span className="help-hint">Shift + / 查看快捷键</span>
           <span>Studio v3.2.0</span>
         </footer>

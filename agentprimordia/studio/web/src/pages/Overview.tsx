@@ -7,9 +7,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ErrorPanel, Staleness } from '../Status';
-import { experimentStatusLabel } from '../labels';
+import { experimentStatusLabel, experimentStatusGlyph } from '../labels';
 import { FlashValue } from '../useValueFlash';
 import { PageTitle } from '../PageTitle';
+import { Primordium } from '../Primordium';
 
 interface ClusterState {
   nodes: { id: string; status: string; role: string }[];
@@ -39,16 +40,31 @@ export function Overview() {
   const refresh = async () => {
     setError(null);
     try {
+      // 逐端点提交成功数据：单个接口失败不拖垮整个概览
       const [clusterRes, learningRes, expRes] = await Promise.all([
         fetch('/api/v1/cluster/status'),
         fetch('/api/v1/learning/stats'),
         fetch('/api/v1/chaos/experiments'),
       ]);
-      if (!clusterRes.ok || !learningRes.ok || !expRes.ok) throw new Error('部分接口返回错误');
-      setCluster(await clusterRes.json());
-      setLearning(await learningRes.json());
-      setExperiments(await expRes.json());
-      setLastUpdatedAt(Date.now());
+      const results = await Promise.all([
+        clusterRes.ok ? clusterRes.json() : Promise.resolve(null),
+        learningRes.ok ? learningRes.json() : Promise.resolve(null),
+        expRes.ok ? expRes.json() : Promise.resolve(null),
+      ]);
+      const [c, l, e] = results;
+      if (c !== null) setCluster(c);
+      if (l !== null) setLearning(l);
+      if (e !== null) setExperiments(e);
+      if (c !== null || l !== null || e !== null) {
+        setLastUpdatedAt(Date.now());
+      }
+      if (!clusterRes.ok || !learningRes.ok || !expRes.ok) {
+        const failed = [clusterRes, learningRes, expRes]
+          .map((res, i) => (!res.ok ? ['集群', '学习', '实验'][i] : null))
+          .filter(Boolean)
+          .join('、');
+        setError(`部分接口返回异常（${failed}）`);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '未知错误');
     }
@@ -64,6 +80,8 @@ export function Overview() {
   const total = cluster?.nodes.length ?? 0;
   const leader = cluster?.nodes.find((n) => n.id === cluster?.leaderId);
   const recent = [...experiments].slice(-5).reverse();
+  // 原初体脉搏：能力平均分（无数据时取 0.5 中性值）
+  const pulse = learning ? Math.min(Math.max(learning.totalDistilled / 100, 0.15), 0.95) : 0.5;
 
   return (
     <div className="overview-page">
@@ -72,17 +90,33 @@ export function Overview() {
       )}
 
       <section className="overview-hero">
-        <PageTitle title="系统概览" />
-        <p className="overview-sub">集群、学习与实验的实时状态。</p>
-        <div className="overview-grid">
-          <div className="overview-card">
-            <span className="overview-card-label">在线节点</span>
-            <FlashValue className="overview-card-value" value={total > 0 ? `${online}/${total}` : '—'} />
-            <span className="overview-card-meta">领导者 {leader?.id ?? '选举中...'}</span>
+        <div className="overview-hero-top">
+          <div>
+            <PageTitle title="系统概览" />
+            <p className="overview-sub">集群、学习与实验的实时状态。</p>
           </div>
-          <div className="overview-card">
-            <span className="overview-card-label">知识蒸馏</span>
-            <FlashValue className="overview-card-value" value={learning?.totalDistilled ?? '—'} />
+        </div>
+        <div className="overview-hero-body">
+          <div className="overview-primordium">
+            <Primordium
+              nodes={cluster?.nodes ?? []}
+              pulse={pulse}
+            />
+            <p className="overview-primordium-caption">
+              {online > 0
+                ? `${online} 个节点在线 · 能力脉搏 ${Math.round(pulse * 100)}%`
+                : '等待集群接入...'}
+            </p>
+          </div>
+          <div className="overview-grid">
+            <div className="overview-card">
+              <span className="overview-card-label">在线节点</span>
+              <FlashValue className="overview-card-value" value={total > 0 ? `${online}/${total}` : '—'} />
+              <span className="overview-card-meta">领导者 {leader?.id ?? '选举中...'}</span>
+            </div>
+            <div className="overview-card">
+              <span className="overview-card-label">知识蒸馏</span>
+              <FlashValue className="overview-card-value" value={learning?.totalDistilled ?? '—'} />
             <span className="overview-card-meta">
               交互 {learning?.totalInteractions ?? 0} · 库存 {learning?.totalKnowledgeItems ?? 0}
             </span>
@@ -91,6 +125,7 @@ export function Overview() {
             <span className="overview-card-label">实验记录</span>
             <FlashValue className="overview-card-value" value={experiments.length} />
             <span className="overview-card-meta">最近运行见下方</span>
+          </div>
           </div>
         </div>
       </section>
@@ -116,7 +151,12 @@ export function Overview() {
               {recent.map((r, i) => (
                 <tr key={`${r.experiment.name}-${r.startTime}-${i}`}>
                   <td>{r.experiment.name}</td>
-                  <td><span className={`status-${r.experiment.status}`}>{experimentStatusLabel(r.experiment.status)}</span></td>
+                  <td>
+                    <span className={`status-badge status-${r.experiment.status}`} aria-label={experimentStatusLabel(r.experiment.status)}>
+                      <span aria-hidden="true">{experimentStatusGlyph(r.experiment.status)}</span>
+                      {experimentStatusLabel(r.experiment.status)}
+                    </span>
+                  </td>
                   <td className={r.experiment.hypothesisValidated ? 'glyph-ok' : 'glyph-bad'} aria-label={r.experiment.hypothesisValidated ? '已验证' : '未验证'}>
                     {r.experiment.hypothesisValidated ? '✓' : '✕'}
                   </td>

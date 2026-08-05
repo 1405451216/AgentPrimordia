@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 describe('Marketplace 加固', () => {
-  it('部署需两步确认，确认后展示成功横幅', async () => {
+  it('部署需两步确认，确认后展示部署状态面板', async () => {
     const user = userEvent.setup();
     render(<MarketplacePage />);
 
@@ -62,7 +62,8 @@ describe('Marketplace 加固', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '确认部署' }));
 
-    expect(await screen.findByText(/部署成功/)).toBeInTheDocument();
+    // 部署状态面板（单庆祝面，替代 banner）
+    expect(await screen.findByText(/已部署到集群/)).toBeInTheDocument();
   });
 
   it('部署确认框可取消，不发起请求', async () => {
