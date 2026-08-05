@@ -3,8 +3,9 @@
 > **文档定位**：本文件为 AgentPrimordia 唯一的路线图权威文档，基于 2026-08-03 全项目实证审计重写
 > （三方取证：Go 核心循环、能力组件集成度、TS 线现状 + 规划文档对账）。
 >
-> **最后更新**：2026 年 8 月 3 日
+> **最后更新**：2026 年 8 月 5 日
 > **当前版本**：Go SDK v4.0.0（`pkg/agent.go`）/ TypeScript SDK v4.0.0（`sdk/typescript/package.json`）
+> **覆盖范围**：完整版本路线 = 历史轨迹（v0.1.0 → v3.2.0，见 §二.六）+ 实证版本路线（v3.3 → v4.0，见 §三）。
 > **重要**：旧版"v2.1-v3.0 全部完成"叙事与代码实况不符，已废弃，见下文对账。
 
 ---
@@ -56,6 +57,47 @@
 | MCP 双向 | client（stdio JSON-RPC）+ server + adapter + registry | ✅ 已存在 |
 | TS 上下文压缩 | `KeepLastNStrategy`/`TokenBudgetStrategy`（`request-id.ts:31-75`） | ✅ 比 Go 更先进 |
 | TS checkpoint-resume | `react-loop.ts:450` resumeFromCheckpoint + 每轮 saveCheckpoint | ✅ 已接入 |
+
+---
+
+## 二.六、版本历史轨迹（v0.1.0 → v3.2.0）
+
+> 以下为 2026-05-29 至 2026-07-31 的历史版本轨迹，基于 `CHANGELOG.md` 记录整理。
+> **注意**：历史版本的部分"完成"声明在 2026-08-03 实证审计中被发现与代码实况不符（见 §一对账），
+> 本表作为**轨迹记录**保留，完成度以 §三 实证路线为准。
+
+### 1. 孵化期（v0.1.0 → v0.8.0）— 从零到核心引擎
+
+| 版本 | 日期 | 主题 | 关键内容 |
+|------|------|------|---------|
+| **v0.1.0** | 2026-05-29 | 核心骨架 | ReActLoop 引擎 / AgentPool / 内置工具集 / Memory(SQLite FTS5+RAG+向量) / OpenAI/Anthropic/Azure/Gemini/Ollama Provider / ResilientProvider / FileLock / Scope 权限 / Checkpoint / A2A / 编排(Pipeline/Handoff/Parallel) / MCP / 示例应用 / TS SDK 雏形 |
+| **v0.2.0** | 2026-05-29 | 消息总线+编排 | 统一 LocalMessageBus / DAG 工作流(条件边+循环检测) / HTTP 传输 / 服务发现 / Session 分组 / Cohere+Mistral Provider / Admin REST API / 四模块基准 / 统一 Agent 接口 |
+| **v0.3.0** | 2026-05-30 | 微内核架构 | `*Capable` 能力接口 + `WithXxx` 链式 API / PluginLoader / Provider 模板 / CostTracker / 多模态内容 / ecosystem 目录建立 |
+| **v0.4.0** | 2026-06-01 | 协议式微内核 | 12 个 Capable 接口 / ReActConfig 14 字段 Deprecated / Stability 标注起步 |
+| **v0.5.0** | 2026-06-02 | SemVer 策略 | 4 级 Stability 标注 / 阶梯覆盖率网关(T1≥80/T2≥65/T3≥50) / go.work 多模块 |
+| **v0.6.0** | 2026-06-03 | 工程化 | pre-commit hook / Agent 模板系统 / Operator CRD 增强 / Tier3 软门 |
+| **v0.7.0** | 2026-06-05 | 公共 API 稳定 | `// Stability:` 标注 / SemVer 策略 spec / 协议式微内核正式化 / CI 多平台矩阵+安全扫描 |
+| **1.0.0** | 2026-06-30 | 首个稳定版 | 全局版本统一 v1.0.0 / API 稳定性承诺 / API 参考文档重写 / perf-v11(BufferPool/TokenCache/pprof/Fuzz) |
+| **v0.8.0** | 2026-07-07 | 生态扩展 | MCP Go Server+TS Client / A2A 工具租赁 / pgvector 独立模块 / K8s LLM 扩缩容 / WASM 运行时+Edge Gateway |
+
+### 2. v2.x 生产化（2026-07-18 起，旧叙事 21/21）
+
+| 版本 | 主题 | 关键内容 |
+|------|------|---------|
+| **v2.0.0** | 生产就绪 | 多租户隔离 / SecretsManager(AES-GCM+Vault) / A2A gRPC / 语义缓存 / MapReduce / SLO-SLI / 24h Soak / ToT-MCTS 规划器 / 流式 RAG / Agent Mesh / Pool 优先级队列 / Studio 可视化 / VSCode+Browser 扩展 |
+| **v2.1** | 技术债清理+安全加固 | 2500+ 行死代码清理 / pprof 鉴权 / Linux CI `-race` / governance 覆盖率 / 12 个 `*Capable` |
+| **v2.2** | 性能优化+成本控制 | ACL O(1) / Pool 事件背压 / LLM 批量合并 / RRF 调优 / 高并发压测 / panic→error |
+| **v2.3** | 架构改进+配置统一 | 统一配置框架 / pgvector 后端 / TS 行为对齐套件 / SecretsManager Vault 后端 |
+| **v2.4** | 可观测性深化 | gRPC trace 传播 / eBPF 系统级追踪 |
+| **v2.5** | 分布式安全+Mesh | Agent Mesh mTLS / gRPC 熔断+限流联动 |
+
+### 3. v3.0 → v3.2 框架化（2026-07-20 起）
+
+| 版本 | 日期 | 主题 | 关键内容 |
+|------|------|------|---------|
+| **v3.0.0** | 2026-07-20 | 八大方向框架 | 混沌工程 / WASM 工具 / 分布式集群 / Agent 市场 / Edge 模板 / 隐私混合推理 / CRDT 协作 / 自适应学习 |
+| **v3.1.0** | 2026-07-26 | From Framework to Production | etcd 服务发现 / gRPC 跨节点总线 / WASM 真实执行 / LLM 知识蒸馏 / 混沌真实注入 / WebGPU 模型连接 / CRDT 同步服务器 / CLI 集群/市场/Edge / Studio 四面板 / 6 基准套件 |
+| **v3.2.0** | 2026-07-31 | 架构解耦+双语言对齐 | ReAct 循环接口化 / WebGPU 可插拔后端 / 可视化编辑器异步编排 / Bun 适配器强化 / 跨语言规范 15 套件 / CRDT 持久化 / Agent 市场协议 |
 
 ---
 
@@ -145,8 +187,14 @@
 
 ## 五、版本里程碑速查
 
+### 完整版本总览
+
 | 版本 | 主题 | 主线 |
 |------|------|------|
+| v0.1 → v0.8 | 孵化期 | 核心引擎 + 微内核架构 |
+| 1.0.0 | 首个稳定版 | API 稳定承诺 |
+| v2.0 → v2.5 | 生产化 | 生产就绪 + 技术债清理 + 性能/可观测/安全 |
+| v3.0 → v3.2 | 框架化 | 八大方向 + 真实后端 + 双语言对齐 |
 | v3.3 | 可信化 | 对账 + 接线 |
 | v3.4 | 一体化不塌 | Harness 可靠性 + 重放 |
 | v3.5 | 可证 | 评估基准 + 可观测闭环 |
@@ -155,6 +203,23 @@
 | v3.8 | 规模化 | 多 Agent 大任务 |
 | v3.9 | 生态 | 市场 + Studio + 文档站 |
 | v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 |
+
+### 时间线（v0.1.0 → v4.0.0）
+
+```
+v0.1.0 ─ v0.8.0 孵化期（核心引擎 + 微内核，2026-05-29 ~ 07-07）
+   └─ 1.0.0 首个稳定版（06-30）
+        └─ v2.0.0 生产就绪（07-18）
+             ├── v2.1 ✅ 技术债+安全（P0×5+P1×2）
+             ├── v2.2 ✅ 性能+成本（P1×3+P2×3）
+             ├── v2.3 ✅ 架构+配置（P1×2+P2×2）
+             ├── v2.4 ✅ 可观测（P1×1+P2×1）
+             └── v2.5 ✅ Mesh 强化（P2×2）
+                  └─ v3.0.0 八大方向框架（07-20）
+                       ├── v3.1.0 真实后端（07-26）
+                       ├── v3.2.0 双语言对齐（07-31）
+                       └── v3.3 → v4.0 实证路线（08-03 ~ 08-05）✅ 全 35 项
+```
 
 ---
 
