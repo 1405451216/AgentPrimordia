@@ -1,26 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="2800" height="3400" viewBox="0 0 2800 3400">
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1460" viewBox="0 0 2400 1460">
 <defs>
-<radialGradient id="bgR" cx="50%" cy="30%" r="70%"><stop offset="0%" stop-color="#0e1628"/><stop offset="60%" stop-color="#0a1020"/><stop offset="100%" stop-color="#060a14"/></radialGradient>
-<radialGradient id="cg" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#00d4ff" stop-opacity="0.08"/><stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/></radialGradient>
-<linearGradient id="g_core" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00d4ff" stop-opacity="0.18"/><stop offset="100%" stop-color="#00d4ff" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_llm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d946d9" stop-opacity="0.18"/><stop offset="100%" stop-color="#d946d9" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_mem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0a030" stop-opacity="0.18"/><stop offset="100%" stop-color="#f0a030" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_tool" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2dd4a0" stop-opacity="0.18"/><stop offset="100%" stop-color="#2dd4a0" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_pool" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.18"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_orch" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.18"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_a2a" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.18"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_sec" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f43f5e" stop-opacity="0.18"/><stop offset="100%" stop-color="#f43f5e" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_guard" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ec4899" stop-opacity="0.18"/><stop offset="100%" stop-color="#ec4899" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_evt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#14b8a6" stop-opacity="0.18"/><stop offset="100%" stop-color="#14b8a6" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_met" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#eab308" stop-opacity="0.18"/><stop offset="100%" stop-color="#eab308" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_cfg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#84cc16" stop-opacity="0.18"/><stop offset="100%" stop-color="#84cc16" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_per" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fb923c" stop-opacity="0.18"/><stop offset="100%" stop-color="#fb923c" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_dbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399" stop-opacity="0.18"/><stop offset="100%" stop-color="#34d399" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_adm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fb923c" stop-opacity="0.18"/><stop offset="100%" stop-color="#fb923c" stop-opacity="0.05"/></linearGradient>
-<linearGradient id="g_sil" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#94a3b8" stop-opacity="0.18"/><stop offset="100%" stop-color="#94a3b8" stop-opacity="0.05"/></linearGradient>
+<radialGradient id="bgR" cx="50%" cy="25%" r="75%"><stop offset="0%" stop-color="#0b1220"/><stop offset="55%" stop-color="#0a0f1c"/><stop offset="100%" stop-color="#060a14"/></radialGradient>
+<linearGradient id="g_core" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00d4ff" stop-opacity="0.22"/><stop offset="100%" stop-color="#00d4ff" stop-opacity="0.05"/></linearGradient>
+<linearGradient id="g_llm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#d946d9" stop-opacity="0.22"/><stop offset="100%" stop-color="#d946d9" stop-opacity="0.05"/></linearGradient>
+<linearGradient id="g_mem" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0a030" stop-opacity="0.22"/><stop offset="100%" stop-color="#f0a030" stop-opacity="0.05"/></linearGradient>
+<linearGradient id="g_tool" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2dd4a0" stop-opacity="0.22"/><stop offset="100%" stop-color="#2dd4a0" stop-opacity="0.05"/></linearGradient>
+<linearGradient id="g_pool" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity="0.22"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0.05"/></linearGradient>
+<linearGradient id="g_orch" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.22"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0.05"/></linearGradient>
 <filter id="gs" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-<filter id="gl" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="12" result="b"/><feComponentTransfer in="b" result="g"><feFuncA type="linear" slope="0.25"/></feComponentTransfer><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="gl" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="10" result="b"/><feComponentTransfer in="b" result="g"><feFuncA type="linear" slope="0.22"/></feComponentTransfer><feMerge><feMergeNode in="g"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
 <marker id="a_c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#00d4ff" opacity="0.65"/></marker>
 <marker id="a_m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#d946d9" opacity="0.65"/></marker>
 <marker id="a_a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#f0a030" opacity="0.65"/></marker>
@@ -32,265 +20,161 @@
 <marker id="a_l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#84cc16" opacity="0.65"/></marker>
 <marker id="a_r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#f43f5e" opacity="0.65"/></marker>
 <marker id="a_k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#38bdf8" opacity="0.65"/></marker>
-<pattern id="gp" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0L0 0 0 40" fill="none" stroke="#121c30" stroke-width="0.4" opacity="0.4"/></pattern>
+<marker id="a_g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#ec4899" opacity="0.65"/></marker>
+<marker id="a_b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#eab308" opacity="0.65"/></marker>
+<marker id="a_d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#34d399" opacity="0.65"/></marker>
+<marker id="a_n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#fb923c" opacity="0.65"/></marker>
+<pattern id="gp" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0L0 0 0 42" fill="none" stroke="#16213a" stroke-width="0.4" opacity="0.4"/></pattern>
 </defs>
-<rect width="2800" height="3400" fill="url(#bgR)"/>
-<rect width="2800" height="3400" fill="url(#gp)"/>
-<text x="1400" y="55" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,-apple-system,sans-serif" font-size="36" font-weight="200" letter-spacing="8">AGENTPRIMORDIA</text>
-<text x="1400" y="85" text-anchor="middle" fill="#475569" font-family="system-ui,sans-serif" font-size="12" letter-spacing="4" opacity="0.65">PROTOCOL-BASED MICROKERNEL ARCHITECTURE</text>
-<line x1="1180" y1="102" x2="1620" y2="102" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>
-<text x="1400" y="122" text-anchor="middle" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="10" opacity="0.4" letter-spacing="2">v0.8.0 · Go 1.26+ · Apache-2.0 · Zero CGO</text>
-<rect x="100" y="160" width="2600" height="70" rx="8" fill="#94a3b8" fill-opacity="0.03" stroke="#94a3b8" stroke-opacity="0.12" stroke-width="0.8" stroke-dasharray="6 4"/>
-<text x="120" y="176" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="9" font-weight="600" letter-spacing="2" opacity="0.4">APPLICATION LAYER</text>
-<rect x="1135" y="165" width="530" height="60" rx="12" fill="#94a3b8" opacity="0.04" filter="url(#gs)"/>
-<rect x="1140" y="170" width="520" height="50" rx="10" fill="url(#g_sil)" stroke="#94a3b8" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1154" y1="171.5" x2="1646" y2="171.5" stroke="#94a3b8" stroke-width="1" opacity="0.4"/>
-<text x="1400" y="196" text-anchor="middle" dominant-baseline="central" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="400">Your Application</text>
-<line x1="1400" y1="225" x2="1400" y2="270" stroke="#94a3b8" stroke-width="1.2" opacity="0.4" marker-end="url(#a_s)"/>
-<text x="1412" y="250" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="9" opacity="0.4">User Message</text>
-<circle cx="1400" cy="380" r="200" fill="url(#cg)"/>
-<rect x="1110" y="270" width="580" height="220" rx="24" fill="#00d4ff" opacity="0.06" filter="url(#gl)"/>
-<rect x="1120" y="280" width="560" height="200" rx="20" fill="url(#g_core)" stroke="#00d4ff" stroke-opacity="0.5" stroke-width="2"/>
-<line x1="1144" y1="282" x2="1656" y2="282" stroke="#00d4ff" stroke-width="1.5" opacity="0.5"/>
-<text x="1400" y="310" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="22" font-weight="600" letter-spacing="2">ReAct Loop Engine</text>
-<text x="1400" y="332" text-anchor="middle" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="12" opacity="0.6">Reason → Act → Observe · 20+ Lifecycle Hooks · 17 Capable Interfaces</text>
-<rect x="1161" y="352" width="90" height="55" rx="8" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.4" stroke-width="1"/>
-<text x="1206" y="372" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Context</text>
-<text x="1206" y="392" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.55">Trim + RAG</text>
-<line x1="1253" y1="379.5" x2="1261" y2="379.5" stroke="#00d4ff" stroke-width="1" opacity="0.5" marker-end="url(#a_c)"/>
-<rect x="1263" y="352" width="90" height="55" rx="8" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.4" stroke-width="1"/>
-<text x="1308" y="372" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="12" font-weight="600">LLM Call</text>
-<text x="1308" y="392" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.55">Complete()</text>
-<line x1="1355" y1="379.5" x2="1363" y2="379.5" stroke="#00d4ff" stroke-width="1" opacity="0.5" marker-end="url(#a_c)"/>
-<rect x="1365" y="352" width="80" height="55" rx="8" fill="#00d4ff" fill-opacity="0.12" stroke="#00d4ff" stroke-opacity="0.4" stroke-width="1"/>
-<text x="1405" y="372" text-anchor="middle" dominant-baseline="central" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Parse</text>
-<text x="1405" y="392" text-anchor="middle" dominant-baseline="central" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.55">Thought</text>
-<line x1="1447" y1="379.5" x2="1455" y2="379.5" stroke="#00d4ff" stroke-width="1" opacity="0.5" marker-end="url(#a_c)"/>
-<rect x="1457" y="352" width="90" height="55" rx="8" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.4" stroke-width="1"/>
-<text x="1502" y="372" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Execute</text>
-<text x="1502" y="392" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.55">ToolCall</text>
-<line x1="1549" y1="379.5" x2="1557" y2="379.5" stroke="#00d4ff" stroke-width="1" opacity="0.5" marker-end="url(#a_c)"/>
-<rect x="1559" y="352" width="80" height="55" rx="8" fill="#fb923c" fill-opacity="0.12" stroke="#fb923c" stroke-opacity="0.4" stroke-width="1"/>
-<text x="1599" y="372" text-anchor="middle" dominant-baseline="central" fill="#fb923c" font-family="system-ui,sans-serif" font-size="12" font-weight="600">Observe</text>
-<text x="1599" y="392" text-anchor="middle" dominant-baseline="central" fill="#fb923c" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.55">Result</text>
-<path d="M1639,379 Q1679,422 1161,379" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.3" stroke-dasharray="4 4" marker-end="url(#a_c)"/>
-<text x="1400" y="420" text-anchor="middle" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="9" opacity="0.35">loop until MaxTurns</text>
-<text x="1105" y="372" text-anchor="end" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9" opacity="0.5">Embeddings</text>
-<text x="1105" y="386" text-anchor="end" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9" opacity="0.5">← RAG Retrieve</text>
-<text x="1695" y="367" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="9" opacity="0.5">Thought</text>
-<text x="1695" y="381" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9" opacity="0.5">+ ToolCalls[]</text>
-<text x="1695" y="402" fill="#fb923c" font-family="system-ui,sans-serif" font-size="9" opacity="0.5">Tool Result</text>
-<text x="1695" y="416" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9" opacity="0.5">→ History</text>
-<line x1="1400" y1="485" x2="1400" y2="525" stroke="#00d4ff" stroke-width="1.2" opacity="0.4" marker-end="url(#a_c)"/>
-<text x="1412" y="508" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="9" opacity="0.45">Final Response</text>
-<rect x="100" y="540" width="2600" height="130" rx="8" fill="#d946d9" fill-opacity="0.02" stroke="#d946d9" stroke-opacity="0.08" stroke-width="0.6" stroke-dasharray="6 4"/>
-<text x="120" y="556" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9" font-weight="600" letter-spacing="2" opacity="0.35">CORE CAPABILITIES</text>
-<line x1="1400" y1="485" x2="785" y2="560" stroke="#d946d9" stroke-width="1" opacity="0.25" marker-end="url(#a_m)"/>
-<rect x="590" y="560" width="390" height="100" rx="14" fill="#d946d9" opacity="0.04" filter="url(#gs)"/>
-<rect x="595" y="565" width="380" height="90" rx="12" fill="url(#g_llm)" stroke="#d946d9" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="611" y1="566.5" x2="959" y2="566.5" stroke="#d946d9" stroke-width="1" opacity="0.4"/>
-<circle cx="609" cy="579" r="2.5" fill="#d946d9" opacity="0.35"/>
-<circle cx="961" cy="579" r="2.5" fill="#d946d9" opacity="0.35"/>
-<circle cx="609" cy="641" r="2.5" fill="#d946d9" opacity="0.35"/>
-<circle cx="961" cy="641" r="2.5" fill="#d946d9" opacity="0.35"/>
-<text x="785" y="597" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="500">LLM Abstraction</text>
-<text x="785" y="621" text-anchor="middle" fill="#d946d9" font-family="system-ui,sans-serif" font-size="11" opacity="0.65">10+ Providers</text>
-<line x1="1400" y1="485" x2="1195" y2="560" stroke="#f0a030" stroke-width="1" opacity="0.25" marker-end="url(#a_a)"/>
-<rect x="1000" y="560" width="390" height="100" rx="14" fill="#f0a030" opacity="0.04" filter="url(#gs)"/>
-<rect x="1005" y="565" width="380" height="90" rx="12" fill="url(#g_mem)" stroke="#f0a030" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1021" y1="566.5" x2="1369" y2="566.5" stroke="#f0a030" stroke-width="1" opacity="0.4"/>
-<circle cx="1019" cy="579" r="2.5" fill="#f0a030" opacity="0.35"/>
-<circle cx="1371" cy="579" r="2.5" fill="#f0a030" opacity="0.35"/>
-<circle cx="1019" cy="641" r="2.5" fill="#f0a030" opacity="0.35"/>
-<circle cx="1371" cy="641" r="2.5" fill="#f0a030" opacity="0.35"/>
-<text x="1195" y="597" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="500">Memory Store</text>
-<text x="1195" y="621" text-anchor="middle" fill="#f0a030" font-family="system-ui,sans-serif" font-size="11" opacity="0.65">3-Tier Hybrid</text>
-<line x1="1400" y1="485" x2="1605" y2="560" stroke="#2dd4a0" stroke-width="1" opacity="0.25" marker-end="url(#a_t)"/>
-<rect x="1410" y="560" width="390" height="100" rx="14" fill="#2dd4a0" opacity="0.04" filter="url(#gs)"/>
-<rect x="1415" y="565" width="380" height="90" rx="12" fill="url(#g_tool)" stroke="#2dd4a0" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1431" y1="566.5" x2="1779" y2="566.5" stroke="#2dd4a0" stroke-width="1" opacity="0.4"/>
-<circle cx="1429" cy="579" r="2.5" fill="#2dd4a0" opacity="0.35"/>
-<circle cx="1781" cy="579" r="2.5" fill="#2dd4a0" opacity="0.35"/>
-<circle cx="1429" cy="641" r="2.5" fill="#2dd4a0" opacity="0.35"/>
-<circle cx="1781" cy="641" r="2.5" fill="#2dd4a0" opacity="0.35"/>
-<text x="1605" y="597" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="500">Tool System</text>
-<text x="1605" y="621" text-anchor="middle" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="11" opacity="0.65">7 Built-in + MCP</text>
-<line x1="1400" y1="485" x2="2015" y2="560" stroke="#3b82f6" stroke-width="1" opacity="0.25" marker-end="url(#a_p)"/>
-<rect x="1820" y="560" width="390" height="100" rx="14" fill="#3b82f6" opacity="0.04" filter="url(#gs)"/>
-<rect x="1825" y="565" width="380" height="90" rx="12" fill="url(#g_pool)" stroke="#3b82f6" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1841" y1="566.5" x2="2189" y2="566.5" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
-<circle cx="1839" cy="579" r="2.5" fill="#3b82f6" opacity="0.35"/>
-<circle cx="2191" cy="579" r="2.5" fill="#3b82f6" opacity="0.35"/>
-<circle cx="1839" cy="641" r="2.5" fill="#3b82f6" opacity="0.35"/>
-<circle cx="2191" cy="641" r="2.5" fill="#3b82f6" opacity="0.35"/>
-<text x="2015" y="597" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="500">Agent Pool</text>
-<text x="2015" y="621" text-anchor="middle" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="11" opacity="0.65">Concurrent Dispatch</text>
-<rect x="605" y="665" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="639" y="676" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">OpenAI</text>
-<rect x="679" y="665" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="713" y="676" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Anthropic</text>
-<rect x="753" y="665" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="787" y="676" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Gemini</text>
-<rect x="827" y="665" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="861" y="676" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Ollama</text>
-<rect x="901" y="665" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="935" y="676" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Azure</text>
-<rect x="605" y="691" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="639" y="702" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Qwen</text>
-<rect x="679" y="691" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="713" y="702" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">GLM</text>
-<rect x="753" y="691" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="787" y="702" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Mistral</text>
-<rect x="827" y="691" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="861" y="702" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">DeepSeek</text>
-<rect x="901" y="691" width="68" height="22" rx="5" fill="#d946d9" fill-opacity="0.08" stroke="#d946d9" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="935" y="702" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Resilient</text>
-<rect x="1015" y="665" width="110" height="22" rx="5" fill="#f0a030" fill-opacity="0.08" stroke="#f0a030" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1070" y="676" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">SQLite+FTS5</text>
-<rect x="1135" y="665" width="110" height="22" rx="5" fill="#f0a030" fill-opacity="0.08" stroke="#f0a030" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1190" y="676" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Vector Store</text>
-<rect x="1255" y="665" width="110" height="22" rx="5" fill="#f0a030" fill-opacity="0.08" stroke="#f0a030" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1310" y="676" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">RAG Pipeline</text>
-<rect x="1425" y="665" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1468" y="676" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">FileSystem</text>
-<rect x="1517" y="665" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1560" y="676" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Shell</text>
-<rect x="1609" y="665" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1652" y="676" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Web</text>
-<rect x="1701" y="665" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1744" y="676" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">API</text>
-<rect x="1425" y="691" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1468" y="702" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Database</text>
-<rect x="1517" y="691" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1560" y="702" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">CodeExec</text>
-<rect x="1609" y="691" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1652" y="702" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Knowledge</text>
-<rect x="1701" y="691" width="86" height="22" rx="5" fill="#2dd4a0" fill-opacity="0.08" stroke="#2dd4a0" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1744" y="702" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">MCP</text>
-<rect x="1835" y="665" width="160" height="22" rx="5" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1915" y="676" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Semaphore Concurrency</text>
-<rect x="1835" y="693" width="160" height="22" rx="5" fill="#3b82f6" fill-opacity="0.08" stroke="#3b82f6" stroke-opacity="0.3" stroke-width="0.7"/>
-<text x="1915" y="704" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.75">Session Isolation</text>
-<rect x="100" y="700" width="2600" height="110" rx="8" fill="#a78bfa" fill-opacity="0.02" stroke="#a78bfa" stroke-opacity="0.08" stroke-width="0.6" stroke-dasharray="6 4"/>
-<text x="120" y="716" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="9" font-weight="600" letter-spacing="2" opacity="0.35">PROTOCOL &amp; ORCHESTRATION</text>
-<rect x="769" y="720" width="430" height="85" rx="12" fill="#a78bfa" opacity="0.03" filter="url(#gs)"/>
-<rect x="774" y="725" width="420" height="75" rx="10" fill="url(#g_orch)" stroke="#a78bfa" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="788" y1="726.5" x2="1180" y2="726.5" stroke="#a78bfa" stroke-width="1" opacity="0.4"/>
-<text x="984" y="753" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="500">Orchestration</text>
-<text x="984" y="777" text-anchor="middle" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="10" opacity="0.6">Pipeline · Handoff · DAG · GroupChat · Collaboration</text>
-<rect x="1113" y="720" width="330" height="85" rx="12" fill="#38bdf8" opacity="0.03" filter="url(#gs)"/>
-<rect x="1118" y="725" width="320" height="75" rx="10" fill="url(#g_a2a)" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1132" y1="726.5" x2="1424" y2="726.5" stroke="#38bdf8" stroke-width="1" opacity="0.4"/>
-<text x="1278" y="753" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="500">A2A Protocol</text>
-<text x="1278" y="777" text-anchor="middle" fill="#38bdf8" font-family="system-ui,sans-serif" font-size="10" opacity="0.6">JSON-RPC / SSE · Agent Discovery</text>
-<rect x="1297" y="720" width="250" height="85" rx="12" fill="#fb923c" opacity="0.03" filter="url(#gs)"/>
-<rect x="1302" y="725" width="240" height="75" rx="10" fill="url(#g_per)" stroke="#fb923c" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1316" y1="726.5" x2="1528" y2="726.5" stroke="#fb923c" stroke-width="1" opacity="0.4"/>
-<text x="1422" y="753" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="500">Checkpoint</text>
-<text x="1422" y="777" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="10" opacity="0.6">State Persistence</text>
-<rect x="1441" y="720" width="210" height="85" rx="12" fill="#84cc16" opacity="0.03" filter="url(#gs)"/>
-<rect x="1446" y="725" width="200" height="75" rx="10" fill="url(#g_cfg)" stroke="#84cc16" stroke-opacity="0.4" stroke-width="1.2"/>
-<line x1="1460" y1="726.5" x2="1632" y2="726.5" stroke="#84cc16" stroke-width="1" opacity="0.4"/>
-<text x="1546" y="753" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="500">Config</text>
-<text x="1546" y="777" text-anchor="middle" fill="#84cc16" font-family="system-ui,sans-serif" font-size="10" opacity="0.6">Hot Reload</text>
-<rect x="100" y="830" width="2600" height="110" rx="8" fill="#f43f5e" fill-opacity="0.02" stroke="#f43f5e" stroke-opacity="0.08" stroke-width="0.6" stroke-dasharray="6 4"/>
-<text x="120" y="846" fill="#f43f5e" font-family="system-ui,sans-serif" font-size="9" font-weight="600" letter-spacing="2" opacity="0.35">INFRASTRUCTURE</text>
-<rect x="816" y="851" width="188" height="78" rx="10" fill="#f43f5e" opacity="0.03" filter="url(#gs)"/>
-<rect x="820" y="855" width="180" height="70" rx="8" fill="url(#g_sec)" stroke="#f43f5e" stroke-opacity="0.4" stroke-width="1"/>
-<line x1="832" y1="856.5" x2="988" y2="856.5" stroke="#f43f5e" stroke-width="0.8" opacity="0.4"/>
-<text x="910" y="881" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="500">Security</text>
-<text x="910" y="903" text-anchor="middle" fill="#f43f5e" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.6">ACL + Sandbox</text>
-<rect x="1016" y="851" width="188" height="78" rx="10" fill="#ec4899" opacity="0.03" filter="url(#gs)"/>
-<rect x="1020" y="855" width="180" height="70" rx="8" fill="url(#g_guard)" stroke="#ec4899" stroke-opacity="0.4" stroke-width="1"/>
-<line x1="1032" y1="856.5" x2="1188" y2="856.5" stroke="#ec4899" stroke-width="0.8" opacity="0.4"/>
-<text x="1110" y="881" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="500">Guardrail</text>
-<text x="1110" y="903" text-anchor="middle" fill="#ec4899" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.6">PII / Injection</text>
-<rect x="1216" y="851" width="188" height="78" rx="10" fill="#14b8a6" opacity="0.03" filter="url(#gs)"/>
-<rect x="1220" y="855" width="180" height="70" rx="8" fill="url(#g_evt)" stroke="#14b8a6" stroke-opacity="0.4" stroke-width="1"/>
-<line x1="1232" y1="856.5" x2="1388" y2="856.5" stroke="#14b8a6" stroke-width="0.8" opacity="0.4"/>
-<text x="1310" y="881" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="500">Event Bus</text>
-<text x="1310" y="903" text-anchor="middle" fill="#14b8a6" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.6">Pub / Sub</text>
-<rect x="1476" y="851" width="208" height="78" rx="10" fill="#eab308" opacity="0.03" filter="url(#gs)"/>
-<rect x="1480" y="855" width="200" height="70" rx="8" fill="url(#g_met)" stroke="#eab308" stroke-opacity="0.4" stroke-width="1"/>
-<line x1="1492" y1="856.5" x2="1668" y2="856.5" stroke="#eab308" stroke-width="0.8" opacity="0.4"/>
-<text x="1580" y="881" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="500">Observability</text>
-<text x="1580" y="903" text-anchor="middle" fill="#eab308" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.6">Prometheus + OTel</text>
-<rect x="1536" y="851" width="168" height="78" rx="10" fill="#34d399" opacity="0.03" filter="url(#gs)"/>
-<rect x="1540" y="855" width="160" height="70" rx="8" fill="url(#g_dbg)" stroke="#34d399" stroke-opacity="0.4" stroke-width="1"/>
-<line x1="1552" y1="856.5" x2="1688" y2="856.5" stroke="#34d399" stroke-width="0.8" opacity="0.4"/>
-<text x="1620" y="881" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="500">Debugger</text>
-<text x="1620" y="903" text-anchor="middle" fill="#34d399" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.6">Inspector</text>
-<rect x="1716" y="851" width="168" height="78" rx="10" fill="#fb923c" opacity="0.03" filter="url(#gs)"/>
-<rect x="1720" y="855" width="160" height="70" rx="8" fill="url(#g_adm)" stroke="#fb923c" stroke-opacity="0.4" stroke-width="1"/>
-<line x1="1732" y1="856.5" x2="1868" y2="856.5" stroke="#fb923c" stroke-width="0.8" opacity="0.4"/>
-<text x="1800" y="881" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="500">Admin API</text>
-<text x="1800" y="903" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.6">Management</text>
-<line x1="1010" y1="890" x2="1210" y2="890" stroke="#f43f5e" stroke-width="0.6" opacity="0.2" stroke-dasharray="3 3"/>
-<line x1="1410" y1="890" x2="1630" y2="890" stroke="#14b8a6" stroke-width="0.6" opacity="0.2" stroke-dasharray="3 3"/>
-<rect x="1145" y="955" width="510" height="70" rx="12" fill="#94a3b8" opacity="0.03" filter="url(#gs)"/>
-<rect x="1150" y="960" width="500" height="60" rx="10" fill="url(#g_sil)" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="1.2"/>
-<line x1="1164" y1="961.5" x2="1636" y2="961.5" stroke="#94a3b8" stroke-width="1" opacity="0.4"/>
-<text x="1400" y="982" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="500">pkg · Public API</text>
-<text x="1400" y="1004" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10" opacity="0.55">ap.NewAgent() · Chain API · Type Aliases</text>
-<rect x="1115" y="1035" width="570" height="70" rx="12" fill="#a78bfa" opacity="0.03" filter="url(#gs)"/>
-<rect x="1120" y="1040" width="560" height="60" rx="10" fill="url(#g_orch)" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="1.2"/>
-<line x1="1134" y1="1041.5" x2="1666" y2="1041.5" stroke="#a78bfa" stroke-width="1" opacity="0.4"/>
-<text x="1400" y="1062" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="500">Kubernetes Operator</text>
-<text x="1400" y="1084" text-anchor="middle" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="10" opacity="0.55">AgentDeployment CRD · HPA · Auto-scaling · Health Checks</text>
-<text x="120" y="1140" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="10" font-weight="600" letter-spacing="2" opacity="0.5">PROTOCOL INTERFACES (17)</text>
-<line x1="120" y1="1148" x2="310" y2="1148" stroke="#00d4ff" stroke-width="0.4" opacity="0.2"/>
-<circle cx="124" cy="1162" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="134" y="1162" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">MemoryCapable</text>
-<circle cx="404" cy="1162" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="414" y="1162" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">RAGCapable</text>
-<circle cx="684" cy="1162" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="694" y="1162" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">HITLCapable</text>
-<circle cx="964" cy="1162" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="974" y="1162" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">HookCapable</text>
-<circle cx="124" cy="1186" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="134" y="1186" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">TraceCapable</text>
-<circle cx="404" cy="1186" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="414" y="1186" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">CostCapable</text>
-<circle cx="684" cy="1186" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="694" y="1186" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">ContextWindowCapable</text>
-<circle cx="964" cy="1186" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="974" y="1186" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">EventCapable</text>
-<circle cx="124" cy="1210" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="134" y="1210" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">MetricsCapable</text>
-<circle cx="404" cy="1210" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="414" y="1210" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">CheckpointCapable</text>
-<circle cx="684" cy="1210" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="694" y="1210" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">SummarizerCapable</text>
-<circle cx="964" cy="1210" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="974" y="1210" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">FileScopeCapable</text>
-<circle cx="124" cy="1234" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="134" y="1234" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">CacheCapable</text>
-<circle cx="404" cy="1234" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="414" y="1234" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">ToolkitCapable</text>
-<circle cx="684" cy="1234" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="694" y="1234" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">PlanningCapable</text>
-<circle cx="964" cy="1234" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="974" y="1234" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">ReflectionCapable</text>
-<circle cx="124" cy="1258" r="2.5" fill="#00d4ff" opacity="0.4"/>
-<text x="134" y="1258" dominant-baseline="central" fill="#475569" font-family="'SF Mono','Fira Code',monospace" font-size="10" opacity="0.5">ToolLearningCapable</text>
-<rect x="1045" y="3254" width="700" height="50" rx="8" fill="#060a14" stroke="#121c30" stroke-width="0.5" opacity="0.7"/>
-<rect x="1070" y="3270" width="13" height="13" rx="3" fill="#00d4ff" opacity="0.75"/>
-<text x="1090" y="3276.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Core Engine</text>
-<rect x="1210" y="3270" width="13" height="13" rx="3" fill="#d946d9" opacity="0.75"/>
-<text x="1230" y="3276.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">LLM Layer</text>
-<rect x="1350" y="3270" width="13" height="13" rx="3" fill="#f0a030" opacity="0.75"/>
-<text x="1370" y="3276.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Memory</text>
-<rect x="1490" y="3270" width="13" height="13" rx="3" fill="#2dd4a0" opacity="0.75"/>
-<text x="1510" y="3276.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Tools</text>
-<rect x="1630" y="3270" width="13" height="13" rx="3" fill="#a78bfa" opacity="0.75"/>
-<text x="1650" y="3276.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Orchestration</text>
-<rect x="1070" y="3294" width="13" height="13" rx="3" fill="#3b82f6" opacity="0.75"/>
-<text x="1090" y="3300.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Pool</text>
-<rect x="1210" y="3294" width="13" height="13" rx="3" fill="#f43f5e" opacity="0.75"/>
-<text x="1230" y="3300.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Security</text>
-<rect x="1350" y="3294" width="13" height="13" rx="3" fill="#eab308" opacity="0.75"/>
-<text x="1370" y="3300.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Observability</text>
-<rect x="1490" y="3294" width="13" height="13" rx="3" fill="#94a3b8" opacity="0.75"/>
-<text x="1510" y="3300.5" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.55">Infrastructure</text>
-<text x="1400" y="3375" text-anchor="middle" fill="#475569" font-family="system-ui,sans-serif" font-size="10" opacity="0.2" letter-spacing="1">agentprimordia.dev · Production-Grade Go AI Agent Framework</text>
+<rect width="2400" height="1460" fill="url(#bgR)"/>
+<rect width="2400" height="1460" fill="url(#gp)"/>
+<text x="1200" y="52" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="38" font-weight="200">AGENTPRIMORDIA</text>
+<text x="1200" y="84" text-anchor="middle" fill="#475569" font-family="system-ui,sans-serif" font-size="13" letter-spacing="5" opacity="0.7">UNIVERSAL AI AGENT FRAMEWORK · GO + TYPESCRIPT DUAL SDK</text>
+<line x1="860" y1="100" x2="1540" y2="100" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>
+<text x="1200" y="122" text-anchor="middle" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="11" opacity="0.7">v4.0.0  ·  34 Modules Parity  ·  Apache-2.0  ·  Zero CGO</text>
+<rect x="60" y="150" width="2280" height="100" rx="14" fill="#94a3b8" fill-opacity="0.02" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="172" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">①  APPLICATION / ENTRYPOINTS</text>
+<rect x="90" y="168" width="420" height="64" rx="12" fill="#94a3b8" fill-opacity="0.05" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="300" y="193" text-anchor="middle" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Your App</text>
+<text x="300" y="215" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">Go / TS 集成</text>
+<rect x="545" y="168" width="420" height="64" rx="12" fill="#94a3b8" fill-opacity="0.05" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="755" y="193" text-anchor="middle" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14" font-weight="600">CLI · ap</text>
+<text x="755" y="215" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">init / run / debug</text>
+<rect x="1000" y="168" width="420" height="64" rx="12" fill="#94a3b8" fill-opacity="0.05" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1210" y="193" text-anchor="middle" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Studio UI</text>
+<text x="1210" y="215" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">可视化编排</text>
+<rect x="1455" y="168" width="420" height="64" rx="12" fill="#94a3b8" fill-opacity="0.05" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1665" y="193" text-anchor="middle" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14" font-weight="600">VSCode</text>
+<text x="1665" y="215" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">Inspector 扩展</text>
+<rect x="1910" y="168" width="420" height="64" rx="12" fill="#94a3b8" fill-opacity="0.05" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="2120" y="193" text-anchor="middle" fill="#e2e8f0" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Edge / Browser</text>
+<text x="2120" y="215" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">WASM 沙箱</text>
+<line x1="1200" y1="250" x2="1200" y2="292" stroke="#94a3b8" stroke-width="1.2" opacity="0.5" stroke-dasharray="4 4" marker-end="url(#a_s)"/>
+<rect x="60" y="300" width="2280" height="100" rx="14" fill="#84cc16" fill-opacity="0.02" stroke="#84cc16" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="322" fill="#84cc16" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">②  PUBLIC API</text>
+<rect x="90" y="318" width="1080" height="64" rx="12" fill="#84cc16" fill-opacity="0.05" stroke="#84cc16" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="340" y="343" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="600">Go  ·  pkg/</text>
+<text x="340" y="367" text-anchor="middle" fill="#84cc16" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">ap.NewAgent() · Chain API · Type Aliases</text>
+<rect x="90" y="334" width="150" height="32" rx="16.0" fill="#84cc16" fill-opacity="0.12" stroke="#84cc16" stroke-opacity="0.35" stroke-width="0.8"/><text x="165.0" y="350.0" text-anchor="middle" dominant-baseline="central" fill="#84cc16" font-family="system-ui,sans-serif" font-size="11" opacity="0.8">public API</text>
+<rect x="1230" y="318" width="1080" height="64" rx="12" fill="#84cc16" fill-opacity="0.05" stroke="#84cc16" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1480" y="343" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="14" font-weight="600">TypeScript  ·  @agentprimordia/sdk</text>
+<text x="1480" y="367" text-anchor="middle" fill="#84cc16" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">34 模块 Go Parity · npm install @agentprimordia/sdk</text>
+<rect x="1230" y="334" width="150" height="32" rx="16.0" fill="#84cc16" fill-opacity="0.12" stroke="#84cc16" stroke-opacity="0.35" stroke-width="0.8"/><text x="1305.0" y="350.0" text-anchor="middle" dominant-baseline="central" fill="#84cc16" font-family="system-ui,sans-serif" font-size="11" opacity="0.8">npm SDK</text>
+<line x1="1200" y1="400" x2="1200" y2="442" stroke="#84cc16" stroke-width="1.2" opacity="0.5" stroke-dasharray="4 4" marker-end="url(#a_l)"/>
+<rect x="60" y="450" width="2280" height="210" rx="14" fill="#00d4ff" fill-opacity="0.02" stroke="#00d4ff" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="472" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">③  CORE ENGINE</text>
+<rect x="170" y="470" width="2060" height="172" rx="20" fill="url(#g_core)" stroke="#00d4ff" stroke-opacity="0.55" stroke-width="1.6"/>
+<text x="1200" y="505" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="20" font-weight="600">ReAct Loop Engine  ·  Go + TS 双实现</text>
+<text x="1200" y="528" text-anchor="middle" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="11" opacity="0.7">Reason → Act → Observe · 20+ Lifecycle Hooks · Planning · Reflection · Tool Learning</text>
+<rect x="300" y="550" width="170" height="60" rx="10" fill="#d946d9" fill-opacity="0.1" stroke="#d946d9" stroke-opacity="0.5" stroke-width="1"/>
+<text x="385" y="575" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Reason</text>
+<text x="385" y="597" text-anchor="middle" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">推理</text>
+<line x1="470" y1="580" x2="515" y2="580" stroke="#00d4ff" stroke-width="1.2" opacity="0.6" marker-end="url(#a_c)"/>
+<rect x="545" y="550" width="170" height="60" rx="10" fill="#2dd4a0" fill-opacity="0.1" stroke="#2dd4a0" stroke-opacity="0.5" stroke-width="1"/>
+<text x="630" y="575" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Act</text>
+<text x="630" y="597" text-anchor="middle" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">工具决策</text>
+<line x1="715" y1="580" x2="760" y2="580" stroke="#00d4ff" stroke-width="1.2" opacity="0.6" marker-end="url(#a_c)"/>
+<rect x="790" y="550" width="170" height="60" rx="10" fill="#f0a030" fill-opacity="0.1" stroke="#f0a030" stroke-opacity="0.5" stroke-width="1"/>
+<text x="875" y="575" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="16" font-weight="600">Observe</text>
+<text x="875" y="597" text-anchor="middle" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">结果回读</text>
+<rect x="1020" y="550" width="210" height="34" rx="17.0" fill="#00d4ff" fill-opacity="0.12" stroke="#00d4ff" stroke-opacity="0.35" stroke-width="0.8"/><text x="1125.0" y="567.0" text-anchor="middle" dominant-baseline="central" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Planning</text>
+<rect x="1250" y="550" width="220" height="34" rx="17.0" fill="#00d4ff" fill-opacity="0.12" stroke="#00d4ff" stroke-opacity="0.35" stroke-width="0.8"/><text x="1360.0" y="567.0" text-anchor="middle" dominant-baseline="central" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Reflection</text>
+<rect x="1490" y="550" width="250" height="34" rx="17.0" fill="#00d4ff" fill-opacity="0.12" stroke="#00d4ff" stroke-opacity="0.35" stroke-width="0.8"/><text x="1615.0" y="567.0" text-anchor="middle" dominant-baseline="central" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Tool Learning</text>
+<rect x="1760" y="550" width="220" height="34" rx="17.0" fill="#00d4ff" fill-opacity="0.12" stroke="#00d4ff" stroke-opacity="0.35" stroke-width="0.8"/><text x="1870.0" y="567.0" text-anchor="middle" dominant-baseline="central" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">20+ Hooks</text>
+<line x1="354" y1="660" x2="354" y2="712" stroke="#00d4ff" stroke-width="1.2" opacity="0.55" marker-end="url(#a_c)"/>
+<line x1="894" y1="660" x2="894" y2="712" stroke="#00d4ff" stroke-width="1.2" opacity="0.55" marker-end="url(#a_c)"/>
+<line x1="1434" y1="660" x2="1434" y2="712" stroke="#00d4ff" stroke-width="1.2" opacity="0.55" marker-end="url(#a_c)"/>
+<line x1="1974" y1="660" x2="1974" y2="712" stroke="#00d4ff" stroke-width="1.2" opacity="0.55" marker-end="url(#a_c)"/>
+<rect x="60" y="720" width="2280" height="240" rx="14" fill="#00d4ff" fill-opacity="0.02" stroke="#00d4ff" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="742" fill="#00d4ff" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">④  CORE CAPABILITIES</text>
+<rect x="84" y="728" width="540" height="224" rx="18" fill="#d946d9" opacity="0.05" filter="url(#gs)"/>
+<rect x="90" y="734" width="528" height="212" rx="14" fill="url(#g_llm)" stroke="#d946d9" stroke-opacity="0.5" stroke-width="1.3"/>
+<text x="354" y="770" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="17" font-weight="600">LLM Abstraction</text>
+<text x="354" y="794" text-anchor="middle" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.7">12+ Providers · Resilient</text>
+<rect x="112" y="818" width="140" height="30" rx="15.0" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.35" stroke-width="0.8"/><text x="182.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">OpenAI</text>
+<rect x="264" y="818" width="140" height="30" rx="15.0" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.35" stroke-width="0.8"/><text x="334.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Anthropic</text>
+<rect x="416" y="818" width="140" height="30" rx="15.0" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.35" stroke-width="0.8"/><text x="486.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Gemini</text>
+<rect x="112" y="864" width="140" height="30" rx="15.0" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.35" stroke-width="0.8"/><text x="182.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">DeepSeek</text>
+<rect x="264" y="864" width="140" height="30" rx="15.0" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.35" stroke-width="0.8"/><text x="334.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Ollama</text>
+<rect x="416" y="864" width="140" height="30" rx="15.0" fill="#d946d9" fill-opacity="0.12" stroke="#d946d9" stroke-opacity="0.35" stroke-width="0.8"/><text x="486.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#d946d9" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Qwen</text>
+<text x="354" y="930" text-anchor="middle" fill="#d946d9" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Retry · Fallback · CircuitBreak</text>
+<rect x="624" y="728" width="540" height="224" rx="18" fill="#2dd4a0" opacity="0.05" filter="url(#gs)"/>
+<rect x="630" y="734" width="528" height="212" rx="14" fill="url(#g_tool)" stroke="#2dd4a0" stroke-opacity="0.5" stroke-width="1.3"/>
+<text x="894" y="770" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="17" font-weight="600">Tool System</text>
+<text x="894" y="794" text-anchor="middle" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.7">Builtin + MCP + Plugin</text>
+<rect x="652" y="818" width="140" height="30" rx="15.0" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.35" stroke-width="0.8"/><text x="722.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">FileSystem</text>
+<rect x="804" y="818" width="140" height="30" rx="15.0" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.35" stroke-width="0.8"/><text x="874.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Shell</text>
+<rect x="956" y="818" width="140" height="30" rx="15.0" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.35" stroke-width="0.8"/><text x="1026.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Web</text>
+<rect x="652" y="864" width="140" height="30" rx="15.0" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.35" stroke-width="0.8"/><text x="722.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">MCP</text>
+<rect x="804" y="864" width="140" height="30" rx="15.0" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.35" stroke-width="0.8"/><text x="874.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">WASM</text>
+<rect x="956" y="864" width="140" height="30" rx="15.0" fill="#2dd4a0" fill-opacity="0.12" stroke="#2dd4a0" stroke-opacity="0.35" stroke-width="0.8"/><text x="1026.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Plugin</text>
+<text x="894" y="930" text-anchor="middle" fill="#2dd4a0" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Registry · Executor · Scope</text>
+<rect x="1164" y="728" width="540" height="224" rx="18" fill="#f0a030" opacity="0.05" filter="url(#gs)"/>
+<rect x="1170" y="734" width="528" height="212" rx="14" fill="url(#g_mem)" stroke="#f0a030" stroke-opacity="0.5" stroke-width="1.3"/>
+<text x="1434" y="770" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="17" font-weight="600">Memory Store</text>
+<text x="1434" y="794" text-anchor="middle" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.7">三层混合检索</text>
+<rect x="1192" y="818" width="140" height="30" rx="15.0" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.35" stroke-width="0.8"/><text x="1262.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">SQLite FTS5</text>
+<rect x="1344" y="818" width="140" height="30" rx="15.0" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.35" stroke-width="0.8"/><text x="1414.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Vector HNSW</text>
+<rect x="1496" y="818" width="140" height="30" rx="15.0" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.35" stroke-width="0.8"/><text x="1566.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">RAG</text>
+<rect x="1192" y="864" width="140" height="30" rx="15.0" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.35" stroke-width="0.8"/><text x="1262.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">RRF 融合</text>
+<rect x="1344" y="864" width="140" height="30" rx="15.0" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.35" stroke-width="0.8"/><text x="1414.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Summarize</text>
+<rect x="1496" y="864" width="140" height="30" rx="15.0" fill="#f0a030" fill-opacity="0.12" stroke="#f0a030" stroke-opacity="0.35" stroke-width="0.8"/><text x="1566.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#f0a030" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Episodic</text>
+<text x="1434" y="930" text-anchor="middle" fill="#f0a030" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Importance · Archive · Compress</text>
+<rect x="1704" y="728" width="540" height="224" rx="18" fill="#3b82f6" opacity="0.05" filter="url(#gs)"/>
+<rect x="1710" y="734" width="528" height="212" rx="14" fill="url(#g_pool)" stroke="#3b82f6" stroke-opacity="0.5" stroke-width="1.3"/>
+<text x="1974" y="770" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="17" font-weight="600">Agent Pool</text>
+<text x="1974" y="794" text-anchor="middle" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.7">并发调度 · 会话隔离</text>
+<rect x="1732" y="818" width="140" height="30" rx="15.0" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8"/><text x="1802.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Semaphore</text>
+<rect x="1884" y="818" width="140" height="30" rx="15.0" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8"/><text x="1954.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Session</text>
+<rect x="2036" y="818" width="140" height="30" rx="15.0" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8"/><text x="2106.0" y="833.0" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Retry</text>
+<rect x="1732" y="864" width="140" height="30" rx="15.0" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8"/><text x="1802.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Autoscale</text>
+<rect x="1884" y="864" width="140" height="30" rx="15.0" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8"/><text x="1954.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Events</text>
+<rect x="2036" y="864" width="140" height="30" rx="15.0" fill="#3b82f6" fill-opacity="0.12" stroke="#3b82f6" stroke-opacity="0.35" stroke-width="0.8"/><text x="2106.0" y="879.0" text-anchor="middle" dominant-baseline="central" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="10.5" opacity="0.8">Tenant</text>
+<text x="1974" y="930" text-anchor="middle" fill="#3b82f6" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Graceful Shutdown · Dispatcher</text>
+<rect x="60" y="980" width="2280" height="120" rx="14" fill="#a78bfa" fill-opacity="0.02" stroke="#a78bfa" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="1002" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">⑤  ORCHESTRATION</text>
+<rect x="90" y="1000" width="2220" height="82" rx="14" fill="#a78bfa" fill-opacity="0.05" stroke="#a78bfa" stroke-opacity="0.5" stroke-width="1"/>
+<rect x="160" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="265.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Pipeline</text>
+<rect x="405" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="510.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Handoff</text>
+<rect x="650" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="755.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Parallel</text>
+<rect x="895" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="1000.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">DAG</text>
+<rect x="1140" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="1245.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">GroupChat</text>
+<rect x="1385" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="1490.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">A2A</text>
+<rect x="1630" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="1735.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">Swarm</text>
+<rect x="1875" y="1025" width="210" height="34" rx="17.0" fill="#a78bfa" fill-opacity="0.12" stroke="#a78bfa" stroke-opacity="0.35" stroke-width="0.8"/><text x="1980.0" y="1042.0" text-anchor="middle" dominant-baseline="central" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="12" opacity="0.8">MapReduce</text>
+<text x="1200" y="1074" text-anchor="middle" fill="#a78bfa" font-family="system-ui,sans-serif" font-size="9.5" opacity="0.7">Collaboration · Debate · Worker Pool · Planner · Multi-Agent 分工</text>
+<rect x="60" y="1120" width="2280" height="200" rx="14" fill="#eab308" fill-opacity="0.02" stroke="#eab308" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="1142" fill="#eab308" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">⑥  CROSS-CUTTING SUPPORT</text>
+<rect x="90" y="1142" width="430" height="66" rx="10" fill="#f43f5e" fill-opacity="0.06" stroke="#f43f5e" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="305" y="1168" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Security / Guardrail</text>
+<text x="305" y="1189" text-anchor="middle" fill="#f43f5e" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">ACL · Sandbox · PII · Guardrails</text>
+<rect x="545" y="1142" width="430" height="66" rx="10" fill="#ec4899" fill-opacity="0.06" stroke="#ec4899" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="760" y="1168" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Governance</text>
+<text x="760" y="1189" text-anchor="middle" fill="#ec4899" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Tenant · Quota · Policy</text>
+<rect x="1000" y="1142" width="430" height="66" rx="10" fill="#fb923c" fill-opacity="0.06" stroke="#fb923c" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1215" y="1168" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Audit</text>
+<text x="1215" y="1189" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">合规审计 · 报告生成</text>
+<rect x="1455" y="1142" width="430" height="66" rx="10" fill="#eab308" fill-opacity="0.06" stroke="#eab308" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1670" y="1168" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Observability</text>
+<text x="1670" y="1189" text-anchor="middle" fill="#eab308" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Metrics · OTel · SLO/SLI</text>
+<rect x="1910" y="1142" width="430" height="66" rx="10" fill="#84cc16" fill-opacity="0.06" stroke="#84cc16" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="2125" y="1168" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Resilience</text>
+<text x="2125" y="1189" text-anchor="middle" fill="#84cc16" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">重试 · 降级 · 熔断</text>
+<rect x="90" y="1224" width="430" height="66" rx="10" fill="#34d399" fill-opacity="0.06" stroke="#34d399" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="305" y="1250" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Debugger</text>
+<text x="305" y="1271" text-anchor="middle" fill="#34d399" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Inspector · 时间旅行</text>
+<rect x="545" y="1224" width="430" height="66" rx="10" fill="#fb923c" fill-opacity="0.06" stroke="#fb923c" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="760" y="1250" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Admin API</text>
+<text x="760" y="1271" text-anchor="middle" fill="#fb923c" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">管理 HTTP API</text>
+<rect x="1000" y="1224" width="430" height="66" rx="10" fill="#14b8a6" fill-opacity="0.06" stroke="#14b8a6" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1215" y="1250" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Health</text>
+<text x="1215" y="1271" text-anchor="middle" fill="#14b8a6" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">healthz / readyz / livez</text>
+<rect x="1455" y="1224" width="430" height="66" rx="10" fill="#84cc16" fill-opacity="0.06" stroke="#84cc16" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="1670" y="1250" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Config</text>
+<text x="1670" y="1271" text-anchor="middle" fill="#84cc16" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">热加载 · Feature</text>
+<rect x="1910" y="1224" width="430" height="66" rx="10" fill="#14b8a6" fill-opacity="0.06" stroke="#14b8a6" stroke-opacity="0.5" stroke-width="0.9"/>
+<text x="2125" y="1250" text-anchor="middle" fill="#f1f5f9" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Event Bus</text>
+<text x="2125" y="1271" text-anchor="middle" fill="#14b8a6" font-family="system-ui,sans-serif" font-size="9" opacity="0.7">Pub / Sub · 事件流</text>
+<rect x="60" y="1340" width="2280" height="90" rx="14" fill="#94a3b8" fill-opacity="0.02" stroke="#94a3b8" stroke-opacity="0.5" stroke-width="0.7" stroke-dasharray="7 5"/><text x="80" y="1362" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10" font-weight="700" letter-spacing="3" opacity="0.5">⑦  INFRASTRUCTURE</text>
+<rect x="90" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="265.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">Checkpoint (etcd/Redis)</text>
+<rect x="470" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="645.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">K8s Operator</text>
+<rect x="850" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="1025.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">WASM (wazero)</text>
+<rect x="1230" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="1405.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">Chaos Engineering</text>
+<rect x="1610" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="1785.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">Eval / Bench</text>
+<rect x="1990" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="2165.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">Registry · Marketplace</text>
+<text x="1200" y="1450" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" opacity="0.7">Go: agentprimordia/ · TS: sdk/typescript/ · 双语言功能对等，34 模块全覆盖</text>
 </svg>

@@ -9,7 +9,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-Go%20Parity-3178C6.svg)](sdk/typescript/)
 [![Version](https://img.shields.io/badge/version-4.0.0-2ea44f.svg)](docs/ROADMAP.md)
 
-![Architecture](agentprimordia/docs/ap-architecture.png)
+<p align="center">
+  <img src="agentprimordia/docs/ap-architecture.png" alt="Architecture" width="85%">
+</p>
 
 ## 特性
 
