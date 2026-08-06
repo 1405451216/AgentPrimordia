@@ -59,8 +59,8 @@ export function ChaosLab() {
   const [abortingName, setAbortingName] = useState<string | null>(null);
   // 中止操作的独立错误（不再误标为「加载失败」）
   const [abortError, setAbortError] = useState<string | null>(null);
-  // 详情面板展开的实验（null = 收起）
-  const [detailIndex, setDetailIndex] = useState<number | null>(null);
+  // 详情面板展开的实验名（null = 收起）；按名称匹配而非排序索引，避免排序后错位
+  const [detailName, setDetailName] = useState<string | null>(null);
 
   const fetchExperiments = async () => {
     setLoading(true);
@@ -250,7 +250,7 @@ export function ChaosLab() {
             <tbody>
               {sortedRows.map((r, i) => (
                 <Fragment key={`${r.experiment.name}-${r.startTime}-${i}`}>
-                  <tr className={detailIndex === i ? 'row-expanded' : ''}>
+                  <tr className={detailName === r.experiment.name ? 'row-expanded' : ''}>
                     <td>{r.experiment.name}</td>
                     <td>
                       <span className={`status-badge status-${r.experiment.status}`} aria-label={experimentStatusLabel(r.experiment.status)}>
@@ -271,9 +271,9 @@ export function ChaosLab() {
                     <td className="row-actions">
                       <button
                         className="btn-secondary btn-sm"
-                        onClick={() => setDetailIndex(detailIndex === i ? null : i)}
+                        onClick={() => setDetailName(detailName === r.experiment.name ? null : r.experiment.name)}
                       >
-                        {detailIndex === i ? '收起' : '详情'}
+                        {detailName === r.experiment.name ? '收起' : '详情'}
                       </button>
                       {(r.experiment.status === 'running' || r.experiment.status === 'pending') && (
                         <button
@@ -286,7 +286,7 @@ export function ChaosLab() {
                       )}
                     </td>
                   </tr>
-                  {detailIndex === i && (
+                  {detailName === r.experiment.name && (
                     <tr className="detail-row">
                       <td colSpan={7}>
                         <div className="experiment-detail">

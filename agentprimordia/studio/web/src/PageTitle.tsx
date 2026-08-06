@@ -7,7 +7,7 @@
 export function PageTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="page-title">
-      <h2>{title}</h2>
+      <h2 tabIndex={-1}>{title}</h2>
       {subtitle && <span className="page-title-sub">{subtitle}</span>}
     </div>
   );

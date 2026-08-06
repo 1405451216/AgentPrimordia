@@ -70,10 +70,17 @@ export function useConfirmDialog({ open, busy = false, focusTarget, onClose }: C
   }, [open, busy, focusTarget, onClose]);
 
   // 独立 effect：对话框关闭（open → false）后恢复焦点到触发元素
+  // 若触发元素已从 DOM 卸载（如中止成功后按钮随状态消失），回退到页面标题
   useEffect(() => {
     if (!open && triggerRef.current) {
-      triggerRef.current.focus();
+      const target = triggerRef.current;
       triggerRef.current = null;
+      if (target.isConnected) {
+        target.focus();
+      } else {
+        const heading = document.querySelector<HTMLElement>('main h2, .page-title h2');
+        heading?.focus();
+      }
     }
   }, [open]);
 

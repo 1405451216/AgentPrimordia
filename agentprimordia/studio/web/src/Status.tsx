@@ -3,7 +3,7 @@
  *
  * 统一错误面板 / 成功横幅 / 陈旧提示，供各页面复用。
  */
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 interface ErrorPanelProps {
   message: string;
@@ -53,8 +53,15 @@ interface StalenessProps {
   staleAfterMs?: number;
 }
 
-/** 陈旧提示：显示数据上次刷新时间，超过阈值标记为可能过期 */
+/** 陈旧提示：显示数据上次刷新时间，每秒跳动刷新，超过阈值标记为可能过期 */
 export function Staleness({ lastUpdatedAt, staleAfterMs = 30000 }: StalenessProps) {
+  const [, setTick] = useState(0);
+  // 每秒重渲染一次，让秒数实时跳动（轮询暂停时也不冻结）
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
   if (lastUpdatedAt === null) return null;
   const seconds = Math.max(0, Math.round((Date.now() - lastUpdatedAt) / 1000));
   const stale = seconds * 1000 > staleAfterMs;

@@ -96,18 +96,7 @@ export function MarketplacePage() {
     }
   };
 
-  useEffect(() => { fetchTemplates({ q: '', cat: category }); }, [category]);
-
-  // 筛选变化时写入 URL（不触发导航）
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (query) params.set('q', query); else params.delete('q');
-    if (category) params.set('category', category); else params.delete('category');
-    const qs = params.toString();
-    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
-  }, [query, category]);
-
-  // 搜索输入防抖：停止输入 300ms 后再请求；清空输入=重置为全量列表
+  // 搜索/分类变化统一走防抖：query 与 category 同步生效，避免列表与筛选矛盾
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
@@ -117,7 +106,16 @@ export function MarketplacePage() {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       abortRef.current?.abort();
     };
-  }, [query]);
+  }, [query, category]);
+
+  // 筛选变化时写入 URL（不触发导航）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (query) params.set('q', query); else params.delete('q');
+    if (category) params.set('category', category); else params.delete('category');
+    const qs = params.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  }, [query, category]);
 
   // 部署确认对话框：统一焦点管理（初始聚焦、Esc、Tab 陷阱）
   const deployDialog = useConfirmDialog({
@@ -240,7 +238,7 @@ export function MarketplacePage() {
           <div className="deploy-status-body">
             <p className="deploy-status-title">「{deployedTemplate.name}」已部署到集群</p>
             <p className="deploy-status-meta">
-              模板 {deployedTemplate.version} · 分类 {deployedTemplate.category} · 可在集群中查看运行状态
+              模板 {deployedTemplate.version} · 分类 {categoryLabel(deployedTemplate.category)} · 可在集群中查看运行状态
             </p>
           </div>
           <button className="banner-close" onClick={() => setDeployedTemplate(null)} aria-label="关闭">✕</button>
@@ -270,7 +268,7 @@ export function MarketplacePage() {
                 <tr key={dep.id}>
                   <td>{dep.name}</td>
                   <td>{dep.version}</td>
-                  <td>{dep.category}</td>
+                  <td>{categoryLabel(dep.category)}</td>
                   <td>
                     <span className={`status-badge status-${dep.status}`} aria-label={dep.status === 'running' ? '运行中' : '已停止'}>
                       <span aria-hidden="true">{dep.status === 'running' ? '●' : '○'}</span>
@@ -372,7 +370,7 @@ export function MarketplacePage() {
             <dl className="confirm-detail">
               <dt>模板</dt><dd>{confirming.name} v{confirming.version}</dd>
               <dt>作者</dt><dd>{confirming.author}</dd>
-              <dt>分类</dt><dd>{confirming.category}</dd>
+              <dt>分类</dt><dd>{categoryLabel(confirming.category)}</dd>
             </dl>
             <div className="confirm-actions">
               <button className="btn-secondary" onClick={deployDialog.closeAndRestore} disabled={deploying !== null}>取消</button>
@@ -406,7 +404,7 @@ export function MarketplacePage() {
             </p>
             <dl className="confirm-detail">
               <dt>Agent</dt><dd>{confirmingStop.name} v{confirmingStop.version}</dd>
-              <dt>分类</dt><dd>{confirmingStop.category}</dd>
+              <dt>分类</dt><dd>{categoryLabel(confirmingStop.category)}</dd>
               <dt>部署时间</dt><dd>{confirmingStop.deployedAt ? new Date(confirmingStop.deployedAt).toLocaleString() : '-'}</dd>
             </dl>
             <div className="confirm-actions">
