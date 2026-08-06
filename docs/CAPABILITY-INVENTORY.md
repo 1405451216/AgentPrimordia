@@ -50,7 +50,7 @@
 | pool（dispatcher） | 仍固定 worker，未接入 `internal/concurrency` 动态协程池 | `pool/dispatcher.go` |
 | otel | ✅ 已接线（2026-08-03）：`WithTelemetry(tp)` 把 Tracer+Metrics 注入 Agent，loop → OTLP 导出闭环 | `pkg/otel.go` |
 | eval | 框架完整但 CI 只跑单元自测，真实数据集仅 5 条 smoke | `bench/eval-ci/run_eval.sh:25`、`eval_cases.json` |
-| studio | 四面板全 demo 数据，真实引擎注入点未接线 | `studio/web/README.md:26`、`internal/studio/demo.go:41` |
+| studio | 面板完整（概览/混沌/集群/学习/市场/帮助，40/40 设计评分），真实引擎注入点仍未接线（demo 数据） | `docs/STUDIO.md`、`internal/studio/demo.go:41` |
 | marketplace | 内存 map 注册表，无远程协议/分发 | `internal/agent/marketplace/template.go:145` |
 | 跨语言（Go 侧） | 规范 15 套件/45 用例，Go 侧仅覆盖 4 个测试函数 | `pkg/cross_language_test.go` |
 

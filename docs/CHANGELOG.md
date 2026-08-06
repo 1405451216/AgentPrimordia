@@ -4,6 +4,20 @@
 
 ## [Unreleased]
 
+### Added — Studio 一键启动脚本与八轮设计迭代（满分 40/40）
+
+- **一键启动**：新增 `scripts/dev-studio.ps1`（Windows）与 `scripts/dev-studio.sh`（macOS/Linux），
+  一条命令同时启动后端（:8090）与前端（:5173）、等待就绪、自动打开浏览器、Ctrl+C 一起停止；
+  首次运行自动 `npm install`；`.sh` 支持 `-b/-f` 自定义端口
+- **Studio Web 八轮设计批判迭代，Nielsen 启发式评分 18 → 40/40**：
+  - **加固**：破坏性操作（进程终止/中止/停止）两步确认 + 影响范围警告；错误面板/重试/陈旧提示/骨架屏；`res.ok` 校验不再静默吞错
+  - **身份**：SVG 线性图标集替代 emoji；`--shard-*` 分片色令牌；Overview 原初体主视觉（哈希环分片节点 + 真实能力平均分脉搏动画）；导航/页面标题中文化（PageTitle 中文主标题 + 英文副行）
+  - **一致性**：`useConfirmDialog` 统一全部模态（初始聚焦/Esc/Tab 陷阱/焦点恢复含脱节点回退）；`useTableSort` 排序持久化到 URL；状态徽章字形+文字+颜色三重编码
+  - **效率**：`Shift+/` 快捷键面板、`/` 聚焦搜索、`g 1-5` 跳转；搜索防抖 + AbortController 防竞态；筛选/排序 URL 可分享
+  - **功能**：概览页（/）聚合集群/蒸馏/实验；实验报告下钻；部署治理（已部署 Agent 停止/重启）；能力进化趋势线（Sparkline）；分片比例真实渲染；混沌实验历史 5s 轮询；全局 `prefers-reduced-motion`
+  - **帮助**：站内 `/help` 样式化帮助页；空状态引导；稳态/假设列头 tooltip
+- 测试覆盖：Studio 前端 30 例（含中止/停止确认、排序、告警横幅、趋势线、快捷键、搜索竞态）+ Go handler 测试
+
 ### Added — v4.0-5 发布纪律固化（tag 自动化 CI）
 
 - 新增 `.github/workflows/tag-release.yml`：合并到 main 后读取 `pkg/agent.go` 的 `const Version`，
