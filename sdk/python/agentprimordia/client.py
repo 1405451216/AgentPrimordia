@@ -35,23 +35,23 @@ class AgentPrimordia:
             raise TimeoutError()
 
     def create_agent(self, name: str, **config_kw) -> Agent:
-        """������ Agent��"""
+        """创建新的 Agent。"""
         resp = self._request("POST", "/api/playground/agent", {"name": name, **config_kw})
         cfg = AgentConfig(**config_kw)
         return Agent(id=resp["id"], name=name, config=cfg)
 
     def list_agents(self) -> list[Agent]:
-        """�г����� Agent��"""
+        """列出所有 Agent。"""
         resp = self._request("GET", "/api/playground/agents")
         return [Agent(id=a["id"], name=a.get("name", ""), config=AgentConfig()) for a in resp.get("agents", [])]
 
     def send_message(self, agent_id: str, message: str) -> str:
-        """�� Agent ������Ϣ����ȡ�ظ���"""
+        """向 Agent 发送消息并获取回复。"""
         resp = self._request("POST", f"/api/playground/agent/{agent_id}/chat", {"message": message})
         return resp.get("response", "")
 
     def stream_chat(self, agent_id: str, message: str):
-        """��ʽ���죨�� chunk yield����"""
+        """流式对话（逐 chunk yield）。"""
         url = f"{self.base_url}/api/playground/agent/{agent_id}/stream"
         req = urllib.request.Request(url, method="POST")
         for k, v in self._headers.items():
@@ -65,23 +65,23 @@ class AgentPrimordia:
                     yield line[6:]
 
     def get_stats(self, agent_id: str) -> dict:
-        """��ȡ Agent ͳ����Ϣ��"""
+        """获取 Agent 统计信息。"""
         return self._request("GET", f"/api/playground/agent/{agent_id}/stats")
 
     def delete_agent(self, agent_id: str):
-        """ɾ�� Agent��"""
+        """删除 Agent。"""
         self._request("DELETE", f"/api/playground/agent/{agent_id}")
 
-    # Tool ����
+    # Tool 相关
     def register_tool(self, name: str, description: str, parameters: dict | None = None) -> Tool:
-        """ע��ȫ�ֹ��ߡ�"""
+        """注册全局工具。"""
         tool = Tool(name=name, description=description, parameters=parameters or {})
         self._request("POST", "/api/tools", tool.to_dict())
         return tool
 
-    # Memory ����
+    # Memory 相关
     def query_memory(self, agent_id: str, query: str, top_k: int = 5) -> list[dict]:
-        """��ѯ Agent ���䡣"""
+        """查询 Agent 记忆。"""
         resp = self._request("POST", f"/api/agent/{agent_id}/memory/query", {"query": query, "top_k": top_k})
         return resp.get("results", [])
 

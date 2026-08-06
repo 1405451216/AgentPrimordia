@@ -30,3 +30,14 @@ impl From<reqwest::Error> for AgentPrimordiaError {
         } else { Self::Request(e.to_string()) }
     }
 }
+
+impl From<reqwest::Response> for AgentPrimordiaError {
+    fn from(resp: reqwest::Response) -> Self {
+        let status = resp.status();
+        match status.as_u16() {
+            401 => Self::Authentication("HTTP 401 Unauthorized".to_string()),
+            429 => Self::RateLimit("HTTP 429 Too Many Requests".to_string()),
+            code => Self::APIError { message: format!("HTTP request failed with status {}", status), status: Some(code) },
+        }
+    }
+}
