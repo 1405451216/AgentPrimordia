@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1460" viewBox="0 0 2400 1460">
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1460" viewBox="0 0 1632 992">
 <defs>
 <radialGradient id="bgR" cx="50%" cy="25%" r="75%"><stop offset="0%" stop-color="#ffffff"/><stop offset="55%" stop-color="#f8fafc"/><stop offset="100%" stop-color="#f1f5f9"/></radialGradient>
 <linearGradient id="g_core" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00d4ff" stop-opacity="0.22"/><stop offset="100%" stop-color="#00d4ff" stop-opacity="0.05"/></linearGradient>
@@ -26,6 +26,7 @@
 <marker id="a_n" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L9 5 L0 9z" fill="#fb923c" opacity="0.65"/></marker>
 <pattern id="gp" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M42 0L0 0 0 42" fill="none" stroke="#cbd5e1" stroke-width="0.4" opacity="0.35"/></pattern>
 </defs>
+<g transform="scale(0.68)">
 <rect width="2400" height="1460" fill="url(#bgR)"/>
 <rect width="2400" height="1460" fill="url(#gp)"/>
 <text x="1200" y="52" text-anchor="middle" fill="#0f172a" font-family="system-ui,sans-serif" font-size="38" font-weight="200">AGENTPRIMORDIA</text>
@@ -177,4 +178,5 @@
 <rect x="1610" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="1785.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">Eval / Bench</text>
 <rect x="1990" y="1358" width="350" height="38" rx="19.0" fill="#94a3b8" fill-opacity="0.08" stroke="#94a3b8" stroke-opacity="0.35" stroke-width="0.8"/><text x="2165.0" y="1377.0" text-anchor="middle" dominant-baseline="central" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="11.5" opacity="0.8">Registry · Marketplace</text>
 <text x="1200" y="1450" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" opacity="0.7">Go: agentprimordia/ · TS: sdk/typescript/ · 双语言功能对等，34 模块全覆盖</text>
+</g>
 </svg>

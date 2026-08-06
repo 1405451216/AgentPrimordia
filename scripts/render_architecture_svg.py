@@ -10,6 +10,9 @@ import subprocess
 import sys
 
 W, H = 2400, 1460
+# 内容缩放因子：<1 时整体放大（字体更大、布局等比），viewBox 相应缩小
+SCALE = 0.68
+RW, RH = int(W * SCALE), int(H * SCALE)
 BG_TOP, BG_MID, BG_BOT = "#ffffff", "#f8fafc", "#f1f5f9"
 
 # 分区配色（霓虹色系）
@@ -87,7 +90,7 @@ def card(x, y, w, h, color, title_text, sub_text, fs_t=15, fs_s=10):
 
 # ============ 生成 SVG ============
 svg = []
-svg.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">')
+svg.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {RW} {RH}">')
 svg.append("<defs>")
 svg.append(f'<radialGradient id="bgR" cx="50%" cy="25%" r="75%"><stop offset="0%" stop-color="{BG_TOP}"/>'
            f'<stop offset="55%" stop-color="{BG_MID}"/><stop offset="100%" stop-color="{BG_BOT}"/></radialGradient>')
@@ -113,6 +116,8 @@ for name, col in [("c", C["core"]), ("m", C["llm"]), ("a", C["mem"]), ("t", C["t
 svg.append('<pattern id="gp" width="42" height="42" patternUnits="userSpaceOnUse">'
            '<path d="M42 0L0 0 0 42" fill="none" stroke="#cbd5e1" stroke-width="0.4" opacity="0.35"/></pattern>')
 svg.append("</defs>")
+
+svg.append(f'<g transform="scale({SCALE})">')
 
 svg.append(f'<rect width="{W}" height="{H}" fill="url(#bgR)"/>')
 svg.append(f'<rect width="{W}" height="{H}" fill="url(#gp)"/>')
@@ -254,6 +259,7 @@ for t in infra:
 legend_y = 1450
 svg.append(sub(1200, legend_y, "Go: agentprimordia/ · TS: sdk/typescript/ · 双语言功能对等，34 模块全覆盖", fs=10, color="#64748b"))
 
+svg.append("</g>")
 svg.append("</svg>")
 
 svg_text = "\n".join(svg)
