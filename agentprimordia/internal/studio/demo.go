@@ -54,6 +54,24 @@ func (d *demoChaos) CreateExperiment(_ context.Context, req CreateExperimentRequ
 	return nil
 }
 
+// AbortExperiment 中止匹配名称且处于 running/pending 的实验。
+// demo 实现下实验立即完成，故返回 NotFound 语义的错误提示「无运行中实验」。
+func (d *demoChaos) AbortExperiment(_ context.Context, name string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.experiments {
+		if d.experiments[i].Experiment.Name == name {
+			st := d.experiments[i].Experiment.Status
+			if st == "running" || st == "pending" {
+				d.experiments[i].Experiment.Status = "aborted"
+				return nil
+			}
+			return fmt.Errorf("实验 %q 当前状态为 %s，无法中止", name, st)
+		}
+	}
+	return fmt.Errorf("实验 %q 不存在", name)
+}
+
 // ===== demoCluster =====
 
 type demoCluster struct{}
@@ -69,6 +87,7 @@ func (d *demoCluster) Status(_ context.Context) (*ClusterStatus, error) {
 			Status:       "online",
 			Capabilities: []string{"react-loop", "tools", "memory", "webgpu"},
 			LastSeen:     time.Now().Format(time.RFC3339),
+			Shards:       8, // 8 个分片全部由该节点持有（单节点 demo）
 		}},
 		LeaderID:     "node-demo-1",
 		HashRingSize: 128,
@@ -91,11 +110,35 @@ func (d *demoLearning) Stats(_ context.Context) (*LearningStats, error) {
 }
 
 func (d *demoLearning) Capabilities(_ context.Context) ([]Capability, error) {
-	return nil, nil
+	return []Capability{
+		{Name: "代码审查", Description: "PR 代码风格与缺陷审查", Score: 0.63, TimesTested: 24, TimesPassed: 19},
+		{Name: "数据分析", Description: "CSV/SQL 数据分析与可视化", Score: 0.64, TimesTested: 18, TimesPassed: 14},
+		{Name: "对话理解", Description: "多轮对话意图理解", Score: 0.715, TimesTested: 30, TimesPassed: 25},
+	}, nil
 }
 
 func (d *demoLearning) PipelineStats(_ context.Context) (*PipelineStats, error) {
 	return &PipelineStats{LastProcessTime: time.Now().Format(time.RFC3339)}, nil
+}
+
+func (d *demoLearning) CapabilityHistory(_ context.Context) ([]CapabilityHistory, error) {
+	// 演示能力进化趋势：三个能力各 8 个历史时间点，缓慢上升
+	now := time.Now()
+	names := []string{"代码审查", "数据分析", "对话理解"}
+	base := []float64{0.42, 0.50, 0.61}
+	step := []float64{0.03, 0.02, 0.015}
+	out := make([]CapabilityHistory, 0, len(names))
+	for i, name := range names {
+		pts := make([]CapabilityHistoryPoint, 0, 8)
+		for j := 0; j < 8; j++ {
+			pts = append(pts, CapabilityHistoryPoint{
+				Score:      base[i] + step[i]*float64(j),
+				RecordedAt: now.Add(-time.Duration(8-j) * 24 * time.Hour).Format(time.RFC3339),
+			})
+		}
+		out = append(out, CapabilityHistory{Name: name, History: pts})
+	}
+	return out, nil
 }
 
 // ===== demoMarketplace =====
@@ -137,9 +180,15 @@ var demoTemplates = []AgentTemplate{
 	},
 }
 
-type demoMarketplace struct{}
+type demoMarketplace struct {
+	mu          sync.Mutex
+	deployments []Deployment
+	nextID      int
+}
 
-func newDemoMarketplace() *demoMarketplace { return &demoMarketplace{} }
+func newDemoMarketplace() *demoMarketplace {
+	return &demoMarketplace{nextID: 1}
+}
 
 func (d *demoMarketplace) SearchTemplates(_ context.Context, query, category string) ([]AgentTemplate, error) {
 	out := make([]AgentTemplate, 0, len(demoTemplates))
@@ -158,11 +207,56 @@ func (d *demoMarketplace) SearchTemplates(_ context.Context, query, category str
 	return out, nil
 }
 
-func (d *demoMarketplace) Deploy(_ context.Context, templateID string) error {
+func (d *demoMarketplace) Deploy(_ context.Context, templateID string) (Deployment, error) {
 	for _, t := range demoTemplates {
 		if t.ID == templateID {
+			d.mu.Lock()
+			defer d.mu.Unlock()
+			dep := Deployment{
+				ID:         fmt.Sprintf("dep-%d", d.nextID),
+				TemplateID: t.ID,
+				Name:       t.Name,
+				Version:    t.Version,
+				Category:   t.Category,
+				Status:     "running",
+				DeployedAt: time.Now().Format(time.RFC3339),
+			}
+			d.nextID++
+			d.deployments = append(d.deployments, dep)
+			return dep, nil
+		}
+	}
+	return Deployment{}, fmt.Errorf("模板 %q 不存在", templateID)
+}
+
+func (d *demoMarketplace) ListDeployments(_ context.Context) ([]Deployment, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	out := make([]Deployment, len(d.deployments))
+	copy(out, d.deployments)
+	return out, nil
+}
+
+func (d *demoMarketplace) StopDeployment(_ context.Context, id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.deployments {
+		if d.deployments[i].ID == id {
+			d.deployments[i].Status = "stopped"
 			return nil
 		}
 	}
-	return fmt.Errorf("模板 %q 不存在", templateID)
+	return fmt.Errorf("部署 %q 不存在", id)
+}
+
+func (d *demoMarketplace) StartDeployment(_ context.Context, id string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for i := range d.deployments {
+		if d.deployments[i].ID == id {
+			d.deployments[i].Status = "running"
+			return nil
+		}
+	}
+	return fmt.Errorf("部署 %q 不存在", id)
 }

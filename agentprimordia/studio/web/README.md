@@ -6,10 +6,24 @@
 
 | 路由 | 页面 | 说明 |
 |------|------|------|
-| `/` | Chaos Lab | 混沌实验创建 / 运行 / 报告 |
-| `/cluster` | Cluster Dashboard | 节点拓扑 + 分片视图 + 领导者状态 |
-| `/learning` | Learning Monitor | 知识蒸馏统计 + 能力进化趋势 |
-| `/marketplace` | Agent Marketplace | 模板浏览 / 搜索 / 一键部署 |
+| `/` | 概览 | 原初体主视觉 + 集群 / 蒸馏 / 实验聚合 |
+| `/chaos` | 混沌实验 | 混沌实验创建 / 运行 / 报告（破坏性操作两步确认） |
+| `/cluster` | 集群 | 节点拓扑 + 分片分布 + 领导者状态 + 降级告警 |
+| `/learning` | 学习监控 | 知识蒸馏统计 + 能力进化趋势线 |
+| `/marketplace` | Agent 市场 | 模板浏览 / 搜索 / 部署，已部署 Agent 治理 |
+| `/help` | 帮助文档 | 面板、快捷键、混沌语义与数据说明 |
+
+## 一键启动
+
+```bash
+# Windows（PowerShell）
+powershell -ExecutionPolicy Bypass -File scripts\dev-studio.ps1
+
+# macOS / Linux
+./scripts/dev-studio.sh
+```
+
+脚本会同时启动后端（:8090）与前端（:5173），Ctrl+C 一起停止，并自动打开浏览器。
 
 ## 开发
 

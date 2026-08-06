@@ -13,15 +13,20 @@ func (h *StudioHandler) registerRoutes() {
 	// Chaos Lab
 	h.mux.HandleFunc("GET /api/v1/chaos/experiments", h.listExperiments)
 	h.mux.HandleFunc("POST /api/v1/chaos/experiments", h.createExperiment)
+	h.mux.HandleFunc("POST /api/v1/chaos/experiments/abort", h.abortExperiment)
 	// Cluster Dashboard
 	h.mux.HandleFunc("GET /api/v1/cluster/status", h.clusterStatus)
 	// Learning Monitor
 	h.mux.HandleFunc("GET /api/v1/learning/stats", h.learningStats)
 	h.mux.HandleFunc("GET /api/v1/learning/capabilities", h.learningCapabilities)
+	h.mux.HandleFunc("GET /api/v1/learning/capability-history", h.learningCapabilityHistory)
 	h.mux.HandleFunc("GET /api/v1/learning/pipeline/stats", h.learningPipelineStats)
 	// Marketplace
 	h.mux.HandleFunc("GET /api/v1/marketplace/templates", h.marketplaceTemplates)
 	h.mux.HandleFunc("POST /api/v1/marketplace/deploy", h.marketplaceDeploy)
+	h.mux.HandleFunc("GET /api/v1/marketplace/deployments", h.marketplaceDeployments)
+	h.mux.HandleFunc("POST /api/v1/marketplace/deployments/{id}/stop", h.marketplaceStopDeployment)
+	h.mux.HandleFunc("POST /api/v1/marketplace/deployments/{id}/start", h.marketplaceStartDeployment)
 }
 
 // ===== Chaos Lab =====
@@ -57,6 +62,30 @@ func (h *StudioHandler) createExperiment(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "created"})
+}
+
+// AbortRequest POST /api/v1/chaos/experiments/abort 请求体。
+type AbortRequest struct {
+	Name string `json:"name"`
+}
+
+func (h *StudioHandler) abortExperiment(w http.ResponseWriter, r *http.Request) {
+	var req AbortRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "请求体解析失败: " + err.Error()})
+		return
+	}
+	if req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "实验名称不能为空"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := h.chaos.AbortExperiment(ctx, req.Name); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "aborted", "name": req.Name})
 }
 
 // ===== Cluster Dashboard =====
@@ -110,6 +139,20 @@ func (h *StudioHandler) learningPipelineStats(w http.ResponseWriter, r *http.Req
 	writeJSON(w, http.StatusOK, stats)
 }
 
+func (h *StudioHandler) learningCapabilityHistory(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	history, err := h.learning.CapabilityHistory(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if history == nil {
+		history = []CapabilityHistory{}
+	}
+	writeJSON(w, http.StatusOK, history)
+}
+
 // ===== Marketplace =====
 
 func (h *StudioHandler) marketplaceTemplates(w http.ResponseWriter, r *http.Request) {
@@ -140,11 +183,48 @@ func (h *StudioHandler) marketplaceDeploy(w http.ResponseWriter, r *http.Request
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	if err := h.marketplace.Deploy(ctx, req.TemplateID); err != nil {
+	dep, err := h.marketplace.Deploy(ctx, req.TemplateID)
+	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "deployed", "template_id": req.TemplateID})
+	writeJSON(w, http.StatusOK, dep)
+}
+
+func (h *StudioHandler) marketplaceDeployments(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	deps, err := h.marketplace.ListDeployments(ctx)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	if deps == nil {
+		deps = []Deployment{}
+	}
+	writeJSON(w, http.StatusOK, deps)
+}
+
+func (h *StudioHandler) marketplaceStopDeployment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := h.marketplace.StopDeployment(ctx, id); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "stopped", "id": id})
+}
+
+func (h *StudioHandler) marketplaceStartDeployment(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	if err := h.marketplace.StartDeployment(ctx, id); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "running", "id": id})
 }
 
 // ===== 工具函数 =====

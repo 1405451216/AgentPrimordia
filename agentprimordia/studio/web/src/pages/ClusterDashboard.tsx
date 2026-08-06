@@ -2,8 +2,18 @@
  * Phase 3.4: Studio Web UI — Cluster Dashboard
  *
  * 节点拓扑 + 分片视图 + 领导者状态
+ *
+ * 加固点：
+ *  - 轮询失败时保留旧数据，仅显示内联错误提示
+ *  - 「上次刷新」陈旧提示
  */
 import { useState, useEffect } from 'react';
+import { ErrorPanel, Staleness } from '../Status';
+import { nodeStatusLabel, nodeRoleLabel, nodeStatusGlyph } from '../labels';
+import { IconLeader } from '../icons';
+import { useTableSort, SortableTh } from '../useTableSort';
+import { FlashValue } from '../useValueFlash';
+import { PageTitle } from '../PageTitle';
 
 interface NodeInfo {
   id: string;
@@ -12,6 +22,7 @@ interface NodeInfo {
   status: 'online' | 'offline' | 'leaving';
   capabilities: string[];
   lastSeen: string;
+  shards?: number;
 }
 
 interface ClusterState {
@@ -25,6 +36,7 @@ export function ClusterDashboard() {
   const [cluster, setCluster] = useState<ClusterState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   const fetchCluster = async () => {
     setRefreshing(true);
@@ -34,7 +46,9 @@ export function ClusterDashboard() {
       const data = await res.json();
       setCluster(data);
       setError(null);
+      setLastUpdatedAt(Date.now());
     } catch (e) {
+      // 保留旧数据，仅记录错误供顶部提示
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setRefreshing(false);
@@ -47,44 +61,80 @@ export function ClusterDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  if (error) {
+  // 本地表格排序（hook 必须在条件 return 之前，遵守 hooks 规则）
+  const nodes = cluster?.nodes ?? [];
+  const { sortedRows, sort, toggleSort } = useTableSort(nodes, {
+    id: (n) => n.id,
+    address: (n) => n.address,
+    role: (n) => n.role,
+    status: (n) => n.status,
+    lastSeen: (n) => n.lastSeen ?? '',
+  });
+
+  // 首次加载失败且无数据 → 整页错误
+  if (!cluster) {
+    if (error) {
+      return (
+        <div className="panel error">
+          <PageTitle title="集群" subtitle="Cluster Dashboard" />
+          <ErrorPanel message={`无法连接集群: ${error}`} onRetry={fetchCluster} />
+        </div>
+      );
+    }
     return (
-      <div className="panel error">
-        <h2>Cluster Dashboard</h2>
-        <p className="error-msg">无法连接集群: {error}</p>
-        <button onClick={fetchCluster}>重试</button>
+      <div className="panel cluster-dashboard">
+        <PageTitle title="集群" subtitle="Cluster Dashboard" />
+        <div className="skeleton-list" aria-busy="true">
+          <div className="skeleton-row" />
+          <div className="skeleton-row" />
+          <div className="skeleton-row" />
+        </div>
       </div>
     );
   }
 
-  if (!cluster) {
-    return <div className="panel loading">加载集群状态...</div>;
-  }
-
   const leader = cluster.nodes.find((n) => n.id === cluster.leaderId);
   const onlineNodes = cluster.nodes.filter((n) => n.status === 'online');
+  const degradedNodes = cluster.nodes.filter((n) => n.status === 'offline' || n.status === 'leaving');
 
   return (
     <div className="panel cluster-dashboard">
-      <h2>Cluster Dashboard</h2>
+      <PageTitle title="集群" subtitle="Cluster Dashboard" />
+
+      {/* 轮询失败提示：保留旧数据，仅提示刷新失败 */}
+      {error && (
+        <ErrorPanel message={`刷新失败：${error}（显示上次数据）`} onRetry={fetchCluster} />
+      )}
+
+      {/* 节点降级告警：主动打断 Sam 的扫描 */}
+      {degradedNodes.length > 0 && (
+        <div className="alert-banner alert-danger" role="alert">
+          <span className="alert-glyph" aria-hidden="true">⚠</span>
+          <span>
+            {degradedNodes.length} 个节点状态异常（
+            {degradedNodes.map((n) => n.id).join('、')}
+            ），请检查节点进程与网络。
+          </span>
+        </div>
+      )}
 
       {/* 概览 */}
       <section className="overview">
         <div className="stat">
           <span className="label">节点数</span>
-          <span className="value">{onlineNodes.length}/{cluster.nodes.length}</span>
+          <FlashValue value={`${onlineNodes.length}/${cluster.nodes.length}`} />
         </div>
         <div className="stat">
           <span className="label">领导者</span>
-          <span className="value">{leader?.id ?? '选举中...'}</span>
+          <FlashValue value={leader?.id ?? '选举中...'} />
         </div>
         <div className="stat">
           <span className="label">哈希环</span>
-          <span className="value">{cluster.hashRingSize} vnodes</span>
+          <FlashValue value={`${cluster.hashRingSize} 个虚拟节点`} />
         </div>
         <div className="stat">
           <span className="label">分片数</span>
-          <span className="value">{cluster.totalShards}</span>
+          <FlashValue value={cluster.totalShards} />
         </div>
       </section>
 
@@ -94,26 +144,36 @@ export function ClusterDashboard() {
         <table>
           <thead>
             <tr>
-              <th>节点 ID</th>
-              <th>地址</th>
-              <th>角色</th>
-              <th>状态</th>
+              <SortableTh sortKey="id" sort={sort} onToggle={toggleSort}>节点 ID</SortableTh>
+              <SortableTh sortKey="address" sort={sort} onToggle={toggleSort}>地址</SortableTh>
+              <SortableTh sortKey="role" sort={sort} onToggle={toggleSort}>角色</SortableTh>
+              <SortableTh sortKey="status" sort={sort} onToggle={toggleSort}>状态</SortableTh>
               <th>能力</th>
-              <th>最后心跳</th>
+              <SortableTh sortKey="lastSeen" sort={sort} onToggle={toggleSort}>最后心跳</SortableTh>
             </tr>
           </thead>
           <tbody>
-            {cluster.nodes.map((node) => (
+            {sortedRows.map((node) => (
               <tr key={node.id} className={`node-${node.status}`}>
                 <td className="node-id">
-                  {node.id === cluster.leaderId && <span className="badge leader">👑</span>}
+                  {node.id === cluster.leaderId && (
+                    <span className="badge leader" aria-label="领导者"><IconLeader size={12} /></span>
+                  )}
                   {node.id}
                 </td>
                 <td>{node.address}</td>
-                <td><span className={`role-${node.role}`}>{node.role}</span></td>
-                <td><span className={`status-${node.status}`}>{node.status}</span></td>
+                <td><span className={`role-${node.role}`}>{nodeRoleLabel(node.role)}</span></td>
+                <td>
+                  <span
+                    className={`status-badge status-${node.status}`}
+                    aria-label={nodeStatusLabel(node.status)}
+                  >
+                    <span aria-hidden="true">{nodeStatusGlyph(node.status)}</span>
+                    {nodeStatusLabel(node.status)}
+                  </span>
+                </td>
                 <td>{node.capabilities?.join(', ') || '-'}</td>
-                <td>{new Date(node.lastSeen).toLocaleTimeString()}</td>
+                <td>{node.lastSeen ? new Date(node.lastSeen).toLocaleTimeString() : '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -122,22 +182,31 @@ export function ClusterDashboard() {
 
       {/* 分片视图 */}
       <section className="shard-view">
-        <h3>分片分布</h3>
-        <div className="shard-bar">
-          {onlineNodes.map((node, i) => (
-            <div
-              key={node.id}
-              className="shard-segment"
-              style={{ flex: 1, backgroundColor: `hsl(${i * 60}, 70%, 60%)` }}
-              title={`${node.id}: ${Math.round(100 / onlineNodes.length)}%`}
-            >
-              {node.id}
-            </div>
-          ))}
-        </div>
+        <h3>分片分布（共 {cluster.totalShards} 片）</h3>
+        {onlineNodes.length === 0 ? (
+          <p className="empty">暂无在线节点</p>
+        ) : (
+          <div className="shard-bar" role="img" aria-label="分片分布">
+            {onlineNodes.map((node, i) => {
+              const shards = node.shards ?? 0;
+              const pct = shards > 0 ? Math.round((shards / cluster.totalShards) * 1000) / 10 : 0;
+              return (
+                <div
+                  key={node.id}
+                  className="shard-segment"
+                  style={{ flex: `${shards} ${shards} auto`, backgroundColor: `var(--shard-${i % 6})` }}
+                  title={`${node.id}: ${pct}%（${shards}/${cluster.totalShards} 片）`}
+                >
+                  {node.id}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      <footer>
+      <footer className="dashboard-footer">
+        <Staleness lastUpdatedAt={lastUpdatedAt} />
         <button onClick={fetchCluster} disabled={refreshing}>
           {refreshing ? '刷新中...' : '刷新'}
         </button>
