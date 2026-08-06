@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 W, H = 2400, 1460
-BG_TOP, BG_MID, BG_BOT = "#0b1220", "#0a0f1c", "#060a14"
+BG_TOP, BG_MID, BG_BOT = "#ffffff", "#f8fafc", "#f1f5f9"
 
 # 分区配色（霓虹色系）
 C = {
@@ -56,7 +56,7 @@ def chip(x, y, w, h, color, text, fs=12, sw=0.8, opacity=0.12, txt_op=0.8):
             f'<text x="{tx}" y="{ty}" text-anchor="middle" dominant-baseline="central" fill="{color}" '
             f'font-family="system-ui,sans-serif" font-size="{fs}" opacity="{txt_op}">{text}</text>')
 
-def title(x, y, text, fs=15, weight=600, color="#e2e8f0", anchor="middle"):
+def title(x, y, text, fs=15, weight=600, color="#0f172a", anchor="middle"):
     return (f'<text x="{x}" y="{y}" text-anchor="{anchor}" fill="{color}" '
             f'font-family="system-ui,sans-serif" font-size="{fs}" font-weight="{weight}">{text}</text>')
 
@@ -82,7 +82,7 @@ def card(x, y, w, h, color, title_text, sub_text, fs_t=15, fs_s=10):
     cx, cy = x + w / 2, y + h / 2
     return (f'<rect x="{x-6}" y="{y-6}" width="{w+12}" height="{h+12}" rx="16" fill="{color}" opacity="0.05" filter="url(#gs)"/>'
             + box(x, y, w, h, color, color, rx=12, sw=1.2, fill_op=0.06)
-            + title(cx, y + 40, title_text, fs=fs_t, color="#f1f5f9")
+            + title(cx, y + 40, title_text, fs=fs_t, color="#0f172a")
             + sub(cx, y + 62, sub_text, fs=fs_s, color=color))
 
 # ============ 生成 SVG ============
@@ -111,16 +111,16 @@ for name, col in [("c", C["core"]), ("m", C["llm"]), ("a", C["mem"]), ("t", C["t
     svg.append(f'<marker id="a_{name}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">'
                f'<path d="M0 1 L9 5 L0 9z" fill="{col}" opacity="0.65"/></marker>')
 svg.append('<pattern id="gp" width="42" height="42" patternUnits="userSpaceOnUse">'
-           '<path d="M42 0L0 0 0 42" fill="none" stroke="#16213a" stroke-width="0.4" opacity="0.4"/></pattern>')
+           '<path d="M42 0L0 0 0 42" fill="none" stroke="#cbd5e1" stroke-width="0.4" opacity="0.35"/></pattern>')
 svg.append("</defs>")
 
 svg.append(f'<rect width="{W}" height="{H}" fill="url(#bgR)"/>')
 svg.append(f'<rect width="{W}" height="{H}" fill="url(#gp)"/>')
 
 # ---------- 标题区 ----------
-svg.append(title(1200, 52, "AGENTPRIMORDIA", fs=38, weight=200, color="#f1f5f9"))
-svg.append('<text x="1200" y="84" text-anchor="middle" fill="#475569" font-family="system-ui,sans-serif" '
-           'font-size="13" letter-spacing="5" opacity="0.7">UNIVERSAL AI AGENT FRAMEWORK · GO + TYPESCRIPT DUAL SDK</text>')
+svg.append(title(1200, 52, "AGENTPRIMORDIA", fs=38, weight=200, color="#0f172a"))
+svg.append('<text x="1200" y="84" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" '
+           'font-size="13" letter-spacing="5" opacity="0.8">UNIVERSAL AI AGENT FRAMEWORK · GO + TYPESCRIPT DUAL SDK</text>')
 svg.append('<line x1="860" y1="100" x2="1540" y2="100" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>')
 svg.append(sub(1200, 122, "v4.0.0  ·  34 Modules Parity  ·  Apache-2.0  ·  Zero CGO", fs=11, color="#00d4ff"))
 
@@ -132,7 +132,7 @@ entries = [("Your App", "Go / TS 集成"), ("CLI · ap", "init / run / debug"), 
 ex = 90
 for name, desc in entries:
     svg.append(box(ex, 168, 420, 64, "#94a3b8", "#94a3b8", rx=12, sw=0.9, fill_op=0.05))
-    svg.append(title(ex + 210, 193, name, fs=14, color="#e2e8f0"))
+    svg.append(title(ex + 210, 193, name, fs=14, color="#0f172a"))
     svg.append(sub(ex + 210, 215, desc, fs=9.5, color="#64748b"))
     ex += 455
 svg.append(arrow(1200, 250, 1200, 292, C["infra"], dash="4 4", marker="a_s", opacity=0.5))
@@ -142,12 +142,12 @@ p2 = panel(60, 300, 2280, 100, "②  PUBLIC API", C["cfg"], label_x=80)
 svg.append(p2)
 # Go pkg
 svg.append(box(90, 318, 1080, 64, "#84cc16", "#84cc16", rx=12, sw=0.9, fill_op=0.05))
-svg.append(title(340, 343, "Go  ·  pkg/", fs=14, color="#f1f5f9"))
+svg.append(title(340, 343, "Go  ·  pkg/", fs=14, color="#0f172a"))
 svg.append(sub(340, 367, "ap.NewAgent() · Chain API · Type Aliases", fs=9.5, color="#84cc16"))
 svg.append(chip(90, 334, 150, 32, "#84cc16", "public API", fs=11))
 # TS SDK
 svg.append(box(1230, 318, 1080, 64, "#84cc16", "#84cc16", rx=12, sw=0.9, fill_op=0.05))
-svg.append(title(1480, 343, "TypeScript  ·  @agentprimordia/sdk", fs=14, color="#f1f5f9"))
+svg.append(title(1480, 343, "TypeScript  ·  @agentprimordia/sdk", fs=14, color="#0f172a"))
 svg.append(sub(1480, 367, "34 模块 Go Parity · npm install @agentprimordia/sdk", fs=9.5, color="#84cc16"))
 svg.append(chip(1230, 334, 150, 32, "#84cc16", "npm SDK", fs=11))
 svg.append(arrow(1200, 400, 1200, 442, C["cfg"], dash="4 4", marker="a_l", opacity=0.5))
@@ -157,14 +157,14 @@ p3 = panel(60, 450, 2280, 210, "③  CORE ENGINE", C["core"], label_x=80)
 svg.append(p3)
 # 引擎大框
 svg.append(f'<rect x="170" y="470" width="2060" height="172" rx="20" fill="url(#g_core)" stroke="{C["core"]}" stroke-opacity="0.55" stroke-width="1.6"/>')
-svg.append(title(1200, 505, "ReAct Loop Engine  ·  Go + TS 双实现", fs=20, weight=600, color="#f1f5f9"))
+svg.append(title(1200, 505, "ReAct Loop Engine  ·  Go + TS 双实现", fs=20, weight=600, color="#0f172a"))
 svg.append(sub(1200, 528, "Reason → Act → Observe · 20+ Lifecycle Hooks · Planning · Reflection · Tool Learning", fs=11, color="#00d4ff"))
 # 引擎内部流程（靠左三个紧凑框）
 flow = [("Reason", "推理", C["llm"]), ("Act", "工具决策", C["tools"]), ("Observe", "结果回读", C["mem"])]
 fx = 300
 for i, (name, desc, col) in enumerate(flow):
     svg.append(box(fx, 550, 170, 60, col, col, rx=10, sw=1, fill_op=0.1))
-    svg.append(title(fx + 85, 575, name, fs=16, weight=600, color="#f1f5f9"))
+    svg.append(title(fx + 85, 575, name, fs=16, weight=600, color="#0f172a"))
     svg.append(sub(fx + 85, 597, desc, fs=9.5, color=col))
     if i < 2:
         svg.append(arrow(fx + 170, 580, fx + 215, 580, C["core"], marker="a_c", opacity=0.6))
@@ -196,7 +196,7 @@ cards = [
 for x, t, s, col, gid, chips_, footer in cards:
     svg.append(f'<rect x="{x-6}" y="{734-6}" width="{528+12}" height="{212+12}" rx="18" fill="{col}" opacity="0.05" filter="url(#gs)"/>')
     svg.append(f'<rect x="{x}" y="{734}" width="528" height="212" rx="14" fill="url(#{gid})" stroke="{col}" stroke-opacity="0.5" stroke-width="1.3"/>')
-    svg.append(title(x + 264, 770, t, fs=17, weight=600, color="#f1f5f9"))
+    svg.append(title(x + 264, 770, t, fs=17, weight=600, color="#0f172a"))
     svg.append(sub(x + 264, 794, s, fs=10.5, color=col))
     # 两行 3+3 chips，卡片可用宽 528-44=484，3*140+2*12=444 < 484
     for row in range(2):
@@ -238,7 +238,7 @@ for i, (t, col, s) in enumerate(support):
     x = sx + (i % 5) * 455
     y = sy + (i // 5) * 82
     svg.append(box(x, y, 430, 66, col, col, rx=10, sw=0.9, fill_op=0.06))
-    svg.append(title(x + 215, y + 26, t, fs=13, weight=600, color="#f1f5f9"))
+    svg.append(title(x + 215, y + 26, t, fs=13, weight=600, color="#0f172a"))
     svg.append(sub(x + 215, y + 47, s, fs=9, color=col))
 
 # ============ ⑦ 基础设施 ============
@@ -271,7 +271,7 @@ def try_edge():
     html_path = os.path.join(repo, "agentprimordia", "docs", "_arch_tmp.html")
     with open(html_path, "w", encoding="utf-8") as f:
         f.write('<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
-                '<body style="margin:0;padding:0;background:#0b1220">'
+                '<body style="margin:0;padding:0;background:#ffffff">'
                 + svg_text + '</body></html>')
     edge_paths = [r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
                   r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"]
