@@ -1,0 +1,174 @@
+package autonomy
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"sync"
+	"time"
+)
+
+// Priority 目标优先级
+type Priority int
+
+const (
+	// PriorityLow 低优先级
+	PriorityLow Priority = 0
+	// PriorityNormal 普通优先级（默认）
+	PriorityNormal Priority = 1
+	// PriorityHigh 高优先级
+	PriorityHigh Priority = 2
+	// PriorityCritical 紧急优先级
+	PriorityCritical Priority = 3
+)
+
+// GoalConfig 目标创建配置
+type GoalConfig struct {
+	// AcceptanceCriteria 验收标准列表
+	AcceptanceCriteria []string
+	// Priority 优先级（默认 PriorityNormal）
+	Priority Priority
+	// MaxRetries 最大重试次数（默认 3）
+	MaxRetries int
+	// Deadline 截止时间（零值表示无限制）
+	Deadline time.Time
+	// Metadata 附加元数据
+	Metadata map[string]string
+}
+
+// AgentGoal 持久化目标：自治执行的核心载体
+type AgentGoal struct {
+	mu sync.RWMutex
+
+	// ID 全局唯一标识
+	ID string `json:"id"`
+	// Description 目标描述
+	Description string `json:"description"`
+	// AcceptanceCriteria 验收标准
+	AcceptanceCriteria []string `json:"acceptance_criteria"`
+	// Priority 优先级
+	Priority Priority `json:"priority"`
+	// State 当前状态
+	State GoalState `json:"state"`
+	// MaxRetries 最大重试次数
+	MaxRetries int `json:"max_retries"`
+	// RetryCount 已重试次数
+	RetryCount int `json:"retry_count"`
+	// Deadline 截止时间
+	Deadline time.Time `json:"deadline,omitempty"`
+	// CreatedAt 创建时间
+	CreatedAt time.Time `json:"created_at"`
+	// UpdatedAt 最后更新时间
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// metadata 附加元数据
+	metadata map[string]string
+	// history 状态变更历史
+	history []StateChangeEvent
+	// sm 状态机
+	sm *StateMachine
+}
+
+// NewAgentGoal 创建新的自治目标
+func NewAgentGoal(description string, cfg GoalConfig) *AgentGoal {
+	priority := cfg.Priority
+	if priority == 0 {
+		priority = PriorityNormal
+	}
+	maxRetries := cfg.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = 3
+	}
+
+	g := &AgentGoal{
+		ID:                 generateGoalID(),
+		Description:        description,
+		AcceptanceCriteria: cfg.AcceptanceCriteria,
+		Priority:           priority,
+		State:              GoalCreated,
+		MaxRetries:         maxRetries,
+		Deadline:           cfg.Deadline,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+		metadata:           cfg.Metadata,
+		sm:                 NewStateMachine(),
+	}
+	if g.metadata == nil {
+		g.metadata = make(map[string]string)
+	}
+
+	// 记录状态变更历史
+	g.sm.OnTransition(func(e StateChangeEvent) {
+		e.GoalID = g.ID
+		g.history = append(g.history, e)
+	})
+	return g
+}
+
+// TransitionTo 执行状态转换（非法转换返回错误且不改变状态）
+func (g *AgentGoal) TransitionTo(next GoalState) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	newState, err := g.sm.Apply(g.State, next)
+	if err != nil {
+		return err
+	}
+	g.State = newState
+	g.UpdatedAt = time.Now()
+	return nil
+}
+
+// IncrementRetry 增加重试计数
+func (g *AgentGoal) IncrementRetry() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.RetryCount++
+	g.UpdatedAt = time.Now()
+}
+
+// CanRetry 判断是否还能重试
+func (g *AgentGoal) CanRetry() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.RetryCount < g.MaxRetries
+}
+
+// SetMetadata 设置元数据
+func (g *AgentGoal) SetMetadata(key, value string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.metadata[key] = value
+}
+
+// GetMetadata 获取元数据
+func (g *AgentGoal) GetMetadata(key string) string {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.metadata[key]
+}
+
+// History 返回状态变更历史（副本）
+func (g *AgentGoal) History() []StateChangeEvent {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	h := make([]StateChangeEvent, len(g.history))
+	copy(h, g.history)
+	return h
+}
+
+// IsExpired 判断目标是否已超过截止时间
+func (g *AgentGoal) IsExpired() bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.Deadline.IsZero() {
+		return false
+	}
+	return time.Now().After(g.Deadline)
+}
+
+// generateGoalID 生成唯一目标 ID
+func generateGoalID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return "goal-" + hex.EncodeToString(b)
+}

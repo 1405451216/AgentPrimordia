@@ -1,7 +1,7 @@
 {
-  "version": "3.1.0",
+  "version": "3.6.0",
   "description": "Go/TS 跨语言行为一致性测试规范",
-  "lastUpdated": "2026-08-01",
+  "lastUpdated": "2026-08-02",
   "testSuites": [
     {
       "name": "agent_config",
@@ -632,6 +632,163 @@
           },
           "expected": {
             "restoredTurn": 99
+          }
+        }
+      ]
+    },
+    {
+      "name": "autonomy_goal",
+      "description": "自治目标状态机行为一致性（v3.3）",
+      "cases": [
+        {
+          "id": "goal_state_transitions",
+          "description": "目标状态机合法转换序列",
+          "input": {
+            "transitions": ["created->planned", "planned->executing", "executing->validated", "validated->done"]
+          },
+          "expected": {
+            "finalState": "done",
+            "allValid": true
+          }
+        },
+        {
+          "id": "goal_illegal_transition",
+          "description": "非法转换应被拒绝",
+          "input": {
+            "transitions": ["created->executing"]
+          },
+          "expected": {
+            "allValid": false,
+            "errorContains": "非法状态转换"
+          }
+        },
+        {
+          "id": "goal_retry_limit",
+          "description": "重试次数达到上限后不可再重试",
+          "input": {
+            "maxRetries": 2,
+            "retryCount": 2
+          },
+          "expected": {
+            "canRetry": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "skills_lifecycle",
+      "description": "技能生命周期行为一致性（v3.4）",
+      "cases": [
+        {
+          "id": "skill_create_draft",
+          "description": "新技能初始状态为 draft",
+          "input": {
+            "name": "test-skill",
+            "steps": [{"id": "s1", "toolName": "query"}]
+          },
+          "expected": {
+            "status": "draft",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "skill_activate",
+          "description": "激活后状态变为 active",
+          "input": {
+            "operation": "activate"
+          },
+          "expected": {
+            "status": "active"
+          }
+        },
+        {
+          "id": "skill_version_compat",
+          "description": "同 Major 版本向后兼容",
+          "input": {
+            "v1": "1.0.0",
+            "v2": "1.5.3"
+          },
+          "expected": {
+            "compatible": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "a2a_interop",
+      "description": "开放 A2A 协议互操作行为一致性（v3.5）",
+      "cases": [
+        {
+          "id": "agent_card_schema",
+          "description": "Agent Card 应符合开放规范 schema",
+          "input": {
+            "name": "test-agent",
+            "url": "http://localhost:8080",
+            "capabilities": {"streaming": true}
+          },
+          "expected": {
+            "hasName": true,
+            "hasUrl": true,
+            "streamingCapable": true
+          }
+        },
+        {
+          "id": "task_state_terminal",
+          "description": "completed/failed/canceled 为终态",
+          "input": {
+            "states": ["completed", "failed", "canceled", "working"]
+          },
+          "expected": {
+            "terminalFlags": [true, true, true, false]
+          }
+        },
+        {
+          "id": "error_codes",
+          "description": "标准错误码映射",
+          "input": {
+            "code": -32001
+          },
+          "expected": {
+            "message": "Task not found"
+          }
+        }
+      ]
+    },
+    {
+      "name": "realtime_session",
+      "description": "实时会话状态机行为一致性（v3.6）",
+      "cases": [
+        {
+          "id": "session_lifecycle",
+          "description": "会话完整生命周期转换",
+          "input": {
+            "transitions": ["idle->listening", "listening->thinking", "thinking->speaking", "speaking->listening", "listening->idle"]
+          },
+          "expected": {
+            "finalState": "idle",
+            "allValid": true
+          }
+        },
+        {
+          "id": "session_illegal_skip",
+          "description": "不可跳过中间状态",
+          "input": {
+            "transitions": ["idle->speaking"]
+          },
+          "expected": {
+            "allValid": false
+          }
+        },
+        {
+          "id": "session_barge_in",
+          "description": "仅 speaking 状态可打断",
+          "input": {
+            "state": "speaking",
+            "action": "barge_in"
+          },
+          "expected": {
+            "newState": "listening",
+            "allowed": true
           }
         }
       ]

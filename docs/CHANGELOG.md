@@ -60,6 +60,18 @@
 - **CI 盲区**：`sdk/python` / `sdk/rust` 不在任何 workflow 中，缺陷无法被门禁捕获 → ci.yml 新增 `changes` 过滤（py/rust）、`python-sdk` job（compileall + import 检查 + U+FFFD 乱码扫描）、`rust-sdk` job（`cargo build --locked` + `cargo clippy -- -D warnings`），随变更范围选择性触发
 - **`.gitignore` 补充**：新增 `target/` / `**/target/` 规则，防止 Rust 构建产物误入库
 
+### Added — v3.3–v3.6 能力跃迁（V4 路线图，详见 `docs/V4-ROADMAP.md`）
+
+四个版本的核心能力已全部实现并通过验证门（`go vet`/`go build ./...`/各包测试/`tsc --noEmit`/跨语言契约脚本全绿）：
+
+- **v3.3 长期自治** (`internal/agent/autonomy/`)：目标状态机（created→planned→executing→validated→done/failed）、`GoalPlan` 依赖 DAG + 并行执行、`GoalExecutor` 重试/重规划、`Scheduler` 定时+事件调度、`Monitor` 停滞检测、跨会话记忆、`ResumeManager` 崩溃恢复、`IdempotencyGuard` 幂等保护、`AutonomyRuntime` 端到端装配；能力接口 `WithAutonomy` + `pkg/autonomy.go` + CLI `ap autonomy`；验收 demo `ecosystem/examples/autonomous-task/`
+- **v3.4 技能进化** (`internal/agent/skills/`)：`Skill` 多步骤抽象 + SemVer、`Validator`（循环依赖/安全扫描）、`Codec`、`Composition`、习得流水线 `Acquisition` + 验证门 `Verification`、`Deduplicator` 去重、`Trigger` 触发策略、`Store`/`Matcher`（置信度三档）/`UsageTracker`；技能×工具/学习/市场/自治/RAG 五集成；`WithSkills` + `pkg/skills.go` + CLI `ap skill`；文档 `docs/guides/skill-format.md`；验收 demo `ecosystem/examples/skill-evolution/`
+- **v3.5 协议互操作** (`internal/agent/a2a/interop_*`)：对齐开放 Agent2Agent 协议——`OpenAgentCard`/`OpenMessage`/`OpenTask`/标准错误码/IO 模式、`interop_sse` 流式事件、`OpenInteropServer`/`OpenInteropClient`、`GenerateInteropReport` 符合性报告、互操作×认证/发现/追踪/限流/技能五集成；JSON-RPC 重新定位为开放协议标准传输（不再标记移除）；`pkg/a2a_interop.go` + CLI `ap a2a interop-check` + golden/集成/基准测试；文档 `docs/guides/a2a-interop.md`；验收 demo `ecosystem/examples/a2a-interop/`
+- **v3.6 多模态实时** (`internal/agent/realtime/`)：会话状态机（idle→listening→thinking→speaking）、`RealtimeHub` 双向流编排、`ASRAdapter`/`TTSAdapter` 可插拔、`AudioStream` 静音检测、`VisionStream`、`Fusion` 多路感知融合、`BargeInHandler` 打断、`EventBus`、`CleanupManager` 超时回收、`Runtime` 装配 + ReAct 桥接；实时×多模态/边缘/自治/守卫/A2A 五集成；`WithRealtime` + `pkg/realtime.go` + CLI `ap realtime voice`；TS 边缘链路 `sdk/typescript/src/realtime/edge.ts`；文档 `docs/guides/realtime.md`；验收 demo `ecosystem/examples/realtime-voice/`
+- **跨语言与开发者体验**：`cross-language-spec.json` 新增 `autonomy_goal`/`skills_lifecycle`/`a2a_interop`/`realtime_session` 四套件（v3.6.0）；TS SDK 对等实现 `src/{autonomy,skills,realtime,a2a/interop}` + 22 项单元测试；Studio 面板 `AutonomyMonitor`/`SkillLibrary`/`A2AInterop`/`RealtimeConsole`（前后端接通）；部署 `deploy/docker-compose.autonomy.yml` + `autonomous-agent.service`
+- **核查修复**：回头核查发现并修复"能编译但未接通"断点——三 `*Capable` 接口接入 `CapabilityAgent` 使引擎可发现、`IdempotencyGuard.Reset` 精确化、Studio 面板挂载路由+后端、TS 根导出、跨语言脚本由系统 grep 改 node 原生搜索（修复 Windows 假阴性）
+
+
 ### Fixed — CI 第二批缺陷修复（推送后全量验证暴露）
 
 首次推送修复后 CI 仍有多条失败，逐项定位并修复（本地全量验证门全绿）：

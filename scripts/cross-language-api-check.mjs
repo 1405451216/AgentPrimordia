@@ -134,8 +134,29 @@ const SUITE_SYMBOLS = {
     ts: ['SQLiteCheckpointStore', 'AgentState'],
     tsSearchPaths: ['sdk/typescript/src/persist'],
   },
+  autonomy_goal: {
+    go: ['AgentGoal', 'NewAgentGoal', 'GoalState'],
+    ts: ['GoalState', 'createGoal', 'AgentGoal'],
+    tsSearchPaths: ['sdk/typescript/src/autonomy'],
+  },
+  skills_lifecycle: {
+    go: ['Skill', 'NewSkill', 'SkillStore'],
+    ts: ['createSkill', 'SkillStore', 'Skill'],
+    tsSearchPaths: ['sdk/typescript/src/skills'],
+  },
+  a2a_interop: {
+    go: ['OpenAgentCard', 'OpenInteropClient', 'GenerateInteropReport'],
+    ts: ['OpenAgentCard', 'OpenInteropClient', 'newTextMessage'],
+    tsSearchPaths: ['sdk/typescript/src/a2a'],
+  },
+  realtime_session: {
+    go: ['RealtimeHub', 'NewRealtimeHub', 'RealtimeSession'],
+    ts: ['SessionState', 'RealtimeSession', 'RealtimeHub'],
+    tsSearchPaths: ['sdk/typescript/src/realtime'],
+  },
 };
 
+// ===== 跨平台符号搜索（替代系统 grep，Windows/Linux 行为一致） =====
 // ===== 主流程 =====
 
 let hasError = false;

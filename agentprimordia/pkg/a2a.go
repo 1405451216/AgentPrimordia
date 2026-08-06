@@ -3,7 +3,9 @@
 // Stability: Stable（gRPC 传输）
 //
 // 自 v1.x 起，**A2A 的默认传输是 gRPC**（性能更优、二进制更小、内建拦截器链）。
-// v4.0.0 已移除 JSON-RPC over HTTP 兼容层（见 VERSIONING.md「已移除记录」）。
+// v4.0.0 已移除旧版 JSON-RPC over HTTP 兼容层（见 VERSIONING.md「已移除记录」）。
+// 开放 Agent2Agent 协议互操作（OpenInteropServer / OpenInteropClient，
+// JSON-RPC over HTTP/SSE 承载开放协议）见 pkg/a2a_interop.go。
 // 推荐使用：
 //
 //	srv  := ap.NewA2AGRPCServer(service)

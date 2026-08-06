@@ -43,6 +43,10 @@ make run-production   # = chain-production
 | `web-chatbot/` | Web 聊天机器人 | `ap.NewHTTPServer` |
 | `github-issue-triage/` | **GitHub Issue Triage Bot**（Phase 18） | ReAct + 3 个自定义工具 + Mock Server |
 | `coding-agent/` | **一体化 Coding Harness**：计划→编写→测试→审查→发布 | `WithCognition` + filesystem/shell/git 插件 |
+| `autonomous-task/` | **长期自治**（v3.3）：目标驱动自主执行 + 崩溃恢复 | `autonomy.NewAutonomyRuntime` |
+| `skill-evolution/` | **技能进化**（v3.4）：首次失败→习得→复用 | `skills.NewStore` + `SkillMatcher` |
+| `a2a-interop/` | **协议互操作**（v3.5）：开放 A2A 跨生态委托 | `a2a.NewOpenInteropServer/Client` |
+| `realtime-voice/` | **多模态实时**（v3.6）：语音多轮 + 打断 + 视觉流 | `realtime.NewRuntime` |
 
 ## 不在 examples 中的内容
 

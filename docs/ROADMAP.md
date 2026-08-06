@@ -7,6 +7,7 @@
 > **当前版本**：Go SDK v4.0.0（`pkg/agent.go`）/ TypeScript SDK v4.0.0（`sdk/typescript/package.json`）
 > **覆盖范围**：完整版本路线 = 历史轨迹（v0.1.0 → v3.2.0，见 §二.六）+ 实证版本路线（v3.3 → v4.0，见 §三）。
 > **重要**：旧版"v2.1-v3.0 全部完成"叙事与代码实况不符，已废弃，见下文对账。
+> **并行路线档案**：另一条 v3.3–v3.6 平行路线（长期自治 / 技能进化 / 协议互操作 / 多模态实时）的历史实现与任务清单见 [`V4-ROADMAP.md`](V4-ROADMAP.md)，其代码已于 2026-08 合入 main（autonomy / skills / realtime / a2a interop 模块），作为能力补充保留。
 
 ---
 

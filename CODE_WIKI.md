@@ -2,7 +2,7 @@
 
 > 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v3.2.0 | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
+**版本**: v3.6.0 (V4 路线图 v3.3–v3.6 已实现) | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
 
 ---
 
@@ -43,6 +43,9 @@
   - [4.29 audit — 合规报告](#429-audit--合规报告)
   - [4.30 wasm — 增强沙箱](#430-wasm--增强沙箱)
   - [4.31 chaos — 混沌工程](#431-chaos--混沌工程)
+  - [4.32 autonomy — 长期自治](#432-autonomy--长期自治)
+  - [4.33 skills — 技能进化](#433-skills--技能进化)
+  - [4.34 realtime — 多模态实时](#434-realtime--多模态实时)
 - [5. 协议式微内核架构](#5-协议式微内核架构)
 - [6. 插件生态](#6-插件生态)
 - [7. 公共 API 层 (pkg/)](#7-公共-api-层-pkg)
@@ -77,7 +80,7 @@
 | 能力 | 说明 |
 |------|------|
 | **ReAct Loop 引擎** | Reasoning + Acting 循环，20+ 生命周期钩子 |
-| **协议式微内核** | 17 个 Capable 接口 + 链式 API，能力按需组合、自动发现 |
+| **协议式微内核** | 20 个 Capable 接口 + 链式 API，能力按需组合、自动发现（v3.3–v3.6 新增 AutonomyCapable / SkillsCapable / RealtimeCapable） |
 | **多 Agent 编排** | Pipeline / Handoff / Parallel / DAG / GroupChat / Collaboration / Workflow |
 | **工具系统** | FileSystem / Shell / Web / API / Database / CodeExecution / Knowledge 内置，MCP 协议集成，插件扩展 |
 | **三层记忆** | SQLite FTS5 + Vector Store + RAG Pipeline 混合检索 |
@@ -87,8 +90,12 @@
 | **安全防护** | ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护 |
 | **可观测性** | Prometheus Metrics / OpenTelemetry / Grafana Dashboard |
 | **K8s Operator** | AgentDeployment CRD 声明式部署 |
-| **CLI 工具** | `ap init / run / debug / loop / test / mcp / plugin / doctor / completion` |
-| **TypeScript SDK** | Go 功能对等，34 模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Edge / Visual / Infrastructure） |
+| **长期自治 (v3.3)** | 目标驱动自主规划/执行/校验/重规划，崩溃恢复 + 幂等保护（`internal/agent/autonomy/`） |
+| **技能进化 (v3.4)** | 运行中习得/验证/沉淀可复用技能，语义匹配自动调用（`internal/agent/skills/`） |
+| **协议互操作 (v3.5)** | 对齐开放 Agent2Agent 协议，跨生态委托 + 符合性报告（`internal/agent/a2a/interop_*`） |
+| **多模态实时 (v3.6)** | 语音/视觉实时双向流 + 打断，ASR/TTS 可插拔（`internal/agent/realtime/`） |
+| **CLI 工具** | `ap init / run / debug / loop / test / mcp / plugin / autonomy / skill / a2a / realtime / doctor / config / completion` |
+| **TypeScript SDK** | Go 功能对等，模块全覆盖（含 v3.3 自治 / v3.4 技能 / v3.5 互操作 / v3.6 实时 对等实现） |
 
 ### 数据流
 
@@ -1369,11 +1376,86 @@ ChaosEngine.Run()
 
 ---
 
+### 4.32 autonomy — 长期自治
+
+**位置：** `internal/agent/autonomy/`
+
+**核心职责：** 目标驱动的自主规划/执行/校验/重规划循环，支持长时间运行与崩溃恢复（V4 v3.3）。
+
+#### 核心组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `AgentGoal` | `goal.go` | 持久化目标：验收标准 + 优先级 + 状态机 + 重试 |
+| `GoalPlan` / `PlanStep` | `plan.go` | 依赖 DAG + 顺序/并行/条件策略 + 循环检测 |
+| `GoalExecutor` | `executor.go` | 逐步执行 + 重试 + 重规划 + 并行步骤 |
+| `Replanner` / `Validator` | `replan.go` | 校验不达标自动重规划 + 结果校验 |
+| `Scheduler` | `scheduler.go` | cron 定时唤醒 + 事件驱动调度 |
+| `Monitor` | `monitor.go` | 停滞检测 + 进度追踪 + 异常分级上报 |
+| `GoalMemory` | `memory.go` | 跨会话记忆 + 失败教训反馈 |
+| `ResumeManager` | `resume.go` | 检查点写入 + 崩溃恢复 + 一致性校验 |
+| `IdempotencyGuard` | `idempotency.go` | 幂等键保护（goalID→keys 精确重置） |
+| `AutonomyRuntime` | `runtime.go` | 端到端装配 |
+
+**目标状态机：** `created → planned → executing → validated → done`；非终态可转 `failed`；`validated` 可回 `executing` 重规划；`failed` 可回 `planned` 重试。能力注入 `WithAutonomy(...)`，引擎经 `AutonomyCapable` 发现。详见 [concepts/autonomy](concepts/autonomy.md)。
+
+---
+
+### 4.33 skills — 技能进化
+
+**位置：** `internal/agent/skills/`
+
+**核心职责：** 让 Agent 运行中习得/验证/沉淀/复用可执行技能，从"静态工具"跃迁为"越用越强"（V4 v3.4）。
+
+#### 核心组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `Skill` / `StepDef` | `skill.go` | 多步骤能力单元 + SemVer + 状态 + 使用统计 |
+| `Validator` | `validator.go` | schema 校验 + 循环依赖检测 + 安全扫描 |
+| `Codec` | `codec.go` | JSON 编解码（可发布/可存储） |
+| `Composition` | `composition.go` | 多技能组合为工作流 |
+| `Acquisition` | `acquisition.go` | 轨迹采集 + LLM 提炼流水线 |
+| `Verification` | `verification.go` | 验证门：测试用例通过才可启用 |
+| `Deduplicator` | `dedup.go` | 相似技能去重/合并 |
+| `Trigger` | `trigger.go` | 习得触发策略（重复模式/低成功率/显式） |
+| `Store` / `Matcher` | `store.go` / `matcher.go` | 技能库存取 + 语义匹配（置信度三档） |
+| `UsageTracker` | `usage.go` | 命中率/成功率/成本统计 |
+
+**跨组件集成：** 技能 × 工具/学习/市场/自治/RAG（`integration.go`）。能力注入 `WithSkills(...)`，引擎经 `SkillsCapable` 发现。详见 [concepts/skills](concepts/skills.md)。
+
+---
+
+### 4.34 realtime — 多模态实时
+
+**位置：** `internal/agent/realtime/`
+
+**核心职责：** 语音/视觉/图像实时双向流交互，从"文本流式对话"跃迁为"多感官实时"（V4 v3.6）。
+
+#### 核心组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| `RealtimeSession` | `session.go` | 会话状态机 idle→listening→thinking→speaking |
+| `RealtimeHub` | `hub.go` | 双向流编排 + ASR/TTS 可插拔 |
+| `ASRAdapter` / `TTSAdapter` | `hub.go` | 语音识别/合成接口（含 Mock 实现） |
+| `AudioStream` | `audio_stream.go` | chunk 缓冲 + 静音检测 + 格式协商 |
+| `VisionStream` | `vision_stream.go` | 连续视频帧输入 |
+| `Fusion` | `fusion.go` | 文本+视觉+音频多路感知融合 |
+| `BargeInHandler` | `barge_in.go` | 打断支持（仅 speaking 可打断） |
+| `EventBus` | `events.go` | 会话事件发布 |
+| `CleanupManager` | `cleanup.go` | 空闲超时关闭 + 资源回收 |
+| `Runtime` | `runtime.go` | Hub+感知流+事件+清理+ReAct 桥接装配 |
+
+**跨组件集成：** 实时 × 多模态/边缘/自治/守卫/A2A（`integration.go`）。能力注入 `WithRealtime(...)`，引擎经 `RealtimeCapable` 发现。详见 [concepts/realtime](concepts/realtime.md)。
+
+---
+
 ## 5. 协议式微内核架构
 
 **位置：** `internal/agent/capabilities.go`
 
-AgentPrimordia 采用协议式微内核设计，通过 17 个 Capable 接口实现能力的自动发现与组合：
+AgentPrimordia 采用协议式微内核设计，通过 20 个 Capable 接口实现能力的自动发现与组合（v3.3–v3.6 新增 `AutonomyCapable` / `SkillsCapable` / `RealtimeCapable`）：
 
 ```go
 // 能力接口 — 引擎通过类型断言自动发现
@@ -1491,6 +1573,25 @@ var WithInMemory = memory.WithInMemory
 // pkg/pool.go
 type Pool = pool.Pool
 var NewPool = pool.NewPool
+
+// pkg/autonomy.go (v3.3 长期自治)
+type AutonomyRuntime = autonomy.AutonomyRuntime
+type AgentGoal = autonomy.AgentGoal
+var NewAutonomyRuntime = autonomy.NewAutonomyRuntime
+
+// pkg/skills.go (v3.4 技能进化)
+type Skill = skills.Skill
+type SkillStore = skills.Store
+type SkillMatcher = skills.Matcher
+
+// pkg/realtime.go (v3.6 多模态实时)
+type RealtimeHub = realtime.RealtimeHub
+type RealtimeSession = realtime.Session
+
+// pkg/a2a_interop.go (v3.5 协议互操作)
+type OpenAgentCard = a2a.OpenAgentCard
+type OpenInteropServer = a2a.OpenInteropServer
+type OpenInteropClient = a2a.OpenInteropClient
 ```
 
 **API 稳定性等级：**
@@ -1567,7 +1668,7 @@ var NewPool = pool.NewPool
 | `Lifecycle` | agent | SetStatus/IsGracefulShutdown | 生命周期 |
 | `Tracer` | agent | Start/Span | 追踪器 |
 
-### 17 个 Capable 接口（协议式微内核）
+### 20 个 Capable 接口（协议式微内核）
 
 详见 [第 5 章 协议式微内核架构](#5-协议式微内核架构)
 
@@ -2113,6 +2214,10 @@ sdk/typescript/src/
 | `events/` | `events/` | ✅ 完整 |
 | `edgeruntime/` `wasm/` | `edge/` `browser/` | ✅ 完整 (Edge/WASM) |
 | `studio/web/` | `react/` `visual/` | ✅ 完整 (可视化编辑) |
+| `agent/autonomy/` | `autonomy/` | ✅ 完整 (v3.3 长期自治) |
+| `agent/skills/` | `skills/` | ✅ 完整 (v3.4 技能进化) |
+| `agent/realtime/` | `realtime/` | ✅ 完整 (v3.6 多模态实时) |
+| `agent/a2a/interop_*` | `a2a/interop.ts` | ✅ 完整 (v3.5 开放协议互操作) |
 | `extensions/vscode/` | `vscode/` | ✅ 完整 (VSCode 插件) |
 | — | `codegen/` `schema/` `i18n/` `playground/` | ✅ 完整 (TS 生态) |
 
@@ -2254,6 +2359,21 @@ ap version   # 验证: v2.0.0
 # 升级依赖
 go get agentprimordia@v3.1.0
 ap version   # 验证: v3.1.0
+```
+
+### 19.5 v3.2 → v3.3+ 迁移（V4 能力跃迁）
+
+**完全向后兼容**，v3.2 代码无需修改。v3.3–v3.6 新增能力均为可选注入：
+
+1. **长期自治**（可选，v3.3）— `internal/agent/autonomy/` + `WithAutonomy(...)` + `ap autonomy`
+2. **技能进化**（可选，v3.4）— `internal/agent/skills/` + `WithSkills(...)` + `ap skill`
+3. **协议互操作**（可选，v3.5）— `internal/agent/a2a/interop_*` 对齐开放 A2A 协议 + `ap a2a interop-check`；JSON-RPC 重新定位为开放协议标准传输（不再标记移除）
+4. **多模态实时**（可选，v3.6）— `internal/agent/realtime/` + `WithRealtime(...)` + `ap realtime`
+
+```bash
+# 升级依赖
+go get agentprimordia@latest
+ap version
 ```
 
 ### 迁移检查清单
