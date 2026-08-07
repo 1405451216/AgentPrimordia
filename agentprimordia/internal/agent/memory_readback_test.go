@@ -3,7 +3,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
 
@@ -23,22 +22,6 @@ func (m *mockMemoryQuerier) UpdateSummary(_ context.Context, _, _, _ string) err
 func (m *mockMemoryQuerier) Search(_ context.Context, _ string, _ *memory.SearchOptions) ([]*memory.Episode, error) {
 	return m.episodes, nil
 }
-
-// mockMemoryCapable 让 getMemoryStore 通过 self 接口发现
-type mockMemoryCapable struct {
-	store MemoryStore
-}
-
-func (m *mockMemoryCapable) GetMemoryStore() MemoryStore { return m.store }
-func (m *mockMemoryCapable) Run(_ context.Context, _ Message) (*Response, error) {
-	return nil, errors.New("not used")
-}
-func (m *mockMemoryCapable) StreamRun(_ context.Context, _ Message) (<-chan StreamEvent, error) {
-	return nil, errors.New("not used")
-}
-func (m *mockMemoryCapable) Stop()             {}
-func (m *mockMemoryCapable) Stats() AgentStats { return AgentStats{} }
-func (m *mockMemoryCapable) Name() string      { return "mock" }
 
 // TestInjectMemoryContext_AddsSystemMessage 验证记忆上下文作为 system 消息注入
 func TestInjectMemoryContext_AddsSystemMessage(t *testing.T) {

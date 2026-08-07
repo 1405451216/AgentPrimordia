@@ -6,7 +6,6 @@ package multi_agent
 import (
 	"context"
 	"strings"
-	"sync"
 	"testing"
 
 	"agentprimordia/internal/agent"
@@ -15,7 +14,6 @@ import (
 
 // contentProvider 按输入关键词返回内容的 mock Provider。
 type contentProvider struct {
-	mu      sync.Mutex
 	content func(input string) string
 }
 

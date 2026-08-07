@@ -71,6 +71,7 @@ func FuzzBargeInOnlySpeaking(f *testing.F) {
 		// 核心不变量：barge-in 后状态只能是 listening 或保持原非 speaking 态
 		if s.State != SessionListening && s.State != SessionIdle && s.State != SessionThinking {
 			// speaking 不应残留（若 barge-in 成功则转 listening）
+			t.Errorf("barge-in 后状态非法: %s", s.State)
 		}
 	})
 }

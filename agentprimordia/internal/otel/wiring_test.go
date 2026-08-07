@@ -14,7 +14,7 @@ func TestTelemetryProvider_Metrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTelemetryProvider 失败: %v", err)
 	}
-	defer tp.Shutdown()
+	defer func() { _ = tp.Shutdown() }()
 
 	if got := tp.Metrics(); got != m {
 		t.Fatal("Metrics() 未返回构造时传入的收集器")
@@ -29,7 +29,7 @@ func TestTelemetryProvider_ExportWithoutExporter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTelemetryProvider 失败: %v", err)
 	}
-	defer tp.Shutdown()
+	defer func() { _ = tp.Shutdown() }()
 
 	if err := tp.ExportNow(); err == nil {
 		t.Fatal("无 OTLP exporter 时 ExportNow 应返回错误")

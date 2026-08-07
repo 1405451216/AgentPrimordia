@@ -20,7 +20,7 @@ func TestWithTelemetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTelemetryProvider 失败: %v", err)
 	}
-	defer tp.Shutdown()
+	defer func() { _ = tp.Shutdown() }()
 
 	cfg := &agent.AgentConfig{}
 	WithTelemetry(tp)(cfg)
@@ -43,7 +43,7 @@ func TestWithTelemetry_DisablesMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTelemetryProvider 失败: %v", err)
 	}
-	defer tp.Shutdown()
+	defer func() { _ = tp.Shutdown() }()
 
 	cfg := &agent.AgentConfig{}
 	WithTelemetry(tp)(cfg)
