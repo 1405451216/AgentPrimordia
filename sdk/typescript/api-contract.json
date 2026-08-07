@@ -672,6 +672,155 @@
       ]
     },
     {
+      "name": "a2a_interop",
+      "file": "pkg/a2a_interop.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "OpenAgentCard",
+          "kind": "alias",
+          "doc": "OpenAgentCard 开放规范 Agent Card"
+        },
+        {
+          "name": "OpenCapabilities",
+          "kind": "alias",
+          "doc": "OpenCapabilities 开放规范能力声明"
+        },
+        {
+          "name": "OpenSkillDecl",
+          "kind": "alias",
+          "doc": "OpenSkillDecl 开放规范技能声明"
+        },
+        {
+          "name": "OpenMessage",
+          "kind": "alias",
+          "doc": "OpenMessage 开放规范消息"
+        },
+        {
+          "name": "OpenPart",
+          "kind": "alias",
+          "doc": "OpenPart 开放规范消息部分"
+        },
+        {
+          "name": "OpenTask",
+          "kind": "alias",
+          "doc": "OpenTask 开放规范任务"
+        },
+        {
+          "name": "OpenTaskState",
+          "kind": "alias",
+          "doc": "OpenTaskState 开放规范任务状态"
+        },
+        {
+          "name": "OpenError",
+          "kind": "alias",
+          "doc": "OpenError 开放规范错误"
+        },
+        {
+          "name": "OpenInteropServer",
+          "kind": "alias",
+          "doc": "OpenInteropServer 开放协议兼容服务器"
+        },
+        {
+          "name": "OpenInteropClient",
+          "kind": "alias",
+          "doc": "OpenInteropClient 开放协议客户端"
+        },
+        {
+          "name": "InteropConfig",
+          "kind": "alias",
+          "doc": "InteropConfig 互操作配置"
+        },
+        {
+          "name": "InteropReport",
+          "kind": "alias",
+          "doc": "InteropReport 协议符合性报告"
+        },
+        {
+          "name": "InteropCheck",
+          "kind": "alias",
+          "doc": "InteropCheck 单项符合性检查"
+        },
+        {
+          "name": "IOMode",
+          "kind": "alias",
+          "doc": "IOMode 输入输出模式"
+        },
+        {
+          "name": "IOModeConfig",
+          "kind": "alias",
+          "doc": "IOModeConfig 输入输出模式配置"
+        }
+      ],
+      "constants": [
+        {
+          "name": "OpenTaskSubmitted",
+          "value": "a2a.OpenTaskSubmitted",
+          "doc": "OpenTaskSubmitted 已提交"
+        },
+        {
+          "name": "OpenTaskWorking",
+          "value": "a2a.OpenTaskWorking",
+          "doc": "OpenTaskWorking 处理中"
+        },
+        {
+          "name": "OpenTaskCompleted",
+          "value": "a2a.OpenTaskCompleted",
+          "doc": "OpenTaskCompleted 已完成"
+        },
+        {
+          "name": "OpenTaskCanceled",
+          "value": "a2a.OpenTaskCanceled",
+          "doc": "OpenTaskCanceled 已取消"
+        },
+        {
+          "name": "OpenTaskFailed",
+          "value": "a2a.OpenTaskFailed",
+          "doc": "OpenTaskFailed 失败"
+        },
+        {
+          "name": "InteropStrict",
+          "value": "a2a.InteropStrict",
+          "doc": "InteropStrict 严格模式：仅开放协议"
+        },
+        {
+          "name": "InteropCompatible",
+          "value": "a2a.InteropCompatible",
+          "doc": "InteropCompatible 兼容模式：开放 + 私有扩展"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewTextMessage",
+          "doc": "NewTextMessage 创建文本消息"
+        },
+        {
+          "name": "NewOpenError",
+          "doc": "NewOpenError 创建开放协议错误"
+        },
+        {
+          "name": "DefaultInteropConfig",
+          "doc": "DefaultInteropConfig 默认互操作配置"
+        },
+        {
+          "name": "DefaultIOModeConfig",
+          "doc": "DefaultIOModeConfig 默认输入输出模式配置"
+        },
+        {
+          "name": "NewOpenInteropServer",
+          "doc": "NewOpenInteropServer 创建开放协议服务器"
+        },
+        {
+          "name": "NewOpenInteropClient",
+          "doc": "NewOpenInteropClient 创建开放协议客户端"
+        },
+        {
+          "name": "GenerateInteropReport",
+          "doc": "GenerateInteropReport 生成协议符合性报告"
+        }
+      ]
+    },
+    {
       "name": "adapters",
       "file": "pkg/adapters.go",
       "functions": [
@@ -1763,6 +1912,158 @@
         {
           "name": "NewConfigLoader",
           "doc": "NewConfigLoader 创建统一配置加载器（YAML \u003c ENV \u003c flags）。"
+        }
+      ]
+    },
+    {
+      "name": "autonomy",
+      "file": "pkg/autonomy.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "AgentGoal",
+          "kind": "alias",
+          "doc": "AgentGoal 持久化目标：自治执行的核心载体"
+        },
+        {
+          "name": "GoalConfig",
+          "kind": "alias",
+          "doc": "GoalConfig 目标创建配置"
+        },
+        {
+          "name": "GoalState",
+          "kind": "alias",
+          "doc": "GoalState 目标状态"
+        },
+        {
+          "name": "GoalPlan",
+          "kind": "alias",
+          "doc": "GoalPlan 目标执行计划"
+        },
+        {
+          "name": "PlanStep",
+          "kind": "alias",
+          "doc": "PlanStep 计划中的单个执行步骤"
+        },
+        {
+          "name": "AutonomyRuntime",
+          "kind": "alias",
+          "doc": "AutonomyRuntime 自治运行时"
+        },
+        {
+          "name": "RuntimeConfig",
+          "kind": "alias",
+          "doc": "RuntimeConfig 自治运行时配置"
+        },
+        {
+          "name": "StepExecutor",
+          "kind": "alias",
+          "doc": "StepExecutor 步骤执行器接口"
+        },
+        {
+          "name": "RAGRetriever",
+          "kind": "alias",
+          "doc": "RAGRetriever RAG 知识检索接口"
+        },
+        {
+          "name": "PoolDispatcher",
+          "kind": "alias",
+          "doc": "PoolDispatcher 多目标并发调度接口"
+        },
+        {
+          "name": "ClusterSync",
+          "kind": "alias",
+          "doc": "ClusterSync 分布式状态同步接口"
+        },
+        {
+          "name": "GoalMetrics",
+          "kind": "alias",
+          "doc": "GoalMetrics 目标级指标记录接口"
+        },
+        {
+          "name": "StepGuardrail",
+          "kind": "alias",
+          "doc": "StepGuardrail 步骤级护栏检查接口"
+        },
+        {
+          "name": "AutonomyMemoryStore",
+          "kind": "alias",
+          "doc": "MemoryStore 记忆存储接口"
+        },
+        {
+          "name": "AutonomyCheckpointStore",
+          "kind": "alias",
+          "doc": "CheckpointStore 检查点存储接口"
+        }
+      ],
+      "constants": [
+        {
+          "name": "GoalCreated",
+          "value": "autonomy.GoalCreated",
+          "doc": "GoalCreated 目标已创建"
+        },
+        {
+          "name": "GoalPlanned",
+          "value": "autonomy.GoalPlanned",
+          "doc": "GoalPlanned 目标已规划"
+        },
+        {
+          "name": "GoalExecuting",
+          "value": "autonomy.GoalExecuting",
+          "doc": "GoalExecuting 正在执行"
+        },
+        {
+          "name": "GoalValidated",
+          "value": "autonomy.GoalValidated",
+          "doc": "GoalValidated 已校验"
+        },
+        {
+          "name": "GoalDone",
+          "value": "autonomy.GoalDone",
+          "doc": "GoalDone 已完成"
+        },
+        {
+          "name": "GoalFailed",
+          "value": "autonomy.GoalFailed",
+          "doc": "GoalFailed 已失败"
+        },
+        {
+          "name": "PriorityLow",
+          "value": "autonomy.PriorityLow",
+          "doc": "PriorityLow 低优先级"
+        },
+        {
+          "name": "PriorityNormal",
+          "value": "autonomy.PriorityNormal",
+          "doc": "PriorityNormal 普通优先级"
+        },
+        {
+          "name": "PriorityHigh",
+          "value": "autonomy.PriorityHigh",
+          "doc": "PriorityHigh 高优先级"
+        },
+        {
+          "name": "PriorityCritical",
+          "value": "autonomy.PriorityCritical",
+          "doc": "PriorityCritical 紧急优先级"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewAgentGoal",
+          "doc": "NewAgentGoal 创建新的自治目标"
+        },
+        {
+          "name": "NewGoalPlan",
+          "doc": "NewGoalPlan 创建执行计划"
+        },
+        {
+          "name": "NewAutonomyRuntime",
+          "doc": "NewAutonomyRuntime 创建自治运行时"
+        },
+        {
+          "name": "NewGoalExecutor",
+          "doc": "NewGoalExecutor 创建目标执行器"
         }
       ]
     },
@@ -5009,6 +5310,75 @@
       ]
     },
     {
+      "name": "realtime",
+      "file": "pkg/realtime.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "RealtimeHub",
+          "kind": "alias",
+          "doc": "RealtimeHub 实时会话编排器"
+        },
+        {
+          "name": "RealtimeSession",
+          "kind": "alias",
+          "doc": "RealtimeSession 实时会话"
+        },
+        {
+          "name": "RealtimeSessionState",
+          "kind": "alias",
+          "doc": "SessionState 会话状态"
+        },
+        {
+          "name": "ASRAdapter",
+          "kind": "alias",
+          "doc": "ASRAdapter 语音识别适配器接口"
+        },
+        {
+          "name": "TTSAdapter",
+          "kind": "alias",
+          "doc": "TTSAdapter 语音合成适配器接口"
+        },
+        {
+          "name": "RealtimeHubConfig",
+          "kind": "alias",
+          "doc": "HubConfig 实时会话编排配置"
+        }
+      ],
+      "constants": [
+        {
+          "name": "RealtimeIdle",
+          "value": "realtime.SessionIdle",
+          "doc": "SessionIdle 空闲"
+        },
+        {
+          "name": "RealtimeListening",
+          "value": "realtime.SessionListening",
+          "doc": "SessionListening 监听中"
+        },
+        {
+          "name": "RealtimeThinking",
+          "value": "realtime.SessionThinking",
+          "doc": "SessionThinking 思考中"
+        },
+        {
+          "name": "RealtimeSpeaking",
+          "value": "realtime.SessionSpeaking",
+          "doc": "SessionSpeaking 表达中"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewRealtimeHub",
+          "doc": "NewRealtimeHub 创建实时会话编排器"
+        },
+        {
+          "name": "NewRealtimeSession",
+          "doc": "NewRealtimeSession 创建实时会话"
+        }
+      ]
+    },
+    {
       "name": "reflection",
       "file": "pkg/reflection.go",
       "stability": "Experimental",
@@ -5205,6 +5575,98 @@
         {
           "name": "NewPermissionManager",
           "doc": "NewPermissionManager 创建统一权限管理器"
+        }
+      ]
+    },
+    {
+      "name": "skills",
+      "file": "pkg/skills.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "Skill",
+          "kind": "alias",
+          "doc": "Skill 技能抽象"
+        },
+        {
+          "name": "StepDef",
+          "kind": "alias",
+          "doc": "StepDef 技能步骤定义"
+        },
+        {
+          "name": "IOSchema",
+          "kind": "alias",
+          "doc": "IOSchema 输入/输出 schema"
+        },
+        {
+          "name": "SkillStatus",
+          "kind": "alias",
+          "doc": "SkillStatus 技能状态"
+        },
+        {
+          "name": "SkillStore",
+          "kind": "alias",
+          "doc": "Store 技能库"
+        },
+        {
+          "name": "SkillMatcher",
+          "kind": "alias",
+          "doc": "Matcher 技能匹配器"
+        },
+        {
+          "name": "SkillMatchResult",
+          "kind": "alias",
+          "doc": "MatchResult 匹配结果"
+        },
+        {
+          "name": "SkillAcquisition",
+          "kind": "alias",
+          "doc": "Acquisition 技能习得流水线"
+        },
+        {
+          "name": "SkillUsageTracker",
+          "kind": "alias",
+          "doc": "UsageTracker 技能使用追踪器"
+        }
+      ],
+      "constants": [
+        {
+          "name": "SkillDraft",
+          "value": "skills.SkillDraft",
+          "doc": "SkillDraft 草稿"
+        },
+        {
+          "name": "SkillVerified",
+          "value": "skills.SkillVerified",
+          "doc": "SkillVerified 已验证"
+        },
+        {
+          "name": "SkillActive",
+          "value": "skills.SkillActive",
+          "doc": "SkillActive 活跃"
+        },
+        {
+          "name": "SkillDeprecated",
+          "value": "skills.SkillDeprecated",
+          "doc": "SkillDeprecated 已弃用"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewSkill",
+          "doc": "NewSkill 创建新技能"
+        },
+        {
+          "name": "NewSkillStore",
+          "doc": "NewSkillStore 创建技能库"
+        },
+        {
+          "name": "NewSkillMatcher",
+          "doc": "NewSkillMatcher 创建技能匹配器"
+        },
+        {
+          "name": "NewSkillUsageTracker",
+          "doc": "NewSkillUsageTracker 创建使用追踪器"
         }
       ]
     },
