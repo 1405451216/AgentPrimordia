@@ -1,0 +1,7 @@
+{
+  "skill": "{\"id\":\"skill-demo-data-fix\",\"name\":\"数据异常修复\",\"description\":\"从监控数据中检测并修复异常（示例技能，v4.8 技能市场条目）\",\"version\":{\"major\":1,\"minor\":0,\"patch\":0},\"status\":\"verified\",\"steps\":[{\"id\":\"s1\",\"description\":\"查询异常数据\",\"tool_name\":\"query_anomaly\",\"depends_on\":[]},{\"id\":\"s2\",\"description\":\"执行修复\",\"tool_name\":\"fix_data\",\"depends_on\":[\"s1\"]},{\"id\":\"s3\",\"description\":\"验证修复结果\",\"tool_name\":\"verify_fix\",\"depends_on\":[\"s2\"]}],\"tags\":[\"数据\",\"修复\",\"监控\"],\"created_at\":\"2026-08-09T08:00:00Z\",\"updated_at\":\"2026-08-09T08:00:00Z\"}",
+  "version": "1.0.0",
+  "signature": "",
+  "public_key": "",
+  "published_at": "2026-08-09T08:00:00Z"
+}

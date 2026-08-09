@@ -21,7 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-)
+
+	"sync")
 
 // Manifest 插件远程安装清单。
 type Manifest struct {
@@ -182,6 +183,46 @@ func validatePathComponent(s, field string) error {
 // Installer 远程安装器。
 type Installer struct {
 	Client *http.Client
+
+	// v4.8-1 市场真实运营：下载统计（按插件名计数，经 Install 自动累计）。
+	statsMu      sync.Mutex
+	downloads    map[string]int64
+	statsEnabled bool
+}
+
+// EnableDownloadStats 开启下载统计（默认关闭，避免无谓计数开销）。
+func (i *Installer) EnableDownloadStats() {
+	i.statsMu.Lock()
+	defer i.statsMu.Unlock()
+	i.statsEnabled = true
+	i.downloads = make(map[string]int64)
+}
+
+// DownloadCount 返回指定插件的累计下载次数。
+func (i *Installer) DownloadCount(name string) int64 {
+	i.statsMu.Lock()
+	defer i.statsMu.Unlock()
+	return i.downloads[name]
+}
+
+// DownloadStats 返回全部下载统计快照（插件名 → 次数）。
+func (i *Installer) DownloadStats() map[string]int64 {
+	i.statsMu.Lock()
+	defer i.statsMu.Unlock()
+	out := make(map[string]int64, len(i.downloads))
+	for k, v := range i.downloads {
+		out[k] = v
+	}
+	return out
+}
+
+func (i *Installer) recordDownload(name string) {
+	i.statsMu.Lock()
+	defer i.statsMu.Unlock()
+	if !i.statsEnabled {
+		return
+	}
+	i.downloads[name]++
 }
 
 // NewInstaller 创建安装器。
@@ -261,6 +302,7 @@ func (i *Installer) Install(ctx context.Context, m *Manifest, outDir string) (*I
 	if err := os.WriteFile(path, artifact, 0o644); err != nil {
 		return nil, err
 	}
+	i.recordDownload(m.Name)
 
 	return &InstallResult{
 		Name:         m.Name,

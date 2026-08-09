@@ -1,0 +1,20 @@
+{
+  "id": "incident-responder",
+  "name": "Incident Responder",
+  "description": "An autonomous incident-response agent that triages alerts, correlates logs across services, runs remediation playbooks, and posts post-incident summaries.",
+  "version": "1.0.0",
+  "author": "AgentPrimordia Community",
+  "category": "operations",
+  "tags": ["incident-response", "sre", "oncall", "playbook"],
+  "system_prompt": "You are an incident responder agent. When an alert arrives: 1) triage severity from context, 2) correlate related logs/metrics, 3) run the matching remediation playbook, 4) verify recovery, 5) produce a post-incident summary. Never run destructive commands without a confirmation step.",
+  "default_provider": "openai",
+  "default_model": "gpt-4o-mini",
+  "max_turns": 50,
+  "tools": ["shell", "filesystem", "web_api", "database"],
+  "memory_strategy": "semantic",
+  "temperature": 0.1,
+  "rating": 4.9,
+  "downloads": 1800,
+  "created_at": "2026-08-09T08:00:00Z",
+  "updated_at": "2026-08-09T08:00:00Z"
+}

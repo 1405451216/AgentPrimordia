@@ -212,3 +212,56 @@ func TestInstaller_PathTraversalRejected(t *testing.T) {
 		})
 	}
 }
+
+// TestInstaller_DownloadStats 市场真实运营（v4.8-1）：安装成功累计下载统计。
+func TestInstaller_DownloadStats(t *testing.T) {
+	// 托管 artifact + manifest 的测试市场
+	artSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write([]byte("artifact-bytes"))
+	}))
+	defer artSrv.Close()
+
+	// 签名 artifact
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := []byte("artifact-bytes")
+	digest := sha256.Sum256(payload)
+	sig, _ := ecdsa.SignASN1(rand.Reader, priv, digest[:])
+	der, _ := x509.MarshalPKIXPublicKey(&priv.PublicKey)
+	pubPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}))
+
+	manSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(Manifest{
+			Name:        "ap-plugin-weather",
+			Version:     "1.0.0",
+			ImportPath:  "github.com/user/ap-plugin-weather",
+			ArtifactURL: artSrv.URL + "/weather.tar.gz",
+			Signature:   base64.StdEncoding.EncodeToString(sig),
+			PublicKey:   pubPEM,
+		})
+	}))
+	defer manSrv.Close()
+
+	installer := NewInstaller()
+	installer.EnableDownloadStats()
+	ctx := context.Background()
+
+	m, err := installer.FetchManifest(ctx, manSrv.URL+"/manifest.json")
+	if err != nil {
+		t.Fatalf("FetchManifest: %v", err)
+	}
+	out := t.TempDir()
+	if _, err := installer.Install(ctx, m, out); err != nil {
+		t.Fatalf("Install: %v", err)
+	}
+	if got := installer.DownloadCount("ap-plugin-weather"); got != 1 {
+		t.Errorf("download count = %d, want 1", got)
+	}
+	stats := installer.DownloadStats()
+	if len(stats) != 1 || stats["ap-plugin-weather"] != 1 {
+		t.Errorf("stats = %+v", stats)
+	}
+}

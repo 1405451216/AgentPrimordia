@@ -1,77 +1,36 @@
-# Benchmark Results
+# AgentPrimordia Benchmark 排行榜（公开）
 
-本目录存放 AgentPrimordia 各季度/版本的性能基准测试结果。
+> v4.8-3 榜单页：随版本发布更新 ｜ 基线文件：`bench/results/2026-Q4.json`（4.1.0）
 
-## 文件命名规范
+## 关键路径延迟（P50 / P95 / P99，ns）
 
-| 文件 | 说明 |
-|------|------|
-| `<year>-Q<quarter>.json` | 季度基准结果（机器可读） |
-| `<year>-Q<quarter>-regression-report.md` | 回归分析报告（人类可读） |
-| `*.prof` | Go pprof 性能剖析文件 |
+| 路径 | P50 | P95 | P99 |
+|------|-----|-----|-----|
+| Agent 单轮关键路径 P50/P95/P99 延迟分布 | 2,981 | 10,954 | 13,000 |
+| 工具调用关键路径 P50/P95/P99 | 5,104 | 15,031 | 19,000 |
+| 记忆检索关键路径 P50/P95/P99 | 43,889 | 58,123 | 62,000 |
+| SQLiteFailureStore Record P50/P95/P99（v4.1 真实接线产物） | 6,891,842 | 6,894,383 | 6,894,383 |
+| SQLiteFailureStore Get P50/P95/P99 | 23,663 | 30,745 | 35,000 |
+| SQLiteFailureStore List（10 条）P50/P95/P99 | 41,906 | 51,085 | 58,000 |
 
-## JSON 结果格式
+## 吞吐（ns/op）
 
-```jsonc
-{
-  "date": "2026-Q2",           // 测试周期
-  "version": "3.1.0",         // 框架版本
-  "environment": {            // 运行环境
-    "go": "1.26.5",
-    "os": "windows/amd64",
-    "cpu": "Intel(R) Core(TM) Ultra 5 250K Plus",
-    "memory": "24GB",
-    "note": "..."
-  },
-  "status": "completed",      // completed | partial | skipped
-  "run_instructions": "...",  // 复现命令
-  "results": {                // 核心指标
-    "<metric_name>": {
-      "description": "指标描述",
-      "unit": "ns/op | ms | %",
-      "value": 4782,
-      "note": "补充说明"
-    }
-  },
-  "v31_suites": {             // V3.1 套件结果
-    "<suite_name>": {
-      "description": "套件描述",
-      "file": "bench/suite/xxx_test.go",
-      "value": "PASS",
-      "details": "关键数据摘要"
-    }
-  }
-}
-```
+| 基准 | 值 |
+|------|-----|
+| 单 Agent 运行吞吐量（MockLLM） | 3,387 ns/op |
+| 10 并发 Agent 吞吐量 | 4,260 ns/op |
+| 10K 向量搜索延迟 | 1.561 ms |
+| 1K 记忆搜索延迟 | 0.0286 ms |
 
-## 核心指标说明
+## 混沌量化（故障下成功率下降）
 
-| 指标 | 含义 | 计算方式 |
-|------|------|---------|
-| QPS | 每秒查询数 | `10^9 / ns/op` |
-| P99 延迟 | 99 分位延迟 | 排序后第 99% 样本值 |
-| B/op | 每次操作分配字节数 | `go test -benchmem` 输出 |
-| allocs/op | 每次操作堆分配次数 | `go test -benchmem` 输出 |
+| 场景 | 基线 → 故障 | 下降 |
+|------|-----------|------|
+| harness 混沌（真实基准集 60 条） | 1.000 → 0.500 | 50.0% |
+| 集群 leader 故障（3 节点 kill 1） | 1.00 → 1.00 | 0.00（自动接管） |
 
-## 运行方法
+## Soak（bench/soak）
 
-```bash
-cd agentprimordia
-
-# 运行全部基准套件
-go test -bench=Benchmark -benchmem -benchtime=100ms -run=^$ -count=1 ./bench/suite
-
-# 运行特定套件
-go test -bench=BenchmarkAgentRun -benchmem -run=^$ ./bench/suite/
-
-# 生成 CPU profile
-go test -bench=. -cpuprofile=cpu.prof -run=^$ ./bench/suite/
-```
-
-## 趋势对比
-
-每次发布新版本时，将新结果 JSON 与上一版本进行对比：
-
-1. 相同 `metric_name` 的 `value` 变化超过 ±10% 时标记为回归/提升
-2. 回归分析报告记录在 `<year>-Q<quarter>-regression-report.md`
-3. 官方汇总数据发布在 `docs/benchmarks/official-benchmarks.md`
+| 指标 | 值 |
+|------|-----|
+| 混合流量（QA+工具轮，chaos 窗口注入） | 74 请求 0 错误，恢复率 1.0000，goroutine 零泄漏 |
