@@ -34,6 +34,36 @@ type SkillAcquisition = skills.Acquisition
 // UsageTracker 技能使用追踪器
 type SkillUsageTracker = skills.UsageTracker
 
+// Trajectory 成功工具调用序列（技能习得原料）
+type SkillTrajectory = skills.Trajectory
+
+// ToolCallRecord 工具调用轨迹记录
+type SkillToolCallRecord = skills.ToolCallRecord
+
+// SkillDistiller LLM 提炼接口（由外部 learning/llm_distiller.go 适配）
+type SkillDistiller = skills.SkillDistiller
+
+// MatcherConfig 匹配器配置
+type SkillMatcherConfig = skills.MatcherConfig
+
+// Trigger 习得触发器
+type SkillTrigger = skills.Trigger
+
+// TriggerConfig 触发器配置
+type SkillTriggerConfig = skills.TriggerConfig
+
+// TriggerStrategy 习得触发策略
+type SkillTriggerStrategy = skills.TriggerStrategy
+
+// Verification 技能验证门：新技能必须通过测试用例才可启用
+type SkillVerification = skills.Verification
+
+// TestCase 技能验证测试用例
+type SkillTestCase = skills.TestCase
+
+// UsageRecord 技能调用日志
+type SkillUsageRecord = skills.UsageRecord
+
 // --- 状态常量导出 ---
 
 const (
@@ -47,6 +77,15 @@ const (
 	SkillDeprecated = skills.SkillDeprecated
 )
 
+// --- 触发策略常量导出 ---
+
+const (
+	// SkillTriggerRepeatPattern 重复模式检测（同类任务出现 N 次）
+	SkillTriggerRepeatPattern = skills.TriggerRepeatPattern
+	// SkillTriggerLowSuccess 任务完成率低（低于阈值时触发习得）
+	SkillTriggerLowSuccess = skills.TriggerLowSuccess
+)
+
 // --- 构造器导出 ---
 
 var (
@@ -58,4 +97,10 @@ var (
 	NewSkillMatcher = skills.NewMatcher
 	// NewSkillUsageTracker 创建使用追踪器
 	NewSkillUsageTracker = skills.NewUsageTracker
+	// NewSkillAcquisition 创建习得流水线
+	NewSkillAcquisition = skills.NewAcquisition
+	// NewSkillTrigger 创建习得触发器
+	NewSkillTrigger = skills.NewTrigger
+	// NewSkillVerification 创建技能验证门
+	NewSkillVerification = skills.NewVerification
 )

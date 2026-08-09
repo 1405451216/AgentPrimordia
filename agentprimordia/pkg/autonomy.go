@@ -31,6 +31,21 @@ type RuntimeConfig = autonomy.RuntimeConfig
 // StepExecutor 步骤执行器接口
 type StepExecutor = autonomy.StepExecutor
 
+// Checkpoint 自治目标检查点快照
+type Checkpoint = autonomy.Checkpoint
+
+// MonitorConfig 监控器配置
+type MonitorConfig = autonomy.MonitorConfig
+
+// Monitor 自治监控器：停滞检测 + 进度追踪 + 异常上报
+type Monitor = autonomy.Monitor
+
+// Alert 异常告警
+type Alert = autonomy.Alert
+
+// AlertLevel 异常分级
+type AlertLevel = autonomy.AlertLevel
+
 // --- 状态常量导出 ---
 
 const (
