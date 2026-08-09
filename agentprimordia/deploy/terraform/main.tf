@@ -31,7 +31,7 @@ resource "docker_network" "ap_cluster" {
 # ─── etcd ─────────────────────────────────────────────────────
 resource "docker_container" "etcd" {
   name  = "${var.cluster_name}-etcd"
-  image = "bitnami/etcd:3.5"
+  image = "quay.io/coreos/etcd:v3.5.12"
 
   env = [
     "ALLOW_NONE_AUTHENTICATION=yes",

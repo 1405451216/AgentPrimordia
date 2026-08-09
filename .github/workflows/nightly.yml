@@ -60,14 +60,9 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
 
-      - name: Run Trivy container scan (if Dockerfile exists)
-        if: hashFiles('Dockerfile') != ''
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: image
-          image-ref: 'agentprimordia:latest'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '0'
+      # 修复评估报告 §7.5：原「Trivy 容器扫描」步骤以根 Dockerfile 为守卫
+      # （根目录从未存在），且扫描的 agentprimordia:latest 镜像在本 job 未构建，
+      # 属死代码——容器镜像扫描由 release.yml / supply-chain.yml 在构建时执行。
 
   dependency-freshness:
     name: Dependency Freshness Check
@@ -98,10 +93,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 修复评估报告 §7.5：仓库根无 Dockerfile（Dockerfile 在 agentprimordia/），
+      # 原 job 在根执行 docker build . 每次必失败。
       - name: Build Docker image
+        working-directory: agentprimordia
         run: docker build . --tag agentprimordia:nightly
 
       - name: Verify image
+        working-directory: agentprimordia
         run: docker run --rm agentprimordia:nightly echo "Docker image OK"
 
   chaos-engineering:
