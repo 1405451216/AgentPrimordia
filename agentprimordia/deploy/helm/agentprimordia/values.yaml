@@ -93,7 +93,7 @@ operator:
   enabled: false
   image:
     repository: ghcr.io/agentprimordia/ap-operator
-    tag: "v0.1.0"
+    tag: "v2.0.0"
 
 # ─── 可观测性 ─────────────────────────────────────────────────
 metrics:

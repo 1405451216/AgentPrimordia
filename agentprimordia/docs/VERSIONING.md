@@ -23,8 +23,8 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 | TypeScript SDK | v4.0.0 | `sdk/typescript/package.json` |
 | Python 客户端 | v2.0.0 | `sdk/python/pyproject.toml` |
 | Rust 客户端 | v2.0.0 | `sdk/rust/Cargo.toml` |
-| CLI | v4.0.0 | `cmd/ap/version.go` |
-| K8s Operator | v2.0.0 | `operator/go.mod` |
+| CLI | v4.0.0 | `cmd/ap/main.go`（`var Version`，发布经 ldflags 注入） |
+| K8s Operator | v2.0.0 | operator 模块无版本字段（镜像 tag 见 deploy/helm values.yaml） |
 
 ### 版本发布纪律
 

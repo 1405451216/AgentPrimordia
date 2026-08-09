@@ -128,7 +128,7 @@ v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成
 - **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试
 - **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
 - **向后兼容** — Stable API 向后兼容，链式 API 仍可用
-- **版本统一** — Go SDK / CLI 当前 v3.1.0，TypeScript SDK v2.0.0；API 稳定性承诺锁定（详见 [VERSIONING.md](agentprimordia/docs/VERSIONING.md)）
+- **版本统一** — Go SDK / CLI / TypeScript SDK 全局对齐 v1.0.0；API 稳定性承诺锁定（详见 [VERSIONING.md](agentprimordia/docs/VERSIONING.md)）
 
 ## v0.7.0 Highlights
 
