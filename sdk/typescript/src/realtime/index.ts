@@ -154,3 +154,12 @@ export class RealtimeHub {
     return [...this.sessions.values()].filter(s => s.isActive).length;
   }
 }
+
+// ===== 真实 ASR/TTS HTTP 适配器（v4.1 双语言对齐，见 adapters.ts） =====
+
+export {
+  OpenAIASR,
+  OpenAITTS,
+  type OpenAIASROptions,
+  type OpenAITTSOptions,
+} from './adapters.js';
