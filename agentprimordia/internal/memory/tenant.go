@@ -123,7 +123,10 @@ func (t *TenantScoped) TenantMetrics() TenantStats {
 
 // --- 写入 ---
 
-// Add 自动注入 tenantID 到 Metadata（如缺失），然后写入底层存储。
+// Add 写入一条 Episode：强制注入当前租户的 tenant_id。
+// 校验规则（评估报告 §5.2 复核）：调用方传入的 Metadata["tenant_id"] 若存在
+// 且与当前租户不一致 → 返回 ErrTenantMismatch（拒绝写入，不可伪造归属）；
+// 缺失或一致 → 覆盖为当前租户 id 后写入。
 func (t *TenantScoped) Add(ctx context.Context, ep *Episode) error {
 	if ep == nil {
 		return fmt.Errorf("memory: episode must not be nil")
@@ -434,7 +437,10 @@ func (t *TenantScoped) GetMemoryTimeline(ctx context.Context, days int) ([]*Memo
 	return raw, nil
 }
 
-// RecordToolUse 透传（不强制 tenant 注入；调用方需自行设置 metadata）。
+// RecordToolUse 记录工具调用。注意：inner 的 RecordToolUse 构造的 episode
+// 不携带 metadata，因此不注入 tenant_id——该 episode 对任何租户的
+// 过滤读取均不可见（可见性缺口，非跨租户风险）。如需租户可见，
+// 应改用 Add 写入带 tenant_id 的 tool_use episode。
 func (t *TenantScoped) RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error {
 	return t.inner.RecordToolUse(ctx, sessionID, agentName, toolName, args, result)
 }

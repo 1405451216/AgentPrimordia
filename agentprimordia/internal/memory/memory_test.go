@@ -348,6 +348,71 @@ func TestSearch_NoMatch(t *testing.T) {
 	}
 }
 
+// TestSearch_TagsFilter 回归（评估报告 §5.2）：Search 此前忽略 Tags，
+// 与 SearchAdvanced 契约漂移。
+func TestSearch_TagsFilter(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	ep1 := MustEpisode("s1", "user", "beach vacation planning")
+	ep1.Topics = "travel beach"
+	if err := store.Add(ctx, ep1); err != nil {
+		t.Fatalf("Add ep1: %v", err)
+	}
+	ep2 := MustEpisode("s1", "user", "beach house coding setup")
+	ep2.Topics = "coding"
+	if err := store.Add(ctx, ep2); err != nil {
+		t.Fatalf("Add ep2: %v", err)
+	}
+
+	// 不带 Tags：两条都返回
+	results, err := store.Search(ctx, "beach", &SearchOptions{Limit: 10})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("Search(no tags) length = %d, want 2", len(results))
+	}
+
+	// 带 Tags：仅返回命中 travel 的条目
+	results, err = store.Search(ctx, "beach", &SearchOptions{Limit: 10, Tags: []string{"travel"}})
+	if err != nil {
+		t.Fatalf("Search(tags) error = %v", err)
+	}
+	if len(results) != 1 || results[0].Topics != "travel beach" {
+		t.Fatalf("Search(tags) = %d results, want 1 (travel beach), got %v", len(results), results)
+	}
+}
+
+// TestSearch_MinScoreFilter 回归（评估报告 §5.2）：Search 此前忽略 MinScore。
+func TestSearch_MinScoreFilter(t *testing.T) {
+	store, _ := WithInMemory()
+	defer store.Close()
+
+	ctx := context.Background()
+	if err := store.Add(ctx, MustEpisode("s1", "user", "the quick brown fox jumps")); err != nil {
+		t.Fatalf("Add failed: %v", err)
+	}
+
+	// 单条命中归一化得分为 1.0：MinScore 0.5 保留，1.5 过滤
+	results, err := store.Search(ctx, "fox", &SearchOptions{Limit: 10, MinScore: 0.5})
+	if err != nil {
+		t.Fatalf("Search(MinScore=0.5) error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("Search(MinScore=0.5) length = %d, want 1", len(results))
+	}
+
+	results, err = store.Search(ctx, "fox", &SearchOptions{Limit: 10, MinScore: 1.5})
+	if err != nil {
+		t.Fatalf("Search(MinScore=1.5) error = %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("Search(MinScore=1.5) length = %d, want 0", len(results))
+	}
+}
+
 func TestSearch_WithSessionFilter(t *testing.T) {
 	store, _ := WithInMemory()
 	defer store.Close()

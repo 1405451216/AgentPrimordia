@@ -14,13 +14,13 @@ import (
 
 // MCPClientConfig 描述一个外部 MCP Server 的连接配置（从 AP 客户端视角）
 type MCPClientConfig struct {
-	Name      string            `json:"name"`                // 服务器名称
-	Command   string            `json:"command"`             // 启动命令 (如 "npx")
-	Args      []string          `json:"args"`                // 命令参数
-	Env       map[string]string `json:"env,omitempty"`       // 环境变量
-	AutoStart bool              `json:"autoStart,omitempty"` // Agent 启动时自动拉起
-	BaseURL   string            `json:"baseUrl,omitempty"`   // 已运行 Server 的 URL（跳过启动）
-	ToolPrefix string           `json:"toolPrefix,omitempty"` // v3.9-4：工具名命名空间前缀，隔离多 server 同名工具
+	Name       string            `json:"name"`                 // 服务器名称
+	Command    string            `json:"command"`              // 启动命令 (如 "npx")
+	Args       []string          `json:"args"`                 // 命令参数
+	Env        map[string]string `json:"env,omitempty"`        // 环境变量
+	AutoStart  bool              `json:"autoStart,omitempty"`  // Agent 启动时自动拉起
+	BaseURL    string            `json:"baseUrl,omitempty"`    // 已运行 Server 的 URL（跳过启动）
+	ToolPrefix string            `json:"toolPrefix,omitempty"` // v3.9-4：工具名命名空间前缀，隔离多 server 同名工具
 }
 
 // MCPClientStatus 描述 MCP Server 的运行状态
@@ -207,10 +207,10 @@ func (r *MCPRegistry) startProcess(ctx context.Context, name string, entry *MCPC
 			break
 		}
 		select {
-	case <-time.After(time.Duration(i+1) * time.Second):
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+		case <-time.After(time.Duration(i+1) * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 
 	if initErr != nil {

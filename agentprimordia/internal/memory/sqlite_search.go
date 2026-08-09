@@ -20,6 +20,9 @@ import (
 )
 
 // Search 在 FTS5 全文索引上执行关键字搜索
+// 修复评估报告 §5.2：此前忽略 Tags/MinScore，与 SearchAdvanced 契约漂移；
+// 现与 searchFTS5Candidates 一致支持 Tags 过滤，并以与 SearchAdvanced 相同的
+// normalizeFTS5Rank 归一化应用 MinScore 阈值。
 func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOptions) ([]*Episode, error) {
 	if s.closed.Load() {
 		return nil, ErrStoreClosed
@@ -44,6 +47,14 @@ func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOpti
 		conditions = append(conditions, "e.role = ?")
 		args = append(args, opts.RoleFilter)
 	}
+	if len(opts.Tags) > 0 {
+		tagConditions := make([]string, 0, len(opts.Tags))
+		for _, tag := range opts.Tags {
+			tagConditions = append(tagConditions, "e.topics LIKE ? ESCAPE '\\'")
+			args = append(args, "%"+escapeLike(tag)+"%")
+		}
+		conditions = append(conditions, "("+strings.Join(tagConditions, " OR ")+")")
+	}
 
 	whereExtra := ""
 	if len(conditions) > 0 {
@@ -51,7 +62,8 @@ func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOpti
 	}
 
 	sqlQuery := fmt.Sprintf(`
-		SELECT e.id, e.session_id, e.role, e.content, e.summary, e.topics, e.importance, e.metadata, e.created_at
+		SELECT e.id, e.session_id, e.role, e.content, e.summary, e.topics, e.importance, e.metadata, e.created_at,
+			rank
 		FROM episodes e
 		JOIN episodes_fts fts ON e.rowid = fts.rowid
 		WHERE episodes_fts MATCH ?%s
@@ -67,7 +79,50 @@ func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOpti
 	}
 	defer rows.Close()
 
-	return s.scanEpisodes(rows)
+	// 扫描（带 rank），MinScore > 0 时按与 SearchAdvanced 相同的归一化过滤。
+	// 注：scanRows 固定扫 9 列，这里需连同 rank 列手工扫描。
+	type hit struct {
+		ep   *Episode
+		rank float64
+	}
+	hits := make([]hit, 0, 16)
+	maxRank := 0.0
+	for rows.Next() {
+		var ep Episode
+		var metadataJSON sql.NullString
+		var r float64
+		err := rows.Scan(&ep.ID, &ep.SessionID, &ep.Role, &ep.Content, &ep.Summary, &ep.Topics, &ep.Importance, &metadataJSON, &ep.CreatedAt, &r)
+		if err != nil {
+			return nil, fmt.Errorf("scan episode row: %w", err)
+		}
+		if metadataJSON.Valid && metadataJSON.String != "" {
+			if err := json.Unmarshal([]byte(metadataJSON.String), &ep.Metadata); err != nil {
+				return nil, fmt.Errorf("unmarshal metadata: %w", err)
+			}
+		}
+		if r < maxRank {
+			maxRank = r
+		}
+		hits = append(hits, hit{ep: &ep, rank: r})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate rows: %w", err)
+	}
+
+	if opts.MinScore <= 0 {
+		eps := make([]*Episode, 0, len(hits))
+		for _, h := range hits {
+			eps = append(eps, h.ep)
+		}
+		return eps, nil
+	}
+	eps := make([]*Episode, 0, len(hits))
+	for _, h := range hits {
+		if normalizeFTS5Rank(h.rank, maxRank) >= opts.MinScore {
+			eps = append(eps, h.ep)
+		}
+	}
+	return eps, nil
 }
 
 // SearchAdvanced 在 FTS5 候选上做关键词+语义融合打分，返回 SearchResult 列表
