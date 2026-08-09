@@ -37,6 +37,11 @@ const (
 var (
 	ErrTimeout      = errors.New("operation timed out")
 	ErrTaskNotFound = errors.New("task not found")
+	// ErrContextCanceled 表示任务因上下文取消而终止。
+	// pkg.ErrContextCanceled re-export 本 sentinel；executeTask 的 ctx 取消
+	// 路径以 %w 包装返回，使结构化错误码 CTX_001 可命中
+	//（修复评估报告 §四.1-④：此前 pkg 侧 sentinel 无任何抛出点）。
+	ErrContextCanceled = errors.New("context canceled")
 )
 
 // TaskError 单个任务错误信息
@@ -393,12 +398,15 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			p.mu.Unlock()
 			p.queuedCount.Add(-1)
 			p.emitEvent(PoolEvent{Type: "task_cancelled", TaskID: task.ID})
+			// 修复评估报告 §四.1-④：以 %w 包装 ErrContextCanceled，
+			// 使 CTX_001 错误码可命中（errors.Is 仍匹配 context.Canceled）。
+			cancelErr := fmt.Errorf("%w: %w", ErrContextCanceled, ctx.Err())
 			return &TaskResult{
 				TaskID: task.ID,
 				Task:   task,
-				Error:  ctx.Err(),
+				Error:  cancelErr,
 				Status: PoolTaskCancelled,
-			}, ctx.Err()
+			}, cancelErr
 		}
 		p.mu.Lock()
 		pt.storeStatus(PoolTaskFailed)
@@ -472,7 +480,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 						p.mu.Lock()
 						pt.storeStatus(PoolTaskCancelled)
 						p.mu.Unlock()
-						return pt.result, ctx.Err()
+						return pt.result, fmt.Errorf("%w: %w", ErrContextCanceled, ctx.Err())
 					}
 					select {
 					case <-time.After(p.config.RetryPolicy.Backoff):
@@ -480,7 +488,7 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 						p.mu.Lock()
 						pt.storeStatus(PoolTaskCancelled)
 						p.mu.Unlock()
-						return pt.result, ctx.Err()
+						return pt.result, fmt.Errorf("%w: %w", ErrContextCanceled, ctx.Err())
 					}
 					continue
 				}

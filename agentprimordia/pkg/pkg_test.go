@@ -3,8 +3,10 @@ package ap_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
+	"agentprimordia/internal/agent"
 	ap "agentprimordia/pkg"
 )
 
@@ -275,5 +277,36 @@ func TestCodeError(t *testing.T) {
 	}
 	if ce.Error() != "custom error" {
 		t.Errorf("Error() = %q, want 'custom error'", ce.Error())
+	}
+	if ce.GetCode() != "CUSTOM_001" {
+		t.Errorf("GetCode() = %q, want CUSTOM_001", ce.GetCode())
+	}
+	// 修复评估报告 §四.1-①：GetErrorCode 的 errors.As 路径必须命中 CodeError
+	//（修复前 WithCode 构造的错误码返回 "UNKNOWN"）。
+	if code := ap.GetErrorCode(ce); code != "CUSTOM_001" {
+		t.Errorf("GetErrorCode(CodeError) = %q, want CUSTOM_001", code)
+	}
+	// %w 包装后同样可命中
+	wrapped := fmt.Errorf("outer: %w", ce)
+	if code := ap.GetErrorCode(wrapped); code != "CUSTOM_001" {
+		t.Errorf("GetErrorCode(wrapped CodeError) = %q, want CUSTOM_001", code)
+	}
+}
+
+// TestErrOutputBlockedIdentity 验证 pkg.ErrOutputBlocked 与 agent 护栏拦截
+// 抛出的 sentinel 是同一错误值（修复评估报告 §四.1-③）。
+func TestErrOutputBlockedIdentity(t *testing.T) {
+	t.Parallel()
+	if ap.ErrOutputBlocked != agent.ErrOutputBlocked {
+		t.Fatal("ap.ErrOutputBlocked 与 agent.ErrOutputBlocked 不是同一 sentinel")
+	}
+	if !errors.Is(agent.ErrOutputBlocked, ap.ErrOutputBlocked) {
+		t.Fatal("errors.Is(agent.ErrOutputBlocked, ap.ErrOutputBlocked) 应为 true")
+	}
+	if code := ap.GetErrorCode(agent.ErrOutputBlocked); code != "GRD_002" {
+		t.Fatalf("GetErrorCode(ErrOutputBlocked) = %q, want GRD_002", code)
+	}
+	if !ap.IsAccessDenied(agent.ErrOutputBlocked) {
+		t.Fatal("IsAccessDenied(ErrOutputBlocked) 应为 true")
 	}
 }

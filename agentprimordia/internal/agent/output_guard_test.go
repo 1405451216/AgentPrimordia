@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -97,6 +98,11 @@ func TestRunLoop_OutputGuard_Block(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "blocked") {
 		t.Errorf("错误信息不正确: %v", err)
+	}
+	// 修复评估报告 §四.1-③：拦截错误必须匹配 ErrOutputBlocked sentinel
+	//（修复前为裸 fmt.Errorf，errors.Is 永不命中）。
+	if !errors.Is(err, ErrOutputBlocked) {
+		t.Errorf("errors.Is(err, ErrOutputBlocked) 应为 true, got err=%v", err)
 	}
 	if !guardCalled {
 		t.Error("OutputGuard 未被调用")

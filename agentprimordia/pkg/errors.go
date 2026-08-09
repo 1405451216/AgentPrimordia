@@ -21,6 +21,14 @@ type CodeError struct {
 	Message string
 }
 
+// GetCode 返回结构化错误码，使 GetErrorCode 的 errors.As 路径可命中
+// （修复评估报告 §四.1-①：此前仅字段 Code、无访问器方法，errors.As 分支
+// 永不命中，WithCode 构造的错误码经 GetErrorCode 只能返回 "UNKNOWN"。
+// 注：因字段 Code 与同名方法冲突，访问器命名为 GetCode）。
+func (e *CodeError) GetCode() string {
+	return e.Code
+}
+
 // AggregatedError 聚合多个任务的错误信息，支持 errors.Is/errors.As 解包
 type AggregatedError = pool.AggregatedError
 
@@ -74,6 +82,8 @@ var (
 	ErrFallbackFailed = llm.ErrFallbackFailed
 
 	// ErrPoolFull 表示 Pool 已达最大容量
+	// 注：当前 Pool 队列无界（Dispatch 不设排队上限），本 sentinel 为预留错误码，
+	// 未来引入排队容量限制时作为抛出点（见评估报告 §四.1-④）。
 	ErrPoolFull = errors.New("pool is at max capacity")
 	// ErrTaskNotFound 表示任务未找到
 	ErrTaskNotFound = pool.ErrTaskNotFound
@@ -81,7 +91,9 @@ var (
 	ErrTimeout = pool.ErrTimeout
 
 	// ErrContextCanceled 表示上下文已取消
-	ErrContextCanceled = errors.New("context canceled")
+	// re-export pool.ErrContextCanceled：executeTask 的 ctx 取消路径以 %w 抛出
+	//（修复评估报告 §四.1-④：此前 pkg 本地 sentinel 无抛出点）。
+	ErrContextCanceled = pool.ErrContextCanceled
 
 	// ErrEpisodeNotFound 表示记忆片段未找到
 	ErrEpisodeNotFound = memory.ErrEpisodeNotFound
@@ -130,7 +142,9 @@ var (
 	// ErrInputBlocked 表示输入被护栏拦截
 	ErrInputBlocked = agent.ErrInputBlocked
 	// ErrOutputBlocked 表示输出被护栏拦截
-	ErrOutputBlocked = errors.New("ap: output blocked by guardrail")
+	// re-export agent.ErrOutputBlocked：guardrail 拦截路径抛出同一 sentinel
+	//（修复评估报告 §四.1-③：此前 pkg 本地 errors.New，与拦截路径不匹配）。
+	ErrOutputBlocked = agent.ErrOutputBlocked
 
 	// --- Orchestration 错误 ---
 	// ErrNoAgentAvailable 表示无可用 Agent 处理请求
@@ -233,10 +247,10 @@ var errorCodeMapping = map[error]string{
 }
 
 func GetErrorCode(err error) string {
-	type coded interface{ Code() string }
+	type coded interface{ GetCode() string }
 	var c coded
 	if errors.As(err, &c) {
-		return c.Code()
+		return c.GetCode()
 	}
 
 	for sentinel, code := range errorCodeMapping {

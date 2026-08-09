@@ -22,6 +22,13 @@ var ErrNoToolkit = errors.New("no toolkit configured")
 // ErrInputBlocked 表示用户输入被输入端护栏拒绝（v3.4-4）
 var ErrInputBlocked = errors.New("input blocked by guardrail")
 
+// ErrOutputBlocked 表示 LLM 输出被输出端护栏拦截。
+// 与 ErrInputBlocked 对称，供 pkg 层 re-export；guardrail 拦截路径必须
+// 抛出本 sentinel，保证 errors.Is(err, ap.ErrOutputBlocked) 可命中
+// （修复评估报告 §四.1-③：此前 react_loop_core.go 用裸 fmt.Errorf，
+// 与 pkg.ErrOutputBlocked 消息不同，errors.Is 永不匹配）。
+var ErrOutputBlocked = errors.New("output blocked by guardrail")
+
 // getOrInitExecutor 懒加载返回缓存的 Executor。优化（Task 1.5）：避免每轮tool调用都 NewExecutor。
 func (a *ReActAgent) getOrInitExecutor() *tools.Executor {
 	a.toolExecutorOnce.Do(func() {

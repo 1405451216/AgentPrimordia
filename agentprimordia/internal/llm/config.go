@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -172,17 +173,27 @@ func (e *CodeError) Error() string {
 	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
 }
 
+// GetCode 返回错误码字符串，使 pkg.GetErrorCode 的 errors.As 分支可跨包命中
+// （评估报告 §四.1-②：与 pkg.CodeError 通过同一 coded 接口统一；
+// 因字段 Code 与同名方法冲突，访问器命名为 GetCode）。
+func (e *CodeError) GetCode() string {
+	return string(e.Code)
+}
+
 // WithCode 创建结构化错误
 func WithCode(code ErrorCode, msg string) *CodeError {
 	return &CodeError{Code: code, Message: msg}
 }
 
-// GetCodeFromError 从 error 中提取错误码
+// GetCodeFromError 从 error 中提取错误码。
+// 修复评估报告 §四.1-②：此前仅直接类型断言，对 %w 包装过的错误失效；
+// 改用 errors.As 支持包装链。
 func GetCodeFromError(err error) ErrorCode {
 	if err == nil {
 		return ""
 	}
-	if ce, ok := err.(*CodeError); ok {
+	var ce *CodeError
+	if errors.As(err, &ce) {
 		return ce.Code
 	}
 	return unknownErrorCode

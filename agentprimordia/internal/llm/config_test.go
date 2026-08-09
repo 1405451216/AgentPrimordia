@@ -1,6 +1,7 @@
 package llm
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -291,6 +292,19 @@ func TestGetCodeFromError_CodeError(t *testing.T) {
 	code := GetCodeFromError(err)
 	if code != ErrCodeEmptyResponse {
 		t.Errorf("expected %s, got %s", ErrCodeEmptyResponse, code)
+	}
+}
+
+func TestGetCodeFromError_WrappedCodeError(t *testing.T) {
+	// 修复评估报告 §四.1-②：此前仅直接类型断言，%w 包装后失效返回 UNKNOWN
+	err := fmt.Errorf("outer: %w", WithCode(ErrCodeRetriesExhausted, "retries"))
+	code := GetCodeFromError(err)
+	if code != ErrCodeRetriesExhausted {
+		t.Errorf("expected %s, got %s", ErrCodeRetriesExhausted, code)
+	}
+	// GetCode() 与 pkg.GetErrorCode 的 coded 接口对齐（接口面由 pkg 侧测试覆盖）
+	if ce := WithCode(ErrCodeRetriesExhausted, "retries"); ce.GetCode() != string(ErrCodeRetriesExhausted) {
+		t.Errorf("GetCode() = %q, want %q", ce.GetCode(), ErrCodeRetriesExhausted)
 	}
 }
 

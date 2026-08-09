@@ -267,7 +267,10 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 					Result:   auditResultBlocked,
 					Details:  map[string]any{"turn": turn, "rule": "output_guard"},
 				})
-				return &Response{RequestID: cfg.requestID, Error: fmt.Errorf("output blocked by guardrail")}, fmt.Errorf("output blocked by guardrail")
+				// 修复评估报告 §四.1-③：抛出 ErrOutputBlocked sentinel，
+				// 使 errors.Is(err, ap.ErrOutputBlocked) 与 GetErrorCode→GRD_002 可命中
+				// （此前裸 fmt.Errorf 与 pkg.ErrOutputBlocked 消息不同，永不匹配）。
+				return &Response{RequestID: cfg.requestID, Error: ErrOutputBlocked}, ErrOutputBlocked
 			} else if sanitized != "" {
 				thought.Content = sanitized
 				a.logger.Debug("Guardrail 已脱敏输出")
