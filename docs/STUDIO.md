@@ -27,7 +27,7 @@ cd agentprimordia && go run ./cmd/studio
 cd agentprimordia/studio/web && npm install && npm run dev
 ```
 
-> 生产接入真实引擎：通过 `internal/studio` 的 `WithChaos / WithCluster / WithLearning / WithMarketplace` 注入对应服务替换 demo 实现。
+> 生产接入真实引擎：通过 `internal/studio` 的 `WithChaos / WithCluster / WithLearning / WithMarketplace / WithAutonomy / WithSkills / WithRealtime` 注入对应服务替换 demo 实现（真实引擎适配器见 `internal/studio/adapters_v3x.go`，如 `NewAutonomyServiceAdapter(rt)` / `NewSkillServiceAdapter(store)` / `NewRealtimeServiceAdapter(hub, bus)`）。
 
 ## 面板
 
@@ -38,6 +38,10 @@ cd agentprimordia/studio/web && npm install && npm run dev
 | `/cluster` | 集群 | 节点拓扑、领导者状态、分片比例分布、降级告警横幅、表格排序 |
 | `/learning` | 学习监控 | 知识蒸馏统计、能力进化趋势线（Sparkline）、轮询增量闪烁 |
 | `/marketplace` | Agent 市场 | 模板搜索 / 分类 / 部署；已部署 Agent 治理（停止 / 重启） |
+| `/autonomy` | 自治监控（v3.3） | 目标列表 + 进度 + 停滞告警 + 恢复操作（5s 轮询） |
+| `/skills` | 技能库（v3.4） | 技能列表 + 命中率 + 手动验证/停用（10s 轮询） |
+| `/a2a-interop` | A2A 互操作（v3.5） | 开放协议状态与兼容性信息 |
+| `/realtime` | 实时控制台（v3.6） | 会话状态 + 事件流 + 打断控制（2s 轮询） |
 | `/help` | 帮助文档 | 面板、快捷键、混沌语义、市场、数据来源说明 |
 
 ## 设计原则
@@ -53,6 +57,10 @@ cd agentprimordia/studio/web && npm install && npm run dev
 - **绝不静默吞错**：错误面板 + 重试、`res.ok` 校验、逐端点部分失败报告（"部分接口返回异常（集群、能力）"）
 - **陈旧提示**：`Staleness` 每秒跳动，超过 30s 标记"数据可能已过期"
 - **轮询失败保留旧数据**：显示"（显示上次数据）"而非整页错误
+
+### 数据来源与陈旧语义（v4.1 真实接线复核）
+- **注入即真实**：v3.3-v3.6 四面板（autonomy / skills / a2a-interop / realtime）数据来自注入的 `AutonomyService / SkillService / RealtimeService`（真实运行时经 `WithAutonomy / WithSkills / WithRealtime` 注入），未注入时返回空数组并在响应头标 `X-Data-Source: demo`，面板渲染空态而非 404
+- **demo → 真实切换不回归陈旧语义**：面板轮询（autonomy 5s / skills 10s / realtime 2s）与 30s `Staleness` 标记、轮询失败保留旧数据的原则对真实数据源同样生效；真实运行时由适配器层做并发安全快照（`AgentGoal.Snapshot` / `Monitor.RecentAlerts` / `ListSessions` / `RecentEvents`），不阻塞执行链路
 
 ### 一致性工程
 - **`useConfirmDialog`**：统一全部模态的初始聚焦 / Esc / Tab 陷阱 / 焦点恢复（含触发元素卸载时的页面标题回退）
