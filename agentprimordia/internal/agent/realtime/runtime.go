@@ -2,7 +2,10 @@ package realtime
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -27,6 +30,12 @@ type RuntimeConfig struct {
 	IdleTimeout time.Duration
 	// VisionFPS 视觉帧率
 	VisionFPS int
+	// Guardrail 音频护栏（v4.1 集成2：ASR 转写与 TTS 输出文本过护栏；nil 跳过）
+	Guardrail AudioGuardrail
+	// Metrics 会话目标级指标（v4.1 集成1；nil 跳过）
+	Metrics SessionMetrics
+	// MemorySink 会话摘要记忆出口（v4.1 集成3；nil 跳过）
+	MemorySink SessionMemorySink
 }
 
 // Runtime 实时运行时：装配 Hub + 感知模块 + 事件总线 + 清理器
@@ -38,6 +47,10 @@ type Runtime struct {
 	Cleanup  *CleanupManager
 	BargeIn  *BargeInHandler
 	streams  map[string]*sessionStreams
+	// transcripts 每会话转写文本累积（v4.1 集成3：关闭时生成摘要入 memory）
+	transcripts map[string][]string
+	// memSinkErrs 会话摘要记忆写入失败次数
+	memSinkErrs atomic.Int64
 }
 
 // sessionStreams 每个会话的感知流
@@ -83,7 +96,8 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 		Hub:     hub,
 		Events:  events,
 		BargeIn: NewBargeInHandler(hub),
-		streams: make(map[string]*sessionStreams),
+		streams:    make(map[string]*sessionStreams),
+		transcripts: make(map[string][]string),
 	}
 	rt.Cleanup = NewCleanupManager(hub, CleanupConfig{IdleTimeout: cfg.IdleTimeout})
 	return rt
@@ -108,18 +122,40 @@ func (rt *Runtime) OpenSession(id string) *Session {
 	rt.streams[id] = &sessionStreams{audio: as, vision: vs, fusion: NewFusion(as, vs)}
 	rt.mu.Unlock()
 	rt.Cleanup.Touch(id)
+	if rt.cfg.Metrics != nil {
+		rt.cfg.Metrics.RecordSessionOpened(id)
+	}
 	rt.Events.Publish(RealtimeEvent{Type: EventSessionCreated, SessionID: id})
 	return s
 }
 
-// CloseSession 关闭会话
+// CloseSession 关闭会话：生成会话摘要入 memory（v4.1 集成3）+ 关闭指标。
 func (rt *Runtime) CloseSession(id string) {
 	rt.mu.Lock()
 	delete(rt.streams, id)
+	summary := ""
+	if tr, ok := rt.transcripts[id]; ok && len(tr) > 0 {
+		summary = strings.Join(tr, "\n")
+	}
+	delete(rt.transcripts, id)
 	rt.mu.Unlock()
+
 	rt.Hub.CloseSession(id)
 	rt.Cleanup.Remove(id)
+	if rt.cfg.MemorySink != nil && summary != "" {
+		if err := rt.cfg.MemorySink.SaveSessionSummary(context.Background(), id, summary); err != nil {
+			rt.memSinkErrs.Add(1)
+		}
+	}
+	if rt.cfg.Metrics != nil {
+		rt.cfg.Metrics.RecordSessionClosed(id)
+	}
 	rt.Events.Publish(RealtimeEvent{Type: EventSessionClosed, SessionID: id})
+}
+
+// MemorySinkErrors 返回会话摘要记忆写入失败次数。
+func (rt *Runtime) MemorySinkErrors() int64 {
+	return rt.memSinkErrs.Load()
 }
 
 // PushAudio 推入音频并返回融合输入（供 ReAct 引擎消费）
@@ -150,12 +186,28 @@ func (rt *Runtime) PushVision(sessionID string, data []byte, w, h int) error {
 }
 
 // ProcessTurn 处理一个实时交互轮次：融合输入 → ReAct 推理 → TTS
+// v4.1 集成：ASR 转写文本与 TTS 输出文本过护栏；轮次记指标；转写文本累积供会话摘要。
 func (rt *Runtime) ProcessTurn(ctx context.Context, sessionID string, text string) (string, []byte, error) {
+	turnStart := time.Now()
 	rt.mu.RLock()
 	ss, ok := rt.streams[sessionID]
 	rt.mu.RUnlock()
 	if !ok {
 		return "", nil, &RuntimeError{Msg: "会话流不存在: " + sessionID}
+	}
+
+	// v4.1 集成2：ASR 转写文本过护栏（拦截 → ErrTranscriptBlocked）
+	if rt.cfg.Guardrail != nil {
+		sanitized, blocked, gerr := rt.cfg.Guardrail.CheckTranscript(ctx, text)
+		if gerr != nil {
+			rt.recordTurn(sessionID, turnStart, gerr)
+			return "", nil, fmt.Errorf("realtime: 转写护栏检查失败: %w", gerr)
+		}
+		if blocked {
+			rt.recordTurn(sessionID, turnStart, ErrTranscriptBlocked)
+			return "", nil, ErrTranscriptBlocked
+		}
+		text = sanitized
 	}
 
 	fused := ss.fusion.Fuse(text)
@@ -174,10 +226,25 @@ func (rt *Runtime) ProcessTurn(ctx context.Context, sessionID string, text strin
 	if rt.cfg.React != nil {
 		response, err = rt.cfg.React.Reason(ctx, fused)
 		if err != nil {
+			rt.recordTurn(sessionID, turnStart, err)
 			return "", nil, err
 		}
 	} else {
 		response = "echo:" + fused.Text
+	}
+
+	// v4.1 集成2：TTS 输出文本过护栏（拦截 → ErrTranscriptBlocked）
+	if rt.cfg.Guardrail != nil {
+		sanitized, blocked, gerr := rt.cfg.Guardrail.CheckTranscript(ctx, response)
+		if gerr != nil {
+			rt.recordTurn(sessionID, turnStart, gerr)
+			return "", nil, fmt.Errorf("realtime: 输出护栏检查失败: %w", gerr)
+		}
+		if blocked {
+			rt.recordTurn(sessionID, turnStart, ErrTranscriptBlocked)
+			return "", nil, ErrTranscriptBlocked
+		}
+		response = sanitized
 	}
 
 	if s != nil && s.State == SessionThinking {
@@ -186,14 +253,34 @@ func (rt *Runtime) ProcessTurn(ctx context.Context, sessionID string, text strin
 
 	audioOut, err := rt.cfg.TTS.Synthesize(ctx, response)
 	if err != nil {
+		rt.recordTurn(sessionID, turnStart, err)
 		return response, nil, err
 	}
 
 	if s != nil && s.State == SessionSpeaking {
 		_ = s.TransitionTo(SessionListening, "delivered")
 	}
+	rt.appendTranscript(sessionID, text)
+	rt.recordTurn(sessionID, turnStart, nil)
 	rt.Events.Publish(RealtimeEvent{Type: EventResponseReady, SessionID: sessionID})
 	return response, audioOut, nil
+}
+
+// appendTranscript 累积本轮转写文本（仅配置了 MemorySink 时生效）。
+func (rt *Runtime) appendTranscript(sessionID, text string) {
+	if rt.cfg.MemorySink == nil {
+		return
+	}
+	rt.mu.Lock()
+	rt.transcripts[sessionID] = append(rt.transcripts[sessionID], text)
+	rt.mu.Unlock()
+}
+
+// recordTurn 记录轮次指标（Metrics 未注入时跳过）。
+func (rt *Runtime) recordTurn(sessionID string, start time.Time, err error) {
+	if rt.cfg.Metrics != nil {
+		rt.cfg.Metrics.RecordTurn(sessionID, time.Since(start), err)
+	}
 }
 
 // RuntimeError 运行时错误

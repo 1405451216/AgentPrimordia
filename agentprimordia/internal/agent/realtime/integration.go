@@ -2,7 +2,9 @@ package realtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 )
 
 // v3.6 Phase 2: 实时 × 跨组件集成接口
@@ -83,6 +85,29 @@ func (a *AutonomyIntegration) Notify(ctx context.Context, goalID string, progres
 type AudioGuardrail interface {
 	// CheckTranscript 校验 ASR 转写文本
 	CheckTranscript(ctx context.Context, transcript string) (sanitized string, blocked bool, err error)
+}
+
+// ErrTranscriptBlocked 转写文本被护栏拦截（v4.1 真实接线 × 守卫）。
+var ErrTranscriptBlocked = errors.New("realtime: 转写文本被护栏拦截")
+
+// --- 实时 × 可观测（v4.1 集成1） ---
+
+// SessionMetrics 实时会话目标级指标接口（由外部 metrics/ 适配）。
+type SessionMetrics interface {
+	// RecordSessionOpened 会话打开
+	RecordSessionOpened(sessionID string)
+	// RecordSessionClosed 会话关闭
+	RecordSessionClosed(sessionID string)
+	// RecordTurn 单轮交互（含耗时与错误）
+	RecordTurn(sessionID string, duration time.Duration, err error)
+}
+
+// --- 实时 × 记忆（v4.1 集成3） ---
+
+// SessionMemorySink 会话摘要记忆出口（由外部 memory/ 适配）。
+type SessionMemorySink interface {
+	// SaveSessionSummary 保存会话摘要（关闭会话时调用）
+	SaveSessionSummary(ctx context.Context, sessionID, summary string) error
 }
 
 // GuardrailIntegration 实时音频护栏集成
