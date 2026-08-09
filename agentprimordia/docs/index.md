@@ -239,7 +239,7 @@ JSON-RPC over HTTP 兼容层已于 **v4.0.0 移除**（见 VERSIONING.md「已�
 | **API参考** | [Agent](api/agent.md) · [LLM](api/llm.md) · [Tools](api/tools.md) · [Memory](api/memory.md) · [Pool](api/pool.md) · [A2A](api/a2a.md) |
 | **进阶主题** | [性能优化](advanced/performance.md) · [PGO调优](advanced/pgo.md) · [安全](advanced/security.md) · [供应链安全](advanced/supply-chain-security.md) · [Debugger](advanced/debugger.md) · [Metrics](advanced/metrics.md) · [OTel](advanced/otel.md) |
 | **基准测试** | [Go vs TypeScript](benchmarks/go-vs-typescript.md) · [性能对比](benchmarks/performance-comparison-2026.md) |
-| **实施进度** | [STATUS 总览](STATUS.md) · [Phase 1 性能](plans/phase1-performance-assault.md) · [Phase 2 安全](plans/phase2-security-compliance.md) · [Phase 3 架构](plans/phase3-architecture-evolution.md) · [Phase 4 可观测性](plans/phase4-observability-ops.md) · [Phase 5 生态](plans/phase5-ecosystem-community.md) |
+| **实施进度** | [STATUS 总览](STATUS.md) · [VERSIONING](VERSIONING.md) · [路线图](../../docs/ROADMAP.md) |
 
 ## 社区
 

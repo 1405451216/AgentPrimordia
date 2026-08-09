@@ -3,10 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"agentprimordia/internal/marketplace"
 )
 
 // validateTemplateID 验证模板 ID 安全性
@@ -106,7 +110,7 @@ Examples:
 
 // ===== 模板存储 =====
 
-const marketplaceDir = ".ap-templates"
+var marketplaceDir = ".ap-templates"
 
 // templateMeta 本地模板元数据
 type templateMeta struct {
@@ -193,10 +197,17 @@ func runMarketplaceSearch(args []string) error {
 
 func runMarketplaceInstall(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("usage: ap marketplace install <template-id>")
+		return fmt.Errorf("usage: ap marketplace install <template-id|manifest-url>")
 	}
 
-	templateID := args[0]
+	target := args[0]
+
+	// v4.4-3 在线安装：支持远程清单 URL（https://... → 拉取 + 验签 + 落盘）
+	if strings.HasPrefix(target, "https://") || strings.HasPrefix(target, "http://") {
+		return installRemoteTemplate(target)
+	}
+
+	templateID := target
 
 	// 验证模板 ID 安全性
 	targetPath, err := safeTemplatePath(templateID)
@@ -214,7 +225,7 @@ func runMarketplaceInstall(args []string) error {
 		return fmt.Errorf("template %q already installed", templateID)
 	}
 
-	// 创建模板占位（实际应从远程市场下载）
+	// 创建模板占位（本地模式：无远程清单时生成默认模板）
 	tmpl := templateMeta{
 		ID:           templateID,
 		Name:         templateID,
@@ -240,6 +251,115 @@ func runMarketplaceInstall(args []string) error {
 	fmt.Printf("\n使用以下命令运行：\n")
 	fmt.Printf("  %s\n", bold("ap marketplace run "+templateID))
 
+	return nil
+}
+
+// remoteTemplate 远程模板清单（v4.4-3 在线安装协议）。
+type remoteTemplate struct {
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description"`
+	Version      string            `json:"version"`
+	Author       string            `json:"author"`
+	Category     string            `json:"category"`
+	SystemPrompt string            `json:"system_prompt"`
+	// Signature 对 Files JSON 的 base64 签名（ECDSA P-256 over SHA-256，可选）
+	Signature string `json:"signature,omitempty"`
+	// PublicKey 发布方公钥（PEM，ECDSA P-256）
+	PublicKey string `json:"public_key,omitempty"`
+	// Files 模板附带文件（文件名 → 内容），落盘到模板目录
+	Files map[string]string `json:"files,omitempty"`
+}
+
+// installRemoteTemplate 从远程清单 URL 安装模板：拉取 → 验签 → 落盘。
+func installRemoteTemplate(url string) error {
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return fmt.Errorf("拉取模板清单失败: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("模板清单端点 %s: %s", resp.Status, http.StatusText(resp.StatusCode))
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if err != nil {
+		return fmt.Errorf("读取模板清单失败: %w", err)
+	}
+
+	var tmpl remoteTemplate
+	if err := json.Unmarshal(body, &tmpl); err != nil {
+		return fmt.Errorf("解析模板清单失败: %w", err)
+	}
+	if tmpl.ID == "" {
+		return fmt.Errorf("模板清单缺少 id 字段")
+	}
+	if err := validateTemplateID(tmpl.ID); err != nil {
+		return err
+	}
+
+	// 验签（提供签名时强制校验；未签名清单标记警告）
+	if tmpl.Signature != "" && tmpl.PublicKey != "" {
+		filesJSON, _ := json.Marshal(tmpl.Files)
+		if err := marketplace.VerifyCosignSignature(filesJSON, tmpl.Signature, tmpl.PublicKey); err != nil {
+			return fmt.Errorf("模板验签失败（可能被篡改）: %w", err)
+		}
+	} else if tmpl.Signature != "" || tmpl.PublicKey != "" {
+		return fmt.Errorf("模板清单签名配置不完整（signature 与 public_key 需同时提供）")
+	} else {
+		warnf("模板 %s 未签名（仅限可信源使用）", tmpl.ID)
+	}
+
+	// 落盘：元数据 + 附带文件
+	if err := os.MkdirAll(marketplaceDir, 0755); err != nil {
+		return fmt.Errorf("create templates dir: %w", err)
+	}
+	metaPath, err := safeTemplatePath(tmpl.ID)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(metaPath); err == nil {
+		return fmt.Errorf("template %q already installed", tmpl.ID)
+	}
+	meta := templateMeta{
+		ID:           tmpl.ID,
+		Name:         tmpl.Name,
+		Description:  tmpl.Description,
+		Version:      tmpl.Version,
+		Author:       tmpl.Author,
+		Category:     tmpl.Category,
+		SystemPrompt: tmpl.SystemPrompt,
+		InstalledAt:  time.Now().Format(time.RFC3339),
+	}
+	data, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal template: %w", err)
+	}
+	if err := os.WriteFile(metaPath, data, 0644); err != nil {
+		return fmt.Errorf("write template: %w", err)
+	}
+
+	for name, content := range tmpl.Files {
+		if strings.Contains(name, "..") || strings.Contains(name, "/") || strings.Contains(name, "\\") {
+			return fmt.Errorf("模板附带文件非法名 %q", name)
+		}
+		filePath := filepath.Join(marketplaceDir, tmpl.ID+"-files", name)
+		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+			return fmt.Errorf("写模板文件 %s: %w", name, err)
+		}
+	}
+
+	infof("模板 %s 远程安装成功（v4.4-3 在线安装）", bold(tmpl.ID))
+	fmt.Printf("  来源: %s\n", url)
+	fmt.Printf("  路径: %s\n", metaPath)
+	if len(tmpl.Files) > 0 {
+		fmt.Printf("  附带文件: %d 个\n", len(tmpl.Files))
+	}
+	fmt.Printf("\n使用以下命令运行：\n")
+	fmt.Printf("  %s\n", bold("ap marketplace run "+tmpl.ID))
 	return nil
 }
 

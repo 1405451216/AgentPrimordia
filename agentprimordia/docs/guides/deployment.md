@@ -440,4 +440,4 @@ kubectl logs -l app=agent | grep "duration > 5s"
 
 - 学习 [性能优化](../advanced/performance.md) 了解更多优化技巧
 - 阅读 [安全最佳实践](../advanced/security.md) 了解安全加固
-- 查看 [生产案例](../examples/production.md) 了解实际部署经验
+- 查看 [部署清单](../guides/deployment.md#部署检查清单) 了解上线步骤

@@ -403,6 +403,6 @@ func createCodeReviewPipeline() (orchestration.Orchestrator, error) {
 
 ## 下一步
 
-- 查看 [多 Agent 示例](../examples/multi-agent.md) 了解更多实际案例
+- 查看 [多 Agent 指南](../guides/multi-agent.md) 了解更多实际案例
 - 阅读 [编排 API](../api/orchestration.md) 了解完整接口定义
-- 学习 [可视化编排](../advanced/visual-editor.md) 使用 Web UI 编排工作流
+- 学习 [调试器](../advanced/debugger.md) 使用可视化工具

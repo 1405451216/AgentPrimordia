@@ -129,7 +129,7 @@ agent := ap.NewReActAgent(ap.ReActConfig{
 agent, err := ap.NewAgent("bot", "...", provider, ap.WithMaxTurns(10))
 ```
 
-详见 [v0 → v1 迁移指南](agentprimordia/ecosystem/docs/migration/v0-deprecations.md)。
+详见 [v0 → v1 迁移指南](../agentprimordia/ecosystem/docs/migration/v0-deprecations.md)。
 
 ---
 

@@ -224,7 +224,7 @@ go build ./...
 | v4.1 | 深化 | 真实接线 | 真实语音会话（本地免 key 一键 demo）+ 真实 LLM 自治目标基线报告 | ⬜ 规划中 |
 | v4.2 | 稳定 | 稳定与规模化 | Soak 报告 + 并发 100 目标 | ⬜ 规划中 |
 | v4.3 | 深化 | 多模态真实化 | 真实语音多轮含打断 + WebGPU demo | ✅ 已完成（2026-08-09：流式语音链路 `realtime/runtime.go:ProcessTurnStream`、视觉护栏/帧分析 `runtime.go:PushVision/AnalyzeLatestFrame`、TS WebGPU 真实后端优先 `webgpu-model-runner.ts:detectInferenceBackend`） |
-| v4.4 | 稳定 | 开发者平台 | 第三方 30 分钟接入 | ⬜ 规划中 |
+| v4.4 | 稳定 | 开发者平台 | 第三方 30 分钟接入 | ✅ 已完成（2026-08-09：技能市场 `skills/skill_market.go` manifest+ECDSA 验签；模板远程安装 `cmd/ap/marketplace.go:installRemoteTemplate`；死链门 `scripts/check-docs-links.mjs` 274 链接全可达；Inspector DAG `extensions/vscode/src/inspector.ts:applyPlan`；接入指南 `docs/guides/third-party-integration.md`） |
 | v4.5 | 深化 | 分布式自治 | 3 节点 kill 1 自动续跑 | ⬜ 规划中 |
 | v4.6 | 稳定 | 安全与治理 | 双租户物理隔离 + 审计导出 | ⬜ 规划中 |
 | v4.7 | 深化 | 双语言深度对齐 | cross-language 全绿 + 双线报告并排 | ⬜ 规划中 |

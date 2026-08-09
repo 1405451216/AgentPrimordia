@@ -1397,7 +1397,7 @@ ChaosEngine.Run()
 | `IdempotencyGuard` | `idempotency.go` | 幂等键保护（goalID→keys 精确重置） |
 | `AutonomyRuntime` | `runtime.go` | 端到端装配 |
 
-**目标状态机：** `created → planned → executing → validated → done`；非终态可转 `failed`；`validated` 可回 `executing` 重规划；`failed` 可回 `planned` 重试。能力注入 `WithAutonomy(...)`，引擎经 `AutonomyCapable` 发现。详见 [concepts/autonomy](concepts/autonomy.md)。
+**目标状态机：** `created → planned → executing → validated → done`；非终态可转 `failed`；`validated` 可回 `executing` 重规划；`failed` 可回 `planned` 重试。能力注入 `WithAutonomy(...)`，引擎经 `AutonomyCapable` 发现。详见 [concepts/autonomy](agentprimordia/docs/concepts/autonomy.md)。
 
 ---
 
@@ -1422,7 +1422,7 @@ ChaosEngine.Run()
 | `Store` / `Matcher` | `store.go` / `matcher.go` | 技能库存取 + 语义匹配（置信度三档） |
 | `UsageTracker` | `usage.go` | 命中率/成功率/成本统计 |
 
-**跨组件集成：** 技能 × 工具/学习/市场/自治/RAG（`integration.go`）。能力注入 `WithSkills(...)`，引擎经 `SkillsCapable` 发现。详见 [concepts/skills](concepts/skills.md)。
+**跨组件集成：** 技能 × 工具/学习/市场/自治/RAG（`integration.go`）。能力注入 `WithSkills(...)`，引擎经 `SkillsCapable` 发现。详见 [concepts/skills](agentprimordia/docs/concepts/skills.md)。
 
 ---
 
@@ -1447,7 +1447,7 @@ ChaosEngine.Run()
 | `CleanupManager` | `cleanup.go` | 空闲超时关闭 + 资源回收 |
 | `Runtime` | `runtime.go` | Hub+感知流+事件+清理+ReAct 桥接装配 |
 
-**跨组件集成：** 实时 × 多模态/边缘/自治/守卫/A2A（`integration.go`）。能力注入 `WithRealtime(...)`，引擎经 `RealtimeCapable` 发现。详见 [concepts/realtime](concepts/realtime.md)。
+**跨组件集成：** 实时 × 多模态/边缘/自治/守卫/A2A（`integration.go`）。能力注入 `WithRealtime(...)`，引擎经 `RealtimeCapable` 发现。详见 [concepts/realtime](agentprimordia/docs/concepts/realtime.md)。
 
 ---
 

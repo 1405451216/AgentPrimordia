@@ -626,6 +626,9 @@ jobs:
         working-directory: sdk/typescript
         run: npm run docs:build
 
+      - name: Dead-link gate (v4.4-4)
+        run: node scripts/check-docs-links.mjs
+
   cross-language-check:
     name: Cross-Language API Compatibility
     runs-on: ubuntu-latest

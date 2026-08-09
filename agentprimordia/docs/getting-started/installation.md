@@ -288,6 +288,6 @@ brew upgrade go
 
 如果遇到问题，可以通过以下方式获取帮助：
 
-- 📖 查看 [FAQ](../faq.md)
+- 📖 查看 [快速开始](../getting-started/quickstart.md)
 - 💬 在 [GitHub Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions) 提问
 - 🐛 报告 [Issue](https://github.com/AgentPrimordia/agentprimordia/issues)

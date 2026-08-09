@@ -8,12 +8,14 @@ import {
   createInspectorState,
   applyCommand,
   applyStep,
+  applyPlan,
   serializeState,
   deserializeBreakpoints,
   elapsedMs,
   statusLabel,
   stepKindLabel,
 } from '../src/inspector.js';
+import type { WorkflowDag } from '../src/types.js';
 import {
   formatStep,
   formatStateSummary,
@@ -310,5 +312,43 @@ describe('format helpers', () => {
     expect(payload.statusLabel).toBe('运行中');
     expect(payload.elapsedLabel).toMatch(/ms|s$/);
     expect(Array.isArray(payload.breakpoints)).toBe(true);
+  });
+});
+// ===== v4.4-4 DAG 工作流可视化 =====
+
+describe('applyPlan (v4.4-4 DAG 可视化)', () => {
+  const dag: WorkflowDag = {
+    nodes: [
+      { id: '1', label: '采集', status: 'done' },
+      { id: '2', label: '修复', status: 'running' },
+      { id: '3', label: '验证', status: 'pending' },
+    ],
+    edges: [
+      { from: '1', to: '2' },
+      { from: '2', to: '3' },
+    ],
+  };
+
+  it('运行中应用计划 DAG', () => {
+    let s = createInspectorState();
+    s = applyCommand(s, { type: 'start', prompt: '目标', maxTurns: 5 }).state;
+    s = applyPlan(s, dag);
+    expect(s.plan).toEqual(dag);
+    expect(s.plan!.nodes).toHaveLength(3);
+    expect(s.plan!.edges).toHaveLength(2);
+  });
+
+  it('空闲状态拒绝计划 DAG', () => {
+    const s = createInspectorState();
+    expect(applyPlan(s, dag)).toBe(s);
+    expect(s.plan).toBeNull();
+  });
+
+  it('serializeState 透传 plan', () => {
+    let s = createInspectorState();
+    s = applyCommand(s, { type: 'start', prompt: 'x', maxTurns: 5 }).state;
+    s = applyPlan(s, dag);
+    const serialized = serializeState(s);
+    expect(serialized.plan).toEqual(dag);
   });
 });

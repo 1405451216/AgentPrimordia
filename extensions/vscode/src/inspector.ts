@@ -12,6 +12,7 @@ import type {
   InspectorStatus,
   InspectorStep,
   InspectorStepKind,
+  WorkflowDag,
 } from './types.js';
 
 /** 构造初始状态 */
@@ -25,7 +26,19 @@ export function createInspectorState(): InspectorState {
     startedAt: null,
     endedAt: null,
     breakpoints: new Set<number>(),
+    plan: null,
   };
+}
+
+/**
+ * 应用计划 DAG（v4.4-4）：plan 事件到达时更新工作流执行图。
+ * 仅在运行/暂停状态接受；返回新 state。
+ */
+export function applyPlan(state: InspectorState, dag: WorkflowDag): InspectorState {
+  if (state.status !== 'running' && state.status !== 'paused') {
+    return state;
+  }
+  return transition(state, { plan: dag });
 }
 
 /**

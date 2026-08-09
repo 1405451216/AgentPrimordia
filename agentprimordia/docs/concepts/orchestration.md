@@ -292,5 +292,5 @@ orch := orchestration.NewDAGOrchestrator().
 ## 下一步
 
 - 学习如何 [实现多 Agent 协作](../guides/multi-agent.md)
-- 查看 [多 Agent 示例](../examples/multi-agent.md) 了解实际应用
+- 查看 [多 Agent 指南](../guides/multi-agent.md) 了解实际应用
 - 阅读 [API 参考](../api/orchestration.md) 了解详细接口定义

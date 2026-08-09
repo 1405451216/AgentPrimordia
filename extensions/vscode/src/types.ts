@@ -31,6 +31,34 @@ export interface InspectorStep {
   timestamp: number;
 }
 
+// ===== DAG 工作流可视化（v4.4-4：VS Code Inspector 完善） =====
+// 与 sdk/typescript/src/vscode/dag-visualizer.ts 的 DagWorkflow 形状一致。
+
+/** DAG 节点状态 */
+export type WorkflowDagNodeStatus = 'pending' | 'running' | 'done' | 'failed';
+
+/** DAG 工作流节点 */
+export interface WorkflowDagNode {
+  id: string;
+  label: string;
+  status: WorkflowDagNodeStatus;
+  metadata?: Record<string, unknown>;
+}
+
+/** DAG 工作流边 */
+export interface WorkflowDagEdge {
+  from: string;
+  to: string;
+  label?: string;
+  highlight?: boolean;
+}
+
+/** DAG 工作流（plan 执行图） */
+export interface WorkflowDag {
+  nodes: WorkflowDagNode[];
+  edges: WorkflowDagEdge[];
+}
+
 /** Inspector 状态 */
 export type InspectorStatus = 'idle' | 'running' | 'paused' | 'done' | 'error';
 
@@ -49,6 +77,8 @@ export interface InspectorState {
   endedAt: number | null;
   /** 断点序号列表（在断点处的 step index） */
   breakpoints: Set<number>;
+  /** 计划 DAG 工作流（v4.4-4：plan 事件到达时更新） */
+  plan: WorkflowDag | null;
 }
 
 /** Inspector 命令（从 Webview → Extension Host） */

@@ -129,6 +129,6 @@ result, _ := pipeline.Execute(ctx, "Write about Go concurrency")
 ## 下一步
 
 - 📖 [API 文档](https://pkg.go.dev/agentprimordia/pkg)
-- 🧪 [示例代码](../ecosystem/examples/)
+- 🧪 [示例代码](../agentprimordia/ecosystem/examples/)
 - 🏗️ [架构文档](architecture-mermaid.md)
 - 🔧 [部署指南](DEPLOYMENT.md)
