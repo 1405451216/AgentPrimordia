@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [v4.0.0] - 2026-08-09
+
+### Added — 深度评估报告（2026-08-09）
+
+- 新增 `agentprimordia/docs/PROJECT-EVALUATION-2026-08-09.md`（v4.0.0 全维度深度评估：ROADMAP 35 项声称逐一复核、33 项与代码相符；加权总评 7.2/10；修复建议 Top-10 按影响 × 成本排序）
+
+### Fixed — 2026-08-09 评估整改（Top-10 落地）
+
+- **pool 并发修复**：`internal/pool/dispatcher.go` 三处竞态——`pt.result` 无锁写（:499）加锁、`createAgentForTask` 无锁读 `p.model`（:549）补 RLock、`acquireSlot` 超时绕过与唤醒不对称（:594-638）接通 Cond 唤醒；race 测试并发模式修正（Dispatch 不支持并发调用 → 单次 Dispatch + 并发读/并发 SetModel）
+- **SQLiteStore 关闭安全**：`Close()` 后读方法（Stats/Search/SearchAdvanced/GetImportant/GetTimeline/GetMemoriesBySession）nil 解引用风险修复（`internal/memory/sqlite.go` / `sqlite_search.go`）
+- **错误体系统一**：`pkg.CodeError` 补 `Code() string` 接通 `GetErrorCode`（消除 errors.As 死路）；guardrail 输出端拦截改用 `pkg.ErrOutputBlocked` sentinel；pool 取消 sentinel 接线
+- **孤儿包处置**：删除 `internal/mcp` `prompt` `protocol` `registry` 与 `internal/agent/react/` 骨架；audit 模型三合一；`multi_agent` 经 pkg Experimental 导出
+- **CI 与发布产物**：`nightly.yml` docker-build job 指向 `agentprimordia/`（修复每夜必失败）；Helm/Terraform 版本对齐；白名单文档与实况对齐
+- **Rust/Python SDK 最小测试套件**（暴露并修复 Rust `chat` 不检查 HTTP 状态）+ CI 接入
+- **跨语言补 4 套件**（`autonomy_goal` / `skills_lifecycle` / `a2a_interop` / `realtime_session`），修复 TS 静默跳过，Go/TS 57 用例双线全量
+- **文档死链与矛盾清理**（mkdocs/STATUS 历史标注/examples 目录同步/CONTRIBUTING 许可证/index A2A 对齐/徽章与路径修正）
+- **resource_limiter 等待语义 + memory 跟踪 + 接通 `ErrResourceTimeout`**；`Search` 补 `Tags/MinScore`；tenant 文档校准
+
 ### Added — Studio 一键启动脚本与八轮设计迭代（满分 40/40）
 
 - **一键启动**：新增 `scripts/dev-studio.ps1`（Windows）与 `scripts/dev-studio.sh`（macOS/Linux），
