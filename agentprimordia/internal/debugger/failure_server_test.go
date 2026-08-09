@@ -3,6 +3,7 @@ package debugger
 
 import (
 	"context"
+	"path/filepath"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -208,5 +209,48 @@ func getJSON(t *testing.T, url string, out any) {
 	}
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 		t.Fatalf("解析 %s 响应失败: %v", url, err)
+	}
+}
+
+// TestFailureServer_SQLiteBackend 集成4：SQLite 后端读取（持久化失败记录经 /api/failures 可查）。
+func TestFailureServer_SQLiteBackend(t *testing.T) {
+	dsn := filepath.Join(t.TempDir(), "failures.db")
+	store, err := persist.NewSQLiteFailureStore(dsn)
+	if err != nil {
+		t.Fatalf("NewSQLiteFailureStore: %v", err)
+	}
+	defer store.Close()
+	seedRecords(t, store)
+
+	srv := httptest.NewServer(NewFailureServer(store).Handler())
+	defer srv.Close()
+
+	var all []*persist.FailureRecord
+	getJSON(t, srv.URL+"/api/failures", &all)
+	if len(all) != 3 {
+		t.Fatalf("SQLite 后端全量列表 = %d 条, want 3", len(all))
+	}
+
+	// 单条含可重放检查点
+	var one *persist.FailureRecord
+	getJSON(t, srv.URL+"/api/failures/f-1", &one)
+	if one == nil || one.ID != "f-1" || one.State == nil || one.State.TurnCount != 1 {
+		t.Errorf("SQLite 后端 Get = %+v, want f-1 含检查点", one)
+	}
+
+	// 删除后不可见
+	req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/api/failures/f-1", nil)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("DELETE status = %d, want 200", resp.StatusCode)
+	}
+	var after []*persist.FailureRecord
+	getJSON(t, srv.URL+"/api/failures", &after)
+	if len(after) != 2 {
+		t.Errorf("删除后列表 = %d 条, want 2", len(after))
 	}
 }
