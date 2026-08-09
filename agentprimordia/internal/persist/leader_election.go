@@ -87,6 +87,12 @@ type LeaderElector struct {
 	resigned   atomic.Bool // 防止重复 resign
 	renewFails atomic.Int64
 
+	// hbDone 心跳协程退出信号：Stop 等待其退出后才返回，
+	// 避免「心跳协程抢先 resign、Stop 的 resign CAS 失败提前返回、
+	// 状态尚未置 degraded 时调用方读到旧 leading」竞态。
+	hbMu   sync.Mutex
+	hbDone chan struct{}
+
 	// 统计
 	heartbeatsSent   atomic.Int64
 	heartbeatsFailed atomic.Int64
@@ -222,7 +228,13 @@ func (le *LeaderElector) startHeartbeat(ctx context.Context) {
 		interval = le.config.TTL / 3
 	}
 
+	done := make(chan struct{})
+	le.hbMu.Lock()
+	le.hbDone = done
+	le.hbMu.Unlock()
+
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 
@@ -303,10 +315,18 @@ func (le *LeaderElector) resign(reason string) {
 }
 
 // Stop 停止 Leader 选举（主动让出 Leader 并停止心跳）。
+// 阻塞直到心跳协程退出，保证返回后状态已稳定为 degraded、无并发回写。
 func (le *LeaderElector) Stop() {
 	if le.stopped.CompareAndSwap(false, true) {
 		close(le.stopCh)
 		le.resign("主动停止")
+
+		le.hbMu.Lock()
+		done := le.hbDone
+		le.hbMu.Unlock()
+		if done != nil {
+			<-done
+		}
 	}
 }
 
