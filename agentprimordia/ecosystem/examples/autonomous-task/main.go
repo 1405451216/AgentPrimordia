@@ -8,17 +8,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
-	"agentprimordia/internal/agent/autonomy"
+	ap "agentprimordia/pkg"
 )
 
 // dataMonitorExecutor 模拟数据监控修复执行器
 type dataMonitorExecutor struct{}
 
-func (e *dataMonitorExecutor) ExecuteStep(_ context.Context, step autonomy.PlanStep) (string, error) {
+func (e *dataMonitorExecutor) ExecuteStep(_ context.Context, step ap.PlanStep) (string, error) {
 	// 模拟步骤执行耗时
 	time.Sleep(100 * time.Millisecond)
 
@@ -40,19 +42,19 @@ func (e *dataMonitorExecutor) ExecuteStep(_ context.Context, step autonomy.PlanS
 
 // inMemoryCheckpointStore 内存检查点存储（demo 用）
 type inMemoryCheckpointStore struct {
-	data map[string]*autonomy.Checkpoint
+	data map[string]*ap.Checkpoint
 }
 
 func newInMemoryCheckpointStore() *inMemoryCheckpointStore {
-	return &inMemoryCheckpointStore{data: make(map[string]*autonomy.Checkpoint)}
+	return &inMemoryCheckpointStore{data: make(map[string]*ap.Checkpoint)}
 }
 
-func (s *inMemoryCheckpointStore) SaveCheckpoint(_ context.Context, cp *autonomy.Checkpoint) error {
+func (s *inMemoryCheckpointStore) SaveCheckpoint(_ context.Context, cp *ap.Checkpoint) error {
 	s.data[cp.GoalID] = cp
 	return nil
 }
 
-func (s *inMemoryCheckpointStore) LoadCheckpoint(_ context.Context, goalID string) (*autonomy.Checkpoint, error) {
+func (s *inMemoryCheckpointStore) LoadCheckpoint(_ context.Context, goalID string) (*ap.Checkpoint, error) {
 	cp, ok := s.data[goalID]
 	if !ok {
 		return nil, fmt.Errorf("not found: %s", goalID)
@@ -60,8 +62,8 @@ func (s *inMemoryCheckpointStore) LoadCheckpoint(_ context.Context, goalID strin
 	return cp, nil
 }
 
-func (s *inMemoryCheckpointStore) ListIncomplete(_ context.Context) ([]*autonomy.Checkpoint, error) {
-	var result []*autonomy.Checkpoint
+func (s *inMemoryCheckpointStore) ListIncomplete(_ context.Context) ([]*ap.Checkpoint, error) {
+	var result []*ap.Checkpoint
 	for _, cp := range s.data {
 		if !cp.Completed {
 			result = append(result, cp)
@@ -76,18 +78,26 @@ func main() {
 
 	ctx := context.Background()
 
-	// 1. 装配自治运行时
-	rt := autonomy.NewAutonomyRuntime(autonomy.RuntimeConfig{
+	// v4.1 真实接线：设置 AP_LLM_PROVIDER/AP_LLM_MODEL/AP_LLM_API_KEY 后，
+	// 自治目标的重规划由真实 LLM 驱动；未设置时保持确定性演示（无 LLM，CI 可跑）。
+	rtCfg := ap.RuntimeConfig{
 		StepExecutor:    &dataMonitorExecutor{},
 		CheckpointStore: newInMemoryCheckpointStore(),
 		MaxRetries:      2,
-		MonitorConfig:   autonomy.MonitorConfig{StallThreshold: 5},
-	})
+		MonitorConfig:   ap.MonitorConfig{StallThreshold: 5},
+	}
+	if provider, err := ap.ProviderFromEnv(); err == nil {
+		rtCfg.ReplanPlanner = &llmReplanner{provider: provider}
+		fmt.Printf("🤖 真实 LLM 模式：失败重规划由 %s 驱动（model=%s）\n", provider.Info().Provider, provider.Info().Name)
+	}
+
+	// 1. 装配自治运行时
+	rt := ap.NewAutonomyRuntime(rtCfg)
 
 	// 2. 提交自治目标
-	goal := rt.SubmitGoal("监控数据异常并自动修复", autonomy.GoalConfig{
+	goal := rt.SubmitGoal("监控数据异常并自动修复", ap.GoalConfig{
 		AcceptanceCriteria: []string{"异常数据归零", "修复日志生成"},
-		Priority:           autonomy.PriorityHigh,
+		Priority:           ap.PriorityHigh,
 		MaxRetries:         3,
 	})
 	fmt.Printf("📌 提交目标: %s (ID: %s)\n", goal.Description, goal.ID)
@@ -95,7 +105,7 @@ func main() {
 	fmt.Println()
 
 	// 3. 制定执行计划
-	plan := autonomy.NewGoalPlan(goal.ID, []autonomy.PlanStep{
+	plan := ap.NewGoalPlan(goal.ID, []ap.PlanStep{
 		{ID: "collect", Description: "采集监控数据"},
 		{ID: "analyze", Description: "分析异常根因", DependsOn: []string{"collect"}},
 		{ID: "fix", Description: "执行修复操作", DependsOn: []string{"analyze"}},
@@ -112,7 +122,7 @@ func main() {
 	fmt.Println()
 
 	// 4. 注册监控告警
-	rt.GetMonitor().OnAlert(func(a autonomy.Alert) {
+	rt.GetMonitor().OnAlert(func(a ap.Alert) {
 		fmt.Printf("⚠️  [%s] %s: %s\n", a.Level, a.GoalID, a.Message)
 	})
 
@@ -147,13 +157,13 @@ func main() {
 
 	// 创建新运行时（模拟重启）
 	store := newInMemoryCheckpointStore()
-	rt2 := autonomy.NewAutonomyRuntime(autonomy.RuntimeConfig{
+	rt2 := ap.NewAutonomyRuntime(ap.RuntimeConfig{
 		StepExecutor:    &dataMonitorExecutor{},
 		CheckpointStore: store,
 	})
 
 	// 模拟之前的检查点
-	partialPlan := autonomy.NewGoalPlan("crashed-goal", []autonomy.PlanStep{
+	partialPlan := ap.NewGoalPlan("crashed-goal", []ap.PlanStep{
 		{ID: "collect", Description: "采集监控数据"},
 		{ID: "analyze", Description: "分析异常根因", DependsOn: []string{"collect"}},
 		{ID: "fix", Description: "执行修复操作", DependsOn: []string{"analyze"}},
@@ -161,9 +171,9 @@ func main() {
 	})
 	partialPlan.MarkStepCompleted("collect")
 	partialPlan.MarkStepCompleted("analyze")
-	_ = store.SaveCheckpoint(ctx, &autonomy.Checkpoint{
+	_ = store.SaveCheckpoint(ctx, &ap.Checkpoint{
 		GoalID:            "crashed-goal",
-		State:             autonomy.GoalExecuting,
+		State:             ap.GoalExecuting,
 		LastCompletedStep: "analyze",
 		PlanSnapshot:      partialPlan,
 		Completed:         false,
@@ -181,4 +191,48 @@ func main() {
 	fmt.Println()
 
 	fmt.Println("=== 验收通过：自治执行 + 崩溃恢复 端到端演示完成 ===")
+}
+
+// llmReplanner 用真实 LLM 生成重规划步骤（v4.1 真实接线）。
+// 实现 ap.ReplanPlanner；步骤失败时由 AutonomyRuntime 自动调用。
+type llmReplanner struct {
+	provider ap.Provider
+}
+
+func (l *llmReplanner) Replan(ctx context.Context, goal *ap.AgentGoal, failedSteps []ap.PlanStep, reason string) ([]ap.PlanStep, error) {
+	var b strings.Builder
+	fmt.Fprintf(&b, "你是任务规划器。目标：%s\n失败步骤：", goal.Description)
+	for _, s := range failedSteps {
+		fmt.Fprintf(&b, "[%s %s] ", s.ID, s.Description)
+	}
+	fmt.Fprintf(&b, "\n失败原因：%s\n", reason)
+	b.WriteString(`请输出重规划剩余步骤的 JSON 数组（不要任何其他文本）：[{"id":"s1","description":"步骤描述","depends_on":[]}]`)
+
+	resp, err := l.provider.Complete(ctx, &ap.CompletionRequest{
+		Messages: []ap.ChatMessage{{Role: "user", Content: b.String()}},
+		Model:    l.provider.Info().Name,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("LLM replan: %w", err)
+	}
+
+	var raw []struct {
+		ID          string   `json:"id"`
+		Description string   `json:"description"`
+		DependsOn   []string `json:"depends_on"`
+	}
+	if err := json.Unmarshal([]byte(resp.Content), &raw); err != nil {
+		return nil, fmt.Errorf("解析重规划响应: %w", err)
+	}
+	steps := make([]ap.PlanStep, 0, len(raw))
+	for _, r := range raw {
+		if r.ID == "" || r.Description == "" {
+			continue
+		}
+		steps = append(steps, ap.PlanStep{ID: r.ID, Description: r.Description, DependsOn: r.DependsOn})
+	}
+	if len(steps) == 0 {
+		return nil, fmt.Errorf("LLM replan: 空计划")
+	}
+	return steps, nil
 }

@@ -8,18 +8,25 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
-	"agentprimordia/internal/agent/realtime"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
 	fmt.Println("=== AgentPrimordia v3.6 多模态实时验收 Demo ===")
 	fmt.Println()
 
-	rt := realtime.NewRuntime(realtime.RuntimeConfig{})
+	rtCfg := ap.RealtimeRuntimeConfig{}
+	if realVoiceMode(&rtCfg) {
+		fmt.Printf("🎙️ 真实语音模式：ASR=%s TTS=%s\n", rtCfg.ASR.Name(), rtCfg.TTS.Name())
+	} else {
+		fmt.Println("🎧 mock 语音模式（设置 AP_LLM_PROVIDER 加 AP_ASR_URL/AP_TTS_URL 或 AP_LLM_API_KEY 接入真实 ASR/TTS）")
+	}
+	rt := ap.NewRealtimeRuntime(rtCfg)
 
 	// 订阅事件流
-	rt.Events.SubscribeAll(func(e realtime.RealtimeEvent) {
+	rt.Events.SubscribeAll(func(e ap.RealtimeEvent) {
 		fmt.Printf("   [event] %-22s session=%s\n", e.Type, e.SessionID)
 	})
 
@@ -53,8 +60,8 @@ func main() {
 	// 演示打断
 	fmt.Println("--- 打断演示 ---")
 	s, _ := rt.Hub.GetSession("voice-demo")
-	_ = s.TransitionTo(realtime.SessionThinking, "demo")
-	_ = s.TransitionTo(realtime.SessionSpeaking, "demo")
+	_ = s.TransitionTo(ap.RealtimeThinking, "demo")
+	_ = s.TransitionTo(ap.RealtimeSpeaking, "demo")
 	if err := rt.BargeIn.TryBargeIn("voice-demo", "用户插入新指令"); err != nil {
 		fmt.Printf("   barge-in err: %v\n", err)
 	} else {
@@ -72,4 +79,35 @@ func main() {
 	fmt.Printf("活跃会话: %d\n", rt.Hub.ActiveSessions())
 	fmt.Println()
 	fmt.Println("=== 验收通过：语音多轮 + 打断 + 视觉流 端到端演示完成 ===")
+}
+
+// realVoiceMode 环境变量驱动真实 ASR/TTS（v4.1 真实接线）：
+//   - AP_LLM_PROVIDER 为主开关（与其余 demo 一致）
+//   - AP_ASR_URL / AP_TTS_URL 指向本地兼容端点（faster-whisper / Piper，免 key）
+//   - AP_LLM_API_KEY 非空时缺省 URL 指向 OpenAI 官方端点
+//   - AP_TTS_VOICE 指定发音人（默认 alloy）
+//
+// 配置缺失时报清晰错误并回退 mock（CI 默认路径不受影响）。
+func realVoiceMode(cfg *ap.RealtimeRuntimeConfig) bool {
+	if os.Getenv("AP_LLM_PROVIDER") == "" {
+		return false
+	}
+	key := os.Getenv("AP_LLM_API_KEY")
+	asrURL := os.Getenv("AP_ASR_URL")
+	ttsURL := os.Getenv("AP_TTS_URL")
+	if key != "" {
+		if asrURL == "" {
+			asrURL = "https://api.openai.com/v1/audio/transcriptions"
+		}
+		if ttsURL == "" {
+			ttsURL = "https://api.openai.com/v1/audio/speech"
+		}
+	}
+	if asrURL == "" || ttsURL == "" {
+		fmt.Println("⚠️  真实语音模式配置不完整：本地端点需 AP_ASR_URL/AP_TTS_URL（faster-whisper/Piper），OpenAI 端点需 AP_LLM_API_KEY；已回退 mock 模式")
+		return false
+	}
+	cfg.ASR = ap.NewOpenAIASR(asrURL, key)
+	cfg.TTS = ap.NewOpenAITTS(ttsURL, key, ap.WithTTSVoice(os.Getenv("AP_TTS_VOICE")))
+	return true
 }

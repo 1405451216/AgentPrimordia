@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 
-	"agentprimordia/internal/agent/a2a"
+	ap "agentprimordia/pkg"
 )
 
 func main() {
@@ -18,30 +18,30 @@ func main() {
 	fmt.Println()
 
 	// 1. 部署开放协议兼容服务器（ap Agent 侧）
-	card := a2a.OpenAgentCard{
+	card := ap.OpenAgentCard{
 		Name:        "ap-data-agent",
 		Description: "提供数据修复能力的 ap Agent",
 		URL:         "http://ap-agent",
 		Version:     "3.5.0",
-		Capabilities: a2a.OpenCapabilities{
+		Capabilities: ap.OpenCapabilities{
 			Streaming:              true,
 			StateTransitionHistory: true,
 		},
-		Skills: []a2a.OpenSkillDecl{
+		Skills: []ap.OpenSkillDecl{
 			{ID: "data-fix", Name: "数据修复", Description: "检测并修复异常数据", Tags: []string{"data"}},
 		},
 		DefaultInputModes:  []string{"text"},
 		DefaultOutputModes: []string{"text"},
 	}
-	srv := a2a.NewOpenInteropServer(card, a2a.DefaultInteropConfig())
+	srv := ap.NewOpenInteropServer(card, ap.DefaultInteropConfig())
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 	fmt.Printf("🌐 开放协议服务器已启动: %s\n", ts.URL)
-	fmt.Printf("   Agent Card: %s%s\n", ts.URL, a2a.DefaultInteropConfig().AgentCardPath)
+	fmt.Printf("   Agent Card: %s%s\n", ts.URL, ap.DefaultInteropConfig().AgentCardPath)
 	fmt.Println()
 
 	// 2. 第三方生态客户端接入
-	client := a2a.NewOpenInteropClient(ts.URL)
+	client := ap.NewOpenInteropClient(ts.URL)
 	ctx := context.Background()
 
 	// 发现 Agent Card
@@ -53,7 +53,7 @@ func main() {
 	fmt.Printf("🔍 生态客户端发现 Agent: %s (skills=%d)\n", discovered.Name, len(discovered.Skills))
 
 	// 委托任务
-	task, err := client.SendTask(ctx, a2a.NewTextMessage("user", "请修复昨天的异常数据"))
+	task, err := client.SendTask(ctx, ap.NewTextMessage("user", "请修复昨天的异常数据"))
 	if err != nil {
 		fmt.Printf("   ❌ 委托失败: %v\n", err)
 		return
@@ -71,7 +71,7 @@ func main() {
 	fmt.Println()
 
 	// 3. 兼容性报告
-	report := a2a.GenerateInteropReport(card, a2a.DefaultInteropConfig())
+	report := ap.GenerateInteropReport(card, ap.DefaultInteropConfig())
 	fmt.Printf("📋 协议符合性得分: %.0f%% (%d 项检查)\n", report.Score*100, len(report.Checks))
 	if failed := report.FailedChecks(); len(failed) == 0 {
 		fmt.Println("   ✅ 完全符合开放 A2A 协议规范")

@@ -28,7 +28,6 @@ import (
 
 	"agentprimordia/cmd/example/demo"
 	gitplugin "agentprimordia/ecosystem/plugins/git"
-	"agentprimordia/internal/llm"
 	ap "agentprimordia/pkg"
 )
 
@@ -164,19 +163,19 @@ func scriptLLM(workdir string) *demo.DemoLLM {
 	fileContent := "package main\n\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello from AgentPrimordia coding harness!\")\n}\n"
 
 	// 子任务1：编写（filesystem.write）
-	subtask(d, "hello.go 已创建", [][]llm.FunctionCall{{
+	subtask(d, "hello.go 已创建", [][]ap.FunctionCall{{
 		{ID: "call_write", Name: "filesystem",
 			Arguments: `{"action": "write", "path": "hello.go", "content": ` + jsonString(fileContent) + `}`},
 	}})
 
 	// 子任务2：实施（shell 实际运行程序）
-	subtask(d, "运行成功：Hello from AgentPrimordia coding harness!", [][]llm.FunctionCall{{
+	subtask(d, "运行成功：Hello from AgentPrimordia coding harness!", [][]ap.FunctionCall{{
 		{ID: "call_run", Name: "shell",
 			Arguments: `{"action": "execute", "command": "go run hello.go", "workdir": ` + jsonString(workdir) + `}`},
 	}})
 
 	// 子任务3：测试（shell 校验工作区）
-	subtask(d, "工作区检查通过：hello.go 已生成", [][]llm.FunctionCall{{
+	subtask(d, "工作区检查通过：hello.go 已生成", [][]ap.FunctionCall{{
 		{ID: "call_check", Name: "shell",
 			Arguments: `{"action": "execute", "command": "git status --short", "workdir": ` + jsonString(workdir) + `}`},
 	}})
@@ -185,7 +184,7 @@ func scriptLLM(workdir string) *demo.DemoLLM {
 	subtask(d, "审查通过：代码结构清晰，无高严重度问题", nil)
 
 	// 子任务5：发布（git add+commit 同轮双调用，再 tag）
-	subtask(d, "发布完成：v1.0.0", [][]llm.FunctionCall{
+	subtask(d, "发布完成：v1.0.0", [][]ap.FunctionCall{
 		{
 			{ID: "call_add", Name: "git_tool",
 				Arguments: `{"action": "add", "args": ["."], "workdir": ` + jsonString(workdir) + `}`},
@@ -202,7 +201,7 @@ func scriptLLM(workdir string) *demo.DemoLLM {
 }
 
 // subtask 按子任务时序向两条队列追加脚本响应
-func subtask(d *demo.DemoLLM, conclusion string, toolRounds [][]llm.FunctionCall) {
+func subtask(d *demo.DemoLLM, conclusion string, toolRounds [][]ap.FunctionCall) {
 	d.WithResponse(singleSubtaskPlan)
 	for _, round := range toolRounds {
 		d.WithToolResponse(round)
