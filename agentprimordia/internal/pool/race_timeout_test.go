@@ -175,8 +175,10 @@ func TestPool_AcquireSlotContextCancel(t *testing.T) {
 	}
 }
 
-// TestPool_ConcurrentDispatchReadResult 并发 Dispatch + GetTask/ListTasks，
-// 在 CI -race 下验证 pt.result 无锁写与 RLock 读之间无数据竞争。
+// TestPool_ConcurrentDispatchReadResult 单次 Dispatch（8 任务）+ 并发
+// GetTask/ListTasks 读取，在 CI -race 下验证 pt.result 无锁写与 RLock 读
+// 之间无数据竞争。注：Dispatch 自身共享 p.wg，不支持并发调用，测试只
+// 并发读取。
 func TestPool_ConcurrentDispatchReadResult(t *testing.T) {
 	pool := NewPool(PoolConfig{
 		MaxConcurrency: 4,
@@ -185,34 +187,58 @@ func TestPool_ConcurrentDispatchReadResult(t *testing.T) {
 	pool.SetModel(fakeProvider{})
 	defer pool.Close()
 
-	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
-		wg.Add(1)
-		go func(n int) {
-			defer wg.Done()
-			id := fmt.Sprintf("race-task-%d", n)
-			_, _ = pool.Dispatch(context.Background(), []TaskConfig{
-				{ID: id, Title: "t", Prompt: "hello"},
-			})
-			if _, ok := pool.GetTask(id); !ok {
-				// 任务可能尚未写入 result，不视为失败
+	ids := make([]string, 8)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("race-task-%d", i)
+	}
+	tasks := make([]TaskConfig, 0, len(ids))
+	for _, id := range ids {
+		tasks = append(tasks, TaskConfig{ID: id, Title: "t", Prompt: "hello"})
+	}
+
+	// 并发读者：Dispatch 执行期间持续 GetTask/ListTasks
+	stop := make(chan struct{})
+	var readers sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				for _, id := range ids {
+					_, _ = pool.GetTask(id)
+				}
 				_ = pool.ListTasks()
 			}
-			_ = pool.GetTasksBySession("")
-		}(i)
+		}()
 	}
-	wg.Wait()
+
+	if _, err := pool.Dispatch(context.Background(), tasks); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	close(stop)
+	readers.Wait()
 
 	// 全部任务应已完成且可读
 	all := pool.ListTasks()
 	if len(all) != 8 {
 		t.Fatalf("ListTasks = %d, want 8", len(all))
 	}
+	for _, id := range ids {
+		if _, ok := pool.GetTask(id); !ok {
+			t.Fatalf("GetTask(%s) 不可读", id)
+		}
+	}
 }
 
 // TestPool_ConcurrentSetModelDuringDispatch 并发 SetModel + Dispatch，
 // 在 CI -race 下验证 createAgentForTask 无锁读 p.model/p.toolkit 与
-// SetModel/SetToolkit 持锁写之间无数据竞争。
+// SetModel/SetToolkit 持锁写之间无数据竞争。Dispatch 串行调用（共享 p.wg
+// 不支持并发），SetModel 并发执行。
 func TestPool_ConcurrentSetModelDuringDispatch(t *testing.T) {
 	pool := NewPool(PoolConfig{
 		MaxConcurrency: 2,
@@ -221,22 +247,28 @@ func TestPool_ConcurrentSetModelDuringDispatch(t *testing.T) {
 	pool.SetModel(fakeProvider{})
 	defer pool.Close()
 
-	var wg sync.WaitGroup
-	for i := 0; i < 6; i++ {
-		wg.Add(1)
-		go func(n int) {
-			defer wg.Done()
-			_, _ = pool.Dispatch(context.Background(), []TaskConfig{
-				{ID: fmt.Sprintf("model-task-%d", n), Title: "t", Prompt: "hello"},
-			})
-		}(i)
-	}
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
+	stop := make(chan struct{})
+	var setters sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		setters.Add(1)
 		go func() {
-			defer wg.Done()
-			pool.SetModel(fakeProvider{})
+			defer setters.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				pool.SetModel(fakeProvider{})
+			}
 		}()
 	}
-	wg.Wait()
+
+	for i := 0; i < 6; i++ {
+		_, _ = pool.Dispatch(context.Background(), []TaskConfig{
+			{ID: fmt.Sprintf("model-task-%d", i), Title: "t", Prompt: "hello"},
+		})
+	}
+	close(stop)
+	setters.Wait()
 }
