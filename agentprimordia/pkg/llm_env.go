@@ -1,3 +1,4 @@
+// Stability: Experimental — v4.1 环境驱动 Provider 装配（示例/跑分/真实接线用），API 可能随使用场景演进而调整。
 // llm_env.go — 环境变量驱动的真实 LLM Provider 装配（v4.1 真实接线）
 //
 // ProviderFromEnv 读取 AP_LLM_* 环境变量并装配真实 Provider，

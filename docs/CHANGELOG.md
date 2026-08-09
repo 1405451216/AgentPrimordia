@@ -4,10 +4,18 @@
 
 ## [Unreleased]
 
-### Added — v4.1 → v5.0 路线图（2026-08-09）
+### Added — v4.1 → v5.0 均衡混排弧线全部落地（2026-08-09）
 
-- 新增 `docs/V5-ROADMAP.md`：v4.1–v5.0 均衡混排弧线实施计划（奇数深化/偶数稳定），v4.1 真实接线全量任务表 + v4.2–v5.0 里程碑粒度；验收量化闭环（v4.1 llm_bench 首份基线报告 + 本地免 key 语音必达，v5.0 评估复测 ≥8.5/10）+ 一键真实语音 demo 脚本任务（scripts/dev-realtime.ps1/.sh）
-- `docs/ROADMAP.md` 新增 §三.五 弧线章节、里程碑速查行、维护规则 5
+- **v4.1 真实接线**：真实 ASR/TTS 适配器（OpenAI 兼容 + 本地 faster-whisper/Piper 免 key）+ CLI 旗标；Studio v3x 面板真实数据注入；SQLiteFailureStore；runLoop 按块拆分；示例迁移 pkg；workflow 垫片拆除；租户拒绝审计；ProviderFromEnv + llm_bench 自治/技能跑分
+- **v4.2 稳定与规模化**：Soak 混合流量 harness（恢复率 ≥99%）；Pool×autonomy 100 并发持平；P95 基准刷新（3 次中位数）；集群混沌故障注入（degradation 0）；双线 LLM 基准对照表入 CI
+- **v4.3 多模态真实化**：流式语音链路（音频→流式 LLM→语音）；视觉护栏 + 帧分析；WebGPU 真实后端优先
+- **v4.4 开发者平台**：技能市场（manifest + ECDSA 验签）；模板远程安装；文档死链门；Inspector DAG；第三方接入指南
+- **v4.5 分布式自治**：跨节点目标续跑（ResumeIncomplete 重建目标）；A2A 路由熔断；分布式后端配置文档
+- **v4.6 安全与治理**：物理分库强隔离；审计 JSON 导出；敏感工具审计；安全态势报告
+- **v4.7 双语言深度对齐**：TS 技能习得 + 自治运行时；Rust/Python SDK 测试入 CI；cross-language 全绿
+- **v4.8 生态运营**：市场下载统计；模板/技能条目扩充；benchmark 排行榜；自举报告；企业部署指南
+- **v4.9 性能与成本**：SQLite WAL（写入 P95 -98%）；EventBus 锁分离；缓存命中率量化；目标级预算护栏
+- **v5.0 平台里程碑**：dev-platform 一键部署；全能力整合 e2e 套件；稳定承诺重审；v5 迁移指南；**版本 5.0.0 四方一致**（Go/TS/VERSION/api-contract）；评估复测 ≈8.8/10（≥8.5 达标）
 
 ## [v4.0.0] - 2026-08-09
 

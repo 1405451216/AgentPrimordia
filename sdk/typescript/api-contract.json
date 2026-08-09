@@ -1,5 +1,5 @@
 {
-  "version": "4.0.0",
+  "version": "5.0.0",
   "generated_at": "",
   "modules": [
     {
@@ -1645,7 +1645,7 @@
         },
         {
           "name": "Version",
-          "value": "\"4.0.0\"",
+          "value": "\"5.0.0\"",
           "doc": "Version 是 AgentPrimordia 框架的当前版本号"
         }
       ],
@@ -1959,6 +1959,31 @@
           "name": "StepExecutor",
           "kind": "alias",
           "doc": "StepExecutor 步骤执行器接口"
+        },
+        {
+          "name": "Checkpoint",
+          "kind": "alias",
+          "doc": "Checkpoint 自治目标检查点快照"
+        },
+        {
+          "name": "MonitorConfig",
+          "kind": "alias",
+          "doc": "MonitorConfig 监控器配置"
+        },
+        {
+          "name": "Monitor",
+          "kind": "alias",
+          "doc": "Monitor 自治监控器：停滞检测 + 进度追踪 + 异常上报"
+        },
+        {
+          "name": "Alert",
+          "kind": "alias",
+          "doc": "Alert 异常告警"
+        },
+        {
+          "name": "AlertLevel",
+          "kind": "alias",
+          "doc": "AlertLevel 异常分级"
         },
         {
           "name": "RAGRetriever",
@@ -4235,6 +4260,20 @@
       ]
     },
     {
+      "name": "llm_env",
+      "file": "pkg/llm_env.go",
+      "functions": [
+        {
+          "name": "ProviderFromEnv",
+          "returns": [
+            "Provider",
+            "error"
+          ],
+          "doc": "ProviderFromEnv 从环境变量装配真实 LLM Provider。"
+        }
+      ]
+    },
+    {
       "name": "logger",
       "file": "pkg/logger.go",
       "stability": "Stable",
@@ -5383,9 +5422,84 @@
           "name": "RealtimeHubConfig",
           "kind": "alias",
           "doc": "HubConfig 实时会话编排配置"
+        },
+        {
+          "name": "RealtimeRuntime",
+          "kind": "alias",
+          "doc": "RealtimeRuntime 实时运行时：装配 Hub + 感知模块 + 事件总线 + 清理器"
+        },
+        {
+          "name": "RealtimeRuntimeConfig",
+          "kind": "alias",
+          "doc": "RealtimeRuntimeConfig 实时运行时配置"
+        },
+        {
+          "name": "RealtimeEvent",
+          "kind": "alias",
+          "doc": "RealtimeEvent 实时事件"
+        },
+        {
+          "name": "RealtimeEventType",
+          "kind": "alias",
+          "doc": "RealtimeEventType 实时事件类型"
+        },
+        {
+          "name": "RealtimeEventBus",
+          "kind": "alias",
+          "doc": "RealtimeEventBus 实时事件总线（供 UI/监控消费）"
+        },
+        {
+          "name": "RealtimeBargeInHandler",
+          "kind": "alias",
+          "doc": "RealtimeBargeInHandler 打断处理器"
+        },
+        {
+          "name": "RealtimeFusedInput",
+          "kind": "alias",
+          "doc": "RealtimeFusedInput 融合后的多模态输入"
         }
       ],
       "constants": [
+        {
+          "name": "RealtimeEventSessionCreated",
+          "value": "realtime.EventSessionCreated",
+          "doc": "RealtimeEventSessionCreated 会话创建"
+        },
+        {
+          "name": "RealtimeEventSessionClosed",
+          "value": "realtime.EventSessionClosed",
+          "doc": "RealtimeEventSessionClosed 会话关闭"
+        },
+        {
+          "name": "RealtimeEventStateChange",
+          "value": "realtime.EventStateChange",
+          "doc": "RealtimeEventStateChange 状态变更"
+        },
+        {
+          "name": "RealtimeEventAudioReceived",
+          "value": "realtime.EventAudioReceived",
+          "doc": "RealtimeEventAudioReceived 音频接收"
+        },
+        {
+          "name": "RealtimeEventTranscriptionReady",
+          "value": "realtime.EventTranscriptionReady",
+          "doc": "RealtimeEventTranscriptionReady 转写就绪"
+        },
+        {
+          "name": "RealtimeEventResponseReady",
+          "value": "realtime.EventResponseReady",
+          "doc": "RealtimeEventResponseReady 响应就绪"
+        },
+        {
+          "name": "RealtimeEventBargeIn",
+          "value": "realtime.EventBargeIn",
+          "doc": "RealtimeEventBargeIn 打断"
+        },
+        {
+          "name": "RealtimeEventError",
+          "value": "realtime.EventError",
+          "doc": "RealtimeEventError 错误"
+        },
         {
           "name": "RealtimeIdle",
           "value": "realtime.SessionIdle",
@@ -5415,6 +5529,38 @@
         {
           "name": "NewRealtimeSession",
           "doc": "NewRealtimeSession 创建实时会话"
+        },
+        {
+          "name": "NewRealtimeRuntime",
+          "doc": "NewRealtimeRuntime 创建实时运行时（v4.1：真实 ASR/TTS 可注入 RuntimeConfig）"
+        },
+        {
+          "name": "NewOpenAIASR",
+          "doc": "NewOpenAIASR 创建真实 ASR 适配器（v4.1：OpenAI Whisper 兼容端点，本地 faster-whisper 免 key）"
+        },
+        {
+          "name": "NewOpenAITTS",
+          "doc": "NewOpenAITTS 创建真实 TTS 适配器（v4.1：OpenAI TTS 兼容端点，本地 Piper/edge-tts 免 key）"
+        },
+        {
+          "name": "WithASRModel",
+          "doc": "WithASRModel 设置 ASR 模型名（默认 whisper-1）"
+        },
+        {
+          "name": "WithASRHTTPClient",
+          "doc": "WithASRHTTPClient 设置 ASR 自定义 HTTP 客户端"
+        },
+        {
+          "name": "WithTTSModel",
+          "doc": "WithTTSModel 设置 TTS 模型名（默认 tts-1）"
+        },
+        {
+          "name": "WithTTSVoice",
+          "doc": "WithTTSVoice 设置 TTS 发音人（默认 alloy）"
+        },
+        {
+          "name": "WithTTSHTTPClient",
+          "doc": "WithTTSHTTPClient 设置 TTS 自定义 HTTP 客户端"
         }
       ]
     },
@@ -5667,6 +5813,56 @@
           "name": "SkillUsageTracker",
           "kind": "alias",
           "doc": "UsageTracker 技能使用追踪器"
+        },
+        {
+          "name": "SkillTrajectory",
+          "kind": "alias",
+          "doc": "Trajectory 成功工具调用序列（技能习得原料）"
+        },
+        {
+          "name": "SkillToolCallRecord",
+          "kind": "alias",
+          "doc": "ToolCallRecord 工具调用轨迹记录"
+        },
+        {
+          "name": "SkillDistiller",
+          "kind": "alias",
+          "doc": "SkillDistiller LLM 提炼接口（由外部 learning/llm_distiller.go 适配）"
+        },
+        {
+          "name": "SkillMatcherConfig",
+          "kind": "alias",
+          "doc": "MatcherConfig 匹配器配置"
+        },
+        {
+          "name": "SkillTrigger",
+          "kind": "alias",
+          "doc": "Trigger 习得触发器"
+        },
+        {
+          "name": "SkillTriggerConfig",
+          "kind": "alias",
+          "doc": "TriggerConfig 触发器配置"
+        },
+        {
+          "name": "SkillTriggerStrategy",
+          "kind": "alias",
+          "doc": "TriggerStrategy 习得触发策略"
+        },
+        {
+          "name": "SkillVerification",
+          "kind": "alias",
+          "doc": "Verification 技能验证门：新技能必须通过测试用例才可启用"
+        },
+        {
+          "name": "SkillTestCase",
+          "kind": "alias",
+          "doc": "TestCase 技能验证测试用例"
+        },
+        {
+          "name": "SkillUsageRecord",
+          "kind": "alias",
+          "doc": "UsageRecord 技能调用日志"
         }
       ],
       "constants": [
@@ -5689,6 +5885,16 @@
           "name": "SkillDeprecated",
           "value": "skills.SkillDeprecated",
           "doc": "SkillDeprecated 已弃用"
+        },
+        {
+          "name": "SkillTriggerRepeatPattern",
+          "value": "skills.TriggerRepeatPattern",
+          "doc": "SkillTriggerRepeatPattern 重复模式检测（同类任务出现 N 次）"
+        },
+        {
+          "name": "SkillTriggerLowSuccess",
+          "value": "skills.TriggerLowSuccess",
+          "doc": "SkillTriggerLowSuccess 任务完成率低（低于阈值时触发习得）"
         }
       ],
       "variables": [
@@ -5707,6 +5913,18 @@
         {
           "name": "NewSkillUsageTracker",
           "doc": "NewSkillUsageTracker 创建使用追踪器"
+        },
+        {
+          "name": "NewSkillAcquisition",
+          "doc": "NewSkillAcquisition 创建习得流水线"
+        },
+        {
+          "name": "NewSkillTrigger",
+          "doc": "NewSkillTrigger 创建习得触发器"
+        },
+        {
+          "name": "NewSkillVerification",
+          "doc": "NewSkillVerification 创建技能验证门"
         }
       ]
     },
