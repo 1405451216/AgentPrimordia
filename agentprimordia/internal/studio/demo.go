@@ -260,3 +260,40 @@ func (d *demoMarketplace) StartDeployment(_ context.Context, id string) error {
 	}
 	return fmt.Errorf("部署 %q 不存在", id)
 }
+
+// ===== demoAutonomy / demoSkills / demoRealtime =====
+//
+// v3.3-v3.6 面板的 demo 空实现：未注入真实引擎时返回空数组
+// （面板渲染空态而非 404），响应头由 handler 标 X-Data-Source: demo。
+
+type demoAutonomy struct{}
+
+func newDemoAutonomy() *demoAutonomy { return &demoAutonomy{} }
+
+func (d *demoAutonomy) Goals(_ context.Context) ([]AutonomyGoal, error) {
+	return []AutonomyGoal{}, nil
+}
+
+func (d *demoAutonomy) Alerts(_ context.Context) ([]AutonomyAlert, error) {
+	return []AutonomyAlert{}, nil
+}
+
+type demoSkills struct{}
+
+func newDemoSkills() *demoSkills { return &demoSkills{} }
+
+func (d *demoSkills) List(_ context.Context) ([]SkillEntry, error) {
+	return []SkillEntry{}, nil
+}
+
+type demoRealtime struct{}
+
+func newDemoRealtime() *demoRealtime { return &demoRealtime{} }
+
+func (d *demoRealtime) Sessions(_ context.Context) ([]RealtimeSessionInfo, error) {
+	return []RealtimeSessionInfo{}, nil
+}
+
+func (d *demoRealtime) Events(_ context.Context) ([]RealtimeEventInfo, error) {
+	return []RealtimeEventInfo{}, nil
+}

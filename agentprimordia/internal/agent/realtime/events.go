@@ -44,7 +44,11 @@ type EventBus struct {
 	mu        sync.RWMutex
 	listeners map[RealtimeEventType][]func(RealtimeEvent)
 	wildcard  []func(RealtimeEvent)
+	history   []RealtimeEvent // 最近事件历史（供 Studio 面板等轮询消费，上限 maxRetainedEvents）
 }
+
+// maxRetainedEvents 事件历史保留上限。
+const maxRetainedEvents = 200
 
 // NewEventBus 创建事件总线
 func NewEventBus() *EventBus {
@@ -73,12 +77,16 @@ func (eb *EventBus) Publish(event RealtimeEvent) {
 		event.Timestamp = time.Now()
 	}
 
-	eb.mu.RLock()
+	eb.mu.Lock()
+	eb.history = append(eb.history, event)
+	if len(eb.history) > maxRetainedEvents {
+		eb.history = eb.history[len(eb.history)-maxRetainedEvents:]
+	}
 	fns := make([]func(RealtimeEvent), len(eb.listeners[event.Type]))
 	copy(fns, eb.listeners[event.Type])
 	wild := make([]func(RealtimeEvent), len(eb.wildcard))
 	copy(wild, eb.wildcard)
-	eb.mu.RUnlock()
+	eb.mu.Unlock()
 
 	for _, fn := range fns {
 		fn(event)
@@ -86,4 +94,15 @@ func (eb *EventBus) Publish(event RealtimeEvent) {
 	for _, fn := range wild {
 		fn(event)
 	}
+}
+
+// RecentEvents 返回最近事件（新→旧，上限 maxRetainedEvents）。
+func (eb *EventBus) RecentEvents() []RealtimeEvent {
+	eb.mu.RLock()
+	defer eb.mu.RUnlock()
+	out := make([]RealtimeEvent, 0, len(eb.history))
+	for i := len(eb.history) - 1; i >= 0; i-- {
+		out = append(out, eb.history[i])
+	}
+	return out
 }

@@ -55,7 +55,11 @@ type Monitor struct {
 	cfg      MonitorConfig
 	statuses map[string]*goalMonitorState
 	alertFns []func(Alert)
+	alerts   []Alert // 最近告警历史（供 Studio 面板等轮询消费，上限 maxRetainedAlerts）
 }
+
+// maxRetainedAlerts 告警历史保留上限。
+const maxRetainedAlerts = 50
 
 // goalMonitorState 单个目标的监控状态
 type goalMonitorState struct {
@@ -172,12 +176,27 @@ func (m *Monitor) EstimateRemaining(goalID string) time.Duration {
 
 // emitAlert 触发告警回调
 func (m *Monitor) emitAlert(a Alert) {
-	m.mu.RLock()
+	m.mu.Lock()
+	m.alerts = append(m.alerts, a)
+	if len(m.alerts) > maxRetainedAlerts {
+		m.alerts = m.alerts[len(m.alerts)-maxRetainedAlerts:]
+	}
 	fns := make([]func(Alert), len(m.alertFns))
 	copy(fns, m.alertFns)
-	m.mu.RUnlock()
+	m.mu.Unlock()
 
 	for _, fn := range fns {
 		fn(a)
 	}
+}
+
+// RecentAlerts 返回最近告警（新→旧）。
+func (m *Monitor) RecentAlerts() []Alert {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]Alert, 0, len(m.alerts))
+	for i := len(m.alerts) - 1; i >= 0; i-- {
+		out = append(out, m.alerts[i])
+	}
+	return out
 }

@@ -104,6 +104,17 @@ func (h *RealtimeHub) GetSession(id string) (*Session, bool) {
 	return s, ok
 }
 
+// ListSessions 列出全部活跃会话（供 Studio 面板等轮询消费）。
+func (h *RealtimeHub) ListSessions() []*Session {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	out := make([]*Session, 0, len(h.sessions))
+	for _, s := range h.sessions {
+		out = append(out, s)
+	}
+	return out
+}
+
 // CloseSession 关闭会话
 func (h *RealtimeHub) CloseSession(id string) {
 	h.mu.Lock()

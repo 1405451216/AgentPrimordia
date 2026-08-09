@@ -68,6 +68,45 @@ type AgentGoal struct {
 	sm *StateMachine
 }
 
+// AgentGoalView 目标的并发安全只读快照（供 Studio 面板/监控等外部消费）。
+type AgentGoalView struct {
+	// ID 全局唯一标识
+	ID string
+	// Description 目标描述
+	Description string
+	// Priority 优先级
+	Priority Priority
+	// State 当前状态
+	State GoalState
+	// MaxRetries 最大重试次数
+	MaxRetries int
+	// RetryCount 已重试次数
+	RetryCount int
+	// Deadline 截止时间（零值表示无限制）
+	Deadline time.Time
+	// CreatedAt 创建时间
+	CreatedAt time.Time
+	// UpdatedAt 最后更新时间
+	UpdatedAt time.Time
+}
+
+// Snapshot 返回目标的只读快照（并发安全，RWMutex 保护）。
+func (g *AgentGoal) Snapshot() AgentGoalView {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return AgentGoalView{
+		ID:          g.ID,
+		Description: g.Description,
+		Priority:    g.Priority,
+		State:       g.State,
+		MaxRetries:  g.MaxRetries,
+		RetryCount:  g.RetryCount,
+		Deadline:    g.Deadline,
+		CreatedAt:   g.CreatedAt,
+		UpdatedAt:   g.UpdatedAt,
+	}
+}
+
 // NewAgentGoal 创建新的自治目标
 func NewAgentGoal(description string, cfg GoalConfig) *AgentGoal {
 	priority := cfg.Priority

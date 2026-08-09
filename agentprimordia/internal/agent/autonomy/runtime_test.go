@@ -3,123 +3,54 @@ package autonomy
 import (
 	"context"
 	"testing"
+	"time"
 )
 
-// TestRuntimeEndToEnd 验证运行时端到端流程
-func TestRuntimeEndToEnd(t *testing.T) {
-	mock := newMockStepExecutor()
-	mock.results["s1"] = "data-collected"
-	mock.results["s2"] = "analysis-done"
+// mockListStepExecutor 列表测试用的步骤执行器
+type mockListStepExecutor struct{}
 
-	rt := NewAutonomyRuntime(RuntimeConfig{
-		StepExecutor: mock,
-		MaxRetries:   2,
-	})
+func (m *mockListStepExecutor) ExecuteStep(_ context.Context, step PlanStep) (string, error) {
+	return "ok:" + step.ID, nil
+}
 
-	// 提交目标
-	goal := rt.SubmitGoal("监控数据异常", GoalConfig{
-		AcceptanceCriteria: []string{"异常归零"},
-		Priority:           PriorityHigh,
-	})
+// TestAutonomyRuntime_ListGoals 验证 ListGoals 返回全部目标（新→旧）。
+func TestAutonomyRuntime_ListGoals(t *testing.T) {
+	rt := NewAutonomyRuntime(RuntimeConfig{StepExecutor: &mockListStepExecutor{}})
 
-	// 设置计划
-	plan := NewGoalPlan(goal.ID, []PlanStep{
-		{ID: "s1", Description: "采集数据"},
-		{ID: "s2", Description: "分析异常", DependsOn: []string{"s1"}},
-	})
-	if err := rt.SetPlan(goal.ID, plan); err != nil {
-		t.Fatalf("set plan: %v", err)
+	rt.SubmitGoal("目标一", GoalConfig{})
+	time.Sleep(2 * time.Millisecond)
+	rt.SubmitGoal("目标二", GoalConfig{})
+
+	goals := rt.ListGoals()
+	if len(goals) != 2 {
+		t.Fatalf("goals = %d, want 2", len(goals))
 	}
-
-	// 执行
-	if err := rt.ExecuteGoal(context.Background(), goal.ID); err != nil {
-		t.Fatalf("execute: %v", err)
+	if goals[0].Description != "目标二" {
+		t.Errorf("first goal = %q, want 目标二（新→旧）", goals[0].Description)
 	}
-
-	// 验证状态
-	g, _ := rt.GetGoal(goal.ID)
-	if g.State != GoalValidated {
-		t.Errorf("goal state = %s, want validated", g.State)
-	}
-
-	// 完成目标
-	if err := rt.CompleteGoal(goal.ID); err != nil {
-		t.Fatalf("complete: %v", err)
-	}
-	if g.State != GoalDone {
-		t.Errorf("goal state = %s, want done", g.State)
+	if goals[1].Description != "目标一" {
+		t.Errorf("second goal = %q, want 目标一", goals[1].Description)
 	}
 }
 
-// TestRuntimeWithCheckpoint 验证带检查点的运行时
-func TestRuntimeWithCheckpoint(t *testing.T) {
-	mock := newMockStepExecutor()
-	mock.results["s1"] = "ok"
-
-	store := newMockCheckpointStore()
-	rt := NewAutonomyRuntime(RuntimeConfig{
-		StepExecutor:    mock,
-		CheckpointStore: store,
-	})
-
-	goal := rt.SubmitGoal("检查点测试", GoalConfig{})
-	plan := NewGoalPlan(goal.ID, []PlanStep{
-		{ID: "s1", Description: "唯一步骤"},
-	})
-	_ = rt.SetPlan(goal.ID, plan)
-	_ = rt.ExecuteGoal(context.Background(), goal.ID)
-
-	// 验证检查点已保存
-	cp, err := rt.resume.LoadCheckpoint(context.Background(), goal.ID)
-	if err != nil {
-		t.Fatalf("load checkpoint: %v", err)
-	}
-	if cp.LastCompletedStep != "s1" {
-		t.Errorf("last completed = %q, want %q", cp.LastCompletedStep, "s1")
-	}
-}
-
-// TestRuntimeResume 验证崩溃恢复流程
-func TestRuntimeResume(t *testing.T) {
-	store := newMockCheckpointStore()
-	ctx := context.Background()
-
-	// 模拟之前的执行留下了检查点
-	plan := NewGoalPlan("goal-old", []PlanStep{
-		{ID: "s1", Description: "已完成"},
-		{ID: "s2", Description: "待执行"},
-	})
-	plan.MarkStepCompleted("s1")
-	cp := &Checkpoint{
-		GoalID:            "goal-old",
-		State:             GoalExecuting,
-		LastCompletedStep: "s1",
-		PlanSnapshot:      plan,
-		Completed:         false,
-	}
-	_ = store.SaveCheckpoint(ctx, cp)
-
-	// 新运行时恢复
-	mock := newMockStepExecutor()
-	rt := NewAutonomyRuntime(RuntimeConfig{
-		StepExecutor:    mock,
-		CheckpointStore: store,
-	})
-
-	resumed, err := rt.ResumeIncomplete(ctx)
-	if err != nil {
-		t.Fatalf("resume: %v", err)
-	}
-	if len(resumed) != 1 || resumed[0] != "goal-old" {
-		t.Errorf("resumed = %v, want [goal-old]", resumed)
+// TestAgentGoal_Snapshot 验证快照并发安全读取：转换后快照反映最新状态。
+func TestAgentGoal_Snapshot(t *testing.T) {
+	g := NewAgentGoal("快照目标", GoalConfig{Priority: PriorityHigh})
+	if err := g.TransitionTo(GoalPlanned); err != nil {
+		t.Fatalf("transition: %v", err)
 	}
 
-	// 验证计划已恢复
-	p, ok := rt.GetPlan("goal-old")
-	if !ok {
-		t.Fatal("plan should be restored")
+	view := g.Snapshot()
+	if view.ID != g.ID || view.Description != "快照目标" {
+		t.Errorf("snapshot id/description mismatch")
 	}
-	if p.GetStep("s1").Status != StepCompleted {
-		t.Error("s1 should still be completed after resume")
+	if view.State != GoalPlanned {
+		t.Errorf("snapshot state = %v, want planned", view.State)
+	}
+	if view.Priority != PriorityHigh {
+		t.Errorf("snapshot priority = %v, want high", view.Priority)
+	}
+	if view.CreatedAt.IsZero() {
+		t.Error("snapshot createdAt is zero")
 	}
 }

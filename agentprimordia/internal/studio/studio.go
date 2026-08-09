@@ -145,6 +145,53 @@ type Deployment struct {
 	DeployedAt string `json:"deployedAt"`
 }
 
+// ===== v3.3-v3.6 面板契约类型（与 studio/web/src/pages/*.tsx 对齐） =====
+
+// AutonomyGoal 自治目标条目（AutonomyMonitor.tsx GoalInfo）。
+type AutonomyGoal struct {
+	ID          string  `json:"id"`
+	Description string  `json:"description"`
+	State       string  `json:"state"`
+	Priority    int     `json:"priority"`
+	Progress    float64 `json:"progress"`
+	RetryCount  int     `json:"retryCount"`
+	CreatedAt   string  `json:"createdAt"`
+}
+
+// AutonomyAlert 自治告警条目（AutonomyMonitor.tsx AlertInfo）。
+type AutonomyAlert struct {
+	GoalID    string `json:"goalId"`
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
+}
+
+// SkillEntry 技能条目（SkillLibrary.tsx SkillInfo）。
+type SkillEntry struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Version     string   `json:"version"`
+	Status      string   `json:"status"`
+	UsageCount  int      `json:"usageCount"`
+	SuccessRate float64  `json:"successRate"`
+	Tags        []string `json:"tags"`
+}
+
+// RealtimeSessionInfo 实时会话条目（RealtimeConsole.tsx SessionInfo）。
+type RealtimeSessionInfo struct {
+	ID        string `json:"id"`
+	State     string `json:"state"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// RealtimeEventInfo 实时事件条目（RealtimeConsole.tsx RealtimeEvent）。
+type RealtimeEventInfo struct {
+	Type      string `json:"type"`
+	SessionID string `json:"sessionId"`
+	Timestamp string `json:"timestamp"`
+}
+
 // ===== 服务接口（可注入真实引擎） =====
 
 // ChaosService 混沌实验服务。
@@ -176,15 +223,43 @@ type MarketplaceService interface {
 	StartDeployment(ctx context.Context, id string) error
 }
 
+// AutonomyService 自治监控服务（可注入 internal/agent/autonomy 运行时）。
+type AutonomyService interface {
+	// Goals 列出自治目标（新→旧）
+	Goals(ctx context.Context) ([]AutonomyGoal, error)
+	// Alerts 列出最近告警（新→旧）
+	Alerts(ctx context.Context) ([]AutonomyAlert, error)
+}
+
+// SkillService 技能库服务（可注入 internal/agent/skills 技能库）。
+type SkillService interface {
+	// List 列出全部技能
+	List(ctx context.Context) ([]SkillEntry, error)
+}
+
+// RealtimeService 实时会话服务（可注入 internal/agent/realtime 运行时）。
+type RealtimeService interface {
+	// Sessions 列出活跃实时会话
+	Sessions(ctx context.Context) ([]RealtimeSessionInfo, error)
+	// Events 列出最近实时事件（新→旧）
+	Events(ctx context.Context) ([]RealtimeEventInfo, error)
+}
+
 // ===== StudioHandler =====
 
 // StudioHandler 实现 Studio 四面板的 /api/v1/* HTTP 端点。
 type StudioHandler struct {
-	chaos      ChaosService
-	cluster    ClusterService
-	learning   LearningService
-	marketplace MarketplaceService
-	mux        *http.ServeMux
+	chaos        ChaosService
+	cluster      ClusterService
+	learning     LearningService
+	marketplace  MarketplaceService
+	autonomy     AutonomyService
+	skills       SkillService
+	realtime     RealtimeService
+	autonomyReal bool // 是否注入真实自治运行时（未注入时响应标 X-Data-Source: demo）
+	skillsReal   bool
+	realtimeReal bool
+	mux          *http.ServeMux
 }
 
 // Option 配置 StudioHandler。
@@ -210,6 +285,21 @@ func WithMarketplace(s MarketplaceService) Option {
 	return func(h *StudioHandler) { h.marketplace = s }
 }
 
+// WithAutonomy 注入自治监控服务（默认为 demo 空实现，返回空数组并标 X-Data-Source: demo）。
+func WithAutonomy(s AutonomyService) Option {
+	return func(h *StudioHandler) { h.autonomy = s; h.autonomyReal = true }
+}
+
+// WithSkills 注入技能库服务（默认为 demo 空实现，返回空数组并标 X-Data-Source: demo）。
+func WithSkills(s SkillService) Option {
+	return func(h *StudioHandler) { h.skills = s; h.skillsReal = true }
+}
+
+// WithRealtime 注入实时会话服务（默认为 demo 空实现，返回空数组并标 X-Data-Source: demo）。
+func WithRealtime(s RealtimeService) Option {
+	return func(h *StudioHandler) { h.realtime = s; h.realtimeReal = true }
+}
+
 // NewStudioHandler 创建 StudioHandler，默认挂载 demo 实现。
 func NewStudioHandler(opts ...Option) *StudioHandler {
 	h := &StudioHandler{
@@ -217,6 +307,9 @@ func NewStudioHandler(opts ...Option) *StudioHandler {
 		cluster:     newDemoCluster(),
 		learning:    newDemoLearning(),
 		marketplace: newDemoMarketplace(),
+		autonomy:    newDemoAutonomy(),
+		skills:      newDemoSkills(),
+		realtime:    newDemoRealtime(),
 		mux:         http.NewServeMux(),
 	}
 	for _, opt := range opts {

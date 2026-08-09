@@ -3,6 +3,7 @@ package autonomy
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -164,6 +165,21 @@ func (rt *AutonomyRuntime) GetPlan(goalID string) (*GoalPlan, bool) {
 	defer rt.mu.RUnlock()
 	p, ok := rt.plans[goalID]
 	return p, ok
+}
+
+// ListGoals 列出全部目标（指针快照，按创建时间新→旧）。
+// 供 Studio 面板等轮询消费；读取目标字段请用 AgentGoal.Snapshot 保证并发安全。
+func (rt *AutonomyRuntime) ListGoals() []*AgentGoal {
+	rt.mu.RLock()
+	defer rt.mu.RUnlock()
+	goals := make([]*AgentGoal, 0, len(rt.goals))
+	for _, g := range rt.goals {
+		goals = append(goals, g)
+	}
+	sort.Slice(goals, func(i, j int) bool {
+		return goals[i].CreatedAt.After(goals[j].CreatedAt)
+	})
+	return goals
 }
 
 // GetMonitor 获取监控器

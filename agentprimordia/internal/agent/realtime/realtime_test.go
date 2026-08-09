@@ -167,3 +167,50 @@ func TestMockTTS(t *testing.T) {
 		t.Error("empty text should fail")
 	}
 }
+
+// TestHubListSessions 验证 ListSessions 返回全部活跃会话。
+func TestHubListSessions(t *testing.T) {
+	h := NewRealtimeHub(HubConfig{})
+	h.CreateSession("s1")
+	h.CreateSession("s2")
+
+	sessions := h.ListSessions()
+	if len(sessions) != 2 {
+		t.Fatalf("sessions = %d, want 2", len(sessions))
+	}
+	ids := map[string]bool{}
+	for _, s := range sessions {
+		ids[s.ID] = true
+	}
+	if !ids["s1"] || !ids["s2"] {
+		t.Errorf("sessions ids = %v, want s1+s2", ids)
+	}
+
+	h.CloseSession("s1")
+	if got := len(h.ListSessions()); got != 1 {
+		t.Errorf("after close sessions = %d, want 1", got)
+	}
+}
+
+// TestEventBusRecentEvents 验证事件历史保留（新→旧 + 上限裁剪）。
+func TestEventBusRecentEvents(t *testing.T) {
+	bus := NewEventBus()
+	bus.Publish(RealtimeEvent{Type: EventSessionCreated, SessionID: "s1"})
+	bus.Publish(RealtimeEvent{Type: EventStateChange, SessionID: "s1"})
+
+	events := bus.RecentEvents()
+	if len(events) != 2 {
+		t.Fatalf("events = %d, want 2", len(events))
+	}
+	if events[0].Type != EventStateChange || events[1].Type != EventSessionCreated {
+		t.Errorf("order = %q,%q, want state_change,created（新→旧）", events[0].Type, events[1].Type)
+	}
+
+	burst := NewEventBus()
+	for range maxRetainedEvents + 5 {
+		burst.Publish(RealtimeEvent{Type: EventAudioReceived, SessionID: "s1"})
+	}
+	if got := len(burst.RecentEvents()); got != maxRetainedEvents {
+		t.Errorf("recent = %d, want %d（上限裁剪）", got, maxRetainedEvents)
+	}
+}

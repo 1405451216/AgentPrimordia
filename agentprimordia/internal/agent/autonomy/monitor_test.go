@@ -126,6 +126,32 @@ func TestMonitorAnomalyReport(t *testing.T) {
 	}
 }
 
+// TestMonitorRecentAlerts 验证告警历史保留（新→旧 + 上限裁剪）。
+func TestMonitorRecentAlerts(t *testing.T) {
+	m := NewMonitor(MonitorConfig{})
+	m.ReportAnomaly("goal-1", AlertWarn, "early")
+	m.ReportAnomaly("goal-1", AlertError, "middle")
+	m.ReportAnomaly("goal-1", AlertCritical, "latest")
+
+	recent := m.RecentAlerts()
+	if len(recent) != 3 {
+		t.Fatalf("recent = %d, want 3", len(recent))
+	}
+	// 新→旧：最新一条在前
+	if recent[0].Message != "latest" || recent[2].Message != "early" {
+		t.Errorf("order = %q,%q,%q, want latest,middle,early", recent[0].Message, recent[1].Message, recent[2].Message)
+	}
+
+	// 上限裁剪
+	burst := NewMonitor(MonitorConfig{})
+	for range maxRetainedAlerts + 5 {
+		burst.ReportAnomaly("goal-1", AlertWarn, "告警")
+	}
+	if got := len(burst.RecentAlerts()); got != maxRetainedAlerts {
+		t.Errorf("recent = %d, want %d（上限裁剪）", got, maxRetainedAlerts)
+	}
+}
+
 // TestMonitorRemainingEstimate 验证剩余工作量估算
 func TestMonitorRemainingEstimate(t *testing.T) {
 	m := NewMonitor(MonitorConfig{})
