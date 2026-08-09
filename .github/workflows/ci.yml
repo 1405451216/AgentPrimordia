@@ -341,6 +341,10 @@ jobs:
           fi
           echo "OK: Python SDK 源码无乱码"
 
+      - name: Run unit tests (stdlib unittest, 本地 mock 服务)
+        working-directory: sdk/python
+        run: python -m unittest discover -s tests -v
+
   rust-sdk:
     name: Rust SDK Check
     runs-on: ubuntu-latest
@@ -364,6 +368,10 @@ jobs:
       - name: Clippy lint
         working-directory: sdk/rust
         run: cargo clippy -- -D warnings
+
+      - name: Test (本地 TcpListener mock 服务)
+        working-directory: sdk/rust
+        run: cargo test --locked
 
   build-cli:
     name: Build CLI

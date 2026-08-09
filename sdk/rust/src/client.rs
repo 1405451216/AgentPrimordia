@@ -39,6 +39,9 @@ impl AgentPrimordiaClient {
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&serde_json::json!({ "message": message }))
             .send().await?;
+        // 修复（评估报告 §8.2 测试暴露）：此前不检查 HTTP 状态，401 时
+        // 直接解析错误 body 报「解码失败」而非鉴权错误。
+        if !resp.status().is_success() { return Err(resp.into()); }
         Ok(resp.json().await?)
     }
 
