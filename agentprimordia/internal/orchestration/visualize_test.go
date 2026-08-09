@@ -3,107 +3,109 @@ package orchestration
 import (
 	"strings"
 	"testing"
+
+	"agentprimordia/internal/agent"
 )
 
 // buildLinearWorkflow 构建线性工作流用于测试
-func buildLinearWorkflow() *WorkflowExecution {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: LinearWorkflow,
+func buildLinearWorkflow() *agent.WorkflowExecution {
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.LinearWorkflow,
 		Name: "test-linear",
 	})
 
-	_ = wf.AddNode(&WorkflowNode{ID: "start", Name: "开始", Type: TaskNode, Agent: newNoopAgent("start")})
-	_ = wf.AddNode(&WorkflowNode{ID: "process", Name: "处理", Type: TaskNode, Agent: newNoopAgent("process")})
-	_ = wf.AddNode(&WorkflowNode{ID: "end", Name: "结束", Type: TaskNode, Agent: newNoopAgent("end")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "start", Name: "开始", Type: agent.TaskNode, Agent: newNoopAgent("start")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "process", Name: "处理", Type: agent.TaskNode, Agent: newNoopAgent("process")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "end", Name: "结束", Type: agent.TaskNode, Agent: newNoopAgent("end")})
 
-	_ = wf.AddTransition(&Transition{From: "start", To: "process"})
-	_ = wf.AddTransition(&Transition{From: "process", To: "end"})
+	_ = wf.AddTransition(&agent.Transition{From: "start", To: "process"})
+	_ = wf.AddTransition(&agent.Transition{From: "process", To: "end"})
 
 	_ = wf.SetStartNode("start")
 	return wf
 }
 
 // buildConditionalWorkflow 构建条件分支工作流用于测试
-func buildConditionalWorkflow() *WorkflowExecution {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: ConditionalWorkflow,
+func buildConditionalWorkflow() *agent.WorkflowExecution {
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.ConditionalWorkflow,
 		Name: "test-conditional",
 	})
 
-	_ = wf.AddNode(&WorkflowNode{ID: "start", Name: "开始", Type: TaskNode, Agent: newNoopAgent("start")})
-	_ = wf.AddNode(&WorkflowNode{ID: "check", Name: "检查", Type: ConditionNode})
-	_ = wf.AddNode(&WorkflowNode{ID: "yes", Name: "是", Type: TaskNode, Agent: newNoopAgent("yes")})
-	_ = wf.AddNode(&WorkflowNode{ID: "no", Name: "否", Type: TaskNode, Agent: newNoopAgent("no")})
-	_ = wf.AddNode(&WorkflowNode{ID: "end", Name: "结束", Type: TaskNode, Agent: newNoopAgent("end")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "start", Name: "开始", Type: agent.TaskNode, Agent: newNoopAgent("start")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "check", Name: "检查", Type: agent.ConditionNode})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "yes", Name: "是", Type: agent.TaskNode, Agent: newNoopAgent("yes")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "no", Name: "否", Type: agent.TaskNode, Agent: newNoopAgent("no")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "end", Name: "结束", Type: agent.TaskNode, Agent: newNoopAgent("end")})
 
-	_ = wf.AddTransition(&Transition{From: "start", To: "check"})
-	_ = wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&agent.Transition{From: "start", To: "check"})
+	_ = wf.AddTransition(&agent.Transition{
 		From: "check", To: "yes",
-		Condition: &TransitionCondition{Type: "comparison", Field: "result", Operator: "==", Value: true},
+		Condition: &agent.TransitionCondition{Type: "comparison", Field: "result", Operator: "==", Value: true},
 	})
-	_ = wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&agent.Transition{
 		From: "check", To: "no",
-		Condition: &TransitionCondition{Type: "comparison", Field: "result", Operator: "==", Value: false},
+		Condition: &agent.TransitionCondition{Type: "comparison", Field: "result", Operator: "==", Value: false},
 	})
-	_ = wf.AddTransition(&Transition{From: "yes", To: "end"})
-	_ = wf.AddTransition(&Transition{From: "no", To: "end"})
+	_ = wf.AddTransition(&agent.Transition{From: "yes", To: "end"})
+	_ = wf.AddTransition(&agent.Transition{From: "no", To: "end"})
 
 	_ = wf.SetStartNode("start")
 	return wf
 }
 
 // buildParallelWorkflow 构建并行工作流用于测试
-func buildParallelWorkflow() *WorkflowExecution {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: ParallelForkJoin,
+func buildParallelWorkflow() *agent.WorkflowExecution {
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.ParallelForkJoin,
 		Name: "test-parallel",
 	})
 
-	_ = wf.AddNode(&WorkflowNode{ID: "start", Name: "开始", Type: TaskNode, Agent: newNoopAgent("start")})
-	_ = wf.AddNode(&WorkflowNode{ID: "fork", Name: "分叉", Type: ParallelNode})
-	_ = wf.AddNode(&WorkflowNode{ID: "task_a", Name: "任务A", Type: TaskNode, Agent: newNoopAgent("task_a")})
-	_ = wf.AddNode(&WorkflowNode{ID: "task_b", Name: "任务B", Type: TaskNode, Agent: newNoopAgent("task_b")})
-	_ = wf.AddNode(&WorkflowNode{ID: "join", Name: "合并", Type: TaskNode, Agent: newNoopAgent("join")})
-	_ = wf.AddNode(&WorkflowNode{ID: "end", Name: "结束", Type: TaskNode, Agent: newNoopAgent("end")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "start", Name: "开始", Type: agent.TaskNode, Agent: newNoopAgent("start")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "fork", Name: "分叉", Type: agent.ParallelNode})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "task_a", Name: "任务A", Type: agent.TaskNode, Agent: newNoopAgent("task_a")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "task_b", Name: "任务B", Type: agent.TaskNode, Agent: newNoopAgent("task_b")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "join", Name: "合并", Type: agent.TaskNode, Agent: newNoopAgent("join")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "end", Name: "结束", Type: agent.TaskNode, Agent: newNoopAgent("end")})
 
-	_ = wf.AddTransition(&Transition{From: "start", To: "fork"})
-	_ = wf.AddTransition(&Transition{From: "fork", To: "task_a"})
-	_ = wf.AddTransition(&Transition{From: "fork", To: "task_b"})
-	_ = wf.AddTransition(&Transition{From: "task_a", To: "join"})
-	_ = wf.AddTransition(&Transition{From: "task_b", To: "join"})
-	_ = wf.AddTransition(&Transition{From: "join", To: "end"})
+	_ = wf.AddTransition(&agent.Transition{From: "start", To: "fork"})
+	_ = wf.AddTransition(&agent.Transition{From: "fork", To: "task_a"})
+	_ = wf.AddTransition(&agent.Transition{From: "fork", To: "task_b"})
+	_ = wf.AddTransition(&agent.Transition{From: "task_a", To: "join"})
+	_ = wf.AddTransition(&agent.Transition{From: "task_b", To: "join"})
+	_ = wf.AddTransition(&agent.Transition{From: "join", To: "end"})
 
 	_ = wf.SetStartNode("start")
 	return wf
 }
 
 // buildStateMachineWorkflow 构建状态机工作流用于测试
-func buildStateMachineWorkflow() *WorkflowExecution {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: StateMachine,
+func buildStateMachineWorkflow() *agent.WorkflowExecution {
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.StateMachine,
 		Name: "test-state-machine",
 	})
 
-	_ = wf.AddNode(&WorkflowNode{ID: "idle", Name: "空闲", Type: TaskNode, Agent: newNoopAgent("idle")})
-	_ = wf.AddNode(&WorkflowNode{ID: "running", Name: "运行中", Type: TaskNode, Agent: newNoopAgent("running")})
-	_ = wf.AddNode(&WorkflowNode{ID: "paused", Name: "已暂停", Type: TaskNode, Agent: newNoopAgent("paused")})
-	_ = wf.AddNode(&WorkflowNode{ID: "done", Name: "完成", Type: TaskNode, Agent: newNoopAgent("done")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "idle", Name: "空闲", Type: agent.TaskNode, Agent: newNoopAgent("idle")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "running", Name: "运行中", Type: agent.TaskNode, Agent: newNoopAgent("running")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "paused", Name: "已暂停", Type: agent.TaskNode, Agent: newNoopAgent("paused")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "done", Name: "完成", Type: agent.TaskNode, Agent: newNoopAgent("done")})
 
-	_ = wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&agent.Transition{
 		From: "idle", To: "running",
-		Condition: &TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "start"},
+		Condition: &agent.TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "start"},
 	})
-	_ = wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&agent.Transition{
 		From: "running", To: "paused",
-		Condition: &TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "pause"},
+		Condition: &agent.TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "pause"},
 	})
-	_ = wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&agent.Transition{
 		From: "paused", To: "running",
-		Condition: &TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "resume"},
+		Condition: &agent.TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "resume"},
 	})
-	_ = wf.AddTransition(&Transition{
+	_ = wf.AddTransition(&agent.Transition{
 		From: "running", To: "done",
-		Condition: &TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "stop"},
+		Condition: &agent.TransitionCondition{Type: "comparison", Field: "event", Operator: "==", Value: "stop"},
 	})
 
 	_ = wf.SetStartNode("idle")
@@ -229,7 +231,7 @@ func TestWorkflow_ToDot_Conditional(t *testing.T) {
 func TestWorkflow_ToMermaidWithExecution_HighlightPath(t *testing.T) {
 	wf := buildLinearWorkflow()
 
-	result := &WorkflowResult{
+	result := &agent.WorkflowResult{
 		PathTaken: []string{"start", "process", "end"},
 	}
 
@@ -244,10 +246,10 @@ func TestWorkflow_ToMermaidWithExecution_HighlightPath(t *testing.T) {
 func TestWorkflow_ToMermaidWithExecution_FailedNodes(t *testing.T) {
 	wf := buildLinearWorkflow()
 
-	result := &WorkflowResult{
+	result := &agent.WorkflowResult{
 		PathTaken: []string{"start", "process"},
-		Records: []*ExecutionRecord{
-			{NodeID: "process", Status: NodeFailed},
+		Records: []*agent.ExecutionRecord{
+			{NodeID: "process", Status: agent.NodeFailed},
 		},
 	}
 
@@ -262,7 +264,7 @@ func TestWorkflow_ToMermaidWithExecution_FailedNodes(t *testing.T) {
 func TestWorkflow_ToDotWithExecution_HighlightPath(t *testing.T) {
 	wf := buildLinearWorkflow()
 
-	result := &WorkflowResult{
+	result := &agent.WorkflowResult{
 		PathTaken: []string{"start", "process"},
 	}
 
@@ -307,8 +309,8 @@ func TestWorkflow_ToMermaid_NoLabels(t *testing.T) {
 }
 
 func TestWorkflow_ToMermaid_EmptyWorkflow(t *testing.T) {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: LinearWorkflow,
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.LinearWorkflow,
 		Name: "empty",
 	})
 
@@ -320,8 +322,8 @@ func TestWorkflow_ToMermaid_EmptyWorkflow(t *testing.T) {
 }
 
 func TestWorkflow_ToDot_EmptyWorkflow(t *testing.T) {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: LinearWorkflow,
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.LinearWorkflow,
 		Name: "empty",
 	})
 
@@ -336,18 +338,18 @@ func TestWorkflow_ToDot_EmptyWorkflow(t *testing.T) {
 }
 
 func TestWorkflow_ToMermaid_LoopNodes(t *testing.T) {
-	wf := NewWorkflowExecution(WorkflowConfig{
-		Type: LoopWorkflow,
+	wf := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type: agent.LoopWorkflow,
 		Name: "test-loop",
 	})
 
-	_ = wf.AddNode(&WorkflowNode{ID: "loop_start", Name: "循环开始", Type: LoopStartNode})
-	_ = wf.AddNode(&WorkflowNode{ID: "loop_body", Name: "循环体", Type: TaskNode, Agent: newNoopAgent("loop_body")})
-	_ = wf.AddNode(&WorkflowNode{ID: "loop_end", Name: "循环结束", Type: LoopEndNode})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "loop_start", Name: "循环开始", Type: agent.LoopStartNode})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "loop_body", Name: "循环体", Type: agent.TaskNode, Agent: newNoopAgent("loop_body")})
+	_ = wf.AddNode(&agent.WorkflowNode{ID: "loop_end", Name: "循环结束", Type: agent.LoopEndNode})
 
-	_ = wf.AddTransition(&Transition{From: "loop_start", To: "loop_body"})
-	_ = wf.AddTransition(&Transition{From: "loop_body", To: "loop_end"})
-	_ = wf.AddTransition(&Transition{From: "loop_end", To: "loop_start"})
+	_ = wf.AddTransition(&agent.Transition{From: "loop_start", To: "loop_body"})
+	_ = wf.AddTransition(&agent.Transition{From: "loop_body", To: "loop_end"})
+	_ = wf.AddTransition(&agent.Transition{From: "loop_end", To: "loop_start"})
 
 	_ = wf.SetStartNode("loop_start")
 

@@ -166,11 +166,11 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 
 	// 8. 测试Workflow Engine
 	t.Log("\n⚙️ 4. Testing Workflow Engine (Conditional)...")
-	workflow := NewWorkflowExecution(WorkflowConfig{
-		Type:        ConditionalWorkflow,
+	workflow := agent.NewWorkflowExecution(agent.WorkflowConfig{
+		Type:        agent.ConditionalWorkflow,
 		Name:        "decision-workflow",
 		Description: "决策工作流测试",
-		ErrorHandling: ErrorHandling{
+		ErrorHandling: agent.ErrorHandling{
 			OnError:         "skip",
 			ContinueOnError: true,
 		},
@@ -196,29 +196,29 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = workflow.AddNode(&WorkflowNode{
+	_ = workflow.AddNode(&agent.WorkflowNode{
 		ID:    "decision",
 		Name:  "决策节点",
-		Type:  ConditionNode,
+		Type:  agent.ConditionNode,
 		Agent: decisionAgent,
-		Condition: &NodeCondition{
+		Condition: &agent.NodeCondition{
 			Field:    "should_proceed",
 			Operator: "==",
 			Value:    true,
 		},
 	})
 
-	_ = workflow.AddNode(&WorkflowNode{
+	_ = workflow.AddNode(&agent.WorkflowNode{
 		ID:    "action",
 		Name:  "行动节点",
-		Type:  TaskNode,
+		Type:  agent.TaskNode,
 		Agent: actionAgent,
 	})
 
-	_ = workflow.AddTransition(&Transition{
+	_ = workflow.AddTransition(&agent.Transition{
 		From:      "decision",
 		To:        "action",
-		Condition: &TransitionCondition{Field: "should_proceed", Operator: "==", Value: true},
+		Condition: &agent.TransitionCondition{Field: "should_proceed", Operator: "==", Value: true},
 	})
 	_ = workflow.SetStartNode("decision")
 
@@ -232,7 +232,7 @@ func TestMultiAgentSystem_Integration(t *testing.T) {
 		t.Fatalf("Workflow execution failed: %v", err)
 	}
 
-	if workflowResult.Status != WfStatusCompleted {
+	if workflowResult.Status != agent.WfStatusCompleted {
 		t.Errorf("Expected completed status, got %s", workflowResult.Status)
 	}
 
