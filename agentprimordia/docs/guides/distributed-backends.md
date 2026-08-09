@@ -1,0 +1,94 @@
+# 分布式后端配置指南（etcd / Redis）
+
+> v4.5-2 后端常态化：persist/cluster 的 build-tag 后端转为正式配置路径（默认关闭）。
+
+## 支持的后端
+
+| 后端 | 用途 | 驱动 | build tag |
+|------|------|------|-----------|
+| SQLite（默认） | 检查点/失败记录本地持久化 | `modernc.org/sqlite` | 无（默认构建） |
+| etcd | 分布式检查点、集群 KV/服务发现 | `go.etcd.io/etcd/client/v3` | `etcd` |
+| Redis | 分布式检查点 | `github.com/redis/go-redis/v9` | `redis` |
+
+> 后端默认**关闭**（不引入客户端依赖）；需要时以 build tag 启用。
+> 依赖边界见 `go.mod` + AGENTS.md §2.1 白名单。
+
+## 启用与测试
+
+```bash
+# 1. 启动依赖服务（本地）
+docker compose -f deploy/compose/distributed-test.yaml up -d   # etcd + redis
+
+# 2. 跑 build-tag 门控的集成测试（服务不可达时优雅跳过）
+go test -tags=etcd,redis ./internal/persist/...       # 检查点 CRUD/租约/跨节点恢复
+go test -tags=etcd ./internal/agent/cluster/...       # EtcdKVStore/EtcdEndpoint
+
+# 3. Makefile 快捷目标
+make test-distributed-backends
+```
+
+## 配置路径
+
+检查点后端通过构造器注入（无全局配置）：
+
+```go
+// SQLite（默认，无需 tag）
+store, _ := persist.NewSQLiteCheckpointStore("checkpoint.db")
+
+// etcd（-tags=etcd 构建）
+store, _ := persist.NewEtcdCheckpointStore(
+    []string{"http://127.0.0.1:2379"}, // endpoints
+    "agentprimordia/checkpoints",      // prefix
+    30*time.Second,                    // lease TTL
+)
+
+// Redis（-tags=redis 构建）
+store := persist.NewRedisCheckpointStore(
+    &redis.Options{Addr: "127.0.0.1:6379"},
+    "agentprimordia:checkpoints",
+    30*time.Second,
+)
+```
+
+集群侧（服务发现/共享 KV/领导者租约）：
+
+```go
+// -tags=etcd 构建：EtcdKVStore 实现 KVStore 接口
+kv, _ := cluster.NewEtcdKVStore(cluster.EtcdKVConfig{
+    Endpoints: []string{"http://127.0.0.1:2379"},
+})
+dd := cluster.NewDistributedDiscovery(cluster.DistributedDiscoveryConfig{
+    NodeID:  "node-1",
+    KVStore: kv,
+})
+```
+
+## 自治 × 集群（v4.5-1 跨节点续跑）
+
+目标跨节点续跑依赖 **共享 CheckpointStore**（跨节点同一后端）：
+
+```go
+// 节点 A（执行中崩溃，checkpoint 已落共享后端）
+rtA := autonomy.NewAutonomyRuntime(autonomy.RuntimeConfig{
+    StepExecutor:    executor,
+    CheckpointStore: sharedStore, // etcd/redis/sqlite 共享实例
+})
+
+// 节点 B（自动接管，无人工干预）
+rtB := autonomy.NewAutonomyRuntime(autonomy.RuntimeConfig{
+    StepExecutor:    executor,
+    CheckpointStore: sharedStore, // 同一后端
+})
+resumed, _ := rtB.ResumeIncomplete(ctx) // 重建目标（含描述）+ 恢复计划
+for _, goalID := range resumed {
+    _ = rtB.ExecuteGoal(ctx, goalID)    // 从断点续跑
+    _ = rtB.CompleteGoal(goalID)
+}
+```
+
+e2e 验证：`go test -tags=e2e -run TestE2E_Autonomy_CrossNodeResume ./internal/agent/autonomy/`
+
+## 故障域隔离（v4.5-3）
+
+- 集群领导者故障：`go test -tags=e2e -run TestE2E_Cluster_ChaosFailover ./internal/agent/cluster/`（3 节点 kill 1，成功率下降 ≤20% 量化）
+- 目标执行节点故障：上述 autonomy 跨节点续跑 e2e

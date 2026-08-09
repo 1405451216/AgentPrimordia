@@ -54,7 +54,7 @@ func FuzzResumeConsistency(f *testing.F) {
 		}
 
 		// 保存检查点（模拟崩溃前最后写入）
-		err := rm.SaveCheckpoint(ctx, "fuzz-goal", plan, GoalExecuting)
+		err := rm.SaveCheckpoint(ctx, "fuzz-goal", "", plan, GoalExecuting)
 		if err != nil {
 			t.Fatalf("save checkpoint: %v", err)
 		}

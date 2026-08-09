@@ -61,7 +61,7 @@ func TestCheckpointSaveLoad(t *testing.T) {
 	})
 	plan.MarkStepCompleted("s1")
 
-	err := rm.SaveCheckpoint(ctx, "goal-1", plan, GoalExecuting)
+	err := rm.SaveCheckpoint(ctx, "goal-1", "", plan, GoalExecuting)
 	if err != nil {
 		t.Fatalf("save checkpoint: %v", err)
 	}
@@ -93,12 +93,12 @@ func TestCrashRecovery(t *testing.T) {
 		{ID: "s2", Description: "b"},
 	})
 	plan1.MarkStepCompleted("s1")
-	_ = rm.SaveCheckpoint(ctx, "goal-1", plan1, GoalExecuting)
+	_ = rm.SaveCheckpoint(ctx, "goal-1", "", plan1, GoalExecuting)
 
 	plan2 := NewGoalPlan("goal-2", []PlanStep{
 		{ID: "s1", Description: "x"},
 	})
-	_ = rm.SaveCheckpoint(ctx, "goal-2", plan2, GoalPlanned)
+	_ = rm.SaveCheckpoint(ctx, "goal-2", "", plan2, GoalPlanned)
 
 	// 扫描未完成目标
 	incomplete, err := rm.ScanIncomplete(ctx)
@@ -122,7 +122,7 @@ func TestResumeValidation(t *testing.T) {
 		{ID: "s2", Description: "b", DependsOn: []string{"s1"}},
 	})
 	plan.MarkStepCompleted("s1")
-	_ = rm.SaveCheckpoint(ctx, "goal-1", plan, GoalExecuting)
+	_ = rm.SaveCheckpoint(ctx, "goal-1", "", plan, GoalExecuting)
 
 	cp, _ := rm.LoadCheckpoint(ctx, "goal-1")
 	err := rm.ValidateConsistency(cp)
@@ -149,7 +149,7 @@ func TestCheckpointTimestamp(t *testing.T) {
 	ctx := context.Background()
 
 	plan := NewGoalPlan("goal-1", []PlanStep{{ID: "s1", Description: "a"}})
-	_ = rm.SaveCheckpoint(ctx, "goal-1", plan, GoalExecuting)
+	_ = rm.SaveCheckpoint(ctx, "goal-1", "", plan, GoalExecuting)
 
 	cp, _ := rm.LoadCheckpoint(ctx, "goal-1")
 	if cp.Timestamp.IsZero() {

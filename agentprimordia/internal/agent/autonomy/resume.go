@@ -10,6 +10,8 @@ import (
 type Checkpoint struct {
 	// GoalID 目标 ID
 	GoalID string `json:"goal_id"`
+	// GoalDescription 目标描述（v4.5-1：跨节点续跑时重建目标用）
+	GoalDescription string `json:"goal_description,omitempty"`
 	// State 目标当前状态
 	State GoalState `json:"state"`
 	// LastCompletedStep 最后完成的步骤 ID
@@ -43,7 +45,7 @@ func NewResumeManager(store CheckpointStore) *ResumeManager {
 }
 
 // SaveCheckpoint 保存当前执行状态为检查点
-func (rm *ResumeManager) SaveCheckpoint(ctx context.Context, goalID string, plan *GoalPlan, state GoalState) error {
+func (rm *ResumeManager) SaveCheckpoint(ctx context.Context, goalID, description string, plan *GoalPlan, state GoalState) error {
 	lastCompleted := ""
 	for _, s := range plan.Steps {
 		if s.Status == StepCompleted {
@@ -53,6 +55,7 @@ func (rm *ResumeManager) SaveCheckpoint(ctx context.Context, goalID string, plan
 
 	cp := &Checkpoint{
 		GoalID:            goalID,
+		GoalDescription:   description,
 		State:             state,
 		LastCompletedStep: lastCompleted,
 		PlanSnapshot:      plan,

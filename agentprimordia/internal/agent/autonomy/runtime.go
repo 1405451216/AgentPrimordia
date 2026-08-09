@@ -115,9 +115,9 @@ func (rt *AutonomyRuntime) ExecuteGoal(ctx context.Context, goalID string) error
 	// 保存检查点
 	if rt.resume != nil {
 		if plan.IsComplete() {
-			_ = rt.resume.SaveCheckpoint(ctx, goalID, plan, GoalValidated)
+			_ = rt.resume.SaveCheckpoint(ctx, goalID, goal.Description, plan, GoalValidated)
 		} else {
-			_ = rt.resume.SaveCheckpoint(ctx, goalID, plan, GoalExecuting)
+			_ = rt.resume.SaveCheckpoint(ctx, goalID, goal.Description, plan, GoalExecuting)
 		}
 	}
 
@@ -216,6 +216,13 @@ func (rt *AutonomyRuntime) ResumeIncomplete(ctx context.Context) ([]string, erro
 		}
 		rt.mu.Lock()
 		rt.plans[cp.GoalID] = cp.PlanSnapshot
+		// v4.5-1 跨节点续跑：重建目标（ID 与检查点一致，状态推进到 planned 续跑）
+		if _, exists := rt.goals[cp.GoalID]; !exists {
+			goal := NewAgentGoal(cp.GoalDescription, GoalConfig{})
+			goal.ID = cp.GoalID
+			_ = goal.TransitionTo(GoalPlanned)
+			rt.goals[cp.GoalID] = goal
+		}
 		rt.mu.Unlock()
 		resumed = append(resumed, cp.GoalID)
 	}
