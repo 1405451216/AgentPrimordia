@@ -2,12 +2,12 @@ package agent
 
 import (
 	"context"
-	"time"
 
 	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
+	"agentprimordia/internal/audit"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/observability"
@@ -47,18 +47,10 @@ type InputGuardCapable interface {
 	GetInputGuard() InputGuard
 }
 
-// AuditEvent 简化的审计事件结构（避免直接 import audit 包造成的循环依赖）
-// 完整定义见 internal/audit.Event
-type AuditEvent struct {
-	Timestamp time.Time
-	Actor     string
-	Action    string
-	Resource  string
-	Result    string
-	Details   map[string]any
-	// TraceID 关联的分布式追踪 ID（v3.5-4 全链路回溯关联键）
-	TraceID string
-}
+// AuditEvent 审计事件结构——统一为 internal/audit.Event 的别名
+//（修复评估报告 §六.2：此前 agent/observability/audit 三份重复模型；
+// audit 包仅依赖标准库，agent→audit 无循环依赖）。
+type AuditEvent = audit.Event
 
 // AuditLogger 审计日志接口（agent 内部使用）
 // audit.Logger 实现了此接口

@@ -14,6 +14,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"agentprimordia/internal/audit"
 )
 
 // ===== Context 关联键 =====
@@ -80,16 +82,9 @@ type RequestTrace struct {
 	Metrics     RequestMetrics `json:"metrics"`
 }
 
-// AuditEvent 关联层使用的审计事件（与 internal/audit.Event 兼容的字段子集）。
-type AuditEvent struct {
-	Timestamp time.Time      `json:"timestamp"`
-	Actor     string         `json:"actor"`
-	Action    string         `json:"action"`
-	Resource  string         `json:"resource,omitempty"`
-	Result    string         `json:"result"`
-	Details   map[string]any `json:"details,omitempty"`
-	TraceID   string         `json:"trace_id,omitempty"`
-}
+// AuditEvent 关联层使用的审计事件——统一为 internal/audit.Event 的别名
+//（修复评估报告 §六.2：三份重复模型合并为 audit 一份；字段与 json tag 完全一致）。
+type AuditEvent = audit.Event
 
 // record 单条请求的内部存储（带锁保证并发安全）。
 type record struct {
