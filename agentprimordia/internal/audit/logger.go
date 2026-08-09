@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -118,6 +119,23 @@ func (l *Logger) Log(ctx context.Context, event Event) error {
 // Query 按条件查询审计事件，委托给 Output 实现。
 func (l *Logger) Query(ctx context.Context, filter QueryFilter) ([]Event, error) {
 	return l.config.Output.Query(filter)
+}
+
+// ExportJSON 按过滤条件导出全部审计事件（v4.6-2 审计统一导出）。
+// 返回 JSON 数组（机器可读，供审计归档/全链路导出）。
+func (l *Logger) ExportJSON(ctx context.Context, filter QueryFilter) ([]byte, error) {
+	events, err := l.config.Output.Query(filter)
+	if err != nil {
+		return nil, fmt.Errorf("audit: 导出查询失败: %w", err)
+	}
+	if events == nil {
+		events = []Event{}
+	}
+	data, err := json.MarshalIndent(events, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("audit: 导出编码失败: %w", err)
+	}
+	return data, nil
 }
 
 // GenerateReport 生成指定时间范围内的合规报告。

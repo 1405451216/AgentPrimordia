@@ -3,6 +3,7 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"testing"
 	"time"
@@ -280,4 +281,42 @@ func findSubstring(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+// TestLogger_ExportJSON 审计统一导出（v4.6-2）：按过滤条件导出 JSON 事件流。
+func TestLogger_ExportJSON(t *testing.T) {
+	output := newMemoryOutput()
+	logger, err := NewLogger(LoggerConfig{Output: output})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+
+	_ = logger.Log(ctx, Event{Actor: "agent-a", Action: "llm.call", Resource: "gpt-4o-mini", Result: "success"})
+	_ = logger.Log(ctx, Event{Actor: "agent-a", Action: "tool.exec", Resource: "shell", Result: "success"})
+	_ = logger.Log(ctx, Event{Actor: "agent-b", Action: "llm.call", Resource: "gpt-4o-mini", Result: "blocked"})
+
+	// 全量导出
+	data, err := logger.ExportJSON(ctx, QueryFilter{})
+	if err != nil {
+		t.Fatalf("ExportJSON: %v", err)
+	}
+	var events []Event
+	if err := json.Unmarshal(data, &events); err != nil {
+		t.Fatalf("导出内容非法 JSON: %v", err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("导出 = %d 条, want 3", len(events))
+	}
+
+	// 按 Actor 过滤导出
+	dataA, err := logger.ExportJSON(ctx, QueryFilter{Actor: "agent-a"})
+	if err != nil {
+		t.Fatalf("ExportJSON agent-a: %v", err)
+	}
+	var eventsA []Event
+	_ = json.Unmarshal(dataA, &eventsA)
+	if len(eventsA) != 2 {
+		t.Fatalf("agent-a 导出 = %d 条, want 2", len(eventsA))
+	}
 }
