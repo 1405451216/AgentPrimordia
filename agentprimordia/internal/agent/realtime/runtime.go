@@ -36,6 +36,10 @@ type RuntimeConfig struct {
 	Metrics SessionMetrics
 	// MemorySink 会话摘要记忆出口（v4.1 集成3；nil 跳过）
 	MemorySink SessionMemorySink
+	// VisionGuardrail 视频帧护栏（v4.3：视觉内容拦截/脱敏；nil 跳过）
+	VisionGuardrail VisionGuardrail
+	// Multimodal 视觉理解 provider（v4.3：连续帧 → 真实视觉模型分析；nil 跳过）
+	Multimodal MultimodalProvider
 }
 
 // Runtime 实时运行时：装配 Hub + 感知模块 + 事件总线 + 清理器
@@ -172,17 +176,58 @@ func (rt *Runtime) PushAudio(sessionID string, data []byte) (FusedInput, error) 
 	return ss.fusion.Fuse(""), nil
 }
 
-// PushVision 推入视频帧
-func (rt *Runtime) PushVision(sessionID string, data []byte, w, h int) error {
+// PushVision 推入视频帧（v4.3：过 VisionGuardrail 拦截/脱敏后入流）
+func (rt *Runtime) PushVision(ctx context.Context, sessionID string, data []byte, w, h int) error {
 	rt.mu.RLock()
 	ss, ok := rt.streams[sessionID]
 	rt.mu.RUnlock()
 	if !ok {
 		return &RuntimeError{Msg: "会话流不存在: " + sessionID}
 	}
+
+	frame := VideoFrame{Data: data, Width: w, Height: h, Timestamp: time.Now()}
+	if rt.cfg.VisionGuardrail != nil {
+		sanitized, blocked, gerr := rt.cfg.VisionGuardrail.CheckFrame(ctx, frame)
+		if gerr != nil {
+			return fmt.Errorf("realtime: 视觉护栏检查失败: %w", gerr)
+		}
+		if blocked {
+			return ErrFrameBlocked
+		}
+		frame = sanitized
+	}
+
 	rt.Cleanup.Touch(sessionID)
-	ss.vision.PushFrame(data, w, h)
+	ss.vision.PushFrame(frame.Data, frame.Width, frame.Height)
 	return nil
+}
+
+// AnalyzeLatestFrame 分析最新视频帧（v4.3：连续帧 → 真实视觉 provider 理解）。
+// 返回帧描述并发布 EventVisionAnalyzed 事件；未配置 Multimodal 或无帧时返回空。
+func (rt *Runtime) AnalyzeLatestFrame(ctx context.Context, sessionID string) (string, error) {
+	if rt.cfg.Multimodal == nil {
+		return "", nil
+	}
+	rt.mu.RLock()
+	ss, ok := rt.streams[sessionID]
+	rt.mu.RUnlock()
+	if !ok {
+		return "", &RuntimeError{Msg: "会话流不存在: " + sessionID}
+	}
+	frame, ok := ss.vision.LatestFrame()
+	if !ok {
+		return "", nil
+	}
+	description, err := rt.cfg.Multimodal.AnalyzeFrame(ctx, frame)
+	if err != nil {
+		return "", err
+	}
+	rt.Events.Publish(RealtimeEvent{
+		Type:      EventVisionAnalyzed,
+		SessionID: sessionID,
+		Payload:   map[string]string{"description": description},
+	})
+	return description, nil
 }
 
 // ProcessTurn 处理一个实时交互轮次：融合输入 → ReAct 推理 → TTS
@@ -281,6 +326,133 @@ func (rt *Runtime) recordTurn(sessionID string, start time.Time, err error) {
 	if rt.cfg.Metrics != nil {
 		rt.cfg.Metrics.RecordTurn(sessionID, time.Since(start), err)
 	}
+}
+
+// ProcessTurnStream 处理流式交互轮次（v4.3：音频→文本→流式响应→语音）。
+//
+// 链路：输入护栏 → 融合 → 流式推理（React 实现 StreamingReactBridge 时逐块
+// 输出；否则回退为单块）→ 输出护栏逐块 → 流结束 TTS 合成全文音频。
+// 返回块流；调用方消费直到 Done 或 Err。
+func (rt *Runtime) ProcessTurnStream(ctx context.Context, sessionID string, text string) (<-chan TurnChunk, error) {
+	turnStart := time.Now()
+	rt.mu.RLock()
+	ss, ok := rt.streams[sessionID]
+	rt.mu.RUnlock()
+	if !ok {
+		return nil, &RuntimeError{Msg: "会话流不存在: " + sessionID}
+	}
+
+	// 输入护栏（与 ProcessTurn 一致）
+	if rt.cfg.Guardrail != nil {
+		sanitized, blocked, gerr := rt.cfg.Guardrail.CheckTranscript(ctx, text)
+		if gerr != nil {
+			rt.recordTurn(sessionID, turnStart, gerr)
+			return nil, fmt.Errorf("realtime: 转写护栏检查失败: %w", gerr)
+		}
+		if blocked {
+			rt.recordTurn(sessionID, turnStart, ErrTranscriptBlocked)
+			return nil, ErrTranscriptBlocked
+		}
+		text = sanitized
+	}
+
+	fused := ss.fusion.Fuse(text)
+	rt.Cleanup.Touch(sessionID)
+
+	s, _ := rt.Hub.GetSession(sessionID)
+	if s != nil && s.State == SessionIdle {
+		_ = s.TransitionTo(SessionListening, "input")
+	}
+	if s != nil && s.State == SessionListening {
+		_ = s.TransitionTo(SessionThinking, "reasoning")
+	}
+
+	ch := make(chan TurnChunk, 8)
+	go func() {
+		defer close(ch)
+		defer rt.recordTurn(sessionID, turnStart, nil)
+		defer rt.appendTranscript(sessionID, text)
+
+		var full strings.Builder
+		var streamErr error
+
+		if bridge, ok := rt.cfg.React.(StreamingReactBridge); ok && rt.cfg.React != nil {
+			stream, serr := bridge.StreamReason(ctx, fused)
+			if serr != nil {
+				rt.recordTurn(sessionID, turnStart, serr)
+				ch <- TurnChunk{Err: serr}
+				return
+			}
+			for chunk := range stream {
+				if ctx.Err() != nil {
+					streamErr = ctx.Err()
+					break
+				}
+				// 输出护栏逐块
+				if rt.cfg.Guardrail != nil {
+					sanitized, blocked, gerr := rt.cfg.Guardrail.CheckTranscript(ctx, chunk)
+					if gerr != nil {
+						streamErr = gerr
+						break
+					}
+					if blocked {
+						streamErr = ErrTranscriptBlocked
+						break
+					}
+					chunk = sanitized
+				}
+				full.WriteString(chunk)
+				ch <- TurnChunk{Text: chunk}
+			}
+		} else if rt.cfg.React != nil {
+			// 回退：非流式桥 → 单块
+			response, err := rt.cfg.React.Reason(ctx, fused)
+			if err != nil {
+				streamErr = err
+			} else if rt.cfg.Guardrail != nil {
+				sanitized, blocked, gerr := rt.cfg.Guardrail.CheckTranscript(ctx, response)
+				if gerr != nil {
+					streamErr = gerr
+				} else if blocked {
+					streamErr = ErrTranscriptBlocked
+				} else {
+					response = sanitized
+				}
+			}
+			if streamErr == nil {
+				full.WriteString(response)
+				ch <- TurnChunk{Text: response}
+			}
+		} else {
+			// 回退：无 React → 回显
+			response := "echo:" + fused.Text
+			full.WriteString(response)
+			ch <- TurnChunk{Text: response}
+		}
+
+		if streamErr != nil {
+			rt.recordTurn(sessionID, turnStart, streamErr)
+			ch <- TurnChunk{Err: streamErr}
+			return
+		}
+
+		if s != nil && s.State == SessionThinking {
+			_ = s.TransitionTo(SessionSpeaking, "stream-response")
+		}
+		// 流结束：TTS 合成全文音频
+		audio, terr := rt.cfg.TTS.Synthesize(ctx, full.String())
+		if terr != nil {
+			rt.recordTurn(sessionID, turnStart, terr)
+			ch <- TurnChunk{Err: terr}
+			return
+		}
+		if s != nil && s.State == SessionSpeaking {
+			_ = s.TransitionTo(SessionListening, "delivered")
+		}
+		rt.Events.Publish(RealtimeEvent{Type: EventResponseReady, SessionID: sessionID})
+		ch <- TurnChunk{Text: "", Audio: audio, Done: true}
+	}()
+	return ch, nil
 }
 
 // RuntimeError 运行时错误

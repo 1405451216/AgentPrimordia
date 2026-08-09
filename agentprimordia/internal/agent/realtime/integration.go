@@ -110,6 +110,38 @@ type SessionMemorySink interface {
 	SaveSessionSummary(ctx context.Context, sessionID, summary string) error
 }
 
+// --- 实时 × 流式（v4.3 多模态真实化） ---
+
+// StreamingReactBridge 流式 ReAct 引擎桥接（v4.3：音频→文本→流式响应→语音）。
+// 实现者返回响应文本块流；Runtime 逐块过输出护栏并累计全文，流结束后 TTS 合成音频。
+type StreamingReactBridge interface {
+	// StreamReason 对融合输入流式推理，返回响应文本块流
+	StreamReason(ctx context.Context, input FusedInput) (<-chan string, error)
+}
+
+// TurnChunk 流式轮次结果块（v4.3）。
+type TurnChunk struct {
+	// Text 响应文本块（可空）
+	Text string
+	// Audio 最终音频（Done=true 时由 TTS 合成全文携带）
+	Audio []byte
+	// Done 流结束（此后无更多块）
+	Done bool
+	// Err 流错误（非 nil 时终止）
+	Err error
+}
+
+// --- 实时 × 视觉护栏（v4.3 guardrail 扩展） ---
+
+// VisionGuardrail 视频帧内容护栏接口（PII/注入检测扩展至视觉）。
+type VisionGuardrail interface {
+	// CheckFrame 校验视频帧：拦截或脱敏（如敏感内容打码）
+	CheckFrame(ctx context.Context, frame VideoFrame) (sanitized VideoFrame, blocked bool, err error)
+}
+
+// ErrFrameBlocked 视频帧被护栏拦截（v4.3）。
+var ErrFrameBlocked = errors.New("realtime: 视频帧被护栏拦截")
+
 // GuardrailIntegration 实时音频护栏集成
 type GuardrailIntegration struct{ guard AudioGuardrail }
 

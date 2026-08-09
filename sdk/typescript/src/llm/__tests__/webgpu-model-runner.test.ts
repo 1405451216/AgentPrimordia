@@ -219,3 +219,52 @@ describe('WebGPUModelRunner getProgress', () => {
     expect(progress.error).toBeUndefined();
   });
 });
+
+// ===== v4.3-3 WebGPU 边缘推理可用化：真实后端优先、mock 仅回退 =====
+
+describe('detectInferenceBackend (v4.3-3 真实推理替换 mock)', () => {
+  it('transformers.js 可导入时返回真实后端（TransformersBackend）', async () => {
+    vi.doMock('@xenova/transformers', () => ({ pipeline: vi.fn() }));
+    const { detectInferenceBackend } = await import('../webgpu-model-runner.js');
+    const backend = await detectInferenceBackend();
+    expect(backend.name).toBe('transformers.js');
+    vi.doUnmock('@xenova/transformers');
+  });
+
+  it('transformers.js 不可导入时回退骨架后端（mock 仅回退）', async () => {
+    // 强制动态导入失败：不安装 @xenova/transformers 的环境
+    vi.stubGlobal('transformersImportBroken', true);
+    const { detectInferenceBackend } = await import('../webgpu-model-runner.js');
+    const originalImport = (globalThis as typeof globalThis & { import: (spec: string) => Promise<unknown> }).import;
+    // 模拟动态导入失败（@xenova/transformers 未安装）
+    const failingImport = (spec: string) =>
+      spec.includes('@xenova/transformers') ? Promise.reject(new Error('module not found')) : originalImport(spec);
+    Object.defineProperty(globalThis, 'import', { value: failingImport, writable: true, configurable: true });
+    try {
+      const backend = await detectInferenceBackend();
+      expect(backend.name).toBe('skeleton');
+    } finally {
+      Object.defineProperty(globalThis, 'import', { value: originalImport, writable: true, configurable: true });
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('runner 装配真实后端后经 chat() 产出真实输出（非骨架回退）', async () => {
+    // 用可注入后端验证 runner 生成路径：真实后端输出经 chat() 全链路返回
+    const { WebGPUModelRunner } = await import('../webgpu-model-runner.js');
+    const runner = new WebGPUModelRunner({ modelId: 'mock-model' });
+    const fakeRealBackend = {
+      name: 'transformers.js',
+      load: vi.fn().mockResolvedValue(undefined),
+      generate: vi.fn().mockResolvedValue('本地模型真实生成结果'),
+      dispose: vi.fn(),
+    };
+    // 注入已装配的真实后端（跳过下载/设备初始化）
+    (runner as unknown as { backend: unknown }).backend = fakeRealBackend;
+    (runner as unknown as { modelLoaded: boolean }).modelLoaded = true;
+    const resp = await runner.chat([{ role: 'user', content: '你好' }]);
+    expect(resp.content).toBe('本地模型真实生成结果');
+    expect(resp.content.startsWith('[skeleton]')).toBe(false);
+    expect(fakeRealBackend.generate).toHaveBeenCalled();
+  });
+});

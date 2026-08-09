@@ -23,6 +23,8 @@ const (
 	EventResponseReady RealtimeEventType = "response.ready"
 	// EventBargeIn 打断
 	EventBargeIn RealtimeEventType = "session.barge_in"
+	// EventVisionAnalyzed 视觉帧分析就绪（v4.3：连续帧 → 视觉 provider 理解）
+	EventVisionAnalyzed RealtimeEventType = "vision.analyzed"
 	// EventError 错误
 	EventError RealtimeEventType = "session.error"
 )

@@ -80,7 +80,7 @@ func TestRealtimeFullPipeline(t *testing.T) {
 	rt.OpenSession("s1")
 
 	// 推入视觉帧并经多模态分析
-	_ = rt.PushVision("s1", []byte("frame"), 320, 240)
+	_ = rt.PushVision(context.Background(), "s1", []byte("frame"), 320, 240)
 	desc, _ := mi.DescribeFrame(context.Background(), realtime.VideoFrame{Width: 320, Height: 240})
 	if desc == "" {
 		t.Error("multimodal desc empty")

@@ -129,7 +129,7 @@ func TestRuntimeCleanupTracked(t *testing.T) {
 func TestRuntimePushVision(t *testing.T) {
 	rt := NewRuntime(RuntimeConfig{})
 	rt.OpenSession("s1")
-	if err := rt.PushVision("s1", []byte("frame"), 640, 480); err != nil {
+	if err := rt.PushVision(context.Background(), "s1", []byte("frame"), 640, 480); err != nil {
 		t.Fatalf("push vision: %v", err)
 	}
 	rt.mu.RLock()

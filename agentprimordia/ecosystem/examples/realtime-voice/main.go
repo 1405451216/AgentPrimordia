@@ -71,7 +71,7 @@ func main() {
 
 	// 视觉流演示
 	fmt.Println("--- 视觉流演示 ---")
-	_ = rt.PushVision("voice-demo", []byte("frame-bytes"), 1280, 720)
+	_ = rt.PushVision(ctx, "voice-demo", []byte("frame-bytes"), 1280, 720)
 	fmt.Println("   📷 推入 1280x720 视频帧（连续帧可经 Fusion 融合进 LLM 上下文）")
 	fmt.Println()
 
