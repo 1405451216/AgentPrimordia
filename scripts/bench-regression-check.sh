@@ -38,12 +38,20 @@ declare -A BASELINES=(
   ["BenchmarkMemoryStore/Search"]=28626
   ["BenchmarkMemoryStore/Add"]=49.68
   # v4.0 关键路径 P95（p95_latency_test.go，最慢 5% 批次的平均延迟）
-  ["BenchmarkP95AgentRun"]=3491
-  ["BenchmarkP95AgentRun/p95_ns/op"]=10758
-  ["BenchmarkP95ToolCall"]=4116
-  ["BenchmarkP95ToolCall/p95_ns/op"]=11028
-  ["BenchmarkP95MemorySearch"]=29631
-  ["BenchmarkP95MemorySearch/p95_ns/op"]=46289
+  # v4.2-3 刷新（2026-08-09，v4.1 真实接线落地后 3 次运行中位数）
+  ["BenchmarkP95AgentRun"]=2981
+  ["BenchmarkP95AgentRun/p95_ns/op"]=10954
+  ["BenchmarkP95ToolCall"]=5104
+  ["BenchmarkP95ToolCall/p95_ns/op"]=15031
+  ["BenchmarkP95MemorySearch"]=43889
+  ["BenchmarkP95MemorySearch/p95_ns/op"]=58123
+  # v4.2-3 新增：FailureStore SQLite 三条路径 + 内存对照（failure_store_bench_test.go）
+  ["BenchmarkP95FailureSQLite_Record"]=6891842
+  ["BenchmarkP95FailureSQLite_Get"]=23663
+  ["BenchmarkP95FailureSQLite_Get/p95_ns/op"]=30745
+  ["BenchmarkP95FailureSQLite_List"]=41906
+  ["BenchmarkP95FailureSQLite_List/p95_ns/op"]=51085
+  ["BenchmarkP95FailureMemory_Record"]=32
 )
 
 # Human-readable labels for reporting
@@ -61,6 +69,12 @@ declare -A LABELS=(
   ["BenchmarkP95ToolCall/p95_ns/op"]="ToolCall P95"
   ["BenchmarkP95MemorySearch"]="MemorySearch P50"
   ["BenchmarkP95MemorySearch/p95_ns/op"]="MemorySearch P95"
+  ["BenchmarkP95FailureSQLite_Record"]="FailureSQLite Record"
+  ["BenchmarkP95FailureSQLite_Get"]="FailureSQLite Get P50"
+  ["BenchmarkP95FailureSQLite_Get/p95_ns/op"]="FailureSQLite Get P95"
+  ["BenchmarkP95FailureSQLite_List"]="FailureSQLite List P50"
+  ["BenchmarkP95FailureSQLite_List/p95_ns/op"]="FailureSQLite List P95"
+  ["BenchmarkP95FailureMemory_Record"]="FailureMemory Record"
 )
 
 # --- Validate inputs ---
