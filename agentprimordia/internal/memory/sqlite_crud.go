@@ -14,6 +14,9 @@ import (
 
 // Add 插入单条 Episode
 func (s *SQLiteStore) Add(ctx context.Context, episode *Episode) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	if err := episode.Validate(); err != nil {
 		return err
 	}
@@ -53,6 +56,9 @@ func (s *SQLiteStore) Add(ctx context.Context, episode *Episode) error {
 // 优化（Task 4）：在高吞吐场景（如 Pool 多 Agent 并发写入）下，批量事务比逐条
 // INSERT 减少 fsync 次数并降低全局互斥锁的串行化开销。
 func (s *SQLiteStore) BatchAdd(ctx context.Context, episodes []*Episode) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	if len(episodes) == 0 {
 		return nil
 	}
@@ -137,6 +143,9 @@ func (s *SQLiteStore) AddBatch(ctx context.Context, episodes []*Episode) error {
 // GetBatch 批量获取（perf-v6 round 5 Task 3）
 // 单次查询使用 IN(?,?,?) 优化
 func (s *SQLiteStore) GetBatch(ctx context.Context, ids []string) (map[string]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if len(ids) == 0 {
 		return map[string]*Episode{}, nil
 	}
@@ -172,6 +181,9 @@ func (s *SQLiteStore) GetBatch(ctx context.Context, ids []string) (map[string]*E
 // DeleteBatch 批量删除（perf-v6 round 5 Task 3）
 // 单次 DELETE 使用 IN 子句
 func (s *SQLiteStore) DeleteBatch(ctx context.Context, ids []string) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	if len(ids) == 0 {
 		return nil
 	}
@@ -193,6 +205,9 @@ func (s *SQLiteStore) DeleteBatch(ctx context.Context, ids []string) error {
 
 // Get 按 ID 查询单条 Episode
 func (s *SQLiteStore) Get(ctx context.Context, id string) (*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	query := `SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at FROM episodes WHERE id = ?`
 	row := s.db.QueryRowContext(ctx, query, id)
 
@@ -208,6 +223,9 @@ func (s *SQLiteStore) Get(ctx context.Context, id string) (*Episode, error) {
 
 // Delete 按 ID 删除单条 Episode
 func (s *SQLiteStore) Delete(ctx context.Context, id string) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -223,6 +241,9 @@ func (s *SQLiteStore) Delete(ctx context.Context, id string) error {
 
 // Count 统计 Episode 数量（可选按 session 过滤）
 func (s *SQLiteStore) Count(ctx context.Context, sessionID string) (int64, error) {
+	if s.closed.Load() {
+		return 0, ErrStoreClosed
+	}
 	var query string
 	var args []any
 	if sessionID != "" {
@@ -242,6 +263,9 @@ func (s *SQLiteStore) Count(ctx context.Context, sessionID string) (int64, error
 
 // List 列出 Episode，支持分页、排序、按 session 过滤
 func (s *SQLiteStore) List(ctx context.Context, opts *ListOptions) ([]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if opts == nil {
 		opts = &ListOptions{Limit: defaultSearchLimit}
 	}
@@ -289,6 +313,9 @@ func (s *SQLiteStore) List(ctx context.Context, opts *ListOptions) ([]*Episode, 
 
 // UpdateSummary 更新指定 Episode 的摘要与标签
 func (s *SQLiteStore) UpdateSummary(ctx context.Context, id string, summary, topics string) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -309,6 +336,9 @@ func (s *SQLiteStore) UpdateSummary(ctx context.Context, id string, summary, top
 
 // SetImportance 设置指定 Episode 的重要性（0-1）
 func (s *SQLiteStore) SetImportance(ctx context.Context, episodeID string, importance float64) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	if importance < 0 || importance > 1 {
 		return ErrInvalidImportance
 	}
@@ -333,6 +363,9 @@ func (s *SQLiteStore) SetImportance(ctx context.Context, episodeID string, impor
 
 // RecordToolUse 记录tool调用（特殊记忆类型）
 func (s *SQLiteStore) RecordToolUse(ctx context.Context, sessionID, agentName, toolName, args, result string) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	ep, err := NewEpisode(sessionID, "tool_use", args)
 	if err != nil {
 		return fmt.Errorf("create tool use episode: %w", err)
@@ -349,6 +382,9 @@ func (s *SQLiteStore) RecordToolUse(ctx context.Context, sessionID, agentName, t
 
 // ClearAll 清空记忆（可选按会话）
 func (s *SQLiteStore) ClearAll(ctx context.Context, sessionID string) error {
+	if s.closed.Load() {
+		return ErrStoreClosed
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

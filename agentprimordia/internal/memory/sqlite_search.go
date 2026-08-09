@@ -21,6 +21,9 @@ import (
 
 // Search 在 FTS5 全文索引上执行关键字搜索
 func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOptions) ([]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if opts == nil {
 		opts = &SearchOptions{Limit: defaultSearchLimit}
 	}
@@ -69,6 +72,9 @@ func (s *SQLiteStore) Search(ctx context.Context, query string, opts *SearchOpti
 
 // SearchAdvanced 在 FTS5 候选上做关键词+语义融合打分，返回 SearchResult 列表
 func (s *SQLiteStore) SearchAdvanced(ctx context.Context, opts SearchOptions) ([]*SearchResult, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if opts.MaxResults <= 0 {
 		opts.MaxResults = defaultSearchLimit
 	}
@@ -132,6 +138,9 @@ type ftsCandidate struct {
 
 // searchFTS5Candidates 在 FTS5 召回候选 Episode（带预计算 token）
 func (s *SQLiteStore) searchFTS5Candidates(ctx context.Context, opts SearchOptions) ([]*ftsCandidate, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	cleanedQuery := sanitizeFTSQuery(opts.Query)
 	if cleanedQuery == "" {
 		return nil, nil
@@ -290,6 +299,9 @@ func escapeLike(s string) string {
 
 // SearchByTag 按标签模糊搜索 Episode
 func (s *SQLiteStore) SearchByTag(ctx context.Context, tag string, opts *SearchOptions) ([]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if opts == nil {
 		opts = &SearchOptions{Limit: defaultSearchLimit}
 	}
@@ -332,6 +344,9 @@ func (s *SQLiteStore) SearchByTag(ctx context.Context, tag string, opts *SearchO
 
 // GetImportant 按重要性阈值查询 Episode
 func (s *SQLiteStore) GetImportant(ctx context.Context, threshold float64, limit int) ([]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if limit <= 0 {
 		limit = defaultSearchLimit
 	}
@@ -355,6 +370,9 @@ func (s *SQLiteStore) GetImportant(ctx context.Context, threshold float64, limit
 
 // GetTimeline 返回最近 N 天 Episode 的按日期分组时间线
 func (s *SQLiteStore) GetTimeline(ctx context.Context, days int) (map[string][]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if days <= 0 {
 		days = 30
 	}
@@ -394,6 +412,9 @@ func (s *SQLiteStore) GetTimeline(ctx context.Context, days int) (map[string][]*
 
 // GetMemoriesByTag 按标签模糊查询（GetImportant 风格）
 func (s *SQLiteStore) GetMemoriesByTag(ctx context.Context, tag string, limit int) ([]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if limit <= 0 {
 		limit = defaultSearchLimit
 	}
@@ -417,6 +438,9 @@ func (s *SQLiteStore) GetMemoriesByTag(ctx context.Context, tag string, limit in
 
 // GetMemoriesBySession 按会话 ID 查询所有 Episode（按时间升序）
 func (s *SQLiteStore) GetMemoriesBySession(ctx context.Context, sessionID string) ([]*Episode, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	query := `
 		SELECT id, session_id, role, content, summary, topics, importance, metadata, created_at
 		FROM episodes
@@ -458,6 +482,9 @@ func (s *SQLiteStore) GetImportantMemories(ctx context.Context, threshold float6
 
 // GetMemoryTimeline 返回带日期排序的 MemoryTimelineGroup 列表
 func (s *SQLiteStore) GetMemoryTimeline(ctx context.Context, days int) ([]*MemoryTimelineGroup, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	if days <= 0 {
 		days = 30
 	}
@@ -513,6 +540,9 @@ func (s *SQLiteStore) GetMemoryTimeline(ctx context.Context, days int) ([]*Memor
 
 // CleanupExpired 删除创建时间超过 maxAgeDays 天的 Episode
 func (s *SQLiteStore) CleanupExpired(ctx context.Context, maxAgeDays int) (int64, error) {
+	if s.closed.Load() {
+		return 0, ErrStoreClosed
+	}
 	if maxAgeDays <= 0 {
 		return 0, nil
 	}

@@ -125,6 +125,9 @@ func DefaultCleanupConfig() CleanupConfig {
 // StartAutoCleanup 启动后台自动清理 goroutine
 // 返回 stop 函数供调用方停止清理
 func (s *SQLiteStore) StartAutoCleanup(cfg CleanupConfig) (stop func()) {
+	if s.closed.Load() {
+		return func() {}
+	}
 	if cfg.Interval <= 0 {
 		cfg.Interval = 24 * time.Hour
 	}
@@ -156,6 +159,9 @@ func (s *SQLiteStore) StartAutoCleanup(cfg CleanupConfig) (stop func()) {
 
 // autoCleanup 执行一次自动清理
 func (s *SQLiteStore) autoCleanup(cfg CleanupConfig) {
+	if s.closed.Load() {
+		return
+	}
 	s.mu.RLock()
 	db := s.db
 	s.mu.RUnlock()
@@ -175,6 +181,9 @@ func (s *SQLiteStore) autoCleanup(cfg CleanupConfig) {
 
 // cleanupWithPreserve 清理过期记忆但保留指定角色的记录
 func (s *SQLiteStore) cleanupWithPreserve(ctx context.Context, maxAgeDays int, preserveRoles []string) {
+	if s.closed.Load() {
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

@@ -16,6 +16,7 @@ import (
 	"log/slog"
 	"regexp"
 	"sync"
+	"sync/atomic"
 
 	_ "modernc.org/sqlite"
 )
@@ -31,6 +32,9 @@ const (
 
 var (
 	ErrEpisodeNotFound = errors.New("episode not found")
+	// ErrStoreClosed 表示存储已 Close，所有后续操作应直接失败
+	//（评估报告 §三.1-③：Close 后无锁读 s.db 的空指针风险修复）。
+	ErrStoreClosed = errors.New("memory: store is closed")
 
 	ftsSanitizeRe = regexp.MustCompile(`["*(){}^:]`)
 	ftsKeywordRe  = regexp.MustCompile(`\b(AND|OR|NOT|NEAR)\b`)
@@ -43,6 +47,9 @@ type SQLiteStore struct {
 	path   string
 	mu     sync.RWMutex
 	logger *slog.Logger
+	// closed 标记 Close 已调用。Close 不再将 db 置 nil（避免与无锁读者
+	// 形成指针数据竞争），而是通过本标志使后续操作返回 ErrStoreClosed。
+	closed atomic.Bool
 }
 
 // NewSQLiteStore 创建或打开一个 SQLite 存储实例
@@ -147,6 +154,8 @@ CREATE INDEX IF NOT EXISTS idx_episodes_importance ON episodes(importance);
 
 // Close 关闭底层数据库连接
 func (s *SQLiteStore) Close() error {
+	// 先置关闭标志（原子，无需持锁），使并发中的其他方法返回 ErrStoreClosed
+	s.closed.Store(true)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.db != nil {
@@ -155,15 +164,19 @@ func (s *SQLiteStore) Close() error {
 		if s.path != ":memory:" {
 			_, _ = s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)")
 		}
-		err := s.db.Close()
-		s.db = nil
-		return err
+		// 竞态修复（评估报告 §三.1-③）：不再置 s.db = nil——*sql.DB 的
+		// Close 本身并发安全（后续调用返回 sql.ErrConnDone），置 nil 反而
+		// 与无锁读者形成指针数据竞争并导致空指针 panic。
+		return s.db.Close()
 	}
 	return nil
 }
 
 // Stats 返回记忆库统计信息
 func (s *SQLiteStore) Stats(ctx context.Context) (*MemoryStats, error) {
+	if s.closed.Load() {
+		return nil, ErrStoreClosed
+	}
 	stats := &MemoryStats{}
 
 	err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM episodes").Scan(&stats.TotalEpisodes)

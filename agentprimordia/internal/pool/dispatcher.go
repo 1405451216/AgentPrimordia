@@ -118,12 +118,12 @@ type Pool struct {
 
 	// 动态并发度信号量（替代固定容量的 channel）
 	// 使用 sync.Cond 实现可动态调整上限的计数信号量
-	semaMu    sync.Mutex
-	semaCond  *sync.Cond
+	semaMu   sync.Mutex
+	semaCond *sync.Cond
 
 	// droppedEvents 记录因 eventCh 满而被丢弃的事件数（用于可观测性）
 	droppedEvents atomic.Int64
-	semaCount int64 // 当前已获取令牌的 goroutine 数
+	semaCount     int64 // 当前已获取令牌的 goroutine 数
 
 	// 优化（perf-v2）：会话索引，将 GetTasksBySession/CancelBySession 从 O(n) 优化为 O(k)
 	sessionIndex map[string]map[string]struct{} // sessionID -> set of taskIDs
@@ -496,6 +496,9 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			p.emitEvent(PoolEvent{Type: "task_completed", TaskID: task.ID})
 		}
 
+		// 竞态修复（评估报告 §三.1-①）：pt.result 与 GetTask/ListTasks 的
+		// p.mu.RLock 读并发，必须持锁写。
+		p.mu.Lock()
 		pt.result = &TaskResult{
 			TaskID:   task.ID,
 			Task:     task,
@@ -504,8 +507,6 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 			Duration: duration,
 			Status:   pt.loadStatus(),
 		}
-
-		p.mu.Lock()
 		delete(p.agents, task.ID)
 		p.mu.Unlock()
 
@@ -514,8 +515,12 @@ func (p *Pool) executeTask(ctx context.Context, task TaskConfig) (*TaskResult, e
 }
 
 func (p *Pool) createAgentForTask(task TaskConfig) (agent.Agent, error) {
+	// 竞态修复（评估报告 §三.1-②）：p.model/p.toolkit 与 SetModel/SetToolkit
+	// 的持锁写并发，必须在同一 RLock 内读取。
 	p.mu.RLock()
 	factory := p.agentFactory
+	model := p.model
+	toolkit := p.toolkit
 	p.mu.RUnlock()
 
 	if factory != nil {
@@ -546,7 +551,6 @@ func (p *Pool) createAgentForTask(task TaskConfig) (agent.Agent, error) {
 	// 解析配置参数
 	name := task.Title
 	systemPrompt := p.config.DefaultAgent.SystemPrompt
-	model := p.model
 
 	maxTurns := task.MaxTurns
 	if maxTurns == 0 {
@@ -569,8 +573,8 @@ func (p *Pool) createAgentForTask(task TaskConfig) (agent.Agent, error) {
 
 	// v0.7.0: Toolkit 字段已废弃，通过链式 API 注入tool能力
 	var agt agent.Agent = reactAgt
-	if p.toolkit != nil {
-		agt = reactAgt.WithToolkit(p.toolkit)
+	if toolkit != nil {
+		agt = reactAgt.WithToolkit(toolkit)
 	}
 
 	p.mu.Lock()
@@ -600,20 +604,13 @@ func (p *Pool) acquireSlot(ctx context.Context) error {
 	p.semaMu.Unlock()
 
 	// 慢路径：通过 sync.Cond 阻塞等待令牌
-	// 用辅助 goroutine 在 ctx 取消时唤醒 Wait()
+	// 辅助 goroutine 在 ctx 取消或超时到期时 Broadcast 唤醒所有等待者
+	//（竞态修复评估报告 §三.1-③：此前定时器不唤醒 Cond，等待者会无限阻塞
+	// 直到其他事件触发，超时语义被绕过）。
 	p.semaMu.Lock()
 	defer p.semaMu.Unlock()
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			p.semaCond.Broadcast() // 唤醒所有等待者
-		case <-done:
-		}
-	}()
-
+	var timerExpired atomic.Bool
 	var timerC <-chan time.Time
 	if p.config.Timeout > 0 {
 		timer := time.NewTimer(p.config.Timeout)
@@ -621,17 +618,32 @@ func (p *Pool) acquireSlot(ctx context.Context) error {
 		timerC = timer.C
 	}
 
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			p.semaCond.Broadcast() // 唤醒所有等待者
+		case <-timerC:
+			timerExpired.Store(true)
+			p.semaCond.Broadcast() // 超时到期也唤醒，避免等待者无限阻塞
+		case <-done:
+		}
+	}()
+
 	for p.semaCount >= p.dynamicConcurrency.Load() {
+		// 超时优先：定时器已到期则不再等待
+		if timerExpired.Load() {
+			return ErrTimeout
+		}
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
 		p.semaCond.Wait()
 	}
-	// 再次检查超时（Wait 返回后可能已超时）
-	select {
-	case <-timerC:
+	// Wait 返回后（被 Signal 唤醒且定时器恰在同一时刻到期）再次确认超时
+	if timerExpired.Load() {
 		return ErrTimeout
-	default:
 	}
 
 	p.semaCount++
