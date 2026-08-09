@@ -282,3 +282,71 @@ jobs:
           name: ts-llm-bench
           path: sdk/typescript/ts-llm-bench-log.txt
           if-no-files-found: ignore
+
+  # ===== 双线真实 LLM 基准对照表（v4.2-5 可比化入 CI） =====
+  # 同一模型在 Go 与 TS 两侧各跑一遍同一基准集，生成对照表
+  # （bench/results/dual/dual-bench-comparison.{json,md}）随 nightly 发布。
+  # 可比化契约：两侧用例集必须一致（scripts/dual-bench-compare.mjs 门禁）。
+  # 未配置 OPENAI_API_KEY 时跳过。
+  dual-bench:
+    name: Dual-Line LLM Benchmark Compare (v4.2-5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: sdk/typescript/package-lock.json
+
+      - name: Install TS dependencies
+        working-directory: sdk/typescript
+        run: npm ci
+
+      - name: Run dual-line benchmarks and generate comparison table
+        working-directory: agentprimordia
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "::warning::OPENAI_API_KEY 未配置，跳过双线跑分对照"
+            exit 0
+          fi
+          MODEL=gpt-4o-mini
+          # Go 侧报告
+          go run ./bench/llm-bench --provider openai --model $MODEL \
+            --version nightly --threshold 0 --retries 1 --out go-llm-bench-report.json
+          # TS 侧报告（同一模型同一基准集）
+          (cd ../sdk/typescript && npx --yes tsx bench/llm-bench/main.mts \
+            --model $MODEL --threshold 0 --out ../agentprimordia/ts-llm-bench-report.json)
+          # 对照表生成（用例集一致门禁）
+          node ../scripts/dual-bench-compare.mjs \
+            --go-report go-llm-bench-report.json \
+            --ts-report ts-llm-bench-report.json \
+            --out bench/results/dual
+          echo "comparison_generated=true" >> $GITHUB_OUTPUT
+
+      - name: Upload dual-line comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dual-bench-comparison
+          path: |
+            agentprimordia/bench/results/dual/dual-bench-comparison.json
+            agentprimordia/bench/results/dual/dual-bench-comparison.md
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 双线真实 LLM 基准对照表" >> $GITHUB_STEP_SUMMARY
+          if [ -f agentprimordia/bench/results/dual/dual-bench-comparison.md ]; then
+            cat agentprimordia/bench/results/dual/dual-bench-comparison.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "未生成对照表（无 API Key 或跳过）" >> $GITHUB_STEP_SUMMARY
+          fi
