@@ -1,6 +1,6 @@
 # AgentPrimordia Examples
 
-> 20+ 示例应用，展示 AgentPrimordia 框架的典型用法。
+> 24 个示例应用，展示 AgentPrimordia 框架的典型用法。
 
 ## 跑法
 
@@ -23,24 +23,28 @@ make run-production   # = chain-production
 
 ## 可运行示例
 
+> 目录清单与 `ecosystem/examples/` 实况同步（2026-08-09 文档清理）。
+
 | 名称 | 说明 | 关键 API |
 |------|------|----------|
-| `basic/` | 最简单的 Agent 启动 | `ap.NewAgent` |
+| `simple/` | 最简 Agent 启动 | `ap.NewAgent` |
+| `basic/` | 基础 Agent | `ap.NewAgent` + `ap.DefaultToolkit` |
 | `with-tools/` | 带工具调用的 Agent | `ap.DefaultToolkit` |
-| `with-memory/` | 带记忆的 Agent | `ap.WithInMemory` |
 | `chain-api/` | 链式 API 完整用法 | `WithToolkit/WithMemory/WithRAG` |
+| `chain-capable/` | 链式 API + Capable 能力接口 | `WithXxx` 链式注入 |
+| `chain-plugins/` | 链式 API + 插件 | `ap.PluginLoader` |
+| `chain-production/` | 生产级链式用法（`make run-production`） | 全能力组合 |
+| `chain-rag/` | 链式 API + RAG 知识库 | `ap.NewRAGStore` |
 | `multi-agent/` | 多 Agent 调度 | `ap.NewPool` |
-| `multimodal/` | 多模态 Agent | `ap.NewMultimodalProvider` |
-| `provider-switching/` | 多 LLM 切换 | `ap.NewOpenAIProvider` + Qwen/GLM/DeepSeek |
-| `with-observability/` | Prometheus 指标 | `ap.NewMetrics` |
-| `claude-agents/` | Claude 风格子代理 | `ap.NewSubAgent` |
-| `mcp-server/` | MCP 协议服务 | `ap.MCPServer` |
-| `mcp-client/` | MCP 客户端 | `ap.MCPClient` |
-| `with-orchestration/` | DAG 工作流 | `ap.NewDAGBuilder` |
-| `with-rag/` | RAG 知识库 | `ap.NewRAGStore` |
-| `self-evolving/` | 自演化 Agent | `ap.HookAfterRun` |
-| `with-guardrails/` | 输入/输出护栏 | `ap.NewGuardrails` |
-| `web-chatbot/` | Web 聊天机器人 | `ap.NewHTTPServer` |
+| `multi-agent-collab/` | 多 Agent 协作编排 | `ap.NewCollaboration` |
+| `multimodal-advanced/` | 多模态进阶 | `ap.NewMultimodalProvider` |
+| `multimodal-vision/` | 多模态视觉 | 视觉输入 |
+| `gemini-provider/` | Gemini Provider | `ap.NewGeminiProvider` |
+| `qwen-provider/` | Qwen Provider | `ap.NewQwenProvider` |
+| `resilient-provider/` | Resilient 弹性 Provider | `ap.NewResilientProvider` |
+| `memory-backends/` | 多记忆后端对比 | `WithInMemory/WithSQLite/WithRAG` |
+| `builtin-tools/` | 内置工具集 | `ap.DefaultToolkit` |
+| `debug-tools/` | 调试工具 | `ap.WithDebugger` |
 | `github-issue-triage/` | **GitHub Issue Triage Bot**（Phase 18） | ReAct + 3 个自定义工具 + Mock Server |
 | `coding-agent/` | **一体化 Coding Harness**：计划→编写→测试→审查→发布 | `WithCognition` + filesystem/shell/git 插件 |
 | `autonomous-task/` | **长期自治**（v3.3）：目标驱动自主执行 + 崩溃恢复 | `autonomy.NewAutonomyRuntime` |

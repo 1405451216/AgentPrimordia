@@ -95,4 +95,4 @@ README.md 中显式声明,避免传递依赖不可控。
 ## 文档导航
 
 完整文档见 [ecosystem/docs/](docs/)。仓库导航见
-[ecosystem/docs/CODE_WIKI.md](docs/CODE_WIKI.md)。
+[CODE_WIKI.md](../../CODE_WIKI.md)（位于仓库根，2026-08-09 修正链接）。

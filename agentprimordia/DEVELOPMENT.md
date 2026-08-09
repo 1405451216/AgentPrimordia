@@ -636,7 +636,7 @@ concurrency.ValidateScopes([]string{"/path1", "/path2"})
 
 ### K8s Operator（Kubernetes 运维）
 
-**包路径**：`internal/operator`
+**包路径**：`operator/`（独立 Go module `agentprimordia/operator`，go.work 挂载；2026-08-09 修正自过时的 `internal/operator`）
 
 K8s Operator 提供 Agent 的 Kubernetes 原生部署与管理能力，通过自定义资源（CRD）声明式定义 Agent 部署。
 
@@ -1276,8 +1276,8 @@ Dockerfile 位于项目根目录，支持多阶段构建，最终镜像基于 sc
 
 ```bash
 # 安装 CRD 和 Operator
-kubectl apply -f config/crd/bases/agent.agentprimordia.io_agentdeployments.yaml
-kubectl apply -f config/manager/manager.yaml
+kubectl apply -f operator/manifest/crd.yaml
+kubectl apply -f operator/manifest/controller.yaml
 
 # 部署 Agent
 kubectl apply -f examples/agent-deployment.yaml

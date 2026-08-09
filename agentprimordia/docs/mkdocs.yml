@@ -99,11 +99,7 @@ nav:
   - 首页: index.md
   - 实施进度:
     - 阶段总览: STATUS.md
-    - Phase 1 性能攻坚: plans/phase1-performance-assault.md
-    - Phase 2 安全合规: plans/phase2-security-compliance.md
-    - Phase 3 架构演进: plans/phase3-architecture-evolution.md
-    - Phase 4 可观测性: plans/phase4-observability-ops.md
-    - Phase 5 生态社区: plans/phase5-ecosystem-community.md
+    - 版本路线图: ../../ROADMAP.md
   - 快速开始:
     - 安装指南: getting-started/installation.md
     - 5分钟入门: getting-started/quickstart.md

@@ -17,7 +17,7 @@ AgentPrimordia（AP）是一个用 Go 语言编写、同时提供 TypeScript SDK
 
 - **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子，支持检查点恢复
 - **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A
-- **A2A 双传输** — gRPC（默认，性能更优、内建拦截器链） / JSON-RPC over HTTP（兼容）
+- **A2A 协议** — gRPC（唯一传输，v4.0.0 移除 JSON-RPC 兼容层）+ 开放互操作（`pkg/a2a_interop.go`）
 - **工具系统** — FileSystem / Shell / Web / Knowledge / Database / CodeExecution / API 内置工具，MCP 协议集成，插件扩展（含 `ap plugin search/update`）
 - **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索（支持 RRF 融合）
 - **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / Resilient 弹性包装器
@@ -202,8 +202,9 @@ ap completion bash                              # 生成 Shell 补全脚本
 
 ## A2A 协议（默认 gRPC）
 
-自 v1.x 起 **gRPC 是 A2A 的默认传输**，序列化延迟更低、消息体积更小、内建拦截器链。
-JSON-RPC over HTTP 仅作为兼容旧客户端保留，将于 v2.0 移除。
+自 v1.x 起 **gRPC 是 A2A 的默认且唯一传输**（序列化延迟更低、消息体积更小、内建拦截器链）。
+JSON-RPC over HTTP 兼容层已于 **v4.0.0 移除**（见 VERSIONING.md「已移除记录」）；
+开放 Agent2Agent 协议互操作（JSON-RPC over HTTP/SSE 承载开放协议）见 `pkg/a2a_interop.go`。
 
 === "Go（推荐 gRPC）"
 
