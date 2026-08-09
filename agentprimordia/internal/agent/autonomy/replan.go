@@ -2,6 +2,7 @@ package autonomy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -33,6 +34,9 @@ type ReplanRecord struct {
 	NewPlanVersion int
 }
 
+// ErrGoalBudgetExceeded 目标级成本预算耗尽（v4.9-4）。
+var ErrGoalBudgetExceeded = errors.New("autonomy: 目标成本预算耗尽")
+
 // Replanner 校验与再计划引擎
 type Replanner struct {
 	mu       sync.Mutex
@@ -56,6 +60,10 @@ func (r *Replanner) Trigger(ctx context.Context, goal *AgentGoal, failedSteps []
 
 	if r.count >= r.cfg.MaxReplans {
 		return nil, fmt.Errorf("autonomy: 重规划次数已达上限 %d", r.cfg.MaxReplans)
+	}
+	// v4.9-4 目标级预算：重规划前记账，超预算 → 拒绝（目标保留失败态由调用方处理）
+	if err := goal.Charge(goal.ReplanCost()); err != nil {
+		return nil, err
 	}
 
 	newSteps, err := r.cfg.Planner.Replan(ctx, goal, failedSteps, reason)

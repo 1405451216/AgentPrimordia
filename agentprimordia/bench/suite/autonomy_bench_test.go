@@ -127,7 +127,7 @@ func BenchmarkCheckpointSaveRestore(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = rm.SaveCheckpoint(ctx, "bench-cp", plan, autonomy.GoalExecuting)
+		_ = rm.SaveCheckpoint(ctx, "bench-cp", "", plan, autonomy.GoalExecuting)
 		_, _ = rm.LoadCheckpoint(ctx, "bench-cp")
 	}
 }

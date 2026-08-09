@@ -33,6 +33,10 @@ type GoalConfig struct {
 	Deadline time.Time
 	// Metadata 附加元数据
 	Metadata map[string]string
+	// BudgetUSD 目标级成本预算（v4.9-4：0 表示不限；重规划消耗 ReplanCostUSD）
+	BudgetUSD float64
+	// ReplanCostUSD 每次重规划的 LLM 成本估计（默认 0.01 USD）
+	ReplanCostUSD float64
 }
 
 // AgentGoal 持久化目标：自治执行的核心载体
@@ -59,6 +63,12 @@ type AgentGoal struct {
 	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt 最后更新时间
 	UpdatedAt time.Time `json:"updated_at"`
+	// CostSpentUSD 已消耗成本（v4.9-4 目标级预算；原子访问）
+	CostSpentUSD float64 `json:"cost_spent_usd"`
+	// budgetUSD 目标预算（内部字段，经 Budget 方法读取）
+	budgetUSD    float64
+	// replanCostUSD 每次重规划成本估计
+	replanCostUSD float64
 
 	// metadata 附加元数据
 	metadata map[string]string
@@ -90,6 +100,41 @@ type AgentGoalView struct {
 	UpdatedAt time.Time
 }
 
+// Budget 返回目标级成本预算（0 表示不限）。
+func (g *AgentGoal) Budget() float64 {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.budgetUSD
+}
+
+// CostSpent 返回已消耗成本。
+func (g *AgentGoal) CostSpent() float64 {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return g.CostSpentUSD
+}
+
+// ReplanCost 返回每次重规划的成本估计（默认 0.01 USD）。
+func (g *AgentGoal) ReplanCost() float64 {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.replanCostUSD <= 0 {
+		return 0.01
+	}
+	return g.replanCostUSD
+}
+
+// Charge 记账一次成本消耗（预算已满时返回 ErrGoalBudgetExceeded）。
+func (g *AgentGoal) Charge(cost float64) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.budgetUSD > 0 && g.CostSpentUSD+cost > g.budgetUSD {
+		return ErrGoalBudgetExceeded
+	}
+	g.CostSpentUSD += cost
+	return nil
+}
+
 // Snapshot 返回目标的只读快照（并发安全，RWMutex 保护）。
 func (g *AgentGoal) Snapshot() AgentGoalView {
 	g.mu.RLock()
@@ -119,17 +164,19 @@ func NewAgentGoal(description string, cfg GoalConfig) *AgentGoal {
 	}
 
 	g := &AgentGoal{
-		ID:                 generateGoalID(),
-		Description:        description,
+		ID:              generateGoalID(),
+		Description:     description,
 		AcceptanceCriteria: cfg.AcceptanceCriteria,
-		Priority:           priority,
-		State:              GoalCreated,
-		MaxRetries:         maxRetries,
-		Deadline:           cfg.Deadline,
-		CreatedAt:          time.Now(),
-		UpdatedAt:          time.Now(),
-		metadata:           cfg.Metadata,
-		sm:                 NewStateMachine(),
+		Priority:        priority,
+		State:           GoalCreated,
+		MaxRetries:      maxRetries,
+		Deadline:        cfg.Deadline,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		budgetUSD:       cfg.BudgetUSD,
+		replanCostUSD:   cfg.ReplanCostUSD,
+		metadata:        cfg.Metadata,
+		sm:              NewStateMachine(),
 	}
 	if g.metadata == nil {
 		g.metadata = make(map[string]string)

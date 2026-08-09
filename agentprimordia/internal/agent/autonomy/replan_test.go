@@ -2,6 +2,7 @@ package autonomy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -152,5 +153,46 @@ func TestValidator(t *testing.T) {
 	}
 	if len(result2.FailedCriteria) != 1 || result2.FailedCriteria[0] != "标准2" {
 		t.Errorf("failed criteria = %v, want [标准2]", result2.FailedCriteria)
+	}
+}
+
+// TestReplanBudgetEnforced v4.9-4：目标级预算耗尽 → 重规划被拒（ErrGoalBudgetExceeded）。
+func TestReplanBudgetEnforced(t *testing.T) {
+	goal := NewAgentGoal("预算目标", GoalConfig{
+		BudgetUSD:     0.02,
+		ReplanCostUSD: 0.01, // 每次重规划 0.01 → 2 次后耗尽
+	})
+	planner := &mockPlanner{plans: map[string][]PlanStep{
+		goal.ID: {{ID: "s1", Description: "x"}},
+	}}
+	replanner := NewReplanner(ReplannerConfig{Planner: planner, MaxReplans: 5})
+	failed := []PlanStep{{ID: "s1", Description: "失败"}}
+
+	if _, err := replanner.Trigger(context.Background(), goal, failed, "第一次"); err != nil {
+		t.Fatalf("第一次重规划应成功: %v", err)
+	}
+	if _, err := replanner.Trigger(context.Background(), goal, failed, "第二次"); err != nil {
+		t.Fatalf("第二次重规划应成功: %v", err)
+	}
+	if goal.CostSpent() != 0.02 {
+		t.Errorf("CostSpent = %v, want 0.02", goal.CostSpent())
+	}
+	if _, err := replanner.Trigger(context.Background(), goal, failed, "第三次"); !errors.Is(err, ErrGoalBudgetExceeded) {
+		t.Fatalf("第三次重规划 err = %v, want ErrGoalBudgetExceeded", err)
+	}
+}
+
+// TestReplanBudgetUnlimited 无预算 → 不限制。
+func TestReplanBudgetUnlimited(t *testing.T) {
+	goal := NewAgentGoal("免费目标", GoalConfig{}) // BudgetUSD=0 → 不限
+	planner := &mockPlanner{plans: map[string][]PlanStep{
+		goal.ID: {{ID: "s1", Description: "x"}},
+	}}
+	replanner := NewReplanner(ReplannerConfig{Planner: planner, MaxReplans: 3})
+	failed := []PlanStep{{ID: "s1", Description: "失败"}}
+	for i := 0; i < 3; i++ {
+		if _, err := replanner.Trigger(context.Background(), goal, failed, "重试"); err != nil {
+			t.Fatalf("第 %d 次重规划: %v", i+1, err)
+		}
 	}
 }

@@ -285,3 +285,40 @@ func (m *mockProviderForCache) Embeddings(_ context.Context, texts []string) ([]
 func (m *mockProviderForCache) Info() ModelInfo {
 	return m.info
 }
+
+// TestCache_HitRateAndCostSaved v4.9-2：语义缓存命中率 + token 成本节省可量化。
+func TestCache_HitRateAndCostSaved(t *testing.T) {
+	// 简单确定性嵌入：字符长度作为向量分量（相似查询 → 高相似度）
+	embedder := func(_ context.Context, text string) ([]float32, error) {
+		return []float32{float32(len(text)), float32(len([]rune(text)) * 2)}, nil
+	}
+	cache := NewInMemoryCache(embedder, 64, 0.5)
+	ctx := context.Background()
+
+	resp := &CompletionResponse{
+		ID: "cached", Model: "gpt-4o-mini", Content: "修复方案：扩容连接池并重试写入",
+		Role: "assistant", Usage: Usage{PromptTokens: 100, CompletionTokens: 200, TotalTokens: 300},
+	}
+	// 首次写入
+	if err := cache.Set(ctx, "请修复数据库连接池耗尽问题", resp); err != nil {
+		t.Fatal(err)
+	}
+	// 相似查询命中（相同语义 → 高相似度）
+	hit, ok := cache.Get(ctx, "数据库连接池耗尽了，帮我修复", 0.5)
+	if !ok || hit.ID != "cached" {
+		t.Fatalf("相似查询应命中缓存, ok=%v", ok)
+	}
+
+	stats := cache.Stats(ctx)
+	if stats.TotalQueries != 1 || stats.CacheHits != 1 || stats.CacheMisses != 0 {
+		t.Errorf("stats = %+v, want 1 query / 1 hit / 0 miss", stats)
+	}
+	if stats.HitRate != 1.0 {
+		t.Errorf("HitRate = %v, want 1.0", stats.HitRate)
+	}
+	if stats.TokensSaved < 300 {
+		t.Errorf("TokensSaved = %d, want >= 300（命中一次省全部 token）", stats.TokensSaved)
+	}
+	// CostSavedUSD 依赖模型定价表（测试模型不在表内时为 0）；TokensSaved 是权威成本代理
+	t.Logf("CostSavedUSD = %v（定价表含测试模型时为非零）", stats.CostSavedUSD)
+}

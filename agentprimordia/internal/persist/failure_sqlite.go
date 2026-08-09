@@ -40,6 +40,10 @@ func NewSQLiteFailureStore(dsn string) (*SQLiteFailureStore, error) {
 }
 
 func (s *SQLiteFailureStore) initSchema() error {
+	// v4.9-1 性能优化：WAL + 降级同步 → 写入延迟大幅下降（fsync 次数减少）
+	if _, err := s.db.Exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;`); err != nil {
+		return fmt.Errorf("enable wal: %w", err)
+	}
 	schema := `
 	CREATE TABLE IF NOT EXISTS failures (
 		id TEXT PRIMARY KEY,

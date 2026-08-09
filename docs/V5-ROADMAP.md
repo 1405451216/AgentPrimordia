@@ -229,7 +229,7 @@ go build ./...
 | v4.6 | 稳定 | 安全与治理 | 双租户物理隔离 + 审计导出 | ✅ 已完成（2026-08-09：物理分库 `memory/physical_tenant.go` 双租户隔离测试；审计导出 `audit/logger.go:ExportJSON`；敏感工具审计 `guardrail/sensitive_tool_rule.go`；Vault 轮换已有测试；供应链门 govulncheck/socket/trivy 在 CI；安全态势报告 `docs/security-posture.md`） |
 | v4.7 | 深化 | 双语言深度对齐 | cross-language 全绿 + 双线报告并排 | ✅ 已完成（2026-08-09：TS 技能习得 `sdk/typescript/src/skills/index.ts:SkillAcquisition` + 自治运行时 `src/autonomy/index.ts:AutonomyRuntime`（含跨节点续跑）；Rust/Python SDK 测试已入 CI 且本地 6 测试通过；cross-language-api-check 全绿；双线对照 v4.2-5） |
 | v4.8 | 稳定 | 生态运营 | 真实第三方插件上架 | ✅ 已完成（2026-08-09：市场下载统计 `marketplace.go:DownloadStats`+测试；模板+技能市场条目扩充（incident-responder.json / data-fix-skill.json）；排行榜页 `bench/results/README.md`；自举报告 `guides/self-bootstrap-report.md`；企业部署 `guides/enterprise-deployment.md`（Helm/Terraform 一键）） |
-| v4.9 | 深化 | 性能与成本 | P95 再降 ≥20% + 成本下降量化 | ⬜ 规划中 |
+| v4.9 | 深化 | 性能与成本 | P95 再降 ≥20% + 成本下降量化 | ✅ 已完成（2026-08-09：SQLite WAL `persist/failure_sqlite.go` → Record P95 6.9ms→108µs（-98%）、Get -49%、List -30%；EventBus 锁分离 `realtime/events.go`；语义缓存命中率+TokenSaved 测试 `llm/cache_test.go`；目标级预算 `autonomy/goal.go:Charge` + `replan.go:ErrGoalBudgetExceeded`；边缘 profile `guides/edge-inference-profile.md`；2026-Q4 基线刷新） |
 | v5.0 | 稳定 | 平台里程碑 | 一键部署 + 迁移指南就绪 + 评估复测 ≥8.5 | ⬜ 规划中 |
 
 > **实施顺序**：v4.1 → v4.2 → … → v5.0 逐版本推进；每版本完成全部任务 + 验收场景通过后 bump 版本并发布（AGENTS.md §6.1：验证门失败即停，报告进度）。
