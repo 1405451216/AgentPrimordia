@@ -2606,6 +2606,7 @@
             }
           ],
           "methods": [
+            "GetCode",
             "Error"
           ],
           "doc": "CodeError 是带错误码的错误类型，用于结构化错误返回"
@@ -4809,6 +4810,45 @@
         {
           "name": "SetLastCostUSD",
           "doc": "SetLastCostUSD 向默认 metrics 设置最近一次调用成本（gauge）"
+        }
+      ]
+    },
+    {
+      "name": "multi_agent",
+      "file": "pkg/multi_agent.go",
+      "stability": "Experimental",
+      "types": [
+        {
+          "name": "Specialist",
+          "kind": "alias",
+          "stability": "Experimental",
+          "doc": "Specialist 专业分工的 Agent。"
+        },
+        {
+          "name": "Swarm",
+          "kind": "alias",
+          "stability": "Experimental",
+          "doc": "Swarm 专业分工 Agent 组（多 Agent 编排）。"
+        },
+        {
+          "name": "SwarmResult",
+          "kind": "alias",
+          "stability": "Experimental",
+          "doc": "SwarmResult 分工执行结果。"
+        }
+      ],
+      "functions": [
+        {
+          "name": "NewSwarm",
+          "params": [
+            "specialists []Specialist",
+            "generalist Agent"
+          ],
+          "returns": [
+            "*Swarm"
+          ],
+          "stability": "Experimental",
+          "doc": "NewSwarm 创建 Swarm：专业 Specialist 按关键词路由，无命中回退 generalist。"
         }
       ]
     },

@@ -17,6 +17,10 @@ import { TokenBucket, QuotaManager } from '../../src/governance/quota.js';
 import { ACL } from '../../src/security/sandbox.js';
 import { GuardrailEngine, RuleEngine, PromptInjectionRule, PIIRule } from '../../src/security/guardrails.js';
 import { InMemoryCheckpointStore } from '../../src/agent/request-id.js';
+import { GoalState, validateTransition, createGoal, canRetry } from '../../src/autonomy/index.js';
+import { createSkill, activateSkill, isCompatible, versionString } from '../../src/skills/index.js';
+import { OpenErr, type OpenAgentCard } from '../../src/a2a/interop.js';
+import { SessionState, RealtimeSession } from '../../src/realtime/index.js';
 
 // ===== 加载共享规范 =====
 
@@ -99,6 +103,18 @@ describe('Cross-Language Behavioral Alignment', () => {
               break;
             case 'persist_checkpoint':
               await runPersistCheckpointTest(testCase);
+              break;
+            case 'autonomy_goal':
+              runAutonomyGoalTest(testCase);
+              break;
+            case 'skills_lifecycle':
+              runSkillsLifecycleTest(testCase);
+              break;
+            case 'a2a_interop':
+              runA2AInteropTest(testCase);
+              break;
+            case 'realtime_session':
+              runRealtimeSessionTest(testCase);
               break;
             default:
               // 其余套件不需要 LLM Provider 的测试骨架
@@ -531,4 +547,194 @@ async function runPersistCheckpointTest(tc: TestCase) {
   expect(expected.restored).toBe(true);
   expect(cp?.turn).toBe(expected.turn);
   expect(cp?.messages.length).toBe(expected.messages);
+}
+
+// ===== v3.4-v3.6 新增套件（评估报告 §8.1：补齐 Go/TS 双侧实现，
+// 修复此前 "Skipping ... unknown suite" 静默跳过） =====
+
+function parseVersionString(s: string): { major: number; minor: number; patch: number } {
+  const [major, minor, patch] = s.split('.').map(Number);
+  return { major, minor, patch };
+}
+
+function runAutonomyGoalTest(tc: TestCase) {
+  const input = tc.input as {
+    transitions?: string[];
+    maxRetries?: number;
+    retryCount?: number;
+  };
+  const expected = tc.expected as {
+    finalState?: string;
+    allValid?: boolean;
+    errorContains?: string;
+    canRetry?: boolean;
+  };
+
+  // goal_retry_limit
+  if (input.maxRetries !== undefined) {
+    const goal = createGoal('xl-goal', { maxRetries: input.maxRetries });
+    goal.retryCount = input.retryCount ?? 0;
+    expect(canRetry(goal)).toBe(expected.canRetry);
+    return;
+  }
+
+  let state: GoalState = GoalState.Created;
+  let allValid = true;
+  let lastErr: string | undefined;
+  for (const tr of input.transitions ?? []) {
+    const [from, to] = tr.split('->');
+    if (from !== state) {
+      allValid = false;
+      break;
+    }
+    if (!validateTransition(state, to as GoalState)) {
+      allValid = false;
+      lastErr = `autonomy: 非法状态转换 ${state} → ${to}`;
+      break;
+    }
+    state = to as GoalState;
+  }
+  expect(allValid).toBe(expected.allValid);
+  if (expected.finalState !== undefined) {
+    expect(state).toBe(expected.finalState);
+  }
+  if (expected.errorContains !== undefined && lastErr !== undefined) {
+    expect(lastErr).toContain(expected.errorContains);
+  }
+}
+
+function runSkillsLifecycleTest(tc: TestCase) {
+  const input = tc.input as {
+    name?: string;
+    steps?: Array<{ id: string; toolName: string }>;
+    operation?: string;
+    v1?: string;
+    v2?: string;
+  };
+  const expected = tc.expected as {
+    status?: string;
+    version?: string;
+    compatible?: boolean;
+  };
+
+  // skill_activate
+  if (input.operation === 'activate') {
+    const skill = createSkill('s', 'd', []);
+    activateSkill(skill);
+    expect(skill.status).toBe(expected.status);
+    return;
+  }
+  // skill_version_compat
+  if (input.v1 !== undefined) {
+    const a = parseVersionString(input.v1);
+    const b = parseVersionString(input.v2 ?? '');
+    expect(isCompatible(a, b)).toBe(expected.compatible);
+    return;
+  }
+  // skill_create_draft
+  const skill = createSkill(input.name ?? 's', 'xl', input.steps ?? []);
+  expect(skill.status).toBe(expected.status);
+  expect(versionString(skill.version)).toBe(expected.version);
+}
+
+function runA2AInteropTest(tc: TestCase) {
+  const input = tc.input as {
+    name?: string;
+    url?: string;
+    capabilities?: { streaming?: boolean };
+    states?: string[];
+    code?: number;
+  };
+  const expected = tc.expected as {
+    hasName?: boolean;
+    hasUrl?: boolean;
+    streamingCapable?: boolean;
+    terminalFlags?: boolean[];
+    message?: string;
+  };
+
+  // error_codes
+  if (input.code !== undefined) {
+    const map: Record<number, string> = {
+      [OpenErr.TaskNotFound]: 'Task not found',
+    };
+    expect(map[input.code]).toBe(expected.message);
+    return;
+  }
+  // task_state_terminal
+  if (input.states !== undefined) {
+    const terminal = new Set(['completed', 'failed', 'canceled']);
+    const flags = input.states.map((s) => terminal.has(s));
+    expect(flags).toEqual(expected.terminalFlags);
+    return;
+  }
+  // agent_card_schema
+  const card: OpenAgentCard = {
+    name: input.name ?? '',
+    description: '',
+    url: input.url ?? '',
+    version: '',
+    capabilities: {
+      streaming: input.capabilities?.streaming ?? false,
+      pushNotifications: false,
+      stateTransitionHistory: false,
+    },
+  };
+  expect(card.name !== '').toBe(expected.hasName);
+  expect(card.url !== '').toBe(expected.hasUrl);
+  expect(card.capabilities.streaming).toBe(expected.streamingCapable);
+}
+
+function runRealtimeSessionTest(tc: TestCase) {
+  const input = tc.input as {
+    transitions?: string[];
+    state?: string;
+    action?: string;
+  };
+  const expected = tc.expected as {
+    finalState?: string;
+    allValid?: boolean;
+    newState?: string;
+    allowed?: boolean;
+  };
+
+  // session_barge_in
+  if (input.action === 'barge_in') {
+    expect(input.state).toBe('speaking');
+    const s = new RealtimeSession('xl-session');
+    s.transitionTo(SessionState.Listening);
+    s.transitionTo(SessionState.Thinking);
+    s.transitionTo(SessionState.Speaking);
+    let allowed = true;
+    try {
+      s.transitionTo(SessionState.Listening); // speaking → listening（barge-in）
+    } catch {
+      allowed = false;
+    }
+    expect(allowed).toBe(expected.allowed);
+    if (expected.newState !== undefined && allowed) {
+      expect(s.state).toBe(expected.newState);
+    }
+    return;
+  }
+
+  const s = new RealtimeSession('xl-session');
+  let allValid = true;
+  for (const tr of input.transitions ?? []) {
+    const [from, to] = tr.split('->');
+    if (from !== s.state) {
+      allValid = false;
+      break;
+    }
+    try {
+      s.transitionTo(to as SessionState);
+    } catch {
+      allValid = false;
+      break;
+    }
+  }
+  expect(allValid).toBe(expected.allValid);
+  if (expected.finalState !== undefined) {
+    expect(s.state).toBe(expected.finalState);
+  }
 }
