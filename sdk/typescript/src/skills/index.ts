@@ -212,3 +212,61 @@ export function validateSkill(skill: Skill): string[] {
 
   return errors;
 }
+
+// ===== Skill Acquisition（v4.7-1 TS 技能习得流水线，对齐 Go Acquisition） =====
+
+export interface ToolCallRecord {
+  toolName: string;
+  success: boolean;
+  durationMs: number;
+}
+
+export interface Trajectory {
+  taskDescription: string;
+  success: boolean;
+  timestamp: Date;
+  records: ToolCallRecord[];
+}
+
+/** LLM 提炼接口（与 Go SkillDistiller 对齐）。 */
+export interface SkillDistiller {
+  distill(trajectory: Trajectory): Promise<Skill>;
+}
+
+/** 习得技能描述护栏（与 Go SkillGuardrail 对齐）。 */
+export interface SkillGuardrail {
+  sanitizeSkillDescription(description: string): Promise<string>;
+}
+
+export class SkillAcquisition {
+  private trajectories: Trajectory[] = [];
+  private guardrail: SkillGuardrail | null = null;
+
+  constructor(private distiller: SkillDistiller) {}
+
+  setGuardrail(g: SkillGuardrail | null): void {
+    this.guardrail = g;
+  }
+
+  recordTrajectory(t: Trajectory): void {
+    this.trajectories.push(t);
+  }
+
+  get trajectoryCount(): number {
+    return this.trajectories.length;
+  }
+
+  /** 习得：提炼 → 护栏 → 规范校验；任一失败抛错（与 Go 一致）。 */
+  async acquire(trajectory: Trajectory): Promise<Skill> {
+    const skill = await this.distiller.distill(trajectory);
+    if (this.guardrail) {
+      skill.description = await this.guardrail.sanitizeSkillDescription(skill.description);
+    }
+    const problems = validateSkill(skill);
+    if (problems.length > 0) {
+      throw new Error(`技能规范校验失败: ${problems.join('; ')}`);
+    }
+    skill.status = 'draft';
+    return skill;
+  }
+}

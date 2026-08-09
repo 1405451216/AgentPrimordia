@@ -227,7 +227,7 @@ go build ./...
 | v4.4 | 稳定 | 开发者平台 | 第三方 30 分钟接入 | ✅ 已完成（2026-08-09：技能市场 `skills/skill_market.go` manifest+ECDSA 验签；模板远程安装 `cmd/ap/marketplace.go:installRemoteTemplate`；死链门 `scripts/check-docs-links.mjs` 274 链接全可达；Inspector DAG `extensions/vscode/src/inspector.ts:applyPlan`；接入指南 `docs/guides/third-party-integration.md`） |
 | v4.5 | 深化 | 分布式自治 | 3 节点 kill 1 自动续跑 | ✅ 已完成（2026-08-09：跨节点续跑 `autonomy/runtime.go:ResumeIncomplete` 重建目标+`autonomy_failover_e2e_test.go` 3 节点 kill 1 自动续跑；路由 `a2a/interop_router.go` 选路+熔断+故障切换；后端配置 `docs/guides/distributed-backends.md`） |
 | v4.6 | 稳定 | 安全与治理 | 双租户物理隔离 + 审计导出 | ✅ 已完成（2026-08-09：物理分库 `memory/physical_tenant.go` 双租户隔离测试；审计导出 `audit/logger.go:ExportJSON`；敏感工具审计 `guardrail/sensitive_tool_rule.go`；Vault 轮换已有测试；供应链门 govulncheck/socket/trivy 在 CI；安全态势报告 `docs/security-posture.md`） |
-| v4.7 | 深化 | 双语言深度对齐 | cross-language 全绿 + 双线报告并排 | ⬜ 规划中 |
+| v4.7 | 深化 | 双语言深度对齐 | cross-language 全绿 + 双线报告并排 | ✅ 已完成（2026-08-09：TS 技能习得 `sdk/typescript/src/skills/index.ts:SkillAcquisition` + 自治运行时 `src/autonomy/index.ts:AutonomyRuntime`（含跨节点续跑）；Rust/Python SDK 测试已入 CI 且本地 6 测试通过；cross-language-api-check 全绿；双线对照 v4.2-5） |
 | v4.8 | 稳定 | 生态运营 | 真实第三方插件上架 | ⬜ 规划中 |
 | v4.9 | 深化 | 性能与成本 | P95 再降 ≥20% + 成本下降量化 | ⬜ 规划中 |
 | v5.0 | 稳定 | 平台里程碑 | 一键部署 + 迁移指南就绪 + 评估复测 ≥8.5 | ⬜ 规划中 |

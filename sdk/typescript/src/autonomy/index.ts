@@ -145,3 +145,106 @@ export function readySteps(plan: GoalPlan): PlanStep[] {
     s.status === 'pending' && (s.dependsOn ?? []).every(dep => completed.has(dep))
   );
 }
+
+// ===== Autonomy Runtime（v4.7-1 TS 自治运行时，对齐 Go AutonomyRuntime） =====
+
+export interface CheckpointStore {
+  saveCheckpoint(cp: Checkpoint): Promise<void>;
+  loadCheckpoint(goalId: string): Promise<Checkpoint | undefined>;
+  listIncomplete(): Promise<Checkpoint[]>;
+}
+
+export interface Checkpoint {
+  goalId: string;
+  goalDescription: string;
+  state: GoalState;
+  lastCompletedStep: string;
+  plan: GoalPlan | null;
+  completed: boolean;
+}
+
+export interface StepExecutor {
+  executeStep(step: PlanStep): Promise<string>;
+}
+
+export interface AutonomyRuntimeConfig {
+  stepExecutor: StepExecutor;
+  checkpointStore?: CheckpointStore;
+}
+
+/** 自治运行时：目标生命周期 + 计划执行 + 崩溃恢复（与 Go 语义对齐）。 */
+export class AutonomyRuntime {
+  private goals = new Map<string, AgentGoal>();
+  private plans = new Map<string, GoalPlan>();
+  private resume: CheckpointStore | null;
+
+  constructor(private cfg: AutonomyRuntimeConfig) {
+    this.resume = cfg.checkpointStore ?? null;
+  }
+
+  submitGoal(description: string, cfg: GoalConfig = {}): AgentGoal {
+    const goal = createGoal(description, cfg);
+    this.goals.set(goal.id, goal);
+    return goal;
+  }
+
+  setPlan(goalId: string, plan: GoalPlan): void {
+    if (!this.goals.has(goalId)) throw new Error(`目标 ${goalId} 不存在`);
+    this.plans.set(goalId, plan);
+  }
+
+  getGoal(goalId: string): AgentGoal | undefined {
+    return this.goals.get(goalId);
+  }
+
+  getPlan(goalId: string): GoalPlan | undefined {
+    return this.plans.get(goalId);
+  }
+
+  /** 执行目标：按就绪步骤循环执行直至完成（跳过已完成步骤，支持断点续跑）。 */
+  async executeGoal(goalId: string): Promise<void> {
+    const goal = this.goals.get(goalId);
+    if (!goal) throw new Error(`目标 ${goalId} 不存在`);
+    const plan = this.plans.get(goalId);
+    if (!plan) throw new Error(`目标 ${goalId} 无计划`);
+    // 与 Go 一致：planned → executing
+    if (goal.state === GoalState.Created) transitionGoal(goal, GoalState.Planned);
+    transitionGoal(goal, GoalState.Executing);
+
+    let step = readySteps(plan).shift();
+    while (step) {
+      await this.cfg.stepExecutor.executeStep(step);
+      step.status = 'completed';
+      step = readySteps(plan).shift();
+    }
+    if (!isPlanComplete(plan)) {
+      transitionGoal(goal, GoalState.Failed);
+      throw new Error(`目标 ${goalId} 计划未完成`);
+    }
+    transitionGoal(goal, GoalState.Validated);
+  }
+
+  completeGoal(goalId: string): void {
+    const goal = this.goals.get(goalId);
+    if (!goal) throw new Error(`目标 ${goalId} 不存在`);
+    transitionGoal(goal, GoalState.Done);
+  }
+
+  /** 崩溃恢复：扫描未完成 checkpoint → 重建目标 + 恢复计划（与 Go ResumeIncomplete 对齐）。 */
+  async resumeIncomplete(): Promise<string[]> {
+    if (!this.resume) return [];
+    const checkpoints = await this.resume.listIncomplete();
+    const resumed: string[] = [];
+    for (const cp of checkpoints) {
+      if (cp.plan) this.plans.set(cp.goalId, cp.plan);
+      if (!this.goals.has(cp.goalId)) {
+        const goal = createGoal(cp.goalDescription || '恢复目标');
+        (goal as { id: string }).id = cp.goalId;
+        transitionGoal(goal, GoalState.Planned);
+        this.goals.set(cp.goalId, goal);
+      }
+      resumed.push(cp.goalId);
+    }
+    return resumed;
+  }
+}
