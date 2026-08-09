@@ -110,70 +110,21 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			)
 		}
 
-		if costTracker != nil && costTracker.CheckBudget() {
-			a.logger.Warn("Agent 超出预算", "name", a.config.Name)
-			_ = a.lifecycle.SetStatus(StatusFailed)
-			return &Response{RequestID: cfg.requestID, Error: ErrBudgetExceeded}, ErrBudgetExceeded
+		// 成本检查（v4.1 拆分：checkBudgetExceeded）
+		if resp, cerr := a.checkBudgetExceeded(cfg, costTracker); cerr != nil {
+			return resp, cerr
 		}
 
-		// v3.4-3：首轮注入长期记忆回读（跨 session 记忆召回）。
-		// memory store 实现 MemoryQuerier 时，以用户目标检索相关记忆并注入 system。
-		if turn == startTurn {
-			if memCtx := a.searchMemoryContext(ctx, history); memCtx != "" {
-				history = injectMemoryContext(history, memCtx)
-				a.logger.Debug("长期记忆已注入", "turn", turn)
-				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 长期记忆上下文已注入"})
-			}
-			// v3.6-3：跨任务记忆 fast-path——命中已解任务时直接复用答案
-			if answer, ok := a.tryMemorySolution(ctx, history); ok {
-				a.logger.Info("跨任务记忆命中，直接复用已解答案", "name", a.config.Name)
-				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[Memory] 命中已解任务记忆，跳过推理"})
-				a.statsMu.Lock()
-				a.stats.MemoryHits++
-				a.statsMu.Unlock()
-				return &Response{
-					RequestID: cfg.requestID,
-					Content:   answer,
-					Metrics: Metrics{
-						TotalTurns:  0, // fast-path：0 轮 LLM 推理
-						Duration:    0,
-						MemoryHit:   true,
-					},
-				}, nil
-			}
+		// 记忆注入 + 已解任务 fast-path（v4.1 拆分：injectMemoryContextAndFastPath）
+		var fastResp *Response
+		var fastHit bool
+		history, fastResp, fastHit = a.injectMemoryContextAndFastPath(ctx, history, turn, startTurn, cfg)
+		if fastHit {
+			return fastResp, nil
 		}
 
-		var ragQuery string
-		if turn == startTurn && len(history) > 0 {
-			for i := len(history) - 1; i >= 0; i-- {
-				if history[i].Role == RoleUser {
-					ragQuery = history[i].Content
-					break
-				}
-			}
-		} else if turn < len(history) {
-			ragQuery = history[turn].Content
-		}
-
-		if a.shouldRAG(turn) && ragQuery != "" {
-			var ragSpan Span = &NoopSpan{}
-			if tracer != nil {
-				ragSpan = tracer.Start(
-					"rag.search",
-					SpanKindInternal,
-					WithParent(turnSpan.SpanContext()),
-					WithAttributes(map[string]any{"agent": a.config.Name, "turn": turn}),
-				)
-			}
-			ragContext, ragDocs := a.searchRAG(ctx, ragQuery)
-			ragSpan.SetAttribute("docs_found", len(ragDocs))
-			ragSpan.End()
-			if ragContext != "" {
-				history = a.injectRAGContext(history, ragContext)
-				a.logger.Debug("RAG 上下文已注入", "turn", turn, "query_len", len(ragQuery), "docs", len(ragDocs))
-				a.emitStream(cfg, StreamEvent{Type: StreamEventThought, Content: "[RAG] 知识库上下文已注入"})
-			}
-		}
+		// RAG 检索与注入（v4.1 拆分：ragRetrieveAndInject）
+		history = a.ragRetrieveAndInject(ctx, history, turn, startTurn, cfg, tracer, turnSpan)
 
 		trimmedHistory := a.trimContext(history, 0)
 		llmMessages := convertToLLMMessages(trimmedHistory)
@@ -252,37 +203,9 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 			},
 		})
 
-		// p2t1：Guardrail 输出端检查（PII 脱敏、注入拦截）
-		// 在 LLM 响应返回后、写入消息历史前调用 OutputGuard 检查函数
-		if a.capCache != nil && a.capCache.outputGuard != nil && thought.Content != "" {
-			sanitized, blocked, gerr := a.capCache.outputGuard(thought.Content)
-			if gerr != nil {
-				a.logger.Warn("Guardrail output 检查失败", "err", gerr)
-			} else if blocked {
-				// p2t4：写入 GuardrailBlock 审计事件
-				a.writeAudit(ctx, AuditEvent{
-					Actor:    a.config.Name,
-					Action:   auditActionGuardrailBlock,
-					Resource: cfg.requestID,
-					Result:   auditResultBlocked,
-					Details:  map[string]any{"turn": turn, "rule": "output_guard"},
-				})
-				// 修复评估报告 §四.1-③：抛出 ErrOutputBlocked sentinel，
-				// 使 errors.Is(err, ap.ErrOutputBlocked) 与 GetErrorCode→GRD_002 可命中
-				// （此前裸 fmt.Errorf 与 pkg.ErrOutputBlocked 消息不同，永不匹配）。
-				return &Response{RequestID: cfg.requestID, Error: ErrOutputBlocked}, ErrOutputBlocked
-			} else if sanitized != "" {
-				thought.Content = sanitized
-				a.logger.Debug("Guardrail 已脱敏输出")
-				// p2t4：写入 GuardrailSanitize 审计事件
-				a.writeAudit(ctx, AuditEvent{
-					Actor:    a.config.Name,
-					Action:   auditActionGuardrailSanitize,
-					Resource: cfg.requestID,
-					Result:   auditResultSuccess,
-					Details:  map[string]any{"turn": turn, "rule": "output_guard"},
-				})
-			}
+		// 输出端护栏（v4.1 拆分：guardrailSanitizeOutput；PII 脱敏、注入拦截）
+		if resp, gerr := a.guardrailSanitizeOutput(ctx, cfg, &thought, turn); gerr != nil {
+			return resp, gerr
 		}
 
 		assistantMsg := Message{
