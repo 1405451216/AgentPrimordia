@@ -66,8 +66,38 @@ type TenantScoped struct {
 	inner    Memory
 	tenantID string
 
+	// audit 租户拒绝事件的审计出口（可选，默认 nil 仅计数）。
+	// memory 层不直接依赖 internal/audit（避免下层反向引用横向模块），
+	// 上层将 audit.Logger 适配为 TenantAuditSink 后经 SetAuditSink 注入。
+	audit atomic.Pointer[TenantAuditSink]
+
 	// stats 用于跨调用方观测租户内部活动
 	stats tenantStats
+}
+
+// TenantAuditSink 租户隔离拒绝事件的审计出口。
+type TenantAuditSink interface {
+	// RecordDenied 记录一次跨租户访问拒绝。
+	// resource 形如 "ep:<id>"（单条资源）或 "search"（批量过滤）。
+	RecordDenied(ctx context.Context, tenantID, resource string)
+}
+
+// SetAuditSink 注入租户拒绝审计出口；传 nil 恢复仅计数（默认）行为。
+// 应在并发使用前调用（内部以 atomic.Pointer 存取，运行中注入亦安全）。
+func (t *TenantScoped) SetAuditSink(sink TenantAuditSink) {
+	var p *TenantAuditSink
+	if sink != nil {
+		p = &sink
+	}
+	t.audit.Store(p)
+}
+
+// recordDenied 记录一次跨租户拒绝：stats 计数 + 可选审计出口。
+func (t *TenantScoped) recordDenied(ctx context.Context, resource string) {
+	t.stats.denied.Add(1)
+	if p := t.audit.Load(); p != nil {
+		(*p).RecordDenied(ctx, t.tenantID, resource)
+	}
 }
 
 // tenantStats 跟踪该 TenantScoped 实例的调用计数。
@@ -104,7 +134,11 @@ func NewTenantScoped(inner Memory, tenantID string) (*TenantScoped, error) {
 	}, nil
 }
 
-// Inner 返回底层 Memory 实例（慎用：绕过租户隔离）。
+// Inner 返回底层 Memory 实例。
+//
+// 警告：这是绕过租户隔离的逃生舱。经 Inner 读取/写入的数据不注入
+// tenant_id、不过滤、不审计，调用方对全部跨租户后果承担责任；
+// 仅限迁移工具、管理员维护等明确场景，业务代码必须走 TenantScoped 方法。
 func (t *TenantScoped) Inner() Memory { return t.inner }
 
 // TenantID 返回当前装饰器绑定的 tenantID。
@@ -135,7 +169,7 @@ func (t *TenantScoped) Add(ctx context.Context, ep *Episode) error {
 		ep.Metadata = make(map[string]string, 1)
 	}
 	if existing, ok := ep.Metadata[TenantMetadataKey]; ok && existing != t.tenantID {
-		t.stats.denied.Add(1)
+		t.recordDenied(ctx, "ep:"+ep.ID)
 		return fmt.Errorf("%w: ep=%s expected=%s actual=%s", ErrTenantMismatch, ep.ID, t.tenantID, existing)
 	}
 	ep.Metadata[TenantMetadataKey] = t.tenantID
@@ -160,7 +194,7 @@ func (t *TenantScoped) AddBatch(ctx context.Context, episodes []*Episode) error 
 			ep.Metadata = make(map[string]string, 1)
 		}
 		if existing, ok := ep.Metadata[TenantMetadataKey]; ok && existing != t.tenantID {
-			t.stats.denied.Add(1)
+			t.recordDenied(ctx, "ep:"+ep.ID)
 			return fmt.Errorf("%w: ep=%s expected=%s actual=%s", ErrTenantMismatch, ep.ID, t.tenantID, existing)
 		}
 		ep.Metadata[TenantMetadataKey] = t.tenantID
@@ -179,7 +213,7 @@ func (t *TenantScoped) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	if !t.owns(ep) {
-		t.stats.denied.Add(1)
+		t.recordDenied(ctx, "ep:"+id)
 		return fmt.Errorf("%w: id=%s", ErrTenantMismatch, id)
 	}
 	return t.inner.Delete(ctx, id)
@@ -193,7 +227,7 @@ func (t *TenantScoped) DeleteBatch(ctx context.Context, ids []string) error {
 			return err
 		}
 		if !t.owns(ep) {
-			t.stats.denied.Add(1)
+			t.recordDenied(ctx, "ep:"+id)
 			return fmt.Errorf("%w: id=%s", ErrTenantMismatch, id)
 		}
 	}
@@ -207,7 +241,7 @@ func (t *TenantScoped) UpdateSummary(ctx context.Context, id, summary, topics st
 		return err
 	}
 	if !t.owns(ep) {
-		t.stats.denied.Add(1)
+		t.recordDenied(ctx, "ep:"+id)
 		return fmt.Errorf("%w: id=%s", ErrTenantMismatch, id)
 	}
 	return t.inner.UpdateSummary(ctx, id, summary, topics)
@@ -220,7 +254,7 @@ func (t *TenantScoped) SetImportance(ctx context.Context, id string, importance 
 		return err
 	}
 	if !t.owns(ep) {
-		t.stats.denied.Add(1)
+		t.recordDenied(ctx, "ep:"+id)
 		return fmt.Errorf("%w: id=%s", ErrTenantMismatch, id)
 	}
 	return t.inner.SetImportance(ctx, id, importance)
@@ -236,7 +270,7 @@ func (t *TenantScoped) Get(ctx context.Context, id string) (*Episode, error) {
 	}
 	t.stats.gets.Add(1)
 	if !t.owns(ep) {
-		t.stats.denied.Add(1)
+		t.recordDenied(ctx, "ep:"+id)
 		return nil, fmt.Errorf("%w: id=%s", ErrTenantMismatch, id)
 	}
 	return ep, nil
@@ -254,7 +288,7 @@ func (t *TenantScoped) GetBatch(ctx context.Context, ids []string) (map[string]*
 		if t.owns(v) {
 			out[k] = v
 		} else {
-			t.stats.denied.Add(1)
+			t.recordDenied(ctx, "ep:"+k)
 		}
 	}
 	return out, nil
@@ -284,7 +318,7 @@ func (t *TenantScoped) SearchAdvanced(ctx context.Context, opts SearchOptions) (
 		if t.owns(r.Episode) {
 			out = append(out, r)
 		} else {
-			t.stats.denied.Add(1)
+			t.recordDenied(ctx, "search")
 		}
 	}
 	return out, nil
@@ -465,7 +499,8 @@ func (t *TenantScoped) filterOut(eps []*Episode) []*Episode {
 		if t.owns(ep) {
 			out = append(out, ep)
 		} else {
-			t.stats.denied.Add(1)
+			// filterOut 无 ctx 参数：拒绝事件使用 Background 上下文记审计
+			t.recordDenied(context.Background(), "ep:"+ep.ID)
 		}
 	}
 	return out

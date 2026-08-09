@@ -509,3 +509,118 @@ func ids(eps []*Episode) []string {
 	}
 	return out
 }
+
+// ===========================================================================
+// 拒绝审计（v4.1 租户加固：denied 入审计事件）
+// ===========================================================================
+
+// fakeAuditSink 记录型审计出口（测试替身）
+type fakeAuditSink struct {
+	mu       sync.Mutex
+	records  []string // "tenantID|resource"
+}
+
+func (f *fakeAuditSink) RecordDenied(_ context.Context, tenantID, resource string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.records = append(f.records, tenantID+"|"+resource)
+}
+
+func (f *fakeAuditSink) len() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.records)
+}
+
+func TestTenantScoped_AuditDenied_Add(t *testing.T) {
+	sc, err := NewTenantScoped(NewInMemoryStore(), "tenant-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &fakeAuditSink{}
+	sc.SetAuditSink(sink)
+
+	// 归属租户写入 → 不产生拒绝审计
+	own := MustEpisode("s1", "user", "hello")
+	own.ID = "ep-own"
+	own.Metadata = map[string]string{TenantMetadataKey: "tenant-a"}
+	if err := sc.Add(context.Background(), own); err != nil {
+		t.Fatalf("own add: %v", err)
+	}
+	// 伪造归属写入 → ErrTenantMismatch + 拒绝审计
+	spoof := MustEpisode("s1", "user", "hello")
+	spoof.ID = "ep-spoof"
+	spoof.Metadata = map[string]string{TenantMetadataKey: "tenant-b"}
+	err = sc.Add(context.Background(), spoof)
+	if !errors.Is(err, ErrTenantMismatch) {
+		t.Fatalf("spoof add err = %v, want ErrTenantMismatch", err)
+	}
+	if sink.len() != 1 {
+		t.Fatalf("audit records = %d, want 1", sink.len())
+	}
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	if sink.records[0] != "tenant-a|ep:ep-spoof" {
+		t.Errorf("record = %q, want tenant-a|ep:ep-spoof", sink.records[0])
+	}
+}
+
+func TestTenantScoped_AuditDenied_ListFilter(t *testing.T) {
+	inner := NewInMemoryStore()
+	epA := MustEpisode("s1", "user", "hello")
+	epA.ID = "ep-a"
+	epA.Metadata = map[string]string{TenantMetadataKey: "tenant-a"}
+	epB := MustEpisode("s1", "user", "hello")
+	epB.ID = "ep-b"
+	epB.Metadata = map[string]string{TenantMetadataKey: "tenant-b"}
+	_ = inner.Add(context.Background(), epA)
+	_ = inner.Add(context.Background(), epB)
+
+	sc, err := NewTenantScoped(inner, "tenant-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &fakeAuditSink{}
+	sc.SetAuditSink(sink)
+
+	items, err := sc.List(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != "ep-a" {
+		t.Fatalf("list = %+v, want only ep-a（过滤器级隔离）", idsOf(items))
+	}
+	if sink.len() != 1 {
+		t.Fatalf("audit records = %d, want 1（ep-b 被过滤应审计）", sink.len())
+	}
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	if sink.records[0] != "tenant-a|ep:ep-b" {
+		t.Errorf("record = %q, want tenant-a|ep:ep-b", sink.records[0])
+	}
+}
+
+func TestTenantScoped_AuditNilSink(t *testing.T) {
+	sc, err := NewTenantScoped(NewInMemoryStore(), "tenant-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 默认 nil sink：拒绝仅计数，不 panic
+	spoof := MustEpisode("s1", "user", "hello")
+	spoof.ID = "ep-spoof"
+	spoof.Metadata = map[string]string{TenantMetadataKey: "tenant-b"}
+	if err := sc.Add(context.Background(), spoof); !errors.Is(err, ErrTenantMismatch) {
+		t.Fatalf("err = %v, want ErrTenantMismatch", err)
+	}
+	if got := sc.TenantMetrics().Denied; got != 1 {
+		t.Errorf("denied = %d, want 1", got)
+	}
+}
+
+func idsOf(eps []*Episode) []string {
+	out := make([]string, len(eps))
+	for i, e := range eps {
+		out[i] = e.ID
+	}
+	return out
+}
