@@ -1,6 +1,6 @@
 {
   "date": "2026-Q4",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "environment": {
     "go": "1.26.5",
     "os": "windows/amd64",

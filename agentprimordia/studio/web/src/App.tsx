@@ -44,7 +44,7 @@ export default function App() {
             帮助文档
           </Link>
           <span className="help-hint">Shift + / 查看快捷键</span>
-          <span>Studio v3.2.0</span>
+          <span>Studio v5.0.0</span>
         </footer>
       </aside>
       <main className="content">

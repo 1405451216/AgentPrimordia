@@ -4262,6 +4262,7 @@
     {
       "name": "llm_env",
       "file": "pkg/llm_env.go",
+      "stability": "Experimental",
       "functions": [
         {
           "name": "ProviderFromEnv",

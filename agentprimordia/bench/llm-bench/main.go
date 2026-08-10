@@ -38,6 +38,8 @@ func main() {
 		limit          = flag.Int("limit", 0, "仅运行前 N 条用例（0 = 全部）")
 		version        = flag.String("version", "dev", "被测框架版本号")
 		timeout        = flag.Duration("timeout", 60*time.Second, "单次 LLM 调用超时")
+		ability        = flag.String("ability", "coding", "跑分能力: coding（默认）| autonomy | skills")
+		allowFail      = flag.Bool("allow-fail", false, "无 API Key 时产出 0 分基线报告（计划约定：失败记 0 分不门禁）")
 	)
 	flag.Parse()
 
@@ -54,15 +56,20 @@ func main() {
 	if key == "" {
 		key = envKeyForProvider(*provider)
 	}
-	if key == "" {
+	if key == "" && !*allowFail {
 		fmt.Fprintf(os.Stderr, "ERROR: %s API Key 未配置（用 --api-key 或 %s 环境变量）\n", *provider, envKeyName(*provider))
 		os.Exit(2)
 	}
+	noKey := key == ""
 
-	prov, err := newProvider(*provider, key, *model)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: 创建 Provider 失败: %v\n", err)
-		os.Exit(2)
+	var prov llm.Provider
+	var err error
+	if !noKey {
+		prov, err = newProvider(*provider, key, *model)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: 创建 Provider 失败: %v\n", err)
+			os.Exit(2)
+		}
 	}
 
 	cases := eval.MustBenchmarkCases()
@@ -85,17 +92,50 @@ func main() {
 
 	fmt.Printf("==> AgentPrimordia LLM 跑分\n")
 	fmt.Printf("    Provider: %s\n    Model:    %s\n", *provider, *model)
+	fmt.Printf("    Ability:  %s\n", *ability)
 	fmt.Printf("    Cases:    %d\n    Retries:  %d\n", len(cases), *retries)
 	fmt.Printf("    Baseline: %.4f (gate >= %.4f)\n\n", baselineRate, maxOf(*threshold, baselineRate))
+
+	// 按能力选择案例集
+	caseCount := len(cases)
+	switch *ability {
+	case "autonomy":
+		acCases := abilityGoalCases(*limit)
+		cases = nil
+		caseCount = len(acCases)
+		_ = acCases
+	case "skills":
+		skCases := abilitySkillCases(*limit)
+		cases = nil
+		caseCount = len(skCases)
+		_ = skCases
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
 	start := time.Now()
-	res, err := eval.RunLLMBench(ctx, cfg, agent, cases)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: 跑分失败: %v\n", err)
-		os.Exit(2)
+	var res *eval.LLMBenchResult
+	if noKey {
+		// v4.1 计划约定：失败记 0 分不门禁，但须产出首份基线报告
+		fmt.Printf("    ⚠ 无 API Key：按计划产出 0 分基线报告（provider=unavailable）\n\n")
+		res = zeroRateReport(cfg, *ability, caseCount)
+	} else {
+		switch *ability {
+		case "coding":
+			res, err = eval.RunLLMBench(ctx, cfg, agent, cases)
+		case "autonomy":
+			res, err = eval.RunAutonomyGoalBench(ctx, cfg, agent, abilityGoalCases(*limit))
+		case "skills":
+			res, err = eval.RunSkillAcquisitionBench(ctx, cfg, agent, abilitySkillCases(*limit))
+		default:
+			fmt.Fprintf(os.Stderr, "ERROR: 未知能力 %q（支持 coding|autonomy|skills）\n", *ability)
+			os.Exit(2)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: 跑分失败: %v\n", err)
+			os.Exit(2)
+		}
 	}
 
 	printReport(res, time.Since(start))
@@ -117,6 +157,10 @@ func main() {
 		return
 	}
 
+	if noKey {
+		fmt.Printf("ℹ 0 分基线模式：不执行门禁判定（计划约定：失败记 0 分不门禁）\n")
+		return
+	}
 	if !res.MeetsGate {
 		fmt.Printf("❌ 门禁未达标：pass_rate=%.4f < gate=%.4f（分数只升不降）\n", res.PassRate, maxOf(*threshold, baselineRate))
 		os.Exit(1)
@@ -250,4 +294,68 @@ func printReport(res *eval.LLMBenchResult, elapsed time.Duration) {
 	fmt.Printf("    Tokens:         %d (prompt %d / completion %d)\n", res.TotalTokens, res.PromptTokens, res.CompletionTokens)
 	fmt.Printf("    Latency:        %d ms total / %d ms avg\n", res.LatencyMs, res.AvgLatencyMs)
 	fmt.Printf("    Wall:           %s\n", elapsed.Round(time.Millisecond))
+}
+
+// zeroRateReport 无 Key 时的 0 分基线报告（provider=unavailable，每用例记错误）。
+func zeroRateReport(cfg eval.LLMBenchConfig, ability string, total int) *eval.LLMBenchResult {
+	res := &eval.LLMBenchResult{
+		Version:   cfg.Version,
+		Model:     cfg.Model,
+		Provider:  "unavailable",
+		Total:     total,
+		Failed:    total,
+		PassRate:  0,
+		Threshold: cfg.Threshold,
+		Baseline:  cfg.Baseline,
+		Generated: time.Now().UTC().Format(time.RFC3339),
+		Cases:     make([]eval.LLMBenchCaseResult, 0, total),
+	}
+	for i := range total {
+		res.Cases = append(res.Cases, eval.LLMBenchCaseResult{
+			CaseID: "unavailable-" + itoa(i),
+			Phase:  ability,
+			Error:  "API Key 未配置（--allow-fail 0 分基线模式）",
+		})
+	}
+	return res
+}
+
+// abilityGoalCases autonomy 能力跑分案例（目标 + 必达阶段）。
+func abilityGoalCases(limit int) []eval.AutonomyGoalCase {
+	cases := []eval.AutonomyGoalCase{
+		{ID: "goal-1", Goal: "监控数据异常并自动修复", Required: []string{"采集", "修复", "验证"}},
+		{ID: "goal-2", Goal: "每日生成销售汇总报告并发送", Required: []string{"汇总", "报告"}},
+		{ID: "goal-3", Goal: "分析用户反馈并输出改进建议", Required: []string{"分析", "建议"}},
+	}
+	if limit > 0 && limit < len(cases) {
+		cases = cases[:limit]
+	}
+	return cases
+}
+
+// abilitySkillCases skills 能力跑分案例（任务 + 工具轨迹）。
+func abilitySkillCases(limit int) []eval.SkillAcquisitionCase {
+	cases := []eval.SkillAcquisitionCase{
+		{ID: "skill-1", Task: "数据库异常修复", ToolCalls: []string{"query_anomaly", "fix_data", "verify_fix"}, MinSteps: 3},
+		{ID: "skill-2", Task: "日志归档", ToolCalls: []string{"scan_logs", "archive"}, MinSteps: 2},
+		{ID: "skill-3", Task: "模型评估报告", ToolCalls: []string{"run_eval", "collect_metrics", "render_report"}, MinSteps: 2},
+	}
+	if limit > 0 && limit < len(cases) {
+		cases = cases[:limit]
+	}
+	return cases
+}
+
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	var buf [8]byte
+	pos := len(buf)
+	for i > 0 {
+		pos--
+		buf[pos] = byte('0' + i%10)
+		i /= 10
+	}
+	return string(buf[pos:])
 }

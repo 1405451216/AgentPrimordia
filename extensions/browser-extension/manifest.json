@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "AgentPrimordia DevTools",
-    "version": "0.1.0",
+    "version": "5.0.0",
     "description": "Inspect and interact with AgentPrimordia agents on any webpage",
     "permissions": ["activeTab", "storage", "scripting"],
     "host_permissions": ["http://localhost:8765/*", "http://localhost:6060/*"],

@@ -31,7 +31,7 @@ export class OfficialOTelBridge {
 
   startSpan(name: string, attributes?: Record<string, string | number | boolean>): string {
     // tracer 版本与 package.json 保持同步（发布纪律：bump 时同步此处）
-    const tracer = trace.getTracer('agentprimordia', '4.0.0');
+    const tracer = trace.getTracer('agentprimordia', '5.0.0');
     const span = tracer.startSpan(name, { attributes });
     const id = `otel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.activeSpans.set(id, span);

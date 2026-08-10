@@ -56,6 +56,28 @@ if (goMajor !== tsMajor) {
   console.log(`\n✅ 版本一致: major=${goMajor}`);
 }
 
+// v5.0-5: Helm 生产部署载体版本同步检查（ap/ap-studio 镜像 tag + Chart appVersion）
+try {
+  const valuesPath = resolve(root, 'agentprimordia/deploy/helm/agentprimordia/values.yaml');
+  const values = readFileSync(valuesPath, 'utf-8');
+  const chartPath = resolve(root, 'agentprimordia/deploy/helm/agentprimordia/Chart.yaml');
+  const chart = readFileSync(chartPath, 'utf-8');
+  const apTag = values.match(/tag: "v([\d.]+)"/);
+  const appVersion = chart.match(/appVersion: "([\d.]+)"/);
+  const helmTag = apTag ? apTag[1] : null;
+  const chartVer = appVersion ? appVersion[1] : null;
+  const mismatches = [];
+  if (helmTag !== goVersion) mismatches.push(`values.yaml ap tag=${helmTag} != ${goVersion}`);
+  if (chartVer !== goVersion) mismatches.push(`Chart.yaml appVersion=${chartVer} != ${goVersion}`);
+  if (mismatches.length > 0) {
+    console.error(`❌ Helm 部署载体版本不一致: ${mismatches.join('; ')}`);
+    process.exit(1);
+  }
+  console.log(`✅ Helm 部署载体版本一致: ${goVersion}`);
+} catch {
+  console.warn('⚠ Helm 检查跳过（部署文件缺失）');
+}
+
 // 检查 API 契约文件是否存在
 import { existsSync } from 'node:fs';
 const contractPath = resolve(root, 'sdk/typescript/api-contract.json');

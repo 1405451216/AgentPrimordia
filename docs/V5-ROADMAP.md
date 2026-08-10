@@ -40,7 +40,7 @@
 | 7 | 示例迁移 pkg | `ecosystem/examples/{a2a-interop,autonomous-task,coding-agent,realtime-voice,skill-evolution}/main.go` | 5 个文件（分别 :13/:15/:32/:12/:13 import `internal/*`）改走 `pkg/` 公共 API；缺导出则先在 pkg 补导出（如 autonomy 运行时装配、realtime 会话 API），不留 internal 直连 |
 | 8 | workflow 垫片拆除 | `internal/orchestration/workflow_reexport.go` | 先把 orchestration 测试改用 `internal/agent` 的 Workflow 类型，再删 16 类型别名 + 22 const + 1 var（`NewWorkflowExecution`）垫片（干净割接，不留兼容别名） |
 | 9 | 租户加固 | `internal/memory/tenant.go` | `TenantScoped.Add/AddBatch` 已统一覆盖+校验（`tenant.go:126-141/:160-167`：缺省注入 + 不一致拒绝 `ErrTenantMismatch`，2026-08-09 评估 §5.2 复核已落地）；剩余缺口：denied 拒绝仅记 stats 计数（如 :138/:163）未入审计事件、`Inner()`（:108）警示可再强化、CAPABILITY-INVENTORY.md 租户条目注明「过滤器级隔离」口径 |
-| 10 | V4 能力真实 LLM 端到端 | `internal/eval/llm_bench.go` + `ecosystem/examples/{autonomous-task,skill-evolution,realtime-voice}` | 三个 demo（现 autonomous-task 无 LLM、skill-evolution 用 mockDistiller、realtime-voice 纯 mock 流）支持 env 驱动真实 provider（`AP_LLM_PROVIDER/AP_LLM_MODEL/AP_LLM_API_KEY`），默认仍 mock 保证 CI 可跑；llm_bench 新增两项跑分：autonomy 目标执行成功率、skills 习得成功率（失败则记 0 分不门禁，但须产出首份基线报告，随 v4.1 完成写入 ROADMAP.md 状态行） |
+| 10 | V4 能力真实 LLM 端到端 | `internal/eval/llm_bench.go` + `ecosystem/examples/{autonomous-task,skill-evolution,realtime-voice}` | 三个 demo（现 autonomous-task 无 LLM、skill-evolution 用 mockDistiller、realtime-voice 纯 mock 流）支持 env 驱动真实 provider（`AP_LLM_PROVIDER/AP_LLM_MODEL/AP_LLM_API_KEY`），默认仍 mock 保证 CI 可跑；llm_bench 新增两项跑分：autonomy 目标执行成功率、skills 习得成功率（失败则记 0 分不门禁；首份基线报告已产出：bench/results/2026-Q3-v4.1-{autonomy,skills}-baseline.json，2026-08-09 无 key 环境 0 分基线，真实数值待 nightly 有 key 刷新） |
 
 ### Phase 2 跨组件集成（P1）
 
@@ -221,8 +221,8 @@ go build ./...
 
 | 版本 | 性质 | 主题 | 验收场景 | 状态 |
 |------|------|------|---------|------|
-| v4.1 | 深化 | 真实接线 | 真实语音会话（本地免 key 一键 demo）+ 真实 LLM 自治目标基线报告 | ⬜ 规划中 |
-| v4.2 | 稳定 | 稳定与规模化 | Soak 报告 + 并发 100 目标 | ⬜ 规划中 |
+| v4.1 | 深化 | 真实接线 | 真实语音会话（本地免 key 一键 demo）+ 真实 LLM 自治目标基线报告 | ✅ 已完成（2026-08-09：真实 ASR/TTS `realtime/asr.go,tts.go`；CLI 旗标 `cmd/ap/realtime.go`；Studio 真实接线 `studio/adapters_v3x.go`；`persist/failure_sqlite.go`；runLoop 拆分 `react_loop_blocks.go`；示例全迁 pkg；垫片拆除；租户审计 `memory/tenant.go:TenantAuditSink`；`pkg/llm_env.go:ProviderFromEnv` + llm_bench 两项跑分；一键 demo `scripts/dev-realtime.ps1/.sh`） |
+| v4.2 | 稳定 | 稳定与规模化 | Soak 报告 + 并发 100 目标 | ✅ 已完成（2026-08-09：Soak harness `bench/soak/soak_mixed_test.go` 恢复率 1.0；Pool×autonomy 100 并发持平 `internal/pool/autonomy_scale_test.go`；P95 基准刷新 3 次中位数 `bench/results/2026-Q4.json`；集群混沌故障注入 `cluster/chaos_failover_e2e_test.go` degradation 0；双线对照 `scripts/dual-bench-compare.mjs` + nightly dual-bench job） |
 | v4.3 | 深化 | 多模态真实化 | 真实语音多轮含打断 + WebGPU demo | ✅ 已完成（2026-08-09：流式语音链路 `realtime/runtime.go:ProcessTurnStream`、视觉护栏/帧分析 `runtime.go:PushVision/AnalyzeLatestFrame`、TS WebGPU 真实后端优先 `webgpu-model-runner.ts:detectInferenceBackend`） |
 | v4.4 | 稳定 | 开发者平台 | 第三方 30 分钟接入 | ✅ 已完成（2026-08-09：技能市场 `skills/skill_market.go` manifest+ECDSA 验签；模板远程安装 `cmd/ap/marketplace.go:installRemoteTemplate`；死链门 `scripts/check-docs-links.mjs` 274 链接全可达；Inspector DAG `extensions/vscode/src/inspector.ts:applyPlan`；接入指南 `docs/guides/third-party-integration.md`） |
 | v4.5 | 深化 | 分布式自治 | 3 节点 kill 1 自动续跑 | ✅ 已完成（2026-08-09：跨节点续跑 `autonomy/runtime.go:ResumeIncomplete` 重建目标+`autonomy_failover_e2e_test.go` 3 节点 kill 1 自动续跑；路由 `a2a/interop_router.go` 选路+熔断+故障切换；后端配置 `docs/guides/distributed-backends.md`） |

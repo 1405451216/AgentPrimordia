@@ -1,0 +1,49 @@
+{
+  "version": "v5.0.0",
+  "model": "gpt-4o-mini",
+  "provider": "unavailable",
+  "total": 3,
+  "passed": 0,
+  "failed": 3,
+  "pass_rate": 0,
+  "cost_usd": 0,
+  "latency_ms": 0,
+  "avg_latency_ms": 0,
+  "prompt_tokens": 0,
+  "completion_tokens": 0,
+  "total_tokens": 0,
+  "recovery_rate": 0,
+  "threshold": 0.8,
+  "baseline": 0,
+  "meets_gate": false,
+  "generated": "2026-08-10T11:43:34Z",
+  "cases": [
+    {
+      "case_id": "unavailable-0",
+      "phase": "autonomy",
+      "passed": false,
+      "score": 0,
+      "duration_ms": 0,
+      "attempts": 0,
+      "error": "API Key 未配置（--allow-fail 0 分基线模式）"
+    },
+    {
+      "case_id": "unavailable-1",
+      "phase": "autonomy",
+      "passed": false,
+      "score": 0,
+      "duration_ms": 0,
+      "attempts": 0,
+      "error": "API Key 未配置（--allow-fail 0 分基线模式）"
+    },
+    {
+      "case_id": "unavailable-2",
+      "phase": "autonomy",
+      "passed": false,
+      "score": 0,
+      "duration_ms": 0,
+      "attempts": 0,
+      "error": "API Key 未配置（--allow-fail 0 分基线模式）"
+    }
+  ]
+}

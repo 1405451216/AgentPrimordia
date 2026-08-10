@@ -127,7 +127,7 @@ svg.append(title(1200, 52, "AGENTPRIMORDIA", fs=38, weight=200, color="#0f172a")
 svg.append('<text x="1200" y="84" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" '
            'font-size="13" letter-spacing="5" opacity="0.8">UNIVERSAL AI AGENT FRAMEWORK · GO + TYPESCRIPT DUAL SDK</text>')
 svg.append('<line x1="860" y1="100" x2="1540" y2="100" stroke="#00d4ff" stroke-width="0.5" opacity="0.3"/>')
-svg.append(sub(1200, 122, "v4.0.0  ·  34 Modules Parity  ·  Apache-2.0  ·  Zero CGO", fs=11, color="#00d4ff"))
+svg.append(sub(1200, 122, "v5.0.0  ·  38 Modules Parity  ·  Apache-2.0  ·  Zero CGO", fs=11, color="#00d4ff"))
 
 # ============ ① 入口层 ============
 p1 = panel(60, 150, 2280, 100, "①  APPLICATION / ENTRYPOINTS", C["infra"], label_x=80)

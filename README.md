@@ -2,12 +2,12 @@
 
 > 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证
 > **Go + TypeScript 双语言 SDK，功能对等，34 模块全覆盖**
-> **当前版本：Go SDK v4.0.0 / TypeScript SDK v4.0.0**
+> **当前版本：Go SDK v5.0.0 / TypeScript SDK v5.0.0**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Go%20Parity-3178C6.svg)](sdk/typescript/)
-[![Version](https://img.shields.io/badge/version-4.0.0-2ea44f.svg)](docs/ROADMAP.md)
+[![Version](https://img.shields.io/badge/version-5.0.0-2ea44f.svg)](docs/ROADMAP.md)
 
 <p align="center">
   <img src="agentprimordia/docs/ap-architecture.png" alt="Architecture" width="85%">

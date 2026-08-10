@@ -2,12 +2,15 @@
   "name": "agentprimordia-vscode",
   "displayName": "AgentPrimordia Inspector",
   "description": "Agent 调试与 ReAct 循环可视化（VS Code Inspector Webview）",
-  "version": "3.2.0",
+  "version": "5.0.0",
   "publisher": "agentprimordia",
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Debuggers", "Other"],
+  "categories": [
+    "Debuggers",
+    "Other"
+  ],
   "keywords": [
     "agent",
     "react-loop",
