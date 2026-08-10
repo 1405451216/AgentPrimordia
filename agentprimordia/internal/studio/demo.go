@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+// maxDemoRetained demo 服务有界保留上限（v5.0 压测发现：无界累积导致
+// 列表端点响应膨胀、长时运行延迟退化；与 realtime EventBus maxRetainedEvents 同模式）。
+const maxDemoRetained = 1000
+
 // ===== demoChaos =====
 
 type demoChaos struct {
@@ -51,6 +55,9 @@ func (d *demoChaos) CreateExperiment(_ context.Context, req CreateExperimentRequ
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.experiments = append(d.experiments, exp)
+	if len(d.experiments) > maxDemoRetained {
+		d.experiments = d.experiments[len(d.experiments)-maxDemoRetained:]
+	}
 	return nil
 }
 
@@ -223,6 +230,9 @@ func (d *demoMarketplace) Deploy(_ context.Context, templateID string) (Deployme
 			}
 			d.nextID++
 			d.deployments = append(d.deployments, dep)
+			if len(d.deployments) > maxDemoRetained {
+				d.deployments = d.deployments[len(d.deployments)-maxDemoRetained:]
+			}
 			return dep, nil
 		}
 	}
