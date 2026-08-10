@@ -107,3 +107,16 @@ go test ./...
 
 - 仍有约 2500 处 `deadcode` 残余（不影响运行，增加审计/维护成本），按目录逐步清理中
 - `Dockerfile`（demo 版）保留用于示例，生产用 `Dockerfile.prod`
+
+## 8. 平台一体化部署（v5.0）
+
+| 形态 | 入口 | 覆盖能力 |
+|------|------|---------|
+| 开发一键 | `scripts/dev-platform.sh` | 全能力示例编译校验 + Studio（:8090） |
+| 开发/演示 Compose | `deploy/compose/` | 单机全能力 + 可选 etcd/redis |
+| 生产 Helm | `deploy/helm/agentprimordia/` | autonomy/skills/a2a/realtime/studio（镜像 tag v5.0.0，version-sync 门校验） |
+| 生产 Terraform | `deploy/terraform/` | VPC/节点/存储 |
+| 单机 systemd | `deploy/autonomous-agent.service` | 自治 Agent 常驻 |
+| Operator | `operator/` | AgentDeployment CRD |
+
+完整案例与检查清单见 [企业参考部署指南](../agentprimordia/docs/guides/enterprise-deployment.md)。

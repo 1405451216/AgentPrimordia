@@ -906,3 +906,17 @@ import {
 ```
 
 详见 [TypeScript SDK API 参考](../sdk/typescript/docs/api/index.md)。
+
+## v5.0 新增 API 索引（v4.1 – v5.0 弧线）
+
+| API | 版本 | 说明 | 文档 |
+|-----|------|------|------|
+| `ap.ProviderFromEnv()` | v4.1 | env 驱动真实 LLM（AP_LLM_*） | guides/third-party-integration.md |
+| `ap.NewOpenAIASR/NewOpenAITTS` | v4.1 | 真实语音适配器（本地免 key） | guides/realtime.md |
+| `realtime.Runtime.ProcessTurnStream` | v4.3 | 流式语音链路 | guides/realtime.md |
+| `skills.SignSkillManifest/InstallSkillFromManifest` | v4.4 | 技能市场发布/订阅（验签） | guides/publishing.md |
+| `memory.NewPhysicalTenantStore` | v4.6 | 物理分库强隔离 | security-posture.md |
+| `autonomy.GoalConfig.BudgetUSD` | v4.9 | 目标级成本预算护栏 | V5-ROADMAP.md §十 |
+| `marketplace.Installer.EnableDownloadStats` | v4.8 | 市场下载统计 | publishing.md |
+
+完整契约见 `sdk/typescript/api-contract.json`（38 模块，version-sync + api-extract 门维护）。

@@ -33,6 +33,17 @@
 - **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
 - **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite（modernc.org/sqlite）+ YAML（gopkg.in/yaml.v3）；可选 gRPC/Protobuf（A2A 传输）、Redis（缓存后端）、etcd（服务发现）、wazero（WASM 沙箱）按需引入
 
+## v5.0.0 Highlights — 均衡混排弧线收官（v4.1 → v5.0）
+
+> 2026-08-10：10 个版本全部落地（奇数深化 / 偶数稳定），详见 [docs/V5-ROADMAP.md](docs/V5-ROADMAP.md)。
+
+- **真实接线**：真实 ASR/TTS 适配器（OpenAI 兼容 + 本地 faster-whisper/Piper 免 key）、CLI 一键语音、`ProviderFromEnv` 环境驱动真实 LLM、Studio 面板真实引擎数据
+- **不塌**：Soak/并发/故障注入量化验收（恢复率 1.0、集群 kill-1 degradation 0、Pool×autonomy 100 并发持平）
+- **多模态与分布式**：流式语音链路、视觉护栏/帧分析、WebGPU 真实后端优先；跨节点目标续跑、A2A 路由熔断
+- **平台化**：技能市场（manifest+ECDSA 验签）、模板远程安装、物理分库强隔离、目标级预算护栏、SQLite WAL（写入 P95 -98%）
+- **Studio 压测**：并发 20000 请求 + 写路径 7500 写 + 30 分钟稳态 88182 请求，0 错误无退化；检出并修复 demo 存储无界膨胀（延迟 +246% → -84%）
+- **版本**：5.0.0 四方一致（Go/TS/VERSION/api-contract/Helm/扩展/前端）
+
 ## v4.0.0 Highlights — 全路线收官（v3.3 → v4.0）
 
 v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成"，全部 35 项任务通过代码实况验证。
@@ -63,7 +74,7 @@ v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成
 | v3.9 | 生态 | 市场 + Studio + 文档站 | ✅ 4/4 |
 | v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 | ✅ 5/5 |
 
-> 详细路线见 [docs/ROADMAP.md](docs/ROADMAP.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v4.0.0）。
+> 详细路线见 [docs/ROADMAP.md](docs/ROADMAP.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v5.0.0）。
 
 ## v3.2.0 Highlights — 架构解耦与双语言对齐
 

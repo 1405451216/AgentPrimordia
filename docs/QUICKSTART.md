@@ -132,3 +132,18 @@ result, _ := pipeline.Execute(ctx, "Write about Go concurrency")
 - 🧪 [示例代码](../agentprimordia/ecosystem/examples/)
 - 🏗️ [架构文档](architecture-mermaid.md)
 - 🔧 [部署指南](DEPLOYMENT.md)
+
+## 7. 环境变量驱动真实 LLM（v4.1+）
+
+不写死 Provider 配置，用环境变量切换真实/本地模型：
+
+```go
+provider, err := ap.ProviderFromEnv() // 读取 AP_LLM_PROVIDER / AP_LLM_MODEL / AP_LLM_API_KEY / AP_LLM_BASE_URL
+```
+
+```bash
+export AP_LLM_PROVIDER=openai AP_LLM_MODEL=gpt-4o-mini AP_LLM_API_KEY=sk-...
+# 或本地免 key：AP_LLM_PROVIDER=ollama AP_LLM_MODEL=qwen3:0.6b
+```
+
+支持 openai / anthropic / gemini / ollama / qwen / glm。示例应用（autonomous-task / skill-evolution / realtime-voice）均已接入该开关，未设置时保持 mock（CI 可跑）。
