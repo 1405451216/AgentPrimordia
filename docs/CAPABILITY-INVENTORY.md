@@ -39,6 +39,8 @@
 | tool_learning | 循环内记录 + 跨会话成功率聚合回注参数建议 | `react_loop_tools.go:113-128` |
 | 基础设施包 | config / health / events / logger / prompt / resilience / concurrency / governance / audit / jsonutil / registry / protocol | 各自有实现与测试（governance 覆盖率 67.2% 偏低） |
 
+> Studio 压测（v5.0）：并发/写路径/轮询/极限 + 30 分钟稳态（88182 请求 0 错误无退化），报告 `bench/results/studio-load-report.md`。
+
 > 口径说明：上表中 memory / pool 的「多租户」为**过滤器级隔离**——`TenantScoped` 装饰器按 `Episode.Metadata["tenant_id"]` 过滤/校验（非法归属拒绝 + 缺省注入 + 拒绝入审计，`internal/memory/tenant.go`），非物理分库；强隔离（物理分库/加密）规划在 v4.6（见 `V5-ROADMAP.md` §七）。
 
 ### 🟠 部分（存在但未接通关键路径）

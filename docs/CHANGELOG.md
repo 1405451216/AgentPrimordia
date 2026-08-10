@@ -17,6 +17,17 @@
 - **v4.9 性能与成本**：SQLite WAL（写入 P95 -98%）；EventBus 锁分离；缓存命中率量化；目标级预算护栏
 - **v5.0 平台里程碑**：dev-platform 一键部署；全能力整合 e2e 套件；稳定承诺重审；v5 迁移指南；**版本 5.0.0 四方一致**（Go/TS/VERSION/api-contract）；评估复测 ≈8.8/10（≥8.5 达标）
 
+### Fixed — Studio 压测检出 demo 存储无界膨胀（2026-08-10）
+
+- **30 分钟端点稳态 Soak**（`bench/soak/studio_soak_test.go`，88182 请求/50rps 混合读写）检出延迟退化 +246%：写路径累积使 `chaos/experiments` 响应体线性膨胀
+- 修复：`internal/studio/demo.go` 有界保留（`maxDemoRetained=1000`，与 EventBus 同模式）+ 保留测试 `TestDemoChaos_BoundedRetention`；修复后平均延迟 1.27ms → 208µs（-84%），退化归零
+
+### Added — Studio 后端压力测试套件（2026-08-10）
+
+- `bench/suite/studio_load_test.go`：读路径并发（20000 请求 0 错误）+ 写路径并发（7500 写 0 错误、写后读一致）+ 轮询节奏模拟 + 1000 目标极限场景 + 9 端点延迟分布（P95 ≤ 104µs）
+- `bench/soak/studio_soak_test.go`：30 分钟端点稳态 Soak（`SOAK_STUDIO_DURATION` 可配置，含前后半段退化检测）
+- 压测报告 `bench/results/studio-load-report.md`；官方基准文档补 v5.0 Studio 章节
+
 ## [v4.0.0] - 2026-08-09
 
 ### Added — 深度评估报告（2026-08-09）

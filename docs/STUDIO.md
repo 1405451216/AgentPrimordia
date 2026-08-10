@@ -104,6 +104,12 @@ cd agentprimordia && go test ./internal/studio/...
 
 # 类型检查
 cd agentprimordia/studio/web && npm run typecheck
+
+# 压力测试（v5.0：并发/写路径/轮询/极限 + 30 分钟稳态 Soak，报告见 bench/results/studio-load-report.md）
+cd agentprimordia
+go test -count=1 -run TestStudio_ -v ./bench/suite/                        # 读/写/轮询/极限
+go test -bench=BenchmarkStudioEndpoints -benchtime=200ms ./bench/suite/    # 端点延迟分布
+SOAK_STUDIO_DURATION=30m SOAK_STUDIO_RPS=50 go test -timeout 40m -run TestSoak_Studio -v ./bench/soak/
 ```
 
 ## 构建

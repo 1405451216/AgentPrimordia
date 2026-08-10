@@ -1,7 +1,7 @@
 # AgentPrimordia Official Performance Benchmarks
 
-**Version**: 4.0.0 (2026-Q4)
-**Report Date**: 2026-08-04
+**Version**: 5.0.0 (2026-Q4 刷新)
+**Report Date**: 2026-08-10
 **Status**: PASS (All benchmark suites completed)
 
 ---
@@ -299,3 +299,20 @@ Use this template for quarterly trend comparisons (e.g., Q3 vs Q2):
 
 *Generated from 2026-Q2 baseline data. All measurements use MockLLM; production performance
 with real LLM providers will differ significantly due to network latency.*
+
+---
+
+## v5.0 Studio 后端压测（新增）
+
+> 来源：`bench/suite/studio_load_test.go` + `bench/soak/studio_soak_test.go`，报告见 `bench/results/studio-load-report.md`。
+
+| 视角 | 结果 |
+|------|------|
+| 读路径并发（100 并发 × 9 端点 × 200 轮） | 20000 请求 0 错误（~31.7k req/s） |
+| 写路径并发（POST chaos 5000 + deploy 2500） | 0 错误，写后读数量一致 |
+| 端点延迟 P50/P95/P99 | 全部亚毫秒（P95 ≤ 104µs） |
+| 轮询节奏模拟（2s/5s/10s × 30s） | 0 错误 |
+| 极限（1000 目标全量读取 × 50 轮） | 0 错误，数据完整，最大 6.8ms |
+| **30 分钟稳态（88182 请求，50 rps 混合读写）** | **0 错误、无退化、平均延迟 208µs** |
+
+> 压测检出并修复：demo 存储无界膨胀（30 分钟延迟 +246% → 有界保留 1000 后 -84%，退化归零）。
