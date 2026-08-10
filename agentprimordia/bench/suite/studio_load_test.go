@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -279,4 +280,127 @@ func countSubstring(s, sub string) int {
 		}
 	}
 	return n
+}
+
+// TestStudio_WritePathConcurrentLoad 写路径压测：并发 POST 混沌实验 + 市场部署
+// （demo 服务锁竞争点），验证写后读一致性（0 错误 + 数量核对）。
+func TestStudio_WritePathConcurrentLoad(t *testing.T) {
+	srv := studioLoadFixture(t, 50)
+	defer srv.Close()
+
+	// 高并发连接池（默认 2 条/主机在 100 并发下会连接风暴）
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        256,
+			MaxIdleConnsPerHost: 256,
+			MaxConnsPerHost:     256,
+		},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer cancel()
+
+	const (
+		chaosWorkers = 100
+		chaosRounds  = 50  // 5000 次 POST /chaos/experiments
+		deployWorkers = 100
+		deployRounds  = 25  // 2500 次 POST /marketplace/deploy
+	)
+	var (
+		chaosOK    atomic.Int64
+		deployOK   atomic.Int64
+		badStatus  atomic.Int64
+		wg         sync.WaitGroup
+		statusMu   sync.Mutex
+		statusHist = map[int]int{}
+	)
+	recordBad := func(code int) {
+		badStatus.Add(1)
+		statusMu.Lock()
+		statusHist[code]++
+		statusMu.Unlock()
+	}
+
+	// 写路径 1：创建混沌实验（demo 服务锁保护）
+	for w := range chaosWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for r := range chaosRounds {
+				body := fmt.Sprintf(`{"name":"load-%d-%d","hypothesis":"并发写路径","faultType":"latency"}`, w, r)
+				req, _ := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/api/v1/chaos/experiments", strings.NewReader(body))
+				req.Header.Set("Content-Type", "application/json")
+				resp, err := client.Do(req)
+				if err != nil {
+					recordBad(-1)
+					continue
+				}
+				io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusCreated {
+					chaosOK.Add(1)
+				} else {
+					recordBad(resp.StatusCode)
+				}
+			}
+		}()
+	}
+
+	// 写路径 2：市场部署（demo 服务锁保护）
+	for range deployWorkers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range deployRounds {
+				req, _ := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/api/v1/marketplace/deploy",
+					strings.NewReader(`{"template_id":"code-reviewer"}`))
+				req.Header.Set("Content-Type", "application/json")
+				resp, err := client.Do(req)
+				if err != nil {
+					recordBad(-1)
+					continue
+				}
+				io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+				if resp.StatusCode == http.StatusOK {
+					deployOK.Add(1)
+				} else {
+					recordBad(resp.StatusCode)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	if badStatus.Load() > 0 {
+		statusMu.Lock()
+		t.Fatalf("写路径非预期状态/错误 %d 次，分布: %v", badStatus.Load(), statusHist)
+		statusMu.Unlock()
+	}
+	if chaosOK.Load() != chaosWorkers*chaosRounds || deployOK.Load() != deployWorkers*deployRounds {
+		t.Fatalf("chaosOK=%d deployOK=%d, want %d/%d", chaosOK.Load(), deployOK.Load(),
+			chaosWorkers*chaosRounds, deployWorkers*deployRounds)
+	}
+
+	// 写后读一致性：实验与部署数量与成功写入数一致
+	checkJSONCount(t, client, ctx, srv.URL+"/api/v1/chaos/experiments", "load-", int(chaosOK.Load()))
+	checkJSONCount(t, client, ctx, srv.URL+"/api/v1/marketplace/deployments", "code-reviewer", int(deployOK.Load()))
+
+	t.Logf("✅ 写路径压测通过：chaos %d 次创建 + deploy %d 次部署，0 错误，写后读数量一致",
+		chaosOK.Load(), deployOK.Load())
+}
+
+// checkJSONCount 断言响应体中关键字出现次数（写后读一致性核对）。
+func checkJSONCount(t *testing.T, client *http.Client, ctx context.Context, url, keyword string, want int) {
+	t.Helper()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("%s: %v", url, err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if n := countSubstring(string(body), keyword); n != want {
+		t.Fatalf("%s 响应含 %q %d 次, want %d（写后读不一致）", url, keyword, n, want)
+	}
 }
