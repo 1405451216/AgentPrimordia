@@ -1,0 +1,282 @@
+// studio_bench_test.go — Studio 后端压力测试（v5.0 全能力整合后的负载验证）
+//
+// 场景：StudioHandler 注入真实引擎（AutonomyRuntime 100 目标 + SkillStore +
+// RealtimeHub/EventBus），并发客户端混合请求全部 9 个 /api/v1/* 端点
+// （含 v3.3-v3.6 五端点），验证：
+//   1. 并发下 0 错误（无数据竞争、无 panic）
+//   2. 端点延迟分布 P50/P95/P99 量化
+//   3. 模拟前端轮询节奏（2s/5s/10s 混合）下的稳定性
+package suite
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"sort"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"agentprimordia/internal/agent/autonomy"
+	"agentprimordia/internal/agent/realtime"
+	"agentprimordia/internal/agent/skills"
+	"agentprimordia/internal/studio"
+)
+
+// studioLoadFixture 注入真实引擎的 StudioHandler 测试夹具。
+func studioLoadFixture(tb testing.TB, goals int) *httptest.Server {
+	tb.Helper()
+
+	// 1. AutonomyRuntime：注入 N 个真实目标（含进度与告警）
+	rt := autonomy.NewAutonomyRuntime(autonomy.RuntimeConfig{StepExecutor: &studioStepExecutor{}})
+	for i := range goals {
+		g := rt.SubmitGoal(fmt.Sprintf("压测目标 %d：监控数据并修复", i), autonomy.GoalConfig{})
+		plan := autonomy.NewGoalPlan(g.ID, []autonomy.PlanStep{
+			{ID: "collect", Description: "采集", Strategy: autonomy.StepStrategySequential},
+			{ID: "fix", Description: "修复", DependsOn: []string{"collect"}, Strategy: autonomy.StepStrategySequential},
+		})
+		_ = rt.SetPlan(g.ID, plan)
+		rt.GetMonitor().ReportHeartbeat(g.ID, 0.5)
+		if i%10 == 0 {
+			rt.GetMonitor().ReportAnomaly(g.ID, autonomy.AlertWarn, "压测告警")
+		}
+	}
+
+	// 2. SkillStore：注入技能
+	store := skills.NewStore()
+	for i := range 20 {
+		s := skills.NewSkill(fmt.Sprintf("技能-%d", i), "压测技能描述", []skills.StepDef{{ID: "s1", ToolName: "query"}})
+		s.Activate()
+		store.Save(s)
+	}
+
+	// 3. Realtime：会话 + 事件历史
+	hub := realtime.NewRealtimeHub(realtime.HubConfig{})
+	bus := realtime.NewEventBus()
+	for i := range 30 {
+		sess := hub.CreateSession(fmt.Sprintf("session-%d", i))
+		_ = sess.TransitionTo(realtime.SessionListening, "load")
+		bus.Publish(realtime.RealtimeEvent{Type: realtime.EventSessionCreated, SessionID: sess.ID})
+	}
+
+	h := studio.NewStudioHandler(
+		studio.WithAutonomy(studio.NewAutonomyServiceAdapter(rt)),
+		studio.WithSkills(studio.NewSkillServiceAdapter(store)),
+		studio.WithRealtime(studio.NewRealtimeServiceAdapter(hub, bus)),
+	)
+	return httptest.NewServer(h)
+}
+
+// studioStepExecutor 压测步骤执行器（确定性）。
+type studioStepExecutor struct{}
+
+func (e *studioStepExecutor) ExecuteStep(_ context.Context, step autonomy.PlanStep) (string, error) {
+	return "ok:" + step.ID, nil
+}
+
+// studioEndpoints 压测覆盖的全部端点（GET）。
+var studioEndpoints = []string{
+	"/api/v1/chaos/experiments",
+	"/api/v1/cluster/status",
+	"/api/v1/learning/stats",
+	"/api/v1/marketplace/templates",
+	"/api/v1/autonomy/goals",
+	"/api/v1/autonomy/alerts",
+	"/api/v1/skills",
+	"/api/v1/realtime/sessions",
+	"/api/v1/realtime/events",
+}
+
+// TestStudio_ConcurrentLoad 并发混合负载：100 并发 × 9 端点 × 200 轮 → 0 错误。
+func TestStudio_ConcurrentLoad(t *testing.T) {
+	srv := studioLoadFixture(t, 100)
+	defer srv.Close()
+
+	const workers = 100
+	const rounds = 200
+	var errCount atomic.Int64
+	var okCount atomic.Int64
+	var wg sync.WaitGroup
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	for w := range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for r := range rounds {
+				ep := studioEndpoints[(w+r)%len(studioEndpoints)]
+				req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+ep, nil)
+				resp, err := client.Do(req)
+				if err != nil {
+					errCount.Add(1)
+					continue
+				}
+				_, _ = io.Copy(io.Discard, resp.Body)
+				resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					errCount.Add(1)
+					continue
+				}
+				okCount.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if errCount.Load() > 0 {
+		t.Fatalf("并发负载下错误请求 %d 个（0 错误要求）", errCount.Load())
+	}
+	if okCount.Load() != workers*rounds {
+		t.Fatalf("成功请求 %d, want %d", okCount.Load(), workers*rounds)
+	}
+	t.Logf("✅ 并发负载通过：%d 请求 / %d 并发 / 9 端点，0 错误", workers*rounds, workers)
+}
+
+// TestStudio_PollingMix 前端轮询节奏模拟：2s/5s/10s 混合轮询 × 8 客户端，30s 稳定。
+func TestStudio_PollingMix(t *testing.T) {
+	srv := studioLoadFixture(t, 100)
+	defer srv.Close()
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	var errCount atomic.Int64
+	var reqCount atomic.Int64
+	var wg sync.WaitGroup
+
+	// 轮询节奏：realtime 2s、autonomy 5s、skills 10s（与前端一致）
+	pollers := []struct {
+		interval time.Duration
+		ep       string
+	}{
+		{2 * time.Second, "/api/v1/realtime/sessions"},
+		{2 * time.Second, "/api/v1/realtime/events"},
+		{5 * time.Second, "/api/v1/autonomy/goals"},
+		{5 * time.Second, "/api/v1/autonomy/alerts"},
+		{10 * time.Second, "/api/v1/skills"},
+	}
+	stop := time.Now().Add(30 * time.Second)
+	for _, p := range pollers {
+		for range 2 { // 每节奏 2 个客户端
+			wg.Add(1)
+			go func(ep string, interval time.Duration) {
+				defer wg.Done()
+				for time.Now().Before(stop) {
+					resp, err := client.Get(srv.URL + ep)
+					if err != nil {
+						errCount.Add(1)
+					} else {
+						io.Copy(io.Discard, resp.Body)
+						resp.Body.Close()
+						if resp.StatusCode != http.StatusOK {
+							errCount.Add(1)
+						}
+					}
+					reqCount.Add(1)
+					time.Sleep(interval)
+				}
+			}(p.ep, p.interval)
+		}
+	}
+	wg.Wait()
+
+	if errCount.Load() > 0 {
+		t.Fatalf("轮询模拟下错误请求 %d 个", errCount.Load())
+	}
+	t.Logf("✅ 轮询模拟通过：30s 内 %d 次轮询请求（2s/5s/10s 混合 × 10 客户端），0 错误", reqCount.Load())
+}
+
+// BenchmarkStudioEndpoints 各端点延迟分布（P50/P95/P99）。
+func BenchmarkStudioEndpoints(b *testing.B) {
+	srv := studioLoadFixture(b, 100)
+	defer srv.Close()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	ctx := context.Background()
+
+	for _, ep := range studioEndpoints {
+		b.Run(ep, func(b *testing.B) {
+			var c p95Collector
+			b.ResetTimer()
+			for i := 0; i < b.N; i += p95BatchSize {
+				n := p95BatchSize
+				if i+n > b.N {
+					n = b.N - i
+				}
+				var total int64
+				for range n {
+					s := time.Now().UnixNano()
+					req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+ep, nil)
+					resp, err := client.Do(req)
+					if err == nil {
+						io.Copy(io.Discard, resp.Body)
+						resp.Body.Close()
+					}
+					e := time.Now().UnixNano()
+					total += e - s
+				}
+				c.add(time.Duration(total), n)
+			}
+			c.report(b)
+		})
+	}
+}
+
+// ensure 排序引用（延迟分位工具依赖）
+var _ = sort.Float64s
+
+// TestStudio_LargeFixture 极限场景：1000 目标下 goals 端点仍稳定且数据完整。
+func TestStudio_LargeFixture(t *testing.T) {
+	srv := studioLoadFixture(t, 1000)
+	defer srv.Close()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 连续 50 轮读取 goals 端点，验证 0 错误 + 数据完整（返回全部 1000 目标）
+	var maxLatency time.Duration
+	var errCount int
+	for range 50 {
+		s := time.Now()
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+"/api/v1/autonomy/goals", nil)
+		resp, err := client.Do(req)
+		lat := time.Since(s)
+		if err != nil {
+			errCount++
+			continue
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			errCount++
+			continue
+		}
+		if lat > maxLatency {
+			maxLatency = lat
+		}
+		// 断言返回 1000 个目标（"description":"压测目标" 出现 1000 次）
+		if n := countSubstring(string(body), "压测目标"); n != 1000 {
+			t.Fatalf("goals 响应目标数 = %d, want 1000（数据完整性受损）", n)
+		}
+	}
+	if errCount > 0 {
+		t.Fatalf("1000 目标场景错误 %d 次", errCount)
+	}
+	t.Logf("✅ 1000 目标极限场景通过：50 轮全量读取 0 错误，最大延迟 %v", maxLatency)
+}
+
+// countSubstring 统计子串出现次数。
+func countSubstring(s, sub string) int {
+	n := 0
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			n++
+		}
+	}
+	return n
+}
