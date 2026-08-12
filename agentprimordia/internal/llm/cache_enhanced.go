@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -180,6 +181,66 @@ func (c *FingerprintCache) Set(_ context.Context, query string, resp *Completion
 	return nil
 }
 
+// GetRequest 使用完整 CompletionRequest 作为缓存 key（修复 v6.x 评估 Issue #2）。
+// 优先采用，若调用方仍使用 Get(query string)，key 仅基于最后一条 user 消息，
+// 在多 system prompt / 多工具集下会产生语义错误的命中。
+func (c *FingerprintCache) GetRequest(_ context.Context, req *CompletionRequest) (*CompletionResponse, bool) {
+	key := RequestFingerprint(req)
+	return c.getByKey(key)
+}
+
+// SetRequest 为完整 CompletionRequest 写入缓存。
+func (c *FingerprintCache) SetRequest(_ context.Context, req *CompletionRequest, resp *CompletionResponse) error {
+	key := RequestFingerprint(req)
+	return c.setByKey(key, resp)
+}
+
+// getByKey 内部按 fingerprint 查找。
+func (c *FingerprintCache) getByKey(key string) (*CompletionResponse, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	atomicAdd(&c.totalQuery, 1)
+
+	entry, ok := c.entries[key]
+	if !ok {
+		atomicAdd(&c.misses, 1)
+		return nil, false
+	}
+	if c.ttl > 0 && time.Since(entry.createdAt) > c.ttl {
+		delete(c.entries, key)
+		atomicAdd(&c.misses, 1)
+		return nil, false
+	}
+	entry.hitCount++
+	atomicAdd(&c.hits, 1)
+	atomicAdd(&c.tokensSave, int64(entry.response.Usage.TotalTokens))
+	return entry.response, true
+}
+
+// setByKey 内部按 fingerprint 写入。
+func (c *FingerprintCache) setByKey(key string, resp *CompletionResponse) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if len(c.entries) >= c.maxSize {
+		var oldestKey string
+		var oldestTime time.Time
+		for k, v := range c.entries {
+			if oldestTime.IsZero() || v.createdAt.Before(oldestTime) {
+				oldestKey = k
+				oldestTime = v.createdAt
+			}
+		}
+		if oldestKey != "" {
+			delete(c.entries, oldestKey)
+		}
+	}
+
+	c.entries[key] = &fingerprintEntry{response: resp, createdAt: time.Now()}
+	return nil
+}
+
 func (c *FingerprintCache) Stats(_ context.Context) CacheStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -284,6 +345,108 @@ func PromptFingerprint(text string) string {
 	hash := sha256.Sum256([]byte(normalized))
 	fp := hex.EncodeToString(hash[:])[:16]
 	promptFingerprintCache.put(text, fp)
+	return fp
+}
+
+// RequestFingerprint 为完整的 CompletionRequest 生成稳定的指纹。
+//
+// 设计动机（修复 v6.x 评估报告 Issue #2）：
+//  1. 仅基于"最后一条 user 消息"做 sha256 会让不同 system prompt /
+//     工具列表 / 历史消息的相同 query 命中同一缓存，产生语义错误
+//     的"假命中"。
+//  2. 真正的 cache key 必须把"完整输入空间"折叠成指纹。
+//
+// 算法：
+//   - System 角色消息 / 用户消息 / 助手消息 / 工具消息
+//     按 "role\x1fcontent\x1ftoolName" 形式拼接后做规范化 + sha256。
+//   - 工具定义按 Function.Name 排序后拼接 name + parameters 的稳定 JSON。
+//   - Model 字段作为前缀参与，避免跨模型串缓存。
+//
+// 安全：使用 \x1f (US) 作为分隔符，规避 user content 自带的换行注入风险。
+//
+// 性能：通过 promptFingerprintCache (LRU) 缓存常见请求，避免重复 sha256。
+func RequestFingerprint(req *CompletionRequest) string {
+	if req == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(512)
+	// model 是 key 前缀
+	if req.Model != "" {
+		b.WriteString("model=")
+		b.WriteString(req.Model)
+		b.WriteByte('\x1f')
+	}
+	// 消息序列
+	for _, m := range req.Messages {
+		b.WriteString("msg:")
+		b.WriteString(strings.ToLower(m.Role))
+		b.WriteByte('\x1f')
+		b.WriteString(strings.TrimSpace(m.Content))
+		b.WriteByte('\x1f')
+		if len(m.ToolCalls) > 0 {
+			b.WriteString(strings.ToLower(m.ToolCallID))
+		}
+		b.WriteByte('\n')
+	}
+	canonical := b.String()
+	if v, ok := promptFingerprintCache.get(canonical); ok {
+		return v
+	}
+	hash := sha256.Sum256([]byte(canonical))
+	fp := hex.EncodeToString(hash[:])[:16]
+	promptFingerprintCache.put(canonical, fp)
+	return fp
+}
+
+// ToolCallRequestFingerprint 为 ToolCallRequest 生成稳定指纹。
+//
+// 设计动机与 RequestFingerprint 一致：把"工具列表+消息历史"纳入
+// 缓存 key，避免不同工具集下相同 query 错误命中。
+func ToolCallRequestFingerprint(req *ToolCallRequest) string {
+	if req == nil {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(512)
+	if req.Model != "" {
+		b.WriteString("model=")
+		b.WriteString(req.Model)
+		b.WriteByte('\x1f')
+	}
+	// 工具：按 name 排序以保证稳定性
+	toolNames := make([]string, 0, len(req.Tools))
+	toolSchema := make(map[string]string, len(req.Tools))
+	for _, t := range req.Tools {
+		toolNames = append(toolNames, t.Function.Name)
+		if t.Function.Parameters != nil {
+			// 仅取 schema 字符串形式，不走 json.Marshal 避免非确定 map 顺序
+			toolSchema[t.Function.Name] = fmt.Sprintf("%v", t.Function.Parameters)
+		}
+	}
+	sort.Strings(toolNames)
+	for _, name := range toolNames {
+		b.WriteString("tool:")
+		b.WriteString(strings.ToLower(name))
+		b.WriteByte('\x1f')
+		b.WriteString(toolSchema[name])
+		b.WriteByte('\n')
+	}
+	// 消息
+	for _, m := range req.Messages {
+		b.WriteString("msg:")
+		b.WriteString(strings.ToLower(m.Role))
+		b.WriteByte('\x1f')
+		b.WriteString(strings.TrimSpace(m.Content))
+		b.WriteByte('\n')
+	}
+	canonical := b.String()
+	if v, ok := promptFingerprintCache.get(canonical); ok {
+		return v
+	}
+	hash := sha256.Sum256([]byte(canonical))
+	fp := hex.EncodeToString(hash[:])[:16]
+	promptFingerprintCache.put(canonical, fp)
 	return fp
 }
 

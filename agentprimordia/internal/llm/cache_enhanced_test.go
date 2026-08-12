@@ -163,6 +163,102 @@ func TestPromptFingerprint_DifferentInputs(t *testing.T) {
 	}
 }
 
+// TestRequestFingerprint_DistinguishesSystemPrompt 验证 v6.x 评估 Issue #2 修复：
+// 仅基于最后一条 user 消息的旧 PromptFingerprint 会让不同 system prompt
+// 的相同 query 命中同一缓存。RequestFingerprint 必须按 system prompt
+// 区分不同请求。
+func TestRequestFingerprint_DistinguishesSystemPrompt(t *testing.T) {
+	q := "What's the weather?"
+	r1 := &CompletionRequest{
+		Model: "gpt-4",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "You are a weather expert."},
+			{Role: "user", Content: q},
+		},
+	}
+	r2 := &CompletionRequest{
+		Model: "gpt-4",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "You are a travel agent."},
+			{Role: "user", Content: q},
+		},
+	}
+	fp1 := RequestFingerprint(r1)
+	fp2 := RequestFingerprint(r2)
+	if fp1 == fp2 {
+		t.Fatalf("system prompt must affect fingerprint: fp1=%s fp2=%s", fp1, fp2)
+	}
+}
+
+// TestRequestFingerprint_DistinguishesModel 验证 model 字段参与指纹。
+func TestRequestFingerprint_DistinguishesModel(t *testing.T) {
+	r1 := &CompletionRequest{Model: "gpt-4", Messages: []ChatMessage{{Role: "user", Content: "hi"}}}
+	r2 := &CompletionRequest{Model: "claude-3", Messages: []ChatMessage{{Role: "user", Content: "hi"}}}
+	fp1 := RequestFingerprint(r1)
+	fp2 := RequestFingerprint(r2)
+	if fp1 == fp2 {
+		t.Fatalf("model must affect fingerprint: fp1=%s fp2=%s", fp1, fp2)
+	}
+}
+
+// TestRequestFingerprint_Stable 验证相同输入产出相同指纹（缓存命中必要条件）。
+func TestRequestFingerprint_Stable(t *testing.T) {
+	r := &CompletionRequest{
+		Model: "gpt-4",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "  Hello World!  "},
+			{Role: "user", Content: "Question?"},
+		},
+	}
+	fp1 := RequestFingerprint(r)
+	fp2 := RequestFingerprint(r)
+	if fp1 != fp2 {
+		t.Fatalf("identical requests must produce identical fingerprints: %s vs %s", fp1, fp2)
+	}
+}
+
+// TestFingerprintCache_RequestKey 验证 GetRequest/SetRequest 用 RequestFingerprint
+// 而非 PromptFingerprint 作为 key（修复 v6.x Issue #2）。
+func TestFingerprintCache_RequestKey(t *testing.T) {
+	c := NewFingerprintCache(100, time.Hour)
+	ctx := context.Background()
+
+	resp1 := &CompletionResponse{ID: "r1", Content: "weather answer", Usage: Usage{TotalTokens: 5}}
+	resp2 := &CompletionResponse{ID: "r2", Content: "travel answer", Usage: Usage{TotalTokens: 5}}
+
+	r1 := &CompletionRequest{
+		Model: "gpt-4",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "weather expert"},
+			{Role: "user", Content: "hello"},
+		},
+	}
+	r2 := &CompletionRequest{
+		Model: "gpt-4",
+		Messages: []ChatMessage{
+			{Role: "system", Content: "travel agent"},
+			{Role: "user", Content: "hello"}, // 相同 user query
+		},
+	}
+
+	if err := c.SetRequest(ctx, r1, resp1); err != nil {
+		t.Fatalf("SetRequest r1: %v", err)
+	}
+	if err := c.SetRequest(ctx, r2, resp2); err != nil {
+		t.Fatalf("SetRequest r2: %v", err)
+	}
+
+	// 新 request-aware API：必须分别返回 resp1 / resp2
+	got1, ok1 := c.GetRequest(ctx, r1)
+	if !ok1 || got1.Content != "weather answer" {
+		t.Fatalf("GetRequest(r1) failed: ok=%v content=%q", ok1, got1.Content)
+	}
+	got2, ok2 := c.GetRequest(ctx, r2)
+	if !ok2 || got2.Content != "travel answer" {
+		t.Fatalf("GetRequest(r2) failed: ok=%v content=%q", ok2, got2.Content)
+	}
+}
+
 func TestHybridCache_ExactHitFirst(t *testing.T) {
 	fc := NewFingerprintCache(100, time.Hour)
 	sc := NewInMemoryCacheWithFullConfig(InMemoryCacheFullConfig{MaxSize: 100})
