@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"sync"
@@ -14,6 +15,13 @@ const defaultEventBufferSize = 64
 
 var (
 	ErrBusClosed = errors.New("event bus is closed")
+	// ErrBusBackpressure：发布事件时所有订阅者 channel 均满。
+	//
+	// v6.x 修复（评估报告 Issue #14）：旧实现仅 logger.Warn 静默丢弃，
+	// 调用方无法感知事件丢失，对 SLO 监控致命。新实现返回 sentinel error，
+	// 调用方可用 errors.Is(err, ErrBusBackpressure) 判断是否需要重试 /
+	// 背压 / 扩容 channel buffer。
+	ErrBusBackpressure = errors.New("event bus backpressure: all subscriber channels full")
 )
 
 var idCounter int64
@@ -183,16 +191,23 @@ func (b *Bus) Publish(ctx context.Context, event Event) error {
 		subs = snap.wildcardOnly
 	}
 
+	dropped := 0
 	for _, sub := range subs {
 		select {
 		case sub.Ch <- event:
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
+			dropped++
 			b.logger.Warn("event bus: subscriber channel full, dropping event", "event_type", event.Type, "subscriber_id", sub.ID)
 		}
 	}
 
+	// v6.x：所有订阅者 channel 均满时返回 sentinel error，让调用方可观测。
+	// 部分投递成功仍算成功（兼容性优先），全部失败才返回 backpressure。
+	if dropped > 0 && dropped == len(subs) {
+		return fmt.Errorf("%w: event_type=%s dropped=%d", ErrBusBackpressure, event.Type, dropped)
+	}
 	return nil
 }
 
@@ -216,14 +231,20 @@ func (b *Bus) PublishAsync(event Event) error {
 		subs = snap.wildcardOnly
 	}
 
+	dropped := 0
 	for _, sub := range subs {
 		select {
 		case sub.Ch <- event:
 		default:
+			dropped++
 			b.logger.Warn("event bus: subscriber channel full, dropping event (async)", "event_type", event.Type, "subscriber_id", sub.ID)
 		}
 	}
 
+	// v6.x：PublishAsync 同 Publish 语义，所有订阅者 channel 均满时返回 sentinel error
+	if dropped > 0 && dropped == len(subs) {
+		return fmt.Errorf("%w: event_type=%s dropped=%d (async)", ErrBusBackpressure, event.Type, dropped)
+	}
 	return nil
 }
 

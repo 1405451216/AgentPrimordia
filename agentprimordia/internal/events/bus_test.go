@@ -2,6 +2,7 @@ package events
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -257,4 +258,50 @@ done:
 	}
 
 	bus.Close()
+}
+
+// TestBus_BackpressureError 验证 v6.x 修复（评估报告 Issue #14）：
+// 所有订阅者 channel 均满时 Publish / PublishAsync 必须返回
+// ErrBusBackpressure，让调用方可观测事件丢失。
+func TestBus_BackpressureError(t *testing.T) {
+	bus := NewBus(2) // 极小 buffer
+	defer bus.Close()
+
+	ch, _ := bus.Subscribe(EventLLMCall)
+	_ = ch
+
+	// 持续灌入事件，让订阅者 channel 长期满
+	for i := 0; i < 20; i++ {
+		_ = bus.PublishAsync(Event{Type: EventLLMCall, Source: "flood"})
+	}
+
+	// 同步 Publish 必须返回 ErrBusBackpressure（同步等待会立即超时）
+	err := bus.Publish(context.Background(), Event{Type: EventLLMCall, Source: "flood"})
+	if err == nil {
+		t.Fatal("Publish 在 backpressure 下应返回错误")
+	}
+	if !errors.Is(err, ErrBusBackpressure) {
+		t.Fatalf("Publish 错误应包含 ErrBusBackpressure, got: %v", err)
+	}
+}
+
+// TestBus_BackpressureAsync 验证 PublishAsync 也返回 sentinel。
+func TestBus_BackpressureAsync(t *testing.T) {
+	bus := NewBus(1)
+	defer bus.Close()
+
+	_, _ = bus.Subscribe(EventLLMCall)
+
+	// 灌入足够多事件使 channel 满
+	var sawBackpressure bool
+	for i := 0; i < 50; i++ {
+		err := bus.PublishAsync(Event{Type: EventLLMCall, Source: "flood"})
+		if errors.Is(err, ErrBusBackpressure) {
+			sawBackpressure = true
+			break
+		}
+	}
+	if !sawBackpressure {
+		t.Fatal("PublishAsync 在 channel 满时应至少观察到一次 ErrBusBackpressure")
+	}
 }

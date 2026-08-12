@@ -78,6 +78,9 @@ func (a *ReActAgent) tryMemorySolution(ctx context.Context, history []Message) (
 // saveSolutionMemory 在 Agent 成功完成一次任务后，把任务+答案存为
 // "已解决"记忆（v3.6-3 跨任务记忆真正注入）。
 // 后续相似任务可通过 tryMemorySolution 命中该记忆，直接复用答案（0 轮推理）。
+//
+// v6.x 修复（评估报告 Issue #10）：原同步实现会在 Agent 完成最终轮时阻塞
+// 响应；改成 fire-and-forget 后立即返回，让 store.Add 在背景 ctx 中跑。
 func (a *ReActAgent) saveSolutionMemory(ctx context.Context, history []Message, answer string) {
 	store := a.getMemoryStore()
 	if store == nil || answer == "" {
@@ -102,11 +105,18 @@ func (a *ReActAgent) saveSolutionMemory(ctx context.Context, history []Message, 
 		Metadata:   map[string]string{"solved": "true"},
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}
-	if err := store.Add(ctx, ep); err != nil {
-		a.logger.Warn("保存已解记忆失败", "error", err)
-	} else {
-		a.logger.Debug("已解任务记忆已保存", "name", a.config.Name)
-	}
+	// v6.x：fire-and-forget 异步写入，避免阻塞 Agent 响应。
+	logger := a.logger
+	bgCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
+	go func() {
+		defer cancel()
+		if err := store.Add(bgCtx, ep); err != nil {
+			logger.Warn("保存已解记忆失败", "error", err, "session_id", sessionID)
+			return
+		}
+		logger.Info("已解记忆已保存", "session_id", sessionID, "id", ep.ID)
+	}()
+	_ = ctx // 保留 ctx 参数以维持 API 向后兼容
 }
 
 // formatMemoryContext 将检索到的记忆片段格式化为注入文本。

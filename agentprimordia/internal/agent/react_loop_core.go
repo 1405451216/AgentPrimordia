@@ -373,7 +373,16 @@ func (a *ReActAgent) recordAuditObservability(event AuditEvent) {
 //
 // 在 Agent 完成推理后调用，将用户输入和 Agent 输出封装为 Interaction，
 // 交给 KnowledgeDistiller 提取事实/模式/偏好类知识。
-// 该方法是 fire-and-forget 模式，错误仅记录日志，不影响主流程。
+//
+// v6.x 修复（评估报告 Issue #10）：
+//   - 旧实现同步调用，会阻塞 Agent 最终响应回包；且读 a.capCache.requestID，
+//     而 capCache 在 reactLoopEngine 的 defer 中会被置 nil，存在竞态。
+//   - 新实现：所有需要的字段（agent_name、session_id、requestID、distiller
+//     引用）**进入函数前**先拷贝到局部变量，再以 fire-and-forget goroutine
+//     执行；用独立的 background context（5 分钟超时）避免父 ctx 取消中断
+//     蒸馏。
+//
+// 错误仅记日志，不影响主流程（fire-and-forget 语义）。
 func (a *ReActAgent) distillKnowledge(ctx context.Context, history []Message, agentOutput string) {
 	if a.capCache == nil || a.capCache.distiller == nil {
 		return
@@ -391,24 +400,47 @@ func (a *ReActAgent) distillKnowledge(ctx context.Context, history []Message, ag
 		return
 	}
 
+	// v6.x：在 goroutine 启动前一次性拷贝所有 capCache 字段，规避 defer
+	// 将 capCache 置 nil 的竞态。
+	distiller := a.capCache.distiller
+	agentName := a.config.Name
+	sessionID := a.config.SessionID
+	requestID := a.capCache.requestID
+	distillLogger := a.logger
 	interaction := learning.Interaction{
-		ID:          a.config.Name + "_" + a.capCache.requestID,
+		ID:          agentName + "_" + requestID,
 		UserInput:   userInput,
 		AgentOutput: agentOutput,
 		Success:     true,
 		Timestamp:   time.Now(),
 		Metadata: map[string]string{
-			"agent_name": a.config.Name,
-			"session_id": a.config.SessionID,
+			"agent_name": agentName,
+			"session_id": sessionID,
 		},
 	}
 
-	items, err := a.capCache.distiller.Distill(ctx, interaction)
-	if err != nil {
-		a.logger.Warn("知识蒸馏失败", "error", err)
-		return
+	// v6.x：fire-and-forget goroutine，背景 ctx 与原 ctx 解耦
+	bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	go func() {
+		defer cancel()
+		items, err := distiller.Distill(bgCtx, interaction)
+		if err != nil {
+			distillLogger.Warn("知识蒸馏失败", "error", err, "interaction", interaction.ID)
+			return
+		}
+		if len(items) > 0 {
+			distillLogger.Info("知识蒸馏完成", "items", len(items), "interaction", interaction.ID)
+		}
+	}()
+}
+
+// ExtractUserInputFromHistory 把"提取最后一条 user 消息"逻辑独立出来，
+// 供 saveSolutionMemory 复用（v6.x：saveSolutionMemory 也走异步路径）。
+func ExtractUserInputFromHistory(history []Message) string {
+	for i := len(history) - 1; i >= 0; i-- {
+		if history[i].Role == RoleUser {
+			return history[i].Content
+		}
 	}
-	if len(items) > 0 {
-		a.logger.Info("知识蒸馏完成", "items", len(items), "interaction", interaction.ID)
-	}
+	return ""
 }
