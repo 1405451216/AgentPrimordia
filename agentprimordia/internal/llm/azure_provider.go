@@ -59,9 +59,12 @@ type AzureConfig struct {
 }
 
 // AzureOpenAIProvider 实现了 Azure OpenAI 的 Provider 接口
+//
+// v6.x（评估报告 §五.1）：嵌入 BaseProvider 复用共享 HTTP 底座，
+// 消除重复 doRequest / client。
 type AzureOpenAIProvider struct {
 	config AzureConfig
-	client *http.Client
+	*BaseProvider
 }
 
 // NewAzureOpenAIProvider 创建 Azure OpenAI Provider
@@ -89,8 +92,8 @@ func NewAzureOpenAIProvider(cfg AzureConfig) (*AzureOpenAIProvider, error) {
 	}
 
 	return &AzureOpenAIProvider{
-		config: cfg,
-		client: NewDefaultLLMClient(azureDefaultTimeout),
+		config:       cfg,
+		BaseProvider: NewBaseProvider(azureDefaultTimeout),
 	}, nil
 }
 
@@ -398,42 +401,17 @@ func (p *AzureOpenAIProvider) setHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", userAgent)
 }
 
-// doRequest 执行 HTTP 请求
+// doRequest 委托 BaseProvider.DoRequestCustom 复用共享 HTTP 底座。
+//
+// v6.x：Azure 认证头（api-key）与 URL 构造（api-version query）保持
+// 原有行为，但 HTTP client / 响应体限流读取不再重复实现。
 func (p *AzureOpenAIProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
+	headers := map[string]string{"api-key": p.config.APIKey}
+	raw, err := p.BaseProvider.DoRequestCustom(ctx, p.buildURL(path), "POST", headers, body, "azure")
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, err
 	}
-
-	url := p.buildURL(path)
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(bodyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	p.setHeaders(httpReq)
-
-	resp, err := p.client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
-	respBody, err := io.ReadAll(limitedReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error *APIError `json:"error"`
-		}
-		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
-		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
-		return nil, NewHTTPErrorOrAPIError("azure", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
-	}
-
-	return respBody, nil
+	return raw, nil
 }
 
 // buildMessages 构建消息列表

@@ -26,14 +26,22 @@ func ContainsShellMetacharacter(cmd string) (bool, string) {
 	return tools.ContainsShellMetacharacter(cmd)
 }
 
-type AccessLevel int
+// AccessLevel 是 PermissionLevel 的类型别名（v6.x 评估报告 §五.1 "ACL/Scope 三套并行" 修复）。
+//
+// v6.x：AccessLevel（ACL/Sandbox 用）与 PermissionLevel（RBAC 用）语义完全同构
+// —— 均为位掩码 None/Read/Write/Execute/All = 0/1/2/4/7。历史上有两套
+// 独立类型定义，导致 ACL 与 RBAC 权限模型无法直接互通。收敛为类型别名后，
+// 两者可互换，消除重复定义。
+//
+// 兼容：Access* 常量名保留，指向 Perm* 常量，调用方无需改动。
+type AccessLevel = PermissionLevel
 
 const (
-	AccessNone    AccessLevel = 0
-	AccessRead    AccessLevel = 1
-	AccessWrite   AccessLevel = 2
-	AccessExecute AccessLevel = 4
-	AccessAll     AccessLevel = 7
+	AccessNone    = PermNone
+	AccessRead    = PermRead
+	AccessWrite   = PermWrite
+	AccessExecute = PermExecute
+	AccessAll     = PermAdmin
 )
 
 type ACLRule struct {

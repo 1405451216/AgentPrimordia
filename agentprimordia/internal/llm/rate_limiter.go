@@ -31,7 +31,12 @@ func DefaultRateLimitConfig() RateLimitConfig {
 	}
 }
 
-// tokenBucket 令牌桶实现
+// tokenBucket 令牌桶实现（Provider 专用，含阻塞 waitToken 语义）。
+//
+// v6.x（评估报告 §五.1 "重复实现大赏"）：canonical 令牌桶已收敛到
+// internal/resilience/rate_limiter.go（governance/quota.go 已别名复用）。
+// 本私有实现保留——其 API 含 waitToken 阻塞等待，与 canonical 的非阻塞
+// Take 互补；如需通用限流请优先使用 resilience.TokenBucket。
 type tokenBucket struct {
 	mu         sync.Mutex
 	tokens     float64

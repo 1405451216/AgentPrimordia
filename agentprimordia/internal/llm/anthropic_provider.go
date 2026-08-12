@@ -22,9 +22,12 @@ const (
 )
 
 // AnthropicProvider 实现 Claude 系列模型调用
+//
+// v6.x（评估报告 §五.1）：嵌入 BaseProvider 复用共享 HTTP 底座
+// （连接池 + 限流响应体 + 统一错误包装），消除重复的 doRequest。
 type AnthropicProvider struct {
 	config Config
-	client *http.Client
+	*BaseProvider
 }
 
 // NewAnthropicProvider 创建 Anthropic Claude Provider
@@ -44,9 +47,10 @@ func NewAnthropicProvider(cfg Config) (*AnthropicProvider, error) {
 	}
 
 	return &AnthropicProvider{
-		config: cfg,
-		// perf-v5 Task 6：使用共享 transport（连接池复用 + HTTP/2）
-		client: NewDefaultLLMClient(defaultTimeout),
+		config:       cfg,
+		// perf-v5 Task 6：共享 transport（连接池复用 + HTTP/2），
+		// 统一由 BaseProvider 持有。
+		BaseProvider: NewBaseProvider(defaultTimeout),
 	}, nil
 }
 
@@ -299,40 +303,20 @@ func (p *AnthropicProvider) setHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", userAgent)
 }
 
+// doRequest 委托 BaseProvider.DoRequestCustom 复用共享 HTTP 底座。
+//
+// v6.x：错误封装行为保持不变（NewHTTPError 统一包装），但 HTTP client /
+// 响应体限流读取逻辑不再重复实现。
 func (p *AnthropicProvider) doRequest(ctx context.Context, path string, body any) (json.RawMessage, error) {
-	bodyBytes, err := jsonutil.MarshalBody(body) // perf-v6 round 6 Task 1
+	headers := map[string]string{
+		"x-api-key":         p.config.APIKey,
+		"anthropic-version": anthropicAPIVersion,
+	}
+	raw, err := p.BaseProvider.DoRequestCustom(ctx, p.config.BaseURL+path, "POST", headers, body, "anthropic")
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
+		return nil, err
 	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, "POST", p.config.BaseURL+path, bytes.NewReader(bodyBytes))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	p.setHeaders(httpReq)
-
-	resp, err := p.client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
-	respBody, err := io.ReadAll(limitedReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var errResp struct {
-			Error *APIError `json:"error"`
-		}
-		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
-		// perf-v6 round 8 Task 3：携带 Retry-After + 错误分类
-		return nil, NewHTTPErrorOrAPIError("anthropic", resp.StatusCode, respBody, resp.Header, errResp.Error, parsed)
-	}
-
-	return respBody, nil
+	return raw, nil
 }
 
 // convertMessages 将通用 ChatMessage 转换为 Anthropic 格式

@@ -3,6 +3,7 @@ package llm
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,6 +75,59 @@ func (p *BaseProvider) DoRequest(ctx context.Context, baseURL, path, authHeader 
 		return nil, NewHTTPError(targetProvider, resp.StatusCode, respBody, resp.Header)
 	}
 
+	return respBody, nil
+}
+
+// DoRequestCustom 发送 HTTP POST 请求并支持自定义请求头集。
+//
+// v6.x（评估报告 §五.1）：Anthropic（x-api-key + anthropic-version）与
+// Azure（api-key + api-version query）无法复用 DoRequest 的 Authorization
+// 单头签名。此方法让它们共享同一套 HTTP 底座（client 复用 + 限流响应体
+// 读取 + 统一错误包装），消除各 Provider 重复的 doRequest 实现。
+func (p *BaseProvider) DoRequestCustom(ctx context.Context, url, method string, headers map[string]string, body any, targetProvider string) ([]byte, error) {
+	bodyBytes, err := jsonutil.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	var bodyReader io.Reader
+	if bodyBytes != nil {
+		bodyReader = bytes.NewReader(bodyBytes)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, method, url, bodyReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("User-Agent", userAgent)
+	for k, v := range headers {
+		httpReq.Header.Set(k, v)
+	}
+
+	resp, err := p.client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
+	respBody, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		// 尝试解析 `{"error": {...}}` 结构，提供更丰富的错误分类
+		//（与旧 Azure/Anthropic doRequest 行为一致，携带 APIError + Retry-After）。
+		var errResp struct {
+			Error *APIError `json:"error"`
+		}
+		parsed := json.Unmarshal(respBody, &errResp) == nil && errResp.Error != nil
+		if parsed {
+			return nil, NewHTTPErrorOrAPIError(targetProvider, resp.StatusCode, respBody, resp.Header, errResp.Error, true)
+		}
+		return nil, NewHTTPError(targetProvider, resp.StatusCode, respBody, resp.Header)
+	}
 	return respBody, nil
 }
 

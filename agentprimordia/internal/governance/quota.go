@@ -5,85 +5,22 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"agentprimordia/internal/resilience"
 )
 
-// TokenBucket 是一个简单的令牌桶限流器，用于 QPS 控制。
+// TokenBucket 令牌桶限流器（v6.x 评估报告 §五.1 "重复实现大赏" 修复）。
 //
-// 设计：
-//   - 桶容量 = capacity (满桶)
-//   - 每秒自动补充 rate 个令牌
-//   - Take(1) 非阻塞尝试消费 1 个令牌；成功返回 true
-//
-// 内部使用 float64 跟踪令牌数以支持亚秒级精确补充。
-type TokenBucket struct {
-	capacity   float64      // 桶容量
-	rate       float64      // 每秒补充速率
-	tokens     atomic.Int64 // 当前令牌数 * 1e9（固定精度整数，避免浮点竞态）
-	lastRefill atomic.Int64 // 上次补充时间的 unix 纳秒
-	mu         sync.Mutex
-}
-
-const tokenPrecision = 1e9 // tokens 值的精度乘数
+// v6.x：canonical 实现迁移到 internal/resilience/rate_limiter.go，
+// governance 通过类型别名复用，消除与 llm/rate_limiter.go 的重复实现。
+// 本处保留 TokenBucket 名称与 NewTokenBucket 构造器，调用方无需改动。
+type TokenBucket = resilience.TokenBucket
 
 // NewTokenBucket 创建一个令牌桶。
 // rate 是每秒允许的请求数（QPS 上限），burst 是最大突发量。
 // 如果 rate <= 0 则不限流。
 func NewTokenBucket(rate, burst int) *TokenBucket {
-	if rate <= 0 {
-		rate = 1 << 30 // 近似无限
-	}
-	if burst <= 0 {
-		burst = rate
-	}
-	tb := &TokenBucket{
-		capacity: float64(burst),
-		rate:     float64(rate),
-	}
-	tb.tokens.Store(int64(float64(burst) * tokenPrecision))
-	tb.lastRefill.Store(time.Now().UnixNano())
-	return tb
-}
-
-// Take 尝试消费 n 个令牌。成功返回 true。
-func (b *TokenBucket) Take(n int64) bool {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.refill()
-
-	needed := n * tokenPrecision
-	if b.tokens.Load() >= needed {
-		b.tokens.Add(-needed)
-		return true
-	}
-	return false
-}
-
-// refill 根据经过时间补充令牌。调用者必须持有写锁。
-func (b *TokenBucket) refill() {
-	now := time.Now().UnixNano()
-	last := b.lastRefill.Load()
-	elapsed := now - last
-	if elapsed <= 0 {
-		return
-	}
-	// 应补充 = 经过秒数 * 速率
-	elapsedSeconds := float64(elapsed) / 1e9
-	refillCount := elapsedSeconds * b.rate
-	if refillCount <= 0 {
-		return
-	}
-	refillUnits := int64(refillCount * tokenPrecision)
-	if refillUnits <= 0 {
-		return
-	}
-	newTokens := b.tokens.Load() + refillUnits
-	maxTokens := int64(b.capacity * tokenPrecision)
-	if newTokens > maxTokens {
-		newTokens = maxTokens
-	}
-	b.tokens.Store(newTokens)
-	b.lastRefill.Store(now)
+	return resilience.NewTokenBucket(rate, burst)
 }
 
 // --- QuotaManager ---
