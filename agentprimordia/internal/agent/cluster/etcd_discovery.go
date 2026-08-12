@@ -172,6 +172,48 @@ func (s *EtcdKVStore) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
+// CompareAndSwap 原子 CAS（基于 etcd 事务）。
+//
+// 语义与 MemKVStore 对齐：
+//   - oldValue == "" 表示"期望键不存在"（创建式抢占）；
+//   - oldValue != "" 表示"期望键当前值等于 oldValue"（续约式刷新）。
+//
+// 通过 etcd Txn 保证读-比较-写原子性，这是消除 split-brain 双主的关键。
+func (s *EtcdKVStore) CompareAndSwap(ctx context.Context, key, oldValue, newValue string, ttl time.Duration) (bool, error) {
+	// 构造 etcd 事务：比较条件取决于 oldValue 是否为空
+	var cmp clientv3.Cmp
+	if oldValue == "" {
+		// 期望键不存在
+		cmp = clientv3.Compare(clientv3.CreateRevision(key), "=", 0)
+	} else {
+		cmp = clientv3.Compare(clientv3.Value(key), "=", oldValue)
+	}
+
+	var putOps []clientv3.Op
+	if ttl > 0 {
+		ttlSec := int64(ttl.Seconds())
+		if ttlSec < 1 {
+			ttlSec = 1
+		}
+		lease, err := s.client.Grant(ctx, ttlSec)
+		if err != nil {
+			return false, fmt.Errorf("etcd_kv: grant lease: %w", err)
+		}
+		putOps = []clientv3.Op{clientv3.OpPut(key, newValue, clientv3.WithLease(lease.ID))}
+	} else {
+		putOps = []clientv3.Op{clientv3.OpPut(key, newValue)}
+	}
+
+	txn := s.client.Txn(ctx).If(cmp).Then(putOps...).Else()
+	resp, err := txn.Commit()
+	if err != nil {
+		return false, fmt.Errorf("etcd_kv: cas txn: %w", err)
+	}
+	return resp.Succeeded, nil
+}
+
+var _ CASStore = (*EtcdKVStore)(nil)
+
 // ListByPrefix 列出指定前缀的所有键值
 func (s *EtcdKVStore) ListByPrefix(ctx context.Context, prefix string) (map[string]string, error) {
 	resp, err := s.client.Get(ctx, prefix, clientv3.WithPrefix())

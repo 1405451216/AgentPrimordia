@@ -22,6 +22,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -258,9 +260,14 @@ func (m *ClusterManager) GetLeader() string {
 	return m.leaderID.Load().(string)
 }
 
-// IsLeader 判断当前节点是否为领导者
+// IsLeader 判断当前节点是否为领导者。
+//
+// v6.x（评估报告 Issue #3）：改用权威角色状态 RoleLeader 判断，而非
+// "leaderID == 自己"。fencing 降级路径 becomeFollower("") 会清空本地
+// leader 视图，若 IsLeader 仍按 leaderID 判断，降级节点会误报自己是
+// Leader（split-brain 观测面错误）。
 func (m *ClusterManager) IsLeader() bool {
-	return m.GetLeader() == m.config.NodeID
+	return m.role.Load().(NodeRole) == RoleLeader
 }
 
 // GetRole 获取当前节点角色
@@ -412,27 +419,46 @@ func (m *ClusterManager) electionLoop(ctx context.Context) {
 
 // checkLeadership 检查领导权
 //
-// 选举基于共享租约收敛：设置 StateStore（共享 KV 后端）后，各节点以
-// 共享租约 _leader_lease 为权威事实源——持有租约的在线节点成为领导者，
-// 其余节点跟随，从而收敛共识。StateStore 为空时退化为纯本地行为（仅单节点
-// 场景可用，各节点不会互相认可）。
+// v6.x 重构（评估报告 Issue #3）—— 从"最小 ID 规则"改为"租约 CAS + fencing"：
+//
+//   - 旧实现按"ID 最小的在线节点当选"选举，网络分区恢复时多个节点可同时
+//     自认为 Leader（split-brain），且无 fencing token，旧 Leader 可能
+//     继续写状态覆盖新 Leader。
+//
+//   - 新实现：唯一权威事实源是共享租约 _leader_lease 的原子 CAS。
+//     * 租约值编码为 `nodeID|term=N`（fencing token = term）；
+//     * 抢占/续约都通过 CompareAndSwap 原子完成，保证任意时刻只有一个持有者；
+//     * 续约失败（CAS 被拒）说明租约被他人接管，立即降级为 Follower。
+//
+// StateStore 为空时退化为纯本地行为（仅单节点场景可用，各节点不会互相认可）。
 func (m *ClusterManager) checkLeadership(ctx context.Context) {
 	leader := m.GetLeader()
 
 	// 共享租约是权威事实源：若其他节点持有有效租约且在线，跟随它
-	if lease, ok := m.leaseValue(ctx); ok && lease != "" && lease != m.config.NodeID {
-		if m.nodeIsOnline(lease) {
-			m.becomeFollower(lease)
-			return
+	if lease, ok := m.leaseValue(ctx); ok {
+		holderID, holderTerm := parseLeaseValue(lease)
+		if holderID != "" && holderID != m.config.NodeID {
+			if m.nodeIsOnline(holderID) {
+				m.becomeFollower(holderID)
+				return
+			}
+			// 持租约节点离线：租约视为失效，允许接管（走下方选举）
+			m.logger.Info("租约持有者离线，接管选举", "lease_holder", holderID)
+		} else if holderID == m.config.NodeID {
+			// 自己持有租约：若本地 term 落后于租约 term（上一任遗留），
+			// 说明 fence 已被打破，降级让出
+			if holderTerm > m.term.Load() {
+				m.logger.Warn("检测到 fencing token 冲突，降级为跟随者", "lease_term", holderTerm, "local_term", m.term.Load())
+				m.becomeFollower(m.config.NodeID)
+				return
+			}
 		}
-		// 持租约节点离线：租约视为失效，允许接管（走下方选举）
-		m.logger.Info("租约持有者离线，接管选举", "lease_holder", lease)
 	}
 
 	// 已有本地领导者视图
 	if leader != "" {
 		if leader == m.config.NodeID {
-			// 当前节点是领导者，续租
+			// 当前节点是领导者，续租（fencing：CAS 失败即降级）
 			m.renewLease(ctx)
 			return
 		}
@@ -476,19 +502,78 @@ func (m *ClusterManager) leaseValue(ctx context.Context) (string, bool) {
 	return value, ok
 }
 
-// renewLease 续租领导者租约（优先写共享 StateStore，其次本地 state）
-func (m *ClusterManager) renewLease(ctx context.Context) {
-	ttl := m.config.ElectionTimeout * 2
-	if m.config.StateStore != nil {
-		_ = m.config.StateStore.Put(ctx, electionKey, m.config.NodeID, ttl)
-		return
+// parseLeaseValue 解析租约值 `nodeID|term=N`，返回 (nodeID, term)。
+func parseLeaseValue(value string) (string, int64) {
+	if value == "" {
+		return "", 0
 	}
-	m.state.Set(electionKey, m.config.NodeID, ttl)
+	var nodeID string
+	var term int64
+	parts := strings.Split(value, "|")
+	nodeID = parts[0]
+	if len(parts) >= 2 {
+		// 期望格式 term=N
+		termStr := strings.TrimPrefix(parts[1], "term=")
+		if termStr != parts[1] {
+			term, _ = strconv.ParseInt(termStr, 10, 64)
+		}
+	}
+	return nodeID, term
 }
 
-// startElection 启动选举
+// encodeLeaseValue 编码租约值 `nodeID|term=N`。
+func encodeLeaseValue(nodeID string, term int64) string {
+	return fmt.Sprintf("%s|term=%d", nodeID, term)
+}
+
+// renewLease 续租领导者租约（fencing-aware）。
+//
+// 优先走共享 StateStore 的原子 CAS：仅当租约仍归本节点当前 term 持有时
+// 才刷新 TTL。CAS 失败意味着租约被其他节点接管（如 split-brain 恢复后
+// 更高 term 的 Leader 已上位），本节点必须立即降级。
+func (m *ClusterManager) renewLease(ctx context.Context) {
+	ttl := m.config.ElectionTimeout * 2
+	myValue := encodeLeaseValue(m.config.NodeID, m.term.Load())
+
+	if cas, ok := m.stateStoreCAS(); ok {
+		ok, err := cas.CompareAndSwap(ctx, electionKey, myValue, myValue, ttl)
+		if err != nil {
+			m.logger.Warn("续租失败（错误）", "error", err)
+			return
+		}
+		if !ok {
+			// fencing 被打破：租约已被他人接管，降级
+			m.logger.Warn("续租被拒（fencing）：租约已被其他节点接管，降级为跟随者")
+			m.becomeFollower("")
+			return
+		}
+		return
+	}
+
+	// 无 CAS 能力：回退到无条件写（本地 state 或普通 Put）
+	if m.config.StateStore != nil {
+		_ = m.config.StateStore.Put(ctx, electionKey, myValue, ttl)
+		return
+	}
+	m.state.Set(electionKey, myValue, ttl)
+}
+
+// stateStoreCAS 返回 StateStore 的 CAS 能力（若实现 CASStore 接口）。
+func (m *ClusterManager) stateStoreCAS() (CASStore, bool) {
+	if m.config.StateStore == nil {
+		return nil, false
+	}
+	cas, ok := m.config.StateStore.(CASStore)
+	return cas, ok
+}
+
+// startElection 启动选举（fencing-aware：通过原子 CAS 抢占租约）。
+//
+// v6.x：不再使用"最小 ID 节点当选"规则——该规则在分区恢复时会产生
+// 多个 Leader。改为：递增 term 后用 CAS 从"空/过期"抢占租约，只有
+// CAS 成功的节点成为 Leader。CAS 失败说明租约被他人持有，转为跟随者。
 func (m *ClusterManager) startElection(ctx context.Context) {
-	// 增加任期
+	// 增加任期（fencing token）
 	newTerm := m.term.Add(1)
 
 	// 投票给自己
@@ -497,34 +582,52 @@ func (m *ClusterManager) startElection(ctx context.Context) {
 
 	m.logger.Info("开始选举", "term", newTerm, "candidate", m.config.NodeID)
 
-	// 简化版：如果当前节点是 ID 最小的在线节点，则成为领导者
-	m.mu.RLock()
-	nodes := make([]NodeInfo, 0, len(m.nodes)+1)
-	nodes = append(nodes, *m.localNode)
-	for _, node := range m.nodes {
-		if node.Status == StatusOnline {
-			nodes = append(nodes, *node)
-		}
-	}
-	m.mu.RUnlock()
-
-	// 找到最小 ID
-	minID := m.config.NodeID
-	for _, node := range nodes {
-		if node.ID < minID {
-			minID = node.ID
-		}
-	}
-
-	// 如果当前节点是最小 ID，成为领导者
-	if minID == m.config.NodeID {
-		// 二次确认共享租约未被其他在线节点持有（防 checkLeadership 竞态）
-		if lease, ok := m.leaseValue(ctx); ok && lease != "" && lease != m.config.NodeID && m.nodeIsOnline(lease) {
-			m.becomeFollower(lease)
+	// 二次确认共享租约未被其他在线节点持有（防 checkLeadership 竞态）
+	if lease, ok := m.leaseValue(ctx); ok {
+		holderID, holderTerm := parseLeaseValue(lease)
+		if holderID != "" && holderID != m.config.NodeID && m.nodeIsOnline(holderID) {
+			m.becomeFollower(holderID)
 			return
 		}
-		m.becomeLeader(ctx)
+		// 自己持有旧租约（历史遗留）：用更高 term 抢占即可
+		if holderID == m.config.NodeID && holderTerm >= newTerm {
+			// 自己的租约仍在，直接续约成为 Leader（无需新 term）
+			m.term.Store(holderTerm)
+			m.becomeLeader(ctx)
+			return
+		}
 	}
+
+	// 用 CAS 抢占租约：期望"键不存在或已过期"
+	ttl := m.config.ElectionTimeout * 2
+	myValue := encodeLeaseValue(m.config.NodeID, newTerm)
+
+	if cas, ok := m.stateStoreCAS(); ok {
+		acquired, err := cas.CompareAndSwap(ctx, electionKey, "", myValue, ttl)
+		if err != nil {
+			m.logger.Warn("选举 CAS 失败", "error", err)
+			m.role.Store(RoleFollower)
+			return
+		}
+		if !acquired {
+			// 租约被他人持有，转跟随
+			m.logger.Info("选举失败：租约已被其他节点持有", "candidate", m.config.NodeID)
+			if lease, ok := m.leaseValue(ctx); ok {
+				if holderID, _ := parseLeaseValue(lease); holderID != "" {
+					m.becomeFollower(holderID)
+					return
+				}
+			}
+			m.role.Store(RoleFollower)
+			return
+		}
+		// CAS 成功 → 成为 Leader
+		m.becomeLeader(ctx)
+		return
+	}
+
+	// 无 CAS 能力（本地模式）：直接成为 Leader
+	m.becomeLeader(ctx)
 }
 
 // becomeLeader 成为领导者
@@ -537,21 +640,34 @@ func (m *ClusterManager) becomeLeader(ctx context.Context) {
 	m.localNode.Role = RoleLeader
 	m.mu.Unlock()
 
-	// 设置领导者租约（优先写共享 StateStore，其次本地 state）
+	// 设置领导者租约（fencing-aware 续约/抢占）
 	m.renewLease(ctx)
 
 	m.logger.Info("成为领导者", "node_id", m.config.NodeID, "term", m.term.Load())
 }
 
 // becomeFollower 成为跟随者
+//
+// v6.x：leaderID 为空时表示"本节点刚失去租约但未知新 Leader"，仅更新
+// 角色与租约视图，不覆盖已有 leaderID（避免误指向自己）。
 func (m *ClusterManager) becomeFollower(leaderID string) {
 	m.role.Store(RoleFollower)
-	m.leaderID.Store(leaderID)
+	if leaderID != "" {
+		m.leaderID.Store(leaderID)
+	} else {
+		// v6.x：fencing 降级（租约被接管）时清空本地 leader 视图，
+		// 下一轮 checkLeadership 会从租约中发现真正的 Leader。
+		m.leaderID.Store("")
+	}
 
 	// 更新本地节点角色
 	m.mu.Lock()
 	m.localNode.Role = RoleFollower
 	m.mu.Unlock()
 
-	m.logger.Info("成为跟随者", "leader", leaderID)
+	if leaderID == "" {
+		m.logger.Info("降级为跟随者（租约被接管）")
+	} else {
+		m.logger.Info("成为跟随者", "leader", leaderID)
+	}
 }

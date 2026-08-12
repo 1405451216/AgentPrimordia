@@ -486,3 +486,151 @@ func Test10NodeConcurrentRegistration(t *testing.T) {
 		}
 	}
 }
+
+// TestClusterManagerFencingSplitBrain 验证 v6.x 修复（评估报告 Issue #3）：
+//
+// 两个节点共享同一个 StateStore（MemKVStore），通过 CAS 抢占 _leader_lease。
+// 即使两节点同时启动选举，也只有一个能成为 Leader——不可能出现双主。
+func TestClusterManagerFencingSplitBrain(t *testing.T) {
+	sharedKV := NewMemKVStore()
+
+	cfgA := ClusterConfig{
+		NodeID:     "node-A",
+		ListenAddr: ":19081",
+		Discovery:  discovery.NewLocalDiscovery(),
+		StateStore: sharedKV, // 两节点共享同一 KV
+		HeartbeatInterval: 50 * time.Millisecond,
+		HeartbeatTimeout:  200 * time.Millisecond,
+		ElectionTimeout:   100 * time.Millisecond,
+	}
+	cfgB := ClusterConfig{
+		NodeID:     "node-B",
+		ListenAddr: ":19082",
+		Discovery:  discovery.NewLocalDiscovery(),
+		StateStore: sharedKV, // 两节点共享同一 KV
+		HeartbeatInterval: 50 * time.Millisecond,
+		HeartbeatTimeout:  200 * time.Millisecond,
+		ElectionTimeout:   100 * time.Millisecond,
+	}
+
+	mgrA := NewClusterManager(cfgA)
+	mgrB := NewClusterManager(cfgB)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := mgrA.Start(ctx); err != nil {
+		t.Fatalf("mgrA.Start: %v", err)
+	}
+	defer func() { _ = mgrA.Stop(ctx) }()
+	if err := mgrB.Start(ctx); err != nil {
+		t.Fatalf("mgrB.Start: %v", err)
+	}
+	defer func() { _ = mgrB.Stop(ctx) }()
+
+	// 等待两轮选举周期
+	time.Sleep(700 * time.Millisecond)
+
+	leaderA := mgrA.IsLeader()
+	leaderB := mgrB.IsLeader()
+
+	// 断言：任意时刻最多一个 Leader（无 split-brain）
+	if leaderA && leaderB {
+		t.Fatal("split-brain: 两个节点同时自认为 Leader")
+	}
+	if !leaderA && !leaderB {
+		t.Fatal("选举收敛失败: 两个节点都不是 Leader")
+	}
+
+	// 两个节点应收敛到同一个 Leader 视图
+	la, lb := mgrA.GetLeader(), mgrB.GetLeader()
+	if la != lb {
+		t.Fatalf("Leader 视图不一致: A=%s B=%s（fencing token 未收敛）", la, lb)
+	}
+	if la != "node-A" && la != "node-B" {
+		t.Fatalf("Leader 必须是 node-A 或 node-B, got %s", la)
+	}
+}
+
+// TestClusterManagerFencingTakeover 验证旧 Leader 失去租约后不会继续续租：
+//
+// 1. 节点 A 成为 Leader；
+// 2. 删除共享 KV 中的租约（模拟 A 网络分区/租约过期被接管）；
+// 3. 节点 B 通过 CAS 抢占成为 Leader；
+// 4. 节点 A 检测到租约变更后必须降级为 Follower（fencing 生效）。
+func TestClusterManagerFencingTakeover(t *testing.T) {
+	sharedKV := NewMemKVStore()
+
+	cfgA := ClusterConfig{
+		NodeID:     "node-A",
+		ListenAddr: ":19181",
+		Discovery:  discovery.NewLocalDiscovery(),
+		StateStore: sharedKV,
+		HeartbeatInterval: 50 * time.Millisecond,
+		HeartbeatTimeout:  200 * time.Millisecond,
+		ElectionTimeout:   100 * time.Millisecond,
+	}
+	cfgB := ClusterConfig{
+		NodeID:     "node-B",
+		ListenAddr: ":19182",
+		Discovery:  discovery.NewLocalDiscovery(),
+		StateStore: sharedKV,
+		HeartbeatInterval: 50 * time.Millisecond,
+		HeartbeatTimeout:  200 * time.Millisecond,
+		ElectionTimeout:   100 * time.Millisecond,
+	}
+
+	mgrA := NewClusterManager(cfgA)
+	mgrB := NewClusterManager(cfgB)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := mgrA.Start(ctx); err != nil {
+		t.Fatalf("mgrA.Start: %v", err)
+	}
+	defer func() { _ = mgrA.Stop(ctx) }()
+	_ = mgrB.Start(ctx)
+	defer func() { _ = mgrB.Stop(ctx) }()
+
+	// 等待 A 先成为 Leader
+	time.Sleep(500 * time.Millisecond)
+	if !mgrA.IsLeader() {
+		// 允许 B 先拿到 Leader（启动竞态）
+		if !mgrB.IsLeader() {
+			t.Fatal("无人成为 Leader")
+		}
+	}
+
+	// 强制清空租约，模拟分区恢复后租约被接管
+	_ = sharedKV.Delete(ctx, electionKey)
+
+	// 等待重选举
+	time.Sleep(700 * time.Millisecond)
+
+	// 最终必须恰好一个 Leader
+	if mgrA.IsLeader() && mgrB.IsLeader() {
+		t.Fatal("split-brain: 两个节点同时自认为 Leader")
+	}
+	if !mgrA.IsLeader() && !mgrB.IsLeader() {
+		t.Fatal("租约清空后无节点成为 Leader")
+	}
+
+	// Leader 视图必须收敛
+	if mgrA.GetLeader() != mgrB.GetLeader() {
+		t.Fatalf("Leader 视图不一致: A=%s B=%s", mgrA.GetLeader(), mgrB.GetLeader())
+	}
+}
+
+// TestParseLeaseValue 验证 fencing token 编解码。
+func TestParseLeaseValue(t *testing.T) {
+	id, term := parseLeaseValue("node-1|term=42")
+	if id != "node-1" || term != 42 {
+		t.Fatalf("parseLeaseValue = (%q,%d), want (node-1,42)", id, term)
+	}
+	id, term = parseLeaseValue("node-2")
+	if id != "node-2" || term != 0 {
+		t.Fatalf("无 term 时 parseLeaseValue = (%q,%d)", id, term)
+	}
+	if got := encodeLeaseValue("node-x", 7); got != "node-x|term=7" {
+		t.Fatalf("encodeLeaseValue = %q", got)
+	}
+}

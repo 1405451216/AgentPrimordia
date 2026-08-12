@@ -40,6 +40,21 @@ type KVEvent struct {
 	Value string
 }
 
+// CASStore 支持原子"比较并设置"的 KV 存储。
+//
+// v6.x（评估报告 Issue #3）：选举不能仅靠"最小 ID 节点"规则，否则
+// 网络分区恢复时多个节点同时自认为 Leader（split-brain）。通过
+// CompareAndSwap 以原子方式抢占/续约 _leader_lease，保证任意时刻
+// 只有一个节点持有租约——这是 fencing 的基础。
+//
+// MemKVStore / EtcdKVStore 实现该接口；调用方用类型断言探测。
+type CASStore interface {
+	// CompareAndSwap 仅当 key 的当前值等于 oldValue（或 oldValue 为空表示
+	// "键不存在或已过期"）时，将 key 更新为 newValue 并设置 TTL。
+	// 返回 true 表示 CAS 成功；false 表示被其他值占据。
+	CompareAndSwap(ctx context.Context, key, oldValue, newValue string, ttl time.Duration) (bool, error)
+}
+
 // EventType 事件类型
 type EventType int
 
@@ -118,6 +133,44 @@ func (s *MemKVStore) Delete(ctx context.Context, key string) error {
 	s.notifyWatchers(key, "", EventDelete)
 	return nil
 }
+
+// CompareAndSwap 原子 CAS（内存实现）。
+//
+// oldValue 为空表示"期望键不存在或已过期"；否则必须精确匹配当前值。
+func (s *MemKVStore) CompareAndSwap(ctx context.Context, key, oldValue, newValue string, ttl time.Duration) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry, ok := s.data[key]
+	if ok {
+		// 已过期视为不存在
+		if !entry.expiresAt.IsZero() && time.Now().After(entry.expiresAt) {
+			ok = false
+		}
+	}
+	if ok {
+		if oldValue != "" && entry.value != oldValue {
+			return false, nil
+		}
+		// oldValue 为空但键存在 → CAS 失败（被他人占据）
+		if oldValue == "" {
+			return false, nil
+		}
+	} else if oldValue != "" {
+		// 键不存在但期望旧值非空 → CAS 失败
+		return false, nil
+	}
+
+	expiresAt := time.Time{}
+	if ttl > 0 {
+		expiresAt = time.Now().Add(ttl)
+	}
+	s.data[key] = &memEntry{value: newValue, expiresAt: expiresAt}
+	s.notifyWatchers(key, newValue, EventPut)
+	return true, nil
+}
+
+var _ CASStore = (*MemKVStore)(nil)
 
 // ListByPrefix 列出指定前缀的所有键值
 func (s *MemKVStore) ListByPrefix(ctx context.Context, prefix string) (map[string]string, error) {
