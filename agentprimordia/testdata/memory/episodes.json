@@ -1,0 +1,19 @@
+[
+  {
+    "id": "ep-001",
+    "session_id": "demo-session",
+    "role": "user",
+    "content": "What is the capital of France?",
+    "importance": 0.8,
+    "created_at": "2026-08-01T10:00:00Z"
+  },
+  {
+    "id": "ep-002",
+    "session_id": "demo-session",
+    "role": "assistant",
+    "content": "Paris is the capital of France.",
+    "summary": "France capital is Paris",
+    "importance": 0.9,
+    "created_at": "2026-08-01T10:00:05Z"
+  }
+]
