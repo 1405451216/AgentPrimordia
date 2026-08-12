@@ -1,10 +1,19 @@
-// Package ebpf 提供 Agent 执行全链路 syscall/IO profiling。
+// Package procfs 提供 Agent 执行全链路 syscall/IO profiling。
 //
-// 在 Linux 平台上，通过读取 /proc/[pid]/io 获取进程级读写统计。
-// 在其他平台上，返回 ErrNotSupported。
+// v6.x 重命名（评估报告 §四.5）：原包名 `ebpf` 名实不符——实际实现是
+// 通过读取 /proc/[pid]/io 获取进程级读写统计，并非真正的 eBPF syscall
+// 追踪（也未引入 cilium/ebpf 依赖）。新包名 procfs 准确反映实现机制。
 //
-// 完整 eBPF 实现（需 cilium/ebpf）可通过构建标签启用。
-package ebpf
+// 行为：
+//   - Linux 平台：通过读取 /proc/[pid]/io 获取进程级读写统计，无需 eBPF 依赖。
+//   - 其他平台：返回 ErrNotSupported。
+//
+// 完整 eBPF 实现（需 cilium/ebpf）可在后续引入，届时包名可重新评估。
+//
+// 向后兼容：原 `otel/ebpf` 路径保留为 deprecated alias，调用方可继续
+// 使用 ebpf.Tracer / ebpf.SyscallEvent 等导出符号（re-export 自 procfs），
+// 至少持续到 v7.x。
+package procfs
 
 import (
 	"errors"

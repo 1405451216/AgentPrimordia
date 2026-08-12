@@ -4,7 +4,7 @@
 // （tracer_other.go）两个平台分支共同引用。此前定义在 tracer_other.go 的
 // //go:build !linux 文件里，导致 Linux 构建下 undefined: noopTracer。
 // 移到无 build tag 的共享文件以同时满足两个平台分支。
-package ebpf
+package procfs
 
 // noopTracer 是平台无关的 no-op 实现。
 type noopTracer struct{}
