@@ -293,16 +293,21 @@ func (p *Pool) AcquireForTenant(tenantID string) (release func(), err error) {
 // 与 Dispatch 的区别：先校验 tenant 配额，超限立即返回错误（不会排队）。
 // 适合"按租户优先级排队"的场景。
 //
-// 注意：当前实现仅做准入校验（配额通过后立即释放并发槽）。
-// 真正的并发执行仍由 Pool 调度器统一控制；调用方可在拿到 *TaskResult
-// 后通过其他机制做租户维度的限流。
+// v6.x 修复（评估报告 Issue #8）：
+//   - 旧实现"立即释放并发槽"，仅做准入校验，导致 tenant 名义上有
+//     配额但实际并未限速——并发槽被同一 tenant 反复占满。
+//   - 新实现：持有 tenant 配额槽直到 Dispatch 返回（任务真正结束），
+//     保证租户维度的并发数严格受配额约束。
+//
+// 语义对齐：Dispatch 同步等待任务完成，所以"持有到 Dispatch 返回"
+// 等价于"持有到任务真实结束"。
 func (p *Pool) SubmitForTenant(ctx context.Context, tenantID string, task TaskConfig) (*TaskResult, error) {
 	release, err := p.AcquireForTenant(tenantID)
 	if err != nil {
 		return nil, err
 	}
-	// 立即释放并发槽——只做准入校验
-	release()
+	// v6.x：持有槽位直到任务真正完成
+	defer release()
 
 	results, err := p.Dispatch(ctx, []TaskConfig{task})
 	if err != nil {

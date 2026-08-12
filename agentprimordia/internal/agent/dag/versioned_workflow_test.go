@@ -2,6 +2,7 @@ package dag
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -318,8 +319,11 @@ func TestHotMigration_ExecuteKeepRunning(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := hm.Execute(ctx); err != nil {
-		t.Fatalf("Execute 失败: %v", err)
+	// v6.x：Execute 现在返回 ErrHotMigrationNotImplemented（plan generator
+	// 仍生成 records，但不在飞 Run 上真正切换版本）。
+	err := hm.Execute(ctx)
+	if !errors.Is(err, ErrHotMigrationNotImplemented) {
+		t.Fatalf("Execute 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
 	}
 
 	records := hm.Records()
@@ -356,8 +360,11 @@ func TestHotMigration_ExecuteRestartAll(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := hm.Execute(ctx); err != nil {
-		t.Fatalf("Execute 失败: %v", err)
+	// v6.x：Execute 现在返回 ErrHotMigrationNotImplemented（plan generator
+	// 仍生成 records，但不在飞 Run 上真正切换版本）。
+	err := hm.Execute(ctx)
+	if !errors.Is(err, ErrHotMigrationNotImplemented) {
+		t.Fatalf("Execute 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
 	}
 
 	records := hm.Records()
@@ -394,8 +401,11 @@ func TestHotMigration_ExecuteGradual(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := hm.Execute(ctx); err != nil {
-		t.Fatalf("Execute 失败: %v", err)
+	// v6.x：Execute 现在返回 ErrHotMigrationNotImplemented（plan generator
+	// 仍生成 records，但不在飞 Run 上真正切换版本）。
+	err := hm.Execute(ctx)
+	if !errors.Is(err, ErrHotMigrationNotImplemented) {
+		t.Fatalf("Execute 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
 	}
 
 	records := hm.Records()
@@ -454,8 +464,10 @@ func TestVersionedWorkflow_Migrate(t *testing.T) {
 
 	// 执行迁移
 	ctx := context.Background()
-	if err := vw.Migrate(ctx, "1.0.0", "2.0.0"); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
+	// v6.x：Migrate 现在透传 ErrHotMigrationNotImplemented，但仍把 plan 写入 records。
+	err = vw.Migrate(ctx, "1.0.0", "2.0.0")
+	if !errors.Is(err, ErrHotMigrationNotImplemented) {
+		t.Fatalf("Migrate 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
 	}
 
 	// 验证活跃版本已切换

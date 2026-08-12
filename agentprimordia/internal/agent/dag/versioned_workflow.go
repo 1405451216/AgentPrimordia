@@ -178,11 +178,20 @@ func (vw *VersionedWorkflow) ActiveVersion() string {
 	return vw.active
 }
 
-// Migrate 执行热迁移：从 from 版本迁移到 to 版本
-// 热迁移过程：
-//  1. 验证源版本和目标版本均存在
-//  2. 将活跃版本切换为目标版本
-//  3. 调用策略进行节点级迁移
+// Migrate 执行版本迁移：从 from 版本迁移到 to 版本。
+//
+// v6.x 行为变更（评估报告 Issue #9）：
+//  1. 验证源版本/目标版本存在；
+//  2. 调用 HotMigration.Execute 生成 MigrationPlan 列表（plan generator
+//     仍把 records 写入 hm.Records()）；
+//  3. **仍然**调用 SetActive(to)，让所有"新启动"的 Run 走新版本；
+//  4. 即便 SetActive 成功，函数仍返回 ErrHotMigrationNotImplemented 的
+//     包装错误，因为 HotMigration 当前**不会**把在飞 Run 切换到新版本。
+//
+// 调用方责任（v6.x）：
+//   - 收到 errors.Is(err, ErrHotMigrationNotImplemented) 时，调用方应
+//     自行决定是否 cancel/replay 在飞 Run（参考 hm.MigratedNodeIDs()）。
+//   - 不应把 Migrate 的 nil 视为"已迁移完成"的承诺。
 func (vw *VersionedWorkflow) Migrate(ctx context.Context, from, to string) error {
 	if from == to {
 		return ErrMigrationSameVersion
@@ -201,7 +210,7 @@ func (vw *VersionedWorkflow) Migrate(ctx context.Context, from, to string) error
 	// 构建迁移计划
 	plan := buildMigrationPlan(fromVersion.Definition, toVersion.Definition)
 
-	// 执行迁移
+	// 执行迁移（plan generator；可能返回 ErrHotMigrationNotImplemented）
 	migration := &HotMigration{
 		FromVersion:  from,
 		ToVersion:    to,
@@ -210,12 +219,19 @@ func (vw *VersionedWorkflow) Migrate(ctx context.Context, from, to string) error
 		FromWorkflow: fromVersion.Definition,
 		ToWorkflow:   toVersion.Definition,
 	}
-	if err := migration.Execute(ctx); err != nil {
-		return fmt.Errorf("migration execution failed: %w", err)
-	}
+	execErr := migration.Execute(ctx)
 
-	// 切换活跃版本
-	return vw.SetActive(to)
+	// 切换活跃版本（新 Run 走新版本）
+	setErr := vw.SetActive(to)
+
+	// 聚合错误：迁移未实现 + SetActive 错误（如果有）
+	if execErr != nil && setErr != nil {
+		return fmt.Errorf("migration: %w; setActive: %v", execErr, setErr)
+	}
+	if execErr != nil {
+		return execErr
+	}
+	return setErr
 }
 
 // generateVersion 生成基于时间的版本号
