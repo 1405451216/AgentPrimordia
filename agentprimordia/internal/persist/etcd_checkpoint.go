@@ -14,6 +14,8 @@ package persist
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sync"
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
@@ -24,6 +26,11 @@ type EtcdCheckpointStore struct {
 	client *clientv3.Client
 	prefix string
 	ttl    time.Duration
+
+	// v6.x（评估报告 Issue #6）：每个 agentID 复用同一个 lease，
+	// 避免每次 Save 都 Grant 新租约导致旧租约堆积到 TTL 才过期。
+	leaseMu  sync.Mutex
+	leases   map[string]clientv3.LeaseID
 }
 
 // NewEtcdCheckpointStore 创建 etcd 后端。
@@ -38,23 +45,56 @@ func NewEtcdCheckpointStore(endpoints []string, prefix string, ttl time.Duration
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	return &EtcdCheckpointStore{client: client, prefix: prefix, ttl: ttl}, nil
+	return &EtcdCheckpointStore{client: client, prefix: prefix, ttl: ttl, leases: make(map[string]clientv3.LeaseID)}, nil
 }
 
 func (s *EtcdCheckpointStore) key(agentID string) string { return s.prefix + "/" + agentID }
 
-// Save 写入状态并绑定租约（自动过期）。
+// acquireLease 获取（或复用并续约）agentID 的租约。
+//
+// v6.x：只对同一 agentID 保留一个 lease；每次 Save 调用 KeepAliveOnce
+// 续约，替代旧实现"每次 Grant 新 lease"导致同一 agentID 有 N 个
+// 同时存活的旧 lease（状态生命周期与 lease 不一致，TTL 形同虚设）。
+func (s *EtcdCheckpointStore) acquireLease(ctx context.Context, agentID string) (clientv3.LeaseID, error) {
+	s.leaseMu.Lock()
+	defer s.leaseMu.Unlock()
+
+	if id, ok := s.leases[agentID]; ok {
+		// 复用已有租约并续约
+		_, err := s.client.KeepAliveOnce(ctx, id)
+		if err == nil {
+			return id, nil
+		}
+		// 租约可能已过期，重新 Grant
+		delete(s.leases, agentID)
+	}
+
+	lease, err := s.client.Grant(ctx, int64(s.ttl.Seconds()))
+	if err != nil {
+		return 0, fmt.Errorf("etcd grant lease: %w", err)
+	}
+	s.leases[agentID] = lease.ID
+	return lease.ID, nil
+}
+
+// Save 写入状态并绑定（复用的）租约。
 func (s *EtcdCheckpointStore) Save(ctx context.Context, state *AgentState) error {
+	if state == nil || state.AgentID == "" {
+		return fmt.Errorf("etcd checkpoint: nil state or empty agentID")
+	}
 	data, err := json.Marshal(state)
 	if err != nil {
 		return err
 	}
-	lease, err := s.client.Grant(ctx, int64(s.ttl.Seconds()))
+	leaseID, err := s.acquireLease(ctx, state.AgentID)
 	if err != nil {
 		return err
 	}
-	_, err = s.client.Put(ctx, s.key(state.AgentID), string(data), clientv3.WithLease(lease.ID))
-	return err
+	_, err = s.client.Put(ctx, s.key(state.AgentID), string(data), clientv3.WithLease(leaseID))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Load 读取状态。
@@ -92,8 +132,33 @@ func (s *EtcdCheckpointStore) List(ctx context.Context, sessionID string) ([]*Ag
 	return out, nil
 }
 
-// Delete 删除状态。
+// Delete 删除状态并撤销对应租约（释放资源）。
 func (s *EtcdCheckpointStore) Delete(ctx context.Context, agentID string) error {
 	_, err := s.client.Delete(ctx, s.key(agentID))
-	return err
+	if err != nil {
+		return err
+	}
+	// v6.x：删除状态后主动撤销该 agentID 的租约，避免 lease 残留到 TTL。
+	s.leaseMu.Lock()
+	if id, ok := s.leases[agentID]; ok {
+		delete(s.leases, agentID)
+		_, _ = s.client.Revoke(ctx, id)
+	}
+	s.leaseMu.Unlock()
+	return nil
+}
+
+// Close 关闭 etcd 客户端并撤销所有持有的租约。
+func (s *EtcdCheckpointStore) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	s.leaseMu.Lock()
+	for agentID, id := range s.leases {
+		_, _ = s.client.Revoke(ctx, id)
+		delete(s.leases, agentID)
+	}
+	s.leaseMu.Unlock()
+
+	return s.client.Close()
 }

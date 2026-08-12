@@ -37,6 +37,21 @@ type SimpleVectorStore struct {
 	entries map[string]*VectorEntry
 	dim     int
 	hnsw    *HNSWIndex
+
+	// v6.x（评估报告 Issue #12）：HNSW 惰性删除不回收内存，
+	// 设置删除僵尸阈值自动触发 Compact()，长跑进程内存不再单调增长。
+	// 0 表示禁用自动压缩（调用方手动 Compact）。
+	hnswDeleteThreshold int
+	hnswDeletesSinceCompaction int
+}
+
+// WithHNSWDeleteThreshold 设置 HNSW 惰性删除僵尸阈值。
+//
+// 当累计删除数（自上次 Compact 以来）达到 threshold 时，Delete 自动
+// 触发一次 Compact() 物理回收。threshold <= 0 表示禁用自动压缩。
+func (s *SimpleVectorStore) WithHNSWDeleteThreshold(threshold int) *SimpleVectorStore {
+	s.hnswDeleteThreshold = threshold
+	return s
 }
 
 func NewVectorStore(dimensions int) *SimpleVectorStore {
@@ -158,9 +173,35 @@ func (s *SimpleVectorStore) Delete(ctx context.Context, id string) error {
 	// 解锁后同步到 HNSW（避免持锁期间执行耗时操作）
 	if s.hnsw != nil {
 		s.hnsw.Delete(id)
+		// v6.x：自动压缩阈值——删除数达阈值时触发物理回收，
+		// 避免 HNSW 僵尸节点单调增长（评估报告 Issue #12）。
+		s.hnswDeletesSinceCompaction++
+		if s.hnswDeleteThreshold > 0 && s.hnswDeletesSinceCompaction >= s.hnswDeleteThreshold {
+			s.hnsw.Compact()
+			s.hnswDeletesSinceCompaction = 0
+		}
 	}
 
 	return nil
+}
+
+// Compact 主动触发 HNSW 物理回收（暴露给外部定期调用）。
+// 返回被物理删除的僵尸节点数。
+func (s *SimpleVectorStore) Compact() int {
+	if s.hnsw == nil {
+		return 0
+	}
+	n := s.hnsw.Compact()
+	s.hnswDeletesSinceCompaction = 0
+	return n
+}
+
+// HNSWDeletedCount 返回当前 HNSW 中待回收的僵尸节点数（调试用）。
+func (s *SimpleVectorStore) HNSWDeletedCount() int {
+	if s.hnsw == nil {
+		return 0
+	}
+	return s.hnsw.DeletedCount()
 }
 
 func (s *SimpleVectorStore) Get(ctx context.Context, id string) (*VectorEntry, error) {

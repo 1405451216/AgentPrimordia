@@ -14,10 +14,34 @@ package persist
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
+
+// lockSeq 全局单调递增的锁序号，保证同纳秒内多次 Save 的 token 不重复。
+var lockSeq int64
+
+func nextLockSeq() int64 { return atomic.AddInt64(&lockSeq, 1) }
+
+// redisLockHolderPrefix 是锁 value 的前缀，配合 Redis Lua 脚本做
+// "只有持有者能释放"的原子比较（防止误删他人锁）。
+const redisLockHolderPrefix = "holder:"
+
+// redisReleaseLockScript 原子地"仅当 lock 的 value 与 token 匹配才删除"。
+//
+// v6.x（评估报告 Issue #7）：旧实现 Save 里 `defer Del` 无条件删除锁，
+// 一旦其他节点在两次操作之间接管，会把新持有者的锁删掉。此脚本
+// 通过比较 token 保证删除安全（compare-and-delete）。
+var redisReleaseLockScript = redis.NewScript(`
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+    return redis.call("DEL", KEYS[1])
+end
+return 0
+`)
 
 // RedisCheckpointStore 基于 Redis 的检查点存储。
 type RedisCheckpointStore struct {
@@ -37,21 +61,64 @@ func NewRedisCheckpointStore(opts *redis.Options, prefix string, ttl time.Durati
 func (s *RedisCheckpointStore) key(agentID string) string     { return s.prefix + ":agent:" + agentID }
 func (s *RedisCheckpointStore) lockKey(agentID string) string { return s.prefix + ":lock:" + agentID }
 
-// Save 写入状态（先抢锁，失败返回 ErrLockHeld 的等价错误）。
+// lockToken 为一次 Save 生成唯一持有者 token（进程内自增 + 时间戳），
+// 保证"锁生命周期与状态生命周期一致"——只有本次 Save 的持有者能释放锁。
+func lockToken() string {
+	return redisLockHolderPrefix + fmt.Sprintf("%d-%d", time.Now().UnixNano(), nextLockSeq())
+}
+
+// Save 写入状态：
+//   - 先抢锁（SET NX EX），失败返回 ErrLockHeld；
+//   - 持有锁期间写入状态；
+//   - 通过原子 compare-and-delete 释放锁（只有自己持有才能释放）。
+//
+// v6.x 修复（评估报告 Issue #7）：
+//   - 锁 token 不再固定为 "self"，而是每次 Save 唯一；释放时 Lua 比较，
+//     避免误删接管节点的锁。
+//   - 锁 value 携带 holder 信息，错误信息可定位持有者。
 func (s *RedisCheckpointStore) Save(ctx context.Context, state *AgentState) error {
-	ok, err := s.client.SetNX(ctx, s.lockKey(state.AgentID), "self", s.ttl).Result()
+	if state == nil || state.AgentID == "" {
+		return fmt.Errorf("redis checkpoint: nil state or empty agentID")
+	}
+	token := lockToken()
+	ok, err := s.client.SetNX(ctx, s.lockKey(state.AgentID), token, s.ttl).Result()
 	if err != nil {
 		return err
 	}
 	if !ok {
-		return &ErrLockHeld{Key: state.AgentID, Holder: "other"}
+		// 读取锁当前持有者信息（尽力而为）
+		holder, _ := s.client.Get(ctx, s.lockKey(state.AgentID)).Result()
+		return &ErrLockHeld{Key: state.AgentID, Holder: holder}
 	}
-	defer s.client.Del(ctx, s.lockKey(state.AgentID))
+	// 仅当锁仍归本 token 所有时才释放（原子 compare-and-delete）
+	defer s.releaseLock(ctx, state.AgentID, token)
+
 	data, err := json.Marshal(state)
 	if err != nil {
 		return err
 	}
+	// 状态 TTL 与锁 TTL 一致，保证状态生命周期绑定租约
 	return s.client.Set(ctx, s.key(state.AgentID), data, s.ttl).Err()
+}
+
+// releaseLock 原子释放本节点持有的锁（Lua compare-and-delete）。
+func (s *RedisCheckpointStore) releaseLock(ctx context.Context, agentID, token string) {
+	_ = redisReleaseLockScript.Run(ctx, s.client, []string{s.lockKey(agentID)}, token).Err()
+}
+
+// RenewLock 续约锁与状态 TTL。
+//
+// v6.x（评估报告 Issue #7）：旧实现无续约路径，长任务超过 ttl 后锁/状态
+// 被 Redis 自动过期，另一节点可在任务仍运行时接管。调用方应周期性调用。
+func (s *RedisCheckpointStore) RenewLock(ctx context.Context, agentID string) error {
+	pipe := s.client.TxPipeline()
+	pipe.Expire(ctx, s.lockKey(agentID), s.ttl)
+	pipe.Expire(ctx, s.key(agentID), s.ttl)
+	_, err := pipe.Exec(ctx)
+	if err != nil && errors.Is(err, redis.Nil) {
+		return nil // 键不存在视为无状态，不算错误
+	}
+	return err
 }
 
 // Load 读取状态。

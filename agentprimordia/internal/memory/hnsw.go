@@ -159,7 +159,11 @@ func (idx *HNSWIndex) Search(ctx context.Context, query []float32, k int) []HNSW
 	return results
 }
 
-// Delete 标记删除（惰性删除）
+// Delete 标记删除（惰性删除）。
+//
+// v6.x 备注（评估报告 Issue #12）：仅标记 deleted 会留下僵尸节点——
+// 节点 map 与邻居连接永不释放，长跑进程内存单调增长。
+// 调用方应周期性调用 Compact() 回收，或依赖本包提供的自动阈值清理。
 func (idx *HNSWIndex) Delete(id string) {
 	idx.mu.Lock()
 	defer idx.mu.Unlock()
@@ -174,6 +178,78 @@ func (idx *HNSWIndex) Len() int {
 	idx.mu.RLock()
 	defer idx.mu.RUnlock()
 	return len(idx.nodes)
+}
+
+// DeletedCount 返回当前已标记删除的僵尸节点数（仅统计，不含清理）。
+func (idx *HNSWIndex) DeletedCount() int {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+	var n int
+	for _, node := range idx.nodes {
+		if node.deleted {
+			n++
+		}
+	}
+	return n
+}
+
+// Compact 物理删除已标记的僵尸节点，回收内存。
+//
+// 实现：
+//  1. 从 idx.nodes 中移除 deleted 节点；
+//  2. 清理所有存活节点的邻居列表中指向被删节点的引用；
+//  3. 若入口节点被删除，重建入口为任一生存活节点（避免 nil 入口）；
+//  4. 若全部节点被删空，重置 entry/maxLvl。
+//
+// 复杂度：O(N × M)，N 为节点数、M 为平均邻居数；适合低频调用
+// （如后台定时任务，或 deleted 数超过阈值时）。
+func (idx *HNSWIndex) Compact() int {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+
+	removed := 0
+	for id, node := range idx.nodes {
+		if node.deleted {
+			delete(idx.nodes, id)
+			removed++
+		}
+	}
+	if removed == 0 {
+		return 0
+	}
+
+	// 清理邻居引用
+	for _, node := range idx.nodes {
+		for lev := range node.neighbors {
+			kept := node.neighbors[lev][:0]
+			for _, nid := range node.neighbors[lev] {
+				if _, ok := idx.nodes[nid]; ok {
+					kept = append(kept, nid)
+				}
+			}
+			node.neighbors[lev] = kept
+		}
+	}
+
+	// 修复入口
+	if idx.entry != nil && idx.entry.deleted {
+		idx.entry = nil
+		for _, node := range idx.nodes {
+			if idx.entry == nil || node.level > idx.entry.level {
+				idx.entry = node
+			}
+		}
+		idx.maxLvl = 0
+		if idx.entry != nil {
+			idx.maxLvl = idx.entry.level
+		}
+	}
+	if len(idx.nodes) == 0 {
+		idx.entry = nil
+		idx.maxLvl = 0
+	}
+
+	return removed
 }
 
 // --- 内部方法 ---
