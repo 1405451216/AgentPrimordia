@@ -16,8 +16,9 @@ type Config struct {
 	ExecutionTimeout time.Duration
 	EnableWASI       bool
 	// MaxFuel 预留的 Fuel 计量配额（前向兼容字段）。
-	// 当前 wazero v1.12.0 公共 API 未暴露 WithFuel，
-	// CPU 配额以 ExecutionTimeout 落地；升级 wazero 后此处生效。
+	// 核查（2026-08）：wazero v1.12.0 为当前最新版，公共 API 仍无
+	// WithFuel；CPU 配额以 ExecutionTimeout 落地（有无限循环终止回归测试），
+	// 待 wazero 提供 Fuel API 后此处生效。
 	MaxFuel uint64
 }
 
@@ -48,7 +49,11 @@ func NewRuntime(parent context.Context, cfg Config) (*Runtime, error) {
 		cfg.ExecutionTimeout = 30 * time.Second
 	}
 
-	rtCfg := wazero.NewRuntimeConfig().WithMemoryLimitPages(cfg.MemoryLimitPages)
+	// WithCloseOnContextDone(true)：使解释器在每条指令检查 ctx 取消，
+	// ExecutionTimeout 才能真实终止无限循环（CPU 配额核心机制，默认开启）。
+	rtCfg := wazero.NewRuntimeConfig().
+		WithMemoryLimitPages(cfg.MemoryLimitPages).
+		WithCloseOnContextDone(true)
 	engine := wazero.NewRuntimeWithConfig(parent, rtCfg)
 
 	return &Runtime{
