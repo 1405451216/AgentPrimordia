@@ -3,6 +3,8 @@ package tools
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -212,11 +214,18 @@ func (e *Executor) Execute(ctx context.Context, tc *FunctionCall) (*Result, erro
 	return result, nil
 }
 
-// buildCacheKey 构建缓存键
+// buildCacheKey 构建缓存键：Agent 命名空间 + 工具名 + 参数哈希。
+// 修复（评估发现）：旧实现键含原始参数全文——参数可能携带密钥等敏感信息，
+// 全文入键会长期滞留内存；且无 Agent 命名空间，共享 Cache 时跨 Agent 数据串扰。
+// 新实现以 SHA-256 截断哈希入键（原文不落键），并按 scopeAgent 隔离命名空间。
 func (e *Executor) buildCacheKey(toolName, args string) string {
-	// 使用tool名 + 参数哈希作为缓存键
-	// 简单实现：直接拼接，实际可根据需要添加哈希
-	return toolName + ":" + args
+	sum := sha256.Sum256([]byte(args))
+	hash := hex.EncodeToString(sum[:8]) // 64bit 截断足以区分调用
+	ns := e.scopeAgent
+	if ns == "" {
+		ns = "global"
+	}
+	return ns + ":" + toolName + ":" + hash
 }
 
 // safeExecute 包装tool调用并捕获 panic（perf-v5 Task 1）

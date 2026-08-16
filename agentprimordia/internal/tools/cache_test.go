@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -228,4 +229,41 @@ func TestCache_CloseTwice(t *testing.T) {
 
 	// 第二次关闭不应 panic
 	cache.Close()
+}
+
+// TestExecutor_BuildCacheKey_Isolation 验证缓存键的敏感信息防护与 Agent 隔离。
+// 修复（评估发现）：旧键 = toolName + ":" + 原始参数（密钥滞留内存、
+// 跨 Agent 串扰）；新键 = 命名空间 + toolName + 参数 SHA-256 截断哈希。
+func TestExecutor_BuildCacheKey_Isolation(t *testing.T) {
+	cfg := ExecutorConfig{CacheConfig: &CacheConfig{MaxSize: 10}}
+	e1 := NewExecutorWithConfig(NewRegistry(), cfg)
+
+	const args = `{"path":"secret-file","content":"SECRET_VALUE"}`
+	key := e1.buildCacheKey("filesystem", args)
+
+	// 1) 哈希化：键不得包含原始参数（敏感信息不滞留）
+	if strings.Contains(key, "SECRET_VALUE") || strings.Contains(key, "secret-file") {
+		t.Fatalf("缓存键包含原始参数（敏感信息滞留）: %s", key)
+	}
+	if strings.Contains(key, args) {
+		t.Fatal("缓存键包含完整原始参数")
+	}
+
+	// 2) 确定性：相同参数产生相同键
+	if key != e1.buildCacheKey("filesystem", args) {
+		t.Fatal("相同参数应产生相同缓存键")
+	}
+
+	// 3) 区分性：不同参数产生不同键
+	key2 := e1.buildCacheKey("filesystem", `{"path":"other"}`)
+	if key == key2 {
+		t.Fatal("不同参数应产生不同缓存键")
+	}
+
+	// 4) Agent 隔离：不同 scopeAgent 下相同参数不得互相命中
+	e2 := NewExecutorWithConfig(NewRegistry(), cfg).WithScopePolicy(NewFileScopePolicy(), "agent-b")
+	keyB := e2.buildCacheKey("filesystem", args)
+	if key == keyB {
+		t.Fatal("不同 Agent 应隔离缓存命名空间")
+	}
 }
