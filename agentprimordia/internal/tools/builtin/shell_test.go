@@ -103,9 +103,15 @@ func TestExecuteSimpleCommand_Pwd(t *testing.T) {
 
 func TestExecuteWithTimeout(t *testing.T) {
 	sh := NewShell().WithWhitelist([]string{"echo", "ping"}).WithTimeout(1 * time.Second)
+	// ping 语法分平台：Windows 用 -n（发送次数），Unix/macOS 用 -c
+	// （旧实现固定 -n，在 macOS/Linux 上把 "10" 当主机名解析失败——可移植性 bug）
+	pingCmd := "ping -c 10 127.0.0.1"
+	if runtime.GOOS == "windows" {
+		pingCmd = "ping -n 10 127.0.0.1"
+	}
 	args, _ := json.Marshal(map[string]any{
 		"action":  "execute",
-		"command": "ping -n 10 127.0.0.1",
+		"command": pingCmd,
 		"timeout": float64(1),
 	})
 	result, err := sh.Execute(context.Background(), args)

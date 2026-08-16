@@ -167,11 +167,10 @@ func TestFileSystem_SymlinkEscape_Read(t *testing.T) {
 	})
 
 	result, err := fs.Execute(context.Background(), args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !result.IsError {
-		t.Error("expected symlink escape to be blocked")
+	// 逃逸必须被拦截：以 result.IsError 表达拒绝（err 可能同时非 nil，
+	// 与 scope 拒绝路径行为一致——重构后不再要求 err == nil）
+	if result == nil || !result.IsError {
+		t.Errorf("expected symlink escape to be blocked, result=%v err=%v", result, err)
 	}
 }
 
@@ -196,11 +195,9 @@ func TestFileSystem_SymlinkEscape_Write(t *testing.T) {
 	})
 
 	result, err := fs.Execute(context.Background(), args)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !result.IsError {
-		t.Error("expected symlink escape write to be blocked")
+	// 逃逸写入必须被拦截：以 result.IsError 表达拒绝（err 可同时非 nil）
+	if result == nil || !result.IsError {
+		t.Errorf("expected symlink escape write to be blocked, result=%v err=%v", result, err)
 	}
 }
 

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"agentprimordia/internal/llm"
@@ -11,10 +12,15 @@ import (
 
 // mockMemoryStore 简单的内存 MemoryStore 实现
 type mockMemoryStore struct {
+	mu       sync.Mutex
 	episodes []*memory.Episode
 }
 
+// Add 生产代码会从多个 goroutine 并发调用（异步 memoryWriter + saveSolutionMemory），
+// 测试 mock 须与真实 MemoryStore 一样线程安全，否则 -race 下必现数据竞争。
 func (m *mockMemoryStore) Add(_ context.Context, episode *memory.Episode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.episodes = append(m.episodes, episode)
 	return nil
 }
@@ -54,7 +60,10 @@ func TestReActAgent_RAG_AutoMode_WithMemory(t *testing.T) {
 		t.Errorf("unexpected response: %s", resp.Content)
 	}
 
-	if len(memStore.episodes) == 0 {
+	memStore.mu.Lock()
+	epCount := len(memStore.episodes)
+	memStore.mu.Unlock()
+	if epCount == 0 {
 		t.Error("expected memory episodes to be saved")
 	}
 
@@ -214,7 +223,10 @@ func TestReActAgent_RAG_WithInMemoryStore(t *testing.T) {
 		t.Errorf("unexpected response: %s", resp.Content)
 	}
 
-	if len(memStore.episodes) == 0 {
+	memStore.mu.Lock()
+	epCount := len(memStore.episodes)
+	memStore.mu.Unlock()
+	if epCount == 0 {
 		t.Error("expected memory episodes to be saved")
 	}
 }

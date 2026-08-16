@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,10 +12,15 @@ import (
 
 // capTestMemoryStore 是 CapabilityAgent 测试专用的 MemoryStore 实现
 type capTestMemoryStore struct {
+	mu       sync.Mutex
 	episodes []*memory.Episode
 }
 
+// Add 生产代码会从多个 goroutine 并发调用（异步 memoryWriter + saveSolutionMemory），
+// 测试 mock 须与真实 MemoryStore 一样线程安全，否则 -race 下必现数据竞争。
 func (m *capTestMemoryStore) Add(ctx context.Context, episode *memory.Episode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.episodes = append(m.episodes, episode)
 	return nil
 }
@@ -252,7 +258,10 @@ func TestCapabilityAgent_DelegatesAgentInterface(t *testing.T) {
 	}
 
 	// 验证记忆已保存
-	if len(mem.episodes) == 0 {
+	mem.mu.Lock()
+	epCount := len(mem.episodes)
+	mem.mu.Unlock()
+	if epCount == 0 {
 		t.Error("记忆应已保存")
 	}
 }

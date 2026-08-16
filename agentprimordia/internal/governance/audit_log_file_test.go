@@ -163,8 +163,10 @@ func TestNopAuditLogger(t *testing.T) {
 }
 
 func TestFileAuditLogger_InvalidFile(t *testing.T) {
-	// 使用无效路径（Windows 上需使用盘符前缀）
-	_, err := NewFileAuditLogger("Z:\\nonexistent_dir_12345\\audit.log", 100, nil)
+	// 使用全平台无效路径：NUL 字节在所有 OS 上都是非法路径字符。
+	// 旧实现用 Windows 盘符路径 "Z:\..."，在 macOS/Linux 上是合法字面量文件名，
+	// MkdirAll 会成功创建导致断言失效（可移植性 bug）。
+	_, err := NewFileAuditLogger("audit\x00invalid.log", 100, nil)
 	if err == nil {
 		t.Error("NewFileAuditLogger should fail with invalid path")
 	}

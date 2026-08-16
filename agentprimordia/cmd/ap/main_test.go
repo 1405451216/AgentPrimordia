@@ -26,8 +26,12 @@ func TestFindProjectDir_CurrentDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("findProjectDir 失败: %v", err)
 	}
-	if dir != tmpDir {
-		t.Errorf("期望 %q，实际 %q", tmpDir, dir)
+	// 归一化后比较：macOS 上 /var 是 /private/var 的符号链接，
+	// t.TempDir() 返回逻辑路径，而 os.Getwd() 返回解析后的物理路径
+	want, _ := filepath.EvalSymlinks(tmpDir)
+	got, gotErr := filepath.EvalSymlinks(dir)
+	if gotErr != nil || got != want {
+		t.Errorf("期望 %q，实际 %q", want, dir)
 	}
 }
 
@@ -58,8 +62,11 @@ func TestFindProjectDir_ApYaml(t *testing.T) {
 	if err != nil {
 		t.Fatalf("findProjectDir 失败: %v", err)
 	}
-	if dir != tmpDir {
-		t.Errorf("期望 %q，实际 %q", tmpDir, dir)
+	// 归一化后比较：macOS 上 /var 是 /private/var 的符号链接
+	want, _ := filepath.EvalSymlinks(tmpDir)
+	got, gotErr := filepath.EvalSymlinks(dir)
+	if gotErr != nil || got != want {
+		t.Errorf("期望 %q，实际 %q", want, dir)
 	}
 }
 

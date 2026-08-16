@@ -300,11 +300,13 @@ func TestStudio_WritePathConcurrentLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
+	// 注意：demo 存储有界保留上限为 maxDemoRetained=1000（v5.0 压测修复引入）。
+	// 写入总量必须 ≤ 保留上限，否则"写后读一致"断言会因旧记录被淘汰而失败。
 	const (
 		chaosWorkers = 100
-		chaosRounds  = 50  // 5000 次 POST /chaos/experiments
+		chaosRounds  = 8  // 800 次 POST /chaos/experiments（≤ 保留上限 1000）
 		deployWorkers = 100
-		deployRounds  = 25  // 2500 次 POST /marketplace/deploy
+		deployRounds  = 8  // 800 次 POST /marketplace/deploy（≤ 保留上限 1000）
 	)
 	var (
 		chaosOK    atomic.Int64
