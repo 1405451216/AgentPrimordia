@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"encoding/json"
 	"time"
 
 	"agentprimordia/internal/agent"
@@ -28,6 +29,7 @@ type TaskConfig struct {
 	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
+
 type TaskResult struct {
 	TaskID   string          `json:"task_id"`
 	Task     TaskConfig      `json:"task"`
@@ -35,6 +37,24 @@ type TaskResult struct {
 	Error    error           `json:"error,omitempty"`
 	Duration time.Duration   `json:"duration"`
 	Status   PoolTaskStatus  `json:"status"`
+}
+
+// MarshalJSON 自定义序列化：error 接口直接 JSON 序列化会输出 {}（无字段
+// 可序列化），对外部消费者无意义。这里将 Error 转为其 Error() 字符串；
+// 其余字段与原结构输出一致（外层 Error 字段遮蔽内嵌 alias 的同名字段）。
+func (t TaskResult) MarshalJSON() ([]byte, error) {
+	type alias TaskResult
+	errStr := ""
+	if t.Error != nil {
+		errStr = t.Error.Error()
+	}
+	return json.Marshal(struct {
+		alias
+		Error string `json:"error,omitempty"`
+	}{
+		alias: alias(t),
+		Error: errStr,
+	})
 }
 
 type PoolEvent struct {

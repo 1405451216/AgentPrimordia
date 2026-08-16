@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -586,5 +587,31 @@ func TestAggregatedError_AllSameError(t *testing.T) {
 
 	if !errors.Is(ae, timeoutErr) {
 		t.Error("AggregatedError.Is should find timeoutErr when all tasks have same error")
+	}
+}
+
+// TestTaskResult_MarshalJSON 验证 error 字段的 JSON 序列化行为。
+// 修复前：error 接口直接序列化输出 {}，外部消费者拿不到错误信息；
+// 修复后：序列化为 Error() 字符串，无错误时省略字段。
+func TestTaskResult_MarshalJSON(t *testing.T) {
+	// 有错误：序列化为字符串
+	tr := TaskResult{TaskID: "t1", Status: PoolTaskFailed, Error: fmt.Errorf("boom")}
+	data, err := json.Marshal(tr)
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	got := string(data)
+	if !strings.Contains(got, `"error":"boom"`) {
+		t.Errorf("error 应序列化为字符串，实际: %s", got)
+	}
+	if strings.Contains(got, "{}") {
+		t.Errorf("error 不得序列化为空对象: %s", got)
+	}
+
+	// 无错误：error 字段省略
+	tr2 := TaskResult{TaskID: "t2", Status: PoolTaskCompleted}
+	data2, _ := json.Marshal(tr2)
+	if strings.Contains(string(data2), "error") {
+		t.Errorf("无错误时不应输出 error 字段: %s", data2)
 	}
 }
