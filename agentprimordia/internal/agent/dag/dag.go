@@ -175,6 +175,20 @@ func (m *DAGMetrics) record(nodeID string, dur time.Duration, success bool, retr
 }
 
 // Snapshot 读取当前所有指标的快照（perf-v4 Task 3：原子读取）
+// Reset 清空全部节点统计（热迁移 restart_all 策略：全部按新版本重新执行）。
+func (m *DAGMetrics) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.NodeStats = make(map[string]*NodeExecutionStats)
+}
+
+// ResetNode 清空指定节点统计（热迁移 gradual 策略：该节点按新版本重新执行）。
+func (m *DAGMetrics) ResetNode(nodeID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.NodeStats, nodeID)
+}
+
 func (m *DAGMetrics) Snapshot() map[string]interface{} {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

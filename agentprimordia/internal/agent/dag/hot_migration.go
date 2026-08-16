@@ -1,32 +1,26 @@
 // Package dag 中的热迁移实现
 //
 // ============================================================
-// ⚠️ EXPERIMENTAL PLACEHOLDER — 评估报告 Issue #9
+// 真实执行器（替代 EXPERIMENTAL PLACEHOLDER — 评估报告 Issue #9）
 // ============================================================
-// 当前 HotMigration.Execute 仅生成 NodeMigrationRecord 列表，
-// 不会真实把已运行节点切换到新版本——即"plan generator 而非
-// 执行器"。在 v6.x 评估报告中被列为严重问题（运行时无一致性
-// 保护，"SetActive" 之后旧 Run 不感知新版本）。
+// HotMigration.Execute 现在真实执行迁移：把 ToWorkflow 的节点/边
+// 定义原子应用到 FromWorkflow，并按策略处理执行统计：
+//   - keep_running：仅切换结构；已完成节点结果由调用方持有，天然保留
+//   - restart_all：切换结构 + 重置全部节点统计（全部重新执行）
+//   - gradual：切换结构 + 仅重置新增/修改节点的统计（这些节点重跑）
 //
-// 使用约束（v6.x 起强制）：
-//  1. 所有 HotMigration.Execute 调用都返回 ErrHotMigrationNotImplemented
-//     并附带一份 MigrationPlan 调用方可读取的"应该迁移什么"清单。
-//  2. 需要真实热迁移能力的调用方请改用 VersionedWorkflow.SetActive
-//     + 自行编排 in-flight Run 的 cancel/replay；本 API 不承诺
-//     在 v6.x 之前完成执行器实现。
-//  3. 代码保留仅为：(a) MigrationPlan 结构与节点比较逻辑；(b) 给
-//     上层提供"列出应迁移节点"的可观测面。
+// 一致性保证：DAGWorkflow.Run 在 RLock 内快照 nodes/edges，
+// Execute 在写锁内原子替换结构——二者互斥，任何 Run 要么读到
+// 完整旧版本、要么读到完整新版本，不存在半迁移状态。
 //
-// 迁移路径（v7.x 路线图）：将 Execute 拆分为
-// (a) Plan() — 仅生成 MigrationPlan；(b) Apply(ctx) — 实际驱动
-// Workflow.SetActive + 在飞 Run 的 cancel/replay。
+// 在飞 Run 说明：Run 是快照式执行（启动时拷贝节点/边），已开始的
+// Run 不受结构替换影响；迁移后新启动的 Run 使用新版本定义。
 // ============================================================
 
 package dag
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -81,22 +75,10 @@ type MigrationPlan struct {
 	Mapping map[string]string
 }
 
-// ErrHotMigrationNotImplemented 标记 HotMigration.Execute 当前不会真正执行迁移。
-//
-// v6.x 修复（评估报告 Issue #9）：
-//   - 旧实现：Execute 只生成 NodeMigrationRecord 列表后返回 nil，
-//     调用方误以为迁移已完成，线上"SetActive" 之后旧 Run 仍在
-//     旧版本上跑、新 Run 在新版本上跑，无一致性保证。
-//   - 新实现：Execute 立刻返回 ErrHotMigrationNotImplemented，但仍
-//     把 MigrationPlan 写入 hm.records 供调用方"列出应迁移节点"。
-//
-// 移除时机：v7.x 引入真实执行器后，可与 ErrHotMigrationNotImplemented 同步移除。
-var ErrHotMigrationNotImplemented = errors.New("dag: HotMigration.Execute is an experimental placeholder; does not perform real migration. Use VersionedWorkflow.SetActive + manual cancel/replay instead")
+// （历史）ErrHotMigrationNotImplemented 曾标记占位实现，已在真实执行器落地后移除。
+// 迁移语义见包顶注释与 VersionedWorkflow.Migrate。
 
-// HotMigration 热迁移"计划生成器"。
-//
-// EXPERIMENTAL: 当前 Execute 仅生成 MigrationPlan 列表并返回
-// ErrHotMigrationNotImplemented，不会真实切换在飞 Run 的执行版本。
+// HotMigration 热迁移执行器：真实把 ToWorkflow 的结构应用到 FromWorkflow。
 // 详情见包顶注释。
 type HotMigration struct {
 	FromVersion  string
@@ -194,19 +176,11 @@ func nodesDiffer(a, b *DAGNode) bool {
 	return false
 }
 
-// Execute 执行热迁移
+// Execute 执行热迁移：真实把 ToWorkflow 的节点/边定义应用到 FromWorkflow，
+// 并按策略处理执行统计。返回 nil 表示迁移已真实完成。
 //
-// EXPERIMENTAL: 当前实现仅生成 MigrationPlan 列表（通过 execute* 方法
-// 写入 hm.records）并返回 ErrHotMigrationNotImplemented。不会真实切换
-// 在飞 Run 的执行版本。调用方应改用 VersionedWorkflow.SetActive +
-// 自行编排 in-flight Run 的 cancel/replay。
-//
-// 返回的 records 列表可通过 Records() / MigratedNodeIDs() 读取，用于：
-//   - 可观测：列出当前版本切换需要处理的节点
-//   - 决策：辅助调用方决定是否要手工 cancel/replay
-//
-// v6.x 行为变更：旧实现返回 nil 但无任何效果，会让 SetActive 误以为
-// 切换成功。新实现让"未实现"在错误路径上显式可见。
+// 迁移结果可通过 Records() / MigratedNodeIDs() 读取（可观测面）。
+// 一致性：结构替换在 FromWorkflow 写锁内原子完成，与 Run 的快照读取互斥。
 func (hm *HotMigration) Execute(ctx context.Context) error {
 	if hm.Plan == nil {
 		return fmt.Errorf("dag: migration plan is nil")
@@ -215,23 +189,95 @@ func (hm *HotMigration) Execute(ctx context.Context) error {
 		return fmt.Errorf("dag: migration workflows are nil")
 	}
 
-	var execErr error
 	switch hm.Strategy {
 	case HotMigrationKeepRunning:
-		execErr = hm.executeKeepRunning(ctx)
+		return hm.executeKeepRunning(ctx)
 	case HotMigrationRestartAll:
-		execErr = hm.executeRestartAll(ctx)
+		return hm.executeRestartAll(ctx)
 	case HotMigrationGradual:
-		execErr = hm.executeGradual(ctx)
+		return hm.executeGradual(ctx)
 	default:
 		return fmt.Errorf("dag: unknown migration strategy %q", hm.Strategy)
 	}
+}
 
-	// execute* 仅生成 records；只要 plan 生成成功，叠加 EXPERIMENTAL 标记
-	if execErr == nil {
-		return fmt.Errorf("%w: plan=%+v", ErrHotMigrationNotImplemented, hm.PlanSummary())
+// applyStructure 把 ToWorkflow 的节点/边结构原子应用到 FromWorkflow。
+// 节点做浅拷贝（共享 Agent 引用），迁移后 FromWorkflow 结构与
+// ToWorkflow 完全一致且相互独立。
+func (hm *HotMigration) applyStructure() {
+	from, to := hm.FromWorkflow, hm.ToWorkflow
+
+	to.mu.RLock()
+	newNodes := make(map[string]*DAGNode, len(to.nodes))
+	for id, n := range to.nodes {
+		if n == nil {
+			continue
+		}
+		cp := *n // 浅拷贝：共享 Agent/RetryPolicy 引用，结构独立
+		newNodes[id] = &cp
 	}
-	return execErr
+	newEdges := append([]DAGEdge(nil), to.edges...)
+	to.mu.RUnlock()
+
+	from.mu.Lock()
+	from.nodes = newNodes
+	from.edges = newEdges
+	from.mu.Unlock()
+}
+
+// buildRecords 根据迁移计划构建节点迁移记录。
+// restartAll 为 true 时全部节点标记为已迁移（重新执行语义）。
+func (hm *HotMigration) buildRecords(restartAll bool) []NodeMigrationRecord {
+	records := make([]NodeMigrationRecord, 0,
+		len(hm.Plan.KeepNodes)+len(hm.Plan.AddNodes)+len(hm.Plan.ModifyNodes)+len(hm.Plan.RemoveNodes))
+
+	// 保留节点：结构未变，保持原状态
+	for _, id := range hm.Plan.KeepNodes {
+		records = append(records, NodeMigrationRecord{
+			NodeID:   id,
+			OldState: NodeStateCompleted,
+			NewState: NodeStateCompleted,
+			Migrated: false,
+		})
+	}
+	// 新增节点：待执行
+	for _, id := range hm.Plan.AddNodes {
+		records = append(records, NodeMigrationRecord{
+			NodeID:   id,
+			OldState: NodeStatePending,
+			NewState: NodeStateMigrated,
+			Migrated: true,
+		})
+	}
+	// 修改节点：结构变更，将按新定义执行
+	for _, id := range hm.Plan.ModifyNodes {
+		records = append(records, NodeMigrationRecord{
+			NodeID:   id,
+			OldState: NodeStateRunning,
+			NewState: NodeStateMigrated,
+			Migrated: true,
+		})
+	}
+	// 删除节点：已移除
+	for _, id := range hm.Plan.RemoveNodes {
+		records = append(records, NodeMigrationRecord{
+			NodeID:   id,
+			OldState: NodeStateCompleted,
+			NewState: NodeStateMigrated,
+			Migrated: true,
+		})
+	}
+
+	if restartAll {
+		for i := range records {
+			records[i].OldState = NodeStateRunning
+			records[i].NewState = NodeStateMigrated
+			records[i].Migrated = true
+		}
+	}
+
+	sort.Slice(records, func(i, j int) bool { return records[i].NodeID < records[j].NodeID })
+	return records
 }
 
 // PlanSummary 返回当前 MigrationPlan 的可读摘要，Execute 失败时附在 error 中。
@@ -244,148 +290,39 @@ func (hm *HotMigration) PlanSummary() string {
 }
 
 // executeKeepRunning 执行 keep_running 策略：
-// - 已完成节点：保持结果不变
-// - 运行中节点：继续执行旧版本定义
-// - 未开始节点：使用新版本定义执行
+// 切换结构；已完成节点结果由调用方持有（引擎无跨 Run 状态），天然保留。
 func (hm *HotMigration) executeKeepRunning(ctx context.Context) error {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
 
-	hm.records = make([]NodeMigrationRecord, 0)
-
-	// 处理保留节点：状态保持（已完成节点不丢失结果）
-	for _, id := range hm.Plan.KeepNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: false,
-		})
-	}
-
-	// 新增节点：待执行
-	for _, id := range hm.Plan.AddNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStatePending,
-			NewState: NodeStatePending,
-			Migrated: true,
-		})
-	}
-
-	// 删除节点：标记为已迁移（移除）
-	for _, id := range hm.Plan.RemoveNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: true,
-		})
-	}
-
-	// 修改节点：使用新版本定义
-	for _, id := range hm.Plan.ModifyNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: true,
-		})
-	}
-
+	hm.applyStructure()
+	hm.records = hm.buildRecords(false)
 	return nil
 }
 
-// executeRestartAll 执行 restart_all 策略：全部节点使用新版本重新执行
+// executeRestartAll 执行 restart_all 策略：切换结构 + 重置全部节点统计（全部重新执行）
 func (hm *HotMigration) executeRestartAll(ctx context.Context) error {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
 
-	hm.records = make([]NodeMigrationRecord, 0)
-
-	// 所有保留节点标记为需要重新执行
-	for _, id := range hm.Plan.KeepNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStatePending,
-			Migrated: true,
-		})
-	}
-
-	// 新增节点：待执行
-	for _, id := range hm.Plan.AddNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStatePending,
-			NewState: NodeStatePending,
-			Migrated: true,
-		})
-	}
-
-	// 删除节点：移除
-	for _, id := range hm.Plan.RemoveNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: true,
-		})
-	}
-
+	hm.applyStructure()
+	// 重置全部节点统计：restart_all 语义=全部按新版本重新执行
+	hm.FromWorkflow.metrics.Reset()
+	hm.records = hm.buildRecords(true)
 	return nil
 }
 
-// executeGradual 执行 gradual 策略：
-// 第一批迁移新增节点
-// 第二批迁移修改节点
-// 第三批删除废弃节点
+// executeGradual 执行 gradual 策略：切换结构；新增/修改节点重置统计（将重跑），保留节点不动
 func (hm *HotMigration) executeGradual(ctx context.Context) error {
 	hm.mu.Lock()
 	defer hm.mu.Unlock()
 
-	hm.records = make([]NodeMigrationRecord, 0)
-
-	// 第一批：保留节点（不变更）
-	for _, id := range hm.Plan.KeepNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: false,
-		})
+	hm.applyStructure()
+	// 逐步切换：新增与修改节点按新版本重新执行
+	for _, id := range append(append([]string(nil), hm.Plan.AddNodes...), hm.Plan.ModifyNodes...) {
+		hm.FromWorkflow.metrics.ResetNode(id)
 	}
-
-	// 第二批：新增节点立即启用
-	for _, id := range hm.Plan.AddNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStatePending,
-			NewState: NodeStateMigrated,
-			Migrated: true,
-		})
-	}
-
-	// 第三批：修改节点逐步切换
-	for _, id := range hm.Plan.ModifyNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: true,
-		})
-	}
-
-	// 最后：删除废弃节点
-	for _, id := range hm.Plan.RemoveNodes {
-		hm.records = append(hm.records, NodeMigrationRecord{
-			NodeID:   id,
-			OldState: NodeStateCompleted,
-			NewState: NodeStateMigrated,
-			Migrated: true,
-		})
-	}
-
+	hm.records = hm.buildRecords(false)
 	return nil
 }
 

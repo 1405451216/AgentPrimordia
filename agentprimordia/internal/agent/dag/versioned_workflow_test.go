@@ -2,7 +2,6 @@ package dag
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 )
@@ -319,16 +318,23 @@ func TestHotMigration_ExecuteKeepRunning(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	// v6.x：Execute 现在返回 ErrHotMigrationNotImplemented（plan generator
-	// 仍生成 records，但不在飞 Run 上真正切换版本）。
+	// 真实执行：keep_running 切换结构（from 升级为 to：新增节点 c）
 	err := hm.Execute(ctx)
-	if !errors.Is(err, ErrHotMigrationNotImplemented) {
-		t.Fatalf("Execute 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
+	if err != nil {
+		t.Fatalf("Execute 失败: %v", err)
 	}
 
 	records := hm.Records()
 	if len(records) != 3 {
 		t.Fatalf("Records = %d, want 3", len(records))
+	}
+
+	// 结构已真实应用：from 工作流现在包含 a/b/c
+	if _, ok := from.nodes["c"]; !ok {
+		t.Fatal("迁移后 FromWorkflow 应包含新增节点 c")
+	}
+	if len(from.nodes) != 3 {
+		t.Fatalf("FromWorkflow 节点数 = %d, want 3", len(from.nodes))
 	}
 
 	// 已迁移节点包含新增的 c
@@ -360,11 +366,10 @@ func TestHotMigration_ExecuteRestartAll(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	// v6.x：Execute 现在返回 ErrHotMigrationNotImplemented（plan generator
-	// 仍生成 records，但不在飞 Run 上真正切换版本）。
+	// 真实执行：restart_all 切换结构并标记全部节点重新执行
 	err := hm.Execute(ctx)
-	if !errors.Is(err, ErrHotMigrationNotImplemented) {
-		t.Fatalf("Execute 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
+	if err != nil {
+		t.Fatalf("Execute 失败: %v", err)
 	}
 
 	records := hm.Records()
@@ -372,10 +377,14 @@ func TestHotMigration_ExecuteRestartAll(t *testing.T) {
 		t.Fatalf("Records = %d, want 3", len(records))
 	}
 
-	// restart_all 策略下所有保留节点都标记为需要迁移
+	// restart_all 策略下所有节点都标记为需要迁移
 	migrated := hm.MigratedNodeIDs()
 	if len(migrated) != 3 {
 		t.Fatalf("MigratedNodeIDs = %d, want 3 (all nodes restarted)", len(migrated))
+	}
+	// 结构已应用
+	if _, ok := from.nodes["c"]; !ok {
+		t.Fatal("迁移后 FromWorkflow 应包含新增节点 c")
 	}
 }
 
@@ -401,16 +410,18 @@ func TestHotMigration_ExecuteGradual(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	// v6.x：Execute 现在返回 ErrHotMigrationNotImplemented（plan generator
-	// 仍生成 records，但不在飞 Run 上真正切换版本）。
+	// 真实执行：gradual 切换结构
 	err := hm.Execute(ctx)
-	if !errors.Is(err, ErrHotMigrationNotImplemented) {
-		t.Fatalf("Execute 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
+	if err != nil {
+		t.Fatalf("Execute 失败: %v", err)
 	}
 
 	records := hm.Records()
 	if len(records) != 3 {
 		t.Fatalf("Records = %d, want 3", len(records))
+	}
+	if _, ok := from.nodes["c"]; !ok {
+		t.Fatal("迁移后 FromWorkflow 应包含新增节点 c")
 	}
 }
 
@@ -462,17 +473,29 @@ func TestVersionedWorkflow_Migrate(t *testing.T) {
 		t.Fatalf("NewVersionWithID 失败: %v", err)
 	}
 
-	// 执行迁移
+	// 执行迁移（真实执行：1.0.0 定义升级为 2.0.0 结构 + 活跃版本切换）
 	ctx := context.Background()
-	// v6.x：Migrate 现在透传 ErrHotMigrationNotImplemented，但仍把 plan 写入 records。
 	err = vw.Migrate(ctx, "1.0.0", "2.0.0")
-	if !errors.Is(err, ErrHotMigrationNotImplemented) {
-		t.Fatalf("Migrate 必须返回 ErrHotMigrationNotImplemented，实际: %v", err)
+	if err != nil {
+		t.Fatalf("Migrate 失败: %v", err)
 	}
 
 	// 验证活跃版本已切换
 	if vw.ActiveVersion() != "2.0.0" {
 		t.Fatalf("活跃版本 = %q, want %q", vw.ActiveVersion(), "2.0.0")
+	}
+
+	// 验证 from 版本定义已升级为 to 的结构（含新增节点 c）
+	v1v, err := vw.GetVersion("1.0.0")
+	if err != nil {
+		t.Fatalf("GetVersion(1.0.0) 失败: %v", err)
+	}
+	v1v.Definition.mu.RLock()
+	_, hasC := v1v.Definition.nodes["c"]
+	nodeCount := len(v1v.Definition.nodes)
+	v1v.Definition.mu.RUnlock()
+	if !hasC || nodeCount != 3 {
+		t.Fatalf("迁移后 1.0.0 定义应含节点 c 且共 3 个节点，实际: hasC=%v count=%d", hasC, nodeCount)
 	}
 }
 
