@@ -156,6 +156,13 @@ type ReActAgent struct {
 	// ===== Task 2: 能力查找缓存 =====
 	// 单次 Run() 期间不变的能力引用，reactLoopEngine 入口处一次性查找
 	// runLoop 内通过 capCache 访问，避免每轮重复类型断言
+	//
+	// 生命周期契约（评估修复）：
+	//   - 每次 Run() 在 runMu 锁内通过 resolveCapabilities 重新填充；
+	//   - Run 结束后**不置 nil**（旧实现置 nil 会让异步 goroutine 读到
+	//     nil 而 panic；每次 Run 重新填充已保证不会误用旧引用）；
+	//   - 异步 goroutine（如 distillKnowledge）必须先拷贝所需字段再进入
+	//     goroutine，禁止在 goroutine 内直接读取本字段。
 	capCache *capabilityCache
 
 	// ===== v3.4-1: 子任务执行器可注入（测试/扩展） =====

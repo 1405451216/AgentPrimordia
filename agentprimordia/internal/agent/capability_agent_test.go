@@ -405,3 +405,41 @@ func TestCapabilityAgent_ImplementsFileScopeCapable(t *testing.T) {
 		}
 	}
 }
+
+// TestAgent_CapCacheLifecycle 验证 capCache 生命周期契约（评估修复）：
+// Run 结束后 capCache 保留（非 nil）——异步 goroutine（知识蒸馏等）
+// 读取不会 panic；每次 Run 在锁内重新填充，不会误用旧引用。
+func TestAgent_CapCacheLifecycle(t *testing.T) {
+	mock := llm.NewMockLLM(t).WithResponse("ok")
+	agt, err := NewAgent("capcache-test", "you are helpful", mock, WithMaxTurns(1))
+	if err != nil {
+		t.Fatalf("NewAgent: %v", err)
+	}
+	inner := agt.Inner()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := agt.Run(ctx, UserMessage("hi")); err != nil {
+		t.Fatalf("Run #1: %v", err)
+	}
+
+	// Run 结束后 capCache 必须保留（旧实现 defer 置 nil，异步读取会 panic）
+	if inner.capCache == nil {
+		t.Fatal("Run 后 capCache 不应被置 nil（异步 goroutine 可能读取）")
+	}
+	firstReqID := inner.capCache.requestID
+	if firstReqID == "" {
+		t.Fatal("capCache.requestID 应为本次请求 ID")
+	}
+
+	// 第二次 Run：锁内重新填充（新请求 ID），旧值被覆盖而非误用
+	if _, err := agt.Run(ctx, UserMessage("hi again")); err != nil {
+		t.Fatalf("Run #2: %v", err)
+	}
+	if inner.capCache == nil {
+		t.Fatal("第二次 Run 后 capCache 应已重新填充")
+	}
+	if inner.capCache.requestID == firstReqID {
+		t.Fatal("第二次 Run 应使用新的请求 ID（重新填充）")
+	}
+}

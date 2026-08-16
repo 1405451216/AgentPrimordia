@@ -64,13 +64,15 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 		}
 		rootSpan.End()
 		// v3.5-4：结束请求全链路关联（trace 闭合）
-		if a.capCache != nil && a.capCache.observability != nil && a.capCache.traceID != "" {
-			a.capCache.observability.End(a.capCache.traceID)
+		// 修复（评估）：capCache 不再在 defer 中置 nil——每次 Run 的
+		// resolveCapabilities 都会在 runMu 锁内重新填充，旧值不会被误用；
+		// 而置 nil 会让异步 goroutine（如知识蒸馏）在未拷贝字段时读到 nil
+		// 而 panic。observability 引用在闭包内快照，保证本请求闭合。
+		if corr := a.capCache; corr != nil && corr.observability != nil && corr.traceID != "" {
+			corr.observability.End(corr.traceID)
 		}
 		// 优化（Task 1）：flush 异步记忆写入队列，确保所有 saveMemory 调用完成
 		a.flushMemoryWriter()
-		// 清理 capCache，避免下次 Run() 误用旧引用
-		a.capCache = nil
 	}()
 
 	// 在 statsMu 保护下写入 startTime：Stats() 会在锁内读取（-race 实测发现
