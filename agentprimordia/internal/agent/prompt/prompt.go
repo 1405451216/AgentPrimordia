@@ -1,6 +1,7 @@
-package agent
+package prompt
 
 import (
+	"agentprimordia/internal/agent/core"
 	"bytes"
 	"fmt"
 	"strings"
@@ -240,7 +241,7 @@ func FormatToolDescriptions(toolNames []string, descriptions map[string]string) 
 // FormatRAGContextWithTemplate 使用自定义模板格式化 RAG 上下文
 //
 // 扩展 RAGConfig.ContextTemplate 的功能，支持更灵活的模板定制。
-func FormatRAGContextWithTemplate(tmpl string, docs []*RAGDocument) string {
+func FormatRAGContextWithTemplate(tmpl string, docs []*core.RAGDocument) string {
 	if tmpl == "" {
 		tmpl = "=== 相关知识 ===\n{{content}}\n=== 知识结束 ==="
 	}

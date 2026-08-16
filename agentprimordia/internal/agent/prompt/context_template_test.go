@@ -1,6 +1,7 @@
-package agent
+package prompt
 
 import (
+	"agentprimordia/internal/agent/core"
 	"strings"
 	"testing"
 )
@@ -201,7 +202,7 @@ func TestFormatToolDescriptions_MissingDescription(t *testing.T) {
 }
 
 func TestFormatRAGContextWithTemplate(t *testing.T) {
-	docs := []*RAGDocument{
+	docs := []*core.RAGDocument{
 		{ID: "1", Content: "Go 是一门编程语言", Score: 0.95, Role: "文档"},
 		{ID: "2", Content: "AgentPrimordia 是 Go 框架", Score: 0.88, Role: "知识"},
 	}
@@ -224,7 +225,7 @@ func TestFormatRAGContextWithTemplate(t *testing.T) {
 }
 
 func TestFormatRAGContextWithTemplate_DefaultTemplate(t *testing.T) {
-	docs := []*RAGDocument{
+	docs := []*core.RAGDocument{
 		{Content: "测试内容", Score: 0.9},
 	}
 

@@ -1,10 +1,8 @@
-package agent
+package prompt
 
 import (
 	"strings"
 	"testing"
-
-	"agentprimordia/internal/llm"
 )
 
 func TestPromptTemplate_SimpleVar(t *testing.T) {
@@ -104,35 +102,3 @@ func TestPromptTemplate_EmptyTemplate(t *testing.T) {
 	}
 }
 
-func TestReActAgent_WithPromptTemplate(t *testing.T) {
-	tmpl := DefaultSystemPrompt().WithVar("AgentName", "TestAgent").WithScopeRules([]string{"/src/"})
-
-	mockLLM := llm.NewMockLLM(t).WithResponse("done")
-
-	agt, err := NewAgent("TestAgent", "", mockLLM, WithPromptTemplate(tmpl), WithMaxTurns(1))
-	if err != nil {
-		t.Fatalf("failed to create agent: %v", err)
-	}
-	resp, err := agt.Run(t.Context(), UserMessage("hello"))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp == nil {
-		t.Fatal("expected non-nil response")
-	}
-
-	lastReq, ok := mockLLM.LastRequest().(*llm.CompletionRequest)
-	if !ok || lastReq == nil {
-		t.Fatal("expected CompletionRequest from mock LLM")
-	}
-	if len(lastReq.Messages) == 0 {
-		t.Fatal("expected at least one message in request")
-	}
-	systemMsg := lastReq.Messages[0]
-	if !strings.Contains(systemMsg.Content, "TestAgent") {
-		t.Errorf("system message should contain 'TestAgent' after template render, got %q", systemMsg.Content)
-	}
-	if !strings.Contains(systemMsg.Content, "/src/") {
-		t.Errorf("system message should contain scope rules after template render, got %q", systemMsg.Content)
-	}
-}

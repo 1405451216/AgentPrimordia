@@ -5,7 +5,7 @@
 // perf-v12 (2026-07-03) — writeEvent 改用 BufferPool 复用 bytes.Buffer，
 // 减少 SSE 流式响应（每 token 触发一次）在长上下文场景下的内存分配。
 // 实测 bufferpool: 直接 16.2ns → 池化 7.0ns（2.3x）。
-package agent
+package sse
 
 import (
 	"encoding/json"
@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"agentprimordia/internal/agent/bufferpool"
 )
 
 // SSEWriter 服务端推送事件写入器
@@ -83,8 +85,8 @@ func (w *SSEWriter) writeEvent(event string, data any) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	buf := AcquireBufferWithSize(256)
-	defer ReleaseBuffer(buf)
+	buf := bufferpool.AcquireBufferWithSize(256)
+	defer bufferpool.ReleaseBuffer(buf)
 
 	// 事件类型
 	if event != "" {
