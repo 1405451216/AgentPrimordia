@@ -1,8 +1,8 @@
 module agentprimordia
 
-go 1.26.3
+go 1.26.6
 
-toolchain go1.26.4
+toolchain go1.26.6
 
 require (
 	github.com/redis/go-redis/v9 v9.21.0

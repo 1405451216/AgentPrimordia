@@ -1,6 +1,6 @@
 module agentprimordia/pgvector
 
-go 1.26.3
+go 1.26.6
 
 require github.com/jackc/pgx/v5 v5.10.0
 

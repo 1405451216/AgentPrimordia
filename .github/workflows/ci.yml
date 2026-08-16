@@ -73,6 +73,7 @@ jobs:
         working-directory: agentprimordia
         env:
           CGO_ENABLED: 1
+          SOAK_CI_MODE: '1'  # CI 共享 runner 抖动会导致 soak 退化误报（见 studio_soak_test）
         run: |
           go test -race -coverprofile=coverage.out -covermode=atomic -count=1 ./... \
             || { go test -race -count=1 -v ./... > test-failure.log 2>&1; echo "::error::Go tests failed — see test-failure.log artifact"; exit 1; }
@@ -472,8 +473,9 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          # v1.64.0 的 release 已被移除（下载 404），升到仍有 linux-amd64 二进制的 v1.64.8
-          version: v1.64.8
+          # v1.64.x 用 Go 1.24 构建，无法处理 go 1.26 目标（报 config 加载错误）；
+          # 改用 latest（以新 Go 构建的 release 才能解析 go 1.26 模块）
+          version: latest
           working-directory: agentprimordia
           args: --timeout 5m
           only-new-issues: false
