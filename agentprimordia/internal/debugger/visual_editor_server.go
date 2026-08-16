@@ -248,8 +248,15 @@ func (s *VisualEditorServer) handleExecution(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// 修复（-race 实测发现）：exec 是指向内部存储的指针，executeAsync 会持锁
+	// 就地修改其字段。必须在读锁内完成序列化，不能在锁外 Encode，
+	// 否则与写者并发构成数据竞争。
 	s.editor.mu.RLock()
 	exec, exists := s.editor.executions[id]
+	var data []byte
+	if exists {
+		data, _ = json.Marshal(exec)
+	}
 	s.editor.mu.RUnlock()
 
 	if !exists {
@@ -258,7 +265,7 @@ func (s *VisualEditorServer) handleExecution(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(exec)
+	_, _ = w.Write(data)
 }
 
 // handleEditorUI 提供编辑器Web UI

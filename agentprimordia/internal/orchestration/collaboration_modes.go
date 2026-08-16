@@ -23,7 +23,7 @@ func (s *CollaborationSession) executeDebate(ctx context.Context, topic string) 
 		default:
 		}
 
-		s.currentRound = round
+		s.currentRound.Store(int64(round))
 		debateRound := &DebateRound{
 			RoundNumber: round,
 			Statements:  make([]*CollaborationStatement, 0),
@@ -291,8 +291,8 @@ func (s *CollaborationSession) addToHistory(stmt *CollaborationStatement) {
 }
 
 func (s *CollaborationSession) generateStatementID() string {
-	s.statementID++
-	return "stmt-" + strconv.Itoa(s.currentRound) + "-" + strconv.Itoa(s.statementID)
+	id := s.statementID.Add(1)
+	return "stmt-" + strconv.Itoa(int(s.currentRound.Load())) + "-" + strconv.Itoa(int(id))
 }
 
 func (s *CollaborationSession) getAllCollaborators() []*Collaborator {
@@ -462,7 +462,7 @@ func (s *CollaborationSession) calculateAgreementLevel() float64 {
 
 	lastRoundStmts := 0
 	for _, stmt := range s.result.History {
-		if stmt.RoundNumber == s.currentRound {
+		if stmt.RoundNumber == int(s.currentRound.Load()) {
 			lastRoundStmts++
 		}
 	}

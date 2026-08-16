@@ -114,8 +114,12 @@ func newDAGMetrics() *DAGMetrics {
 
 // record 记录节点执行统计（perf-v4 Task 3：无锁原子更新）
 // 仅在节点首次注册时获取写锁；已存在节点的更新全部使用 atomic 操作
+// 修复（-race 实测发现）：首次读取须在 RLock 内，否则与并发首次写入
+// （锁内写 map）构成 check-then-act 数据竞争
 func (m *DAGMetrics) record(nodeID string, dur time.Duration, success bool, retries int) {
+	m.mu.RLock()
 	stats, ok := m.NodeStats[nodeID]
+	m.mu.RUnlock()
 	if !ok {
 		m.mu.Lock()
 		// double-check：避免并发首次写入时覆盖

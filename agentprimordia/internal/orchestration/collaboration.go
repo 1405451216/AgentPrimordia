@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"agentprimordia/internal/agent"
@@ -168,8 +169,10 @@ type CollaborationSession struct {
 	collaborators map[string]*Collaborator
 	result        *CollaborationResult
 	eventCh       chan *CollaborationEvent
-	currentRound  int
-	statementID   int
+	// currentRound/statementID 被并发 debate goroutine 读写（-race 实测发现），
+	// 使用原子类型避免数据竞争
+	currentRound  atomic.Int64
+	statementID   atomic.Int64
 }
 
 // CollaborationEvent 事件

@@ -67,7 +67,11 @@ func (w *WorkflowExecution) executeNode(ctx context.Context, node *WorkflowNode,
 		}
 	}
 
+	// 修复（-race 实测发现）：并行节点由多个 goroutine 并发执行 executeNode，
+	// nodeExecutions 递增必须加锁
+	w.mu.Lock()
 	w.nodeExecutions[node.ID]++
+	w.mu.Unlock()
 
 	record := &ExecutionRecord{
 		NodeID:    node.ID,

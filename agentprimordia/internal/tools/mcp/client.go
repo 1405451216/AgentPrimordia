@@ -46,6 +46,7 @@ type Client struct {
 	logger  *slog.Logger  // 日志记录器
 	timeout time.Duration // request timeout时间
 	done    chan struct{} // 关闭信号
+	reapDone chan struct{} // 子进程收割完成信号（reapProcess 退出时关闭）
 	closed  bool          // 是否已关闭
 }
 
@@ -104,9 +105,10 @@ func NewClient(cfg Config) (*Client, error) {
 		stdin:   stdin,
 		stdout:  bufio.NewReader(stdout),
 		pending: make(map[int64]chan *jsonRPCResponse),
-		logger:  slog.Default(),
-		timeout: timeout,
-		done:    make(chan struct{}),
+		logger:   slog.Default(),
+		timeout:  timeout,
+		done:     make(chan struct{}),
+		reapDone: make(chan struct{}),
 	}
 
 	// 启动后台 goroutine 读取响应
@@ -361,20 +363,20 @@ func (c *Client) Close() error {
 		_ = c.stdin.Close()
 	}
 
-	// 终止子进程
+	// 终止子进程：Wait 统一由 reapProcess 执行，这里只发信号并等待收割完成
 	if c.cmd != nil && c.cmd.Process != nil {
 		_ = c.cmd.Process.Signal(os.Interrupt)
-		// 等待进程退出，最多 3 秒
-		done := make(chan error, 1)
-		go func() {
-			done <- c.cmd.Wait()
-		}()
 		select {
-		case <-done:
-			// 进程正常退出
+		case <-c.reapDone:
+			// 进程正常退出（reapProcess 已完成 Wait）
 		case <-time.After(3 * time.Second):
-			// 超时，强制终止
+			// 超时，强制终止；Kill 后 reapProcess 的 Wait 会返回
 			_ = c.cmd.Process.Kill()
+			select {
+			case <-c.reapDone:
+			case <-time.After(3 * time.Second):
+				c.logger.Warn("MCP 子进程强制终止后仍未退出")
+			}
 		}
 	}
 
@@ -420,7 +422,11 @@ func (c *Client) readLoop() {
 }
 
 // reapProcess 后台等待子进程退出，更新状态
+// 修复（-race 实测发现）：旧实现与 Close 各自调用 c.cmd.Wait()，
+// exec.Cmd.Wait 非并发安全。现统一由本 goroutine 执行 Wait，
+// 退出时关闭 reapDone，Close 等待该信号而非自行 Wait。
 func (c *Client) reapProcess() {
+	defer close(c.reapDone)
 	if c.cmd != nil {
 		_ = c.cmd.Wait()
 	}

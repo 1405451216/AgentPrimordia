@@ -99,8 +99,11 @@ func (vw *VersionedWorkflow) GetActive() (*WorkflowVersion, error) {
 	}
 	for i := range vw.versions {
 		if vw.versions[i].Version == vw.active {
-			vw.versions[i].CreatedAt = vw.versions[i].CreatedAt.UTC()
-			return &vw.versions[i], nil
+			// 修复（-race 实测发现）：不能就地修改共享元素（RLock 下写
+			// 与 ListVersions 的拷贝并发即数据竞争），先拷贝再规范化
+			v := vw.versions[i]
+			v.CreatedAt = v.CreatedAt.UTC()
+			return &v, nil
 		}
 	}
 	return nil, ErrVersionNotFound
