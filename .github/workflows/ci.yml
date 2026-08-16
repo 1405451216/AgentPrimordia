@@ -100,6 +100,15 @@ jobs:
           name: windows-test-failure-log
           path: agentprimordia/test-failure.log
 
+      # 无 API Key 的集成测试（MockLLM 驱动完整链路：ReAct+工具+流式+记忆）。
+      # 与 test-integration（真实 key）互补，保证 CI 无 key 环境也有集成保障。
+      - name: Integration tests without API key (MockLLM)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: agentprimordia
+        env:
+          CGO_ENABLED: 0
+        run: go test -tags=integration -count=1 -timeout=5m -run 'MockIntegration' ./internal/agent/...
+
       - name: "Check coverage (Phase 7.2: tiered gate, 8.1: Tier 3 soft gate)"
         if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.26'
         working-directory: agentprimordia
