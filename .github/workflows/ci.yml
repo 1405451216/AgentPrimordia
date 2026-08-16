@@ -90,6 +90,7 @@ jobs:
         working-directory: agentprimordia
         env:
           CGO_ENABLED: 0
+          SOAK_CI_MODE: '1'  # 同 ubuntu/mac（见 studio_soak_test）
         run: |
           go test -coverprofile=coverage.out -covermode=atomic -count=1 ./... \
             || { go test -count=1 -v ./... > test-failure.log 2>&1; echo "::error::Go tests failed — see test-failure.log artifact"; exit 1; }
@@ -470,15 +471,14 @@ jobs:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-1.26-${{ hashFiles('**/go.sum') }}
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          # v1.64.x 用 Go 1.24 构建，无法处理 go 1.26 目标（报 config 加载错误）；
-          # 改用 latest（以新 Go 构建的 release 才能解析 go 1.26 模块）
-          version: latest
-          working-directory: agentprimordia
-          args: --timeout 5m
-          only-new-issues: false
+      # golangci-lint 官方预编译二进制用 Go 1.24 构建，无法解析 go 1.26 模块
+      # （can't load config）；改为 go install 源码编译（用本 job 的 Go 1.26）
+      - name: Install golangci-lint (source build)
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+
+      - name: Run golangci-lint
+        working-directory: agentprimordia
+        run: golangci-lint run --timeout 5m 2>&1 | tee golangci-lint.log; test ${PIPESTATUS[0]} -eq 0
 
       - name: Upload lint log (diagnostic)
         if: failure()
