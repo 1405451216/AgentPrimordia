@@ -2,6 +2,7 @@ package soak
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -78,12 +79,13 @@ func TestRampPattern(t *testing.T) {
 }
 
 func TestRunnerBasic(t *testing.T) {
-	counter := 0
+	// 并发请求回调：计数器必须线程安全（-race 实测发现无锁计数竞态）
+	var counter atomic.Int64
 	cfg := RunnerConfig{
 		Duration: 200 * time.Millisecond,
 		Pattern:  ConstantPattern(50), // 50 RPS
 		RequestFn: func(ctx context.Context) (*Response, error) {
-			counter++
+			counter.Add(1)
 			return &Response{Success: true}, nil
 		},
 		SamplingInterval: 50 * time.Millisecond,
@@ -101,7 +103,7 @@ func TestRunnerBasic(t *testing.T) {
 	if result.Duration < 200*time.Millisecond {
 		t.Errorf("持续时间 = %v, 应 >= 200ms", result.Duration)
 	}
-	if counter == 0 {
+	if counter.Load() == 0 {
 		t.Error("请求函数未被调用")
 	}
 }

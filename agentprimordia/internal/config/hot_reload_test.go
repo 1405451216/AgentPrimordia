@@ -231,6 +231,13 @@ func TestWatchConfigFile(t *testing.T) {
 
 	time.Sleep(200 * time.Millisecond)
 
+	// 先停止监视器（Stop 会等待轮询 goroutine 退出），再读取配置。
+	// 修复（-race 实测发现）：若在 watcher 运行期间读取，会与热加载
+	// goroutine 的就地 json.Unmarshal 并发写入 cfg 构成数据竞争。
+	if err := w.Stop(); err != nil {
+		t.Fatal(err)
+	}
+
 	// 通过 RWMutex 安全读取
 	cfg.mu.RLock()
 	v2 := cfg.Value
@@ -238,9 +245,5 @@ func TestWatchConfigFile(t *testing.T) {
 
 	if v2 != 42 {
 		t.Fatalf("热加载后值错误: %d", v2)
-	}
-
-	if err := w.Stop(); err != nil {
-		t.Fatal(err)
 	}
 }

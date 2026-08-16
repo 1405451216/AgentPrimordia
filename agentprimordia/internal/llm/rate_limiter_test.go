@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -10,11 +11,11 @@ import (
 type mockProvider struct {
 	completeResp *CompletionResponse
 	completeErr  error
-	callCount    int
+	callCount    atomic.Int64
 }
 
 func (m *mockProvider) Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error) {
-	m.callCount++
+	m.callCount.Add(1)
 	return m.completeResp, m.completeErr
 }
 

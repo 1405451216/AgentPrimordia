@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -60,9 +61,11 @@ func TestAuditLogger_AlertCallback(t *testing.T) {
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.jsonl")
 
-	var alertReceived *AuditEvent
+	// 告警回调在 Log 的异步 goroutine 中触发（生产设计），
+	// 测试侧须用原子变量接收，避免读写竞态（-race 实测发现）。
+	var alertReceived atomic.Pointer[AuditEvent]
 	logger, _ := NewFileAuditLogger(logPath, 1, func(e AuditEvent) error {
-		alertReceived = &e
+		alertReceived.Store(&e)
 		return nil
 	})
 	defer logger.Close()
@@ -76,11 +79,12 @@ func TestAuditLogger_AlertCallback(t *testing.T) {
 
 	// 等待异步告警回调
 	time.Sleep(100 * time.Millisecond)
-	if alertReceived == nil {
+	got := alertReceived.Load()
+	if got == nil {
 		t.Fatal("告警回调未触发")
 	}
-	if alertReceived.Type != AuditPIIDetected {
-		t.Fatalf("告警类型 = %q, want %q", alertReceived.Type, AuditPIIDetected)
+	if got.Type != AuditPIIDetected {
+		t.Fatalf("告警类型 = %q, want %q", got.Type, AuditPIIDetected)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -266,10 +267,15 @@ func TestCollaboration_Events(t *testing.T) {
 		Agent: testAgent,
 	})
 
+	// 修复（-race 实测发现）：events 被收集 goroutine 与主 goroutine 共享，
+	// append 与 range 需互斥
+	var eventsMu sync.Mutex
 	events := make([]*CollaborationEvent, 0)
 	go func() {
 		for event := range session.Events() {
+			eventsMu.Lock()
 			events = append(events, event)
+			eventsMu.Unlock()
 			if event.Type == "session_completed" || len(events) >= 5 {
 				break
 			}
@@ -283,6 +289,7 @@ func TestCollaboration_Events(t *testing.T) {
 	hasStartEvent := false
 	hasCompleteEvent := false
 
+	eventsMu.Lock()
 	for _, e := range events {
 		switch e.Type {
 		case "session_started":
@@ -291,6 +298,7 @@ func TestCollaboration_Events(t *testing.T) {
 			hasCompleteEvent = true
 		}
 	}
+	eventsMu.Unlock()
 
 	if !hasStartEvent || !hasCompleteEvent {
 		t.Errorf("missing lifecycle events: start=%v complete=%v", hasStartEvent, hasCompleteEvent)

@@ -3,6 +3,7 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -14,7 +15,8 @@ type mockDebater struct {
 	argument  string
 	response  string
 	failCount int // 前N次调用失败
-	callCount int
+	// callCount 被并发 collectResponses goroutine 递增（-race 实测发现），须原子
+	callCount atomic.Int64
 	delay     time.Duration // 模拟延迟
 }
 
@@ -34,8 +36,8 @@ func (m *mockDebater) PresentArgument(ctx context.Context, topic string) (string
 		case <-time.After(m.delay):
 		}
 	}
-	m.callCount++
-	if m.failCount > 0 && m.callCount <= m.failCount {
+	m.callCount.Add(1)
+	if m.failCount > 0 && m.callCount.Load() <= int64(m.failCount) {
 		return "", fmt.Errorf("mock error")
 	}
 	return m.argument, nil
@@ -49,8 +51,8 @@ func (m *mockDebater) RespondToArgument(ctx context.Context, opponentArg string)
 		case <-time.After(m.delay):
 		}
 	}
-	m.callCount++
-	if m.failCount > 0 && m.callCount <= m.failCount {
+	m.callCount.Add(1)
+	if m.failCount > 0 && m.callCount.Load() <= int64(m.failCount) {
 		return "", fmt.Errorf("mock error")
 	}
 	return m.response, nil
