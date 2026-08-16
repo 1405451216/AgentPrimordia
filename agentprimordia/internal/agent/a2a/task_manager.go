@@ -57,7 +57,9 @@ func (tm *TaskManagerImpl) Create(task *Task) (*Task, error) {
 
 	stored := deepCopyTask(task)
 	tm.tasks[task.ID] = stored
-	return stored, nil
+	// 返回深拷贝：避免调用方持有的引用与内部存储实例共享，
+	// 与 Update/AddArtifact 等锁内写操作并发时构成数据竞争（-race 实测发现）。
+	return deepCopyTask(stored), nil
 }
 
 func (tm *TaskManagerImpl) Get(taskID string) (*Task, error) {

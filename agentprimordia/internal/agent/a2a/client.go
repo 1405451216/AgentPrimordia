@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -47,7 +48,8 @@ type A2AClient struct {
 	apiKey      string
 	bearerToken string
 	logger      *slog.Logger
-	nextID      int
+	// nextID JSON-RPC 请求 ID 计数器：并发调用共享，必须原子递增（-race 实测发现）
+	nextID      atomic.Int64
 }
 
 // defaultA2AHTTPTimeout 是 A2A 客户端默认的总request timeout。
@@ -175,7 +177,7 @@ func (c *A2AClient) StreamEvents(taskID string) (<-chan *TaskEvent, error) {
 }
 
 func (c *A2AClient) call(method string, params any) (*JSONRPCResponse, error) {
-	c.nextID++
+	id := c.nextID.Add(1)
 	paramsJSON, err := json.Marshal(params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to serialize parameters: %w", err)
@@ -183,7 +185,7 @@ func (c *A2AClient) call(method string, params any) (*JSONRPCResponse, error) {
 
 	reqBody := JSONRPCRequest{
 		JSONRPC: "2.0",
-		ID:      c.nextID,
+		ID:      id,
 		Method:  method,
 		Params:  paramsJSON,
 	}

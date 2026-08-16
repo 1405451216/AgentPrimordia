@@ -2,6 +2,7 @@ package a2a
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -267,7 +268,12 @@ func TestServer_SSEEventsEndpoint(t *testing.T) {
 	_, _ = tm.Create(&Task{ID: "sse-task-001", State: TaskWorking, Message: &A2AMessage{Role: "user"}})
 
 	server := NewA2AServer(tm)
-	req := httptest.NewRequest("GET", "/tasks/sse-task-001/events", nil)
+	// 修复（-race 实测发现）：SSE handler 的循环在请求 ctx 取消前不会退出，
+	// 若在 handler 仍在写 rec.Body 时读取即数据竞争。用可取消 ctx 并在
+	// handler 退出（ServeHTTP 返回）后再读取。
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req := httptest.NewRequest("GET", "/tasks/sse-task-001/events", nil).WithContext(ctx)
 	rec := httptest.NewRecorder()
 
 	done := make(chan struct{})
@@ -279,9 +285,13 @@ func TestServer_SSEEventsEndpoint(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	_ = tm.Update("sse-task-001", TaskCompleted, nil)
 
+	// 等待事件写入，然后取消请求上下文让 SSE handler 退出
+	time.Sleep(50 * time.Millisecond)
+	cancel()
 	select {
 	case <-done:
 	case <-time.After(time.Second):
+		t.Fatal("SSE handler 未在请求取消后退出")
 	}
 
 	body := rec.Body.String()
