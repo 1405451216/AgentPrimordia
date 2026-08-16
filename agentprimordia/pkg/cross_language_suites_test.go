@@ -1000,7 +1000,7 @@ func parseSkillVersion(t *testing.T, s string) skills.Version {
 		t.Fatalf("非法版本字符串: %q", s)
 	}
 	var v skills.Version
-	fmt.Sscanf(s, "%d.%d.%d", &v.Major, &v.Minor, &v.Patch)
+	_, _ = fmt.Sscanf(s, "%d.%d.%d", &v.Major, &v.Minor, &v.Patch)
 	return v
 }
 

@@ -18,6 +18,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"sync/atomic"
 	"strings"
 	"testing"
 	"time"
@@ -105,15 +106,15 @@ func TestSoak_Studio(t *testing.T) {
 	}
 
 	// 混合流量：90% GET 轮询端点 + 10% POST 写路径（chaos 实验创建）
-	var reqSeq int64
+	// reqSeq 被并发 RequestFn 回调递增，须原子（-race 实测发现）
+	var reqSeq atomic.Int64
 	runner := soak.NewRunner(soak.RunnerConfig{
 		Duration:         duration,
 		Pattern:          soak.ConstantPattern(rps),
 		SamplingInterval: 5 * time.Second,
 		RequestFn: func(ctx context.Context) (*soak.Response, error) {
 			start := time.Now()
-			seq := reqSeq
-			reqSeq++
+			seq := reqSeq.Add(1) - 1
 			var (
 				req      *http.Request
 				body     []byte

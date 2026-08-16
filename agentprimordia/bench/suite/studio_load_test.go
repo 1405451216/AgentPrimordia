@@ -171,7 +171,7 @@ func TestStudio_PollingMix(t *testing.T) {
 					if err != nil {
 						errCount.Add(1)
 					} else {
-						io.Copy(io.Discard, resp.Body)
+						_, _ = io.Copy(io.Discard, resp.Body)
 						resp.Body.Close()
 						if resp.StatusCode != http.StatusOK {
 							errCount.Add(1)
@@ -214,7 +214,7 @@ func BenchmarkStudioEndpoints(b *testing.B) {
 					req, _ := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL+ep, nil)
 					resp, err := client.Do(req)
 					if err == nil {
-						io.Copy(io.Discard, resp.Body)
+						_, _ = io.Copy(io.Discard, resp.Body)
 						resp.Body.Close()
 					}
 					e := time.Now().UnixNano()
@@ -337,7 +337,7 @@ func TestStudio_WritePathConcurrentLoad(t *testing.T) {
 					recordBad(-1)
 					continue
 				}
-				io.Copy(io.Discard, resp.Body)
+				_, _ = io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
 				if resp.StatusCode == http.StatusCreated {
 					chaosOK.Add(1)
@@ -362,7 +362,7 @@ func TestStudio_WritePathConcurrentLoad(t *testing.T) {
 					recordBad(-1)
 					continue
 				}
-				io.Copy(io.Discard, resp.Body)
+				_, _ = io.Copy(io.Discard, resp.Body)
 				resp.Body.Close()
 				if resp.StatusCode == http.StatusOK {
 					deployOK.Add(1)

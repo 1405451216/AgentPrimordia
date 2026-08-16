@@ -286,7 +286,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: sdk/typescript/package-lock.json
 
@@ -691,7 +691,11 @@ jobs:
           go test -bench='BenchmarkConsistentHash_GetNode|BenchmarkDistributedState|BenchmarkAgentRun|BenchmarkMemoryStore|BenchmarkMemoryLatency|BenchmarkP95' \
             -benchmem -benchtime=500ms -run='^$' -count=3 ./bench/suite/ | tee /tmp/bench-output.txt
 
+      # 固定基线数值来自专用基准机，runner 硬件漂移会导致偏差误报；
+      # CI 模式下降级为记录（回归判定在专用基准机执行）
       - name: Check for regressions against baseline
+        env:
+          CI_MODE: '1'
         run: bash scripts/bench-regression-check.sh /tmp/bench-output.txt
 
       - name: Upload benchmark results

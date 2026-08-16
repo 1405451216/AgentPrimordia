@@ -180,6 +180,7 @@ func (t *GrpcTransport) peerConn(target string) (*grpc.ClientConn, error) {
 
 	dialCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	//nolint:staticcheck // DialContext 保留：惰性连接语义（NewClient 行为不同）
 	conn, err := grpc.DialContext(dialCtx, target,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
