@@ -559,11 +559,18 @@ jobs:
 
       - name: Run etcd + Redis checkpoint integration tests
         working-directory: agentprimordia
+        env:
+          CGO_ENABLED: 0
         run: go test -tags=etcd,redis -count=1 -timeout=10m -v ./internal/persist/...
 
-      - name: Run etcd cluster discovery integration tests
+      # 修复：移除过窄的 -run 过滤——原过滤 'EtcdKVStore|EtcdEndpoint' 会漏掉
+      # TestLeaseManager_Integration（etcd 租约管理集成测试）。etcd tag 下该包
+      # 仅含 etcd 相关测试，全量运行即可。
+      - name: Run etcd cluster discovery + lease integration tests
         working-directory: agentprimordia
-        run: go test -tags=etcd -count=1 -timeout=10m -v ./internal/agent/cluster/... -run 'EtcdKVStore|EtcdEndpoint'
+        env:
+          CGO_ENABLED: 0
+        run: go test -tags=etcd -count=1 -timeout=10m -v ./internal/agent/cluster/...
 
   # ===== API 契约基线检查（防 pkg/ 公共 API 契约过期） =====
 
