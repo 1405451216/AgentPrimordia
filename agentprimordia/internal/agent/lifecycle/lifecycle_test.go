@@ -120,6 +120,104 @@ func TestPauseResume(t *testing.T) {
 	}
 }
 
+// TestWaitResume_AfterResume 回归测试：Resume 完成后调用 WaitResume 应立即返回。
+// 修复前：WaitResume 无锁读 channel，可能读到 Resume 替换后的新 channel 而永久阻塞
+// （错过唤醒）；修复后通过状态兜底检查立即返回。
+func TestWaitResume_AfterResume(t *testing.T) {
+	lc := New()
+	_ = lc.SetStatus(StatusRunning)
+	lc.Pause()
+	lc.Resume()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if err := lc.WaitResume(ctx); err != nil {
+		t.Fatalf("Resume 完成后 WaitResume 应立即返回，实际: %v", err)
+	}
+}
+
+// TestWaitResume_MultipleWaiters 多个 waiter 并发等待时，一次 Resume 应唤醒全部。
+// 回归保护：close(ch) 语义对多个 select 读者同时生效，任何 waiter 被遗漏即失败。
+func TestWaitResume_MultipleWaiters(t *testing.T) {
+	lc := New()
+	_ = lc.SetStatus(StatusRunning)
+	lc.Pause()
+
+	const waiters = 8
+	var wg sync.WaitGroup
+	for i := 0; i < waiters; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			if err := lc.WaitResume(ctx); err != nil {
+				t.Errorf("waiter 超时（一次 Resume 应唤醒全部 waiter）: %v", err)
+			}
+		}()
+	}
+
+	// 等待所有 waiter 进入等待状态后触发 Resume
+	time.Sleep(50 * time.Millisecond)
+	lc.Resume()
+	wg.Wait()
+}
+
+// TestWaitResume_Concurrent 并发 Pause/Resume 与 WaitResume 交错，不应阻塞或触发数据竞争。
+// 修复前：WaitResume 无锁读 l.resumeCh，与 Resume 的 close+替换并发即数据竞争
+// （-race 必现）；且可能读到替换后的新 channel 导致超时。修复后应零警告、零超时。
+//
+// 设计要点：单个写者协程以低频（带让步）执行 Pause/Resume，模拟真实控制面节奏；
+// 多个 waiter 并发等待。写者风暴（多协程忙循环抢写锁）会让 RWMutex 读者饥饿，
+// 那属于测试失真而非被测代码问题，故刻意避免。
+func TestWaitResume_Concurrent(t *testing.T) {
+	lc := New()
+	_ = lc.SetStatus(StatusRunning)
+
+	stop := make(chan struct{})
+	var prWG sync.WaitGroup
+	prWG.Add(1)
+	// 低频 Pause/Resume 写者协程（模拟控制面），持续运行直到 waiter 全部完成
+	go func() {
+		defer prWG.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			lc.Pause()
+			lc.Resume()
+			// 让步：给等待者的 RLock 留出获取机会（真实场景 Pause/Resume 为低频操作）
+			time.Sleep(50 * time.Microsecond)
+		}
+	}()
+
+	// 并发等待恢复的协程
+	var waitWG sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		waitWG.Add(1)
+		go func() {
+			defer waitWG.Done()
+			for j := 0; j < 25; j++ {
+				ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+				err := lc.WaitResume(ctx)
+				cancel()
+				if err != nil {
+					t.Errorf("WaitResume 超时（可能错过唤醒）: %v", err)
+				}
+			}
+		}()
+	}
+
+	waitWG.Wait()
+	close(stop)
+	// 兜底：恢复为运行态后等待写者协程退出
+	lc.Pause()
+	lc.Resume()
+	prWG.Wait()
+}
+
 // TestStop 测试停止
 func TestStop(t *testing.T) {
 	lc := New()

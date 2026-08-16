@@ -245,9 +245,17 @@ func (l *Lifecycle) Pause() {
 	if hooks, ok := l.hooks[StatusPaused]; ok {
 		pausedHooks = append(pausedHooks, hooks...)
 	}
-
-	l.pauseCh <- struct{}{}
 	l.mu.Unlock()
+
+	// 锁外发送暂停信号，且为非阻塞发送。
+	// 修复（评估实测发现）：原实现在持有写锁时向 buffered(1) 的 pauseCh 发送，
+	// 若信号未被 WaitPause 消费（buffer 已满），第二次 Pause 会锁内永久阻塞，
+	// 并连带饿死所有等待 RLock 的调用方（如 WaitResume）。
+	// 非阻塞发送 + 缓冲 1 的语义：信号未被消费时无需重复发送。
+	select {
+	case l.pauseCh <- struct{}{}:
+	default:
+	}
 
 	for _, listener := range listeners {
 		listener(StatusPaused)
@@ -309,9 +317,27 @@ func (l *Lifecycle) WaitPause(ctx context.Context) error {
 }
 
 // WaitResume 等待恢复信号
+//
+// 修复（评估实测发现）：Resume 会在锁内 close(resumeCh) 后替换为新 channel，
+// 旧实现无锁读取 l.resumeCh 存在两个问题：
+//   - 数据竞争：与 Resume 的 close+替换并发读写同一字段（race 检测确认）；
+//   - 错过唤醒：等待者若读到替换后的新 channel（尚未被 close），
+//     会永久阻塞直到下一次 Resume。
+//
+// 新实现：在锁内快照 channel 引用并同时检查状态——若状态已切回 Running
+// （Resume 已完成），直接返回；否则在锁外等待快照到的 channel。
+// 状态检查 + 锁内快照可覆盖所有交错，既消除数据竞争，也避免错过唤醒。
 func (l *Lifecycle) WaitResume(ctx context.Context) error {
+	l.mu.RLock()
+	ch := l.resumeCh
+	resumed := l.status == StatusRunning
+	l.mu.RUnlock()
+	if resumed {
+		// Resume 已完成（状态已切回 Running），无需等待
+		return nil
+	}
 	select {
-	case <-l.resumeCh:
+	case <-ch:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
