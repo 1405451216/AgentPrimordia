@@ -209,10 +209,16 @@ func (w *SSEWriter) Heartbeat() error {
 }
 
 // StartHeartbeat 启动定时心跳
-// 返回停止函数，调用即可停止心跳
+// 返回停止函数；stop 会等待心跳 goroutine 完全退出后再返回（同步停止），
+// 且可安全重复调用。修复（评估实测发现）：旧实现 stop 仅 close(done) 不等待，
+// 调用方在 stop 后立即读取 writer 内容时，心跳 goroutine 可能仍在写入，-race 必现。
 func (w *SSEWriter) StartHeartbeat(interval time.Duration) (stop func()) {
 	done := make(chan struct{})
+	var stopOnce sync.Once
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for {
@@ -224,5 +230,10 @@ func (w *SSEWriter) StartHeartbeat(interval time.Duration) (stop func()) {
 			}
 		}
 	}()
-	return func() { close(done) }
+	return func() {
+		stopOnce.Do(func() {
+			close(done)
+			wg.Wait()
+		})
+	}
 }
