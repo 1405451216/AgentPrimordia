@@ -4898,9 +4898,14 @@
       "stability": "Stable",
       "types": [
         {
+          "name": "AppOption",
+          "kind": "alias",
+          "doc": "AppOption 是 Agent 行为配置的函数选项（pkg/ap 级别）。"
+        },
+        {
           "name": "Option",
           "kind": "alias",
-          "doc": "Option 是 Agent 行为配置的函数选项"
+          "doc": "Option 是 AppOption 的历史命名（DEPRECATED: 请使用 AppOption）。"
         },
         {
           "name": "StreamingFunc",
@@ -4915,7 +4920,7 @@
             "d time.Duration"
           ],
           "returns": [
-            "Option"
+            "AppOption"
           ],
           "doc": "WithTimeout 设置execution timeout时间"
         },
@@ -4925,7 +4930,7 @@
             "n int"
           ],
           "returns": [
-            "Option"
+            "AppOption"
           ],
           "doc": "WithMaxIterations 设置 ReAct 循环的最大迭代次数（区别于 agent.WithMaxTurns 的 AgentOption 类型）"
         },
@@ -4935,7 +4940,7 @@
             "t float64"
           ],
           "returns": [
-            "Option"
+            "AppOption"
           ],
           "doc": "WithTemp 设置 LLM 温度参数（区别于 agent.WithTemperature 的 AgentOption 类型）"
         },
@@ -4945,7 +4950,7 @@
             "dir string"
           ],
           "returns": [
-            "Option"
+            "AppOption"
           ],
           "doc": "WithCheckpoint 启用状态检查点，将状态持久化到指定目录"
         },
@@ -4955,7 +4960,7 @@
             "fn StreamingFunc"
           ],
           "returns": [
-            "Option"
+            "AppOption"
           ],
           "doc": "WithStreaming 启用流式输出模式，每个 chunk 调用回调函数"
         },
@@ -4965,14 +4970,14 @@
             "m Metadata"
           ],
           "returns": [
-            "Option"
+            "AppOption"
           ],
           "doc": "WithMetadata 添加自定义元数据到会话"
         },
         {
           "name": "ApplyOptions",
           "params": [
-            "opts ...Option"
+            "opts ...AppOption"
           ],
           "returns": [
             "options"
