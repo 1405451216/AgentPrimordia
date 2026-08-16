@@ -317,11 +317,21 @@ func (t *TCPTransport) handleConn(conn net.Conn) {
 			}
 		}
 
+		// 修复（评估实测发现）：原实现无锁向 inbound 发送，与 Close 的
+		// close(t.inbound) 并发即数据竞争/可能 send on closed channel panic。
+		// 发送整体在 RLock 内完成（Close 持写锁），并检查 started：
+		// 若 Close 已完成，直接丢弃消息返回，杜绝 close 与 send 并发。
+		t.mu.RLock()
+		if !t.started {
+			t.mu.RUnlock()
+			return
+		}
 		select {
 		case t.inbound <- &msg:
 		default:
 			t.logger.Warn("入站通道已满，丢弃消息", "from", msg.From, "id", msg.ID)
 		}
+		t.mu.RUnlock()
 	}
 }
 
