@@ -19,11 +19,13 @@ func (a *ReActAgent) Stats() AgentStats {
 	stats := AgentStats{
 		CurrentTurn:   int(a.atomicTurn.Load()),
 		TotalMessages: int(a.atomicMessages.Load()),
-		StartTime:     a.startTime,
 	}
 
 	// 仅对 ToolsCalled map 加锁（低频更新）
+	// StartTime 也在锁内读取：reactLoopEngine 入口在 statsMu 保护下写入，
+	// 避免与并发 Run 的数据竞争（-race 实测发现）
 	a.statsMu.RLock()
+	stats.StartTime = a.startTime
 	stats.RequestID = a.stats.RequestID
 	toolsCopy := make(map[string]int, len(a.stats.ToolsCalled))
 	maps.Copy(toolsCopy, a.stats.ToolsCalled)

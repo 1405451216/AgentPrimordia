@@ -73,9 +73,14 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 		a.capCache = nil
 	}()
 
-	a.startTime = time.Now()
-	a.stats.StartTime = a.startTime
+	// 在 statsMu 保护下写入 startTime：Stats() 会在锁内读取（-race 实测发现
+	// 无锁写与并发 Stats() 读取构成数据竞争）
+	now := time.Now()
+	a.statsMu.Lock()
+	a.startTime = now
+	a.stats.StartTime = now
 	a.stats.RequestID = cfg.requestID
+	a.statsMu.Unlock()
 	a.hookCtx = ctx
 	_ = a.lifecycle.SetStatus(StatusRunning)
 	a.stats.Status = StatusRunning
