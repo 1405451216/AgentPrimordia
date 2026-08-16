@@ -375,7 +375,8 @@ func TestEventBus_SubscribeUnsubscribe(t *testing.T) {
 		if event.Type != "test_event" {
 			t.Errorf("expected 'test_event', got '%s'", event.Type)
 		}
-	case <-time.After(100 * time.Millisecond):
+	// 100ms 在 -race 并行下偶发不足（macOS CI 实测），放宽到 1s
+	case <-time.After(1 * time.Second):
 		t.Fatal("timed out waiting for event")
 	}
 

@@ -20,7 +20,7 @@ type AppOption func(*options)
 //
 // Deprecated: 自 v6.x 起，pkg/ap 级别的 Option 类型重命名为 AppOption，
 // 避免与 pkg/agent.AgentOption 混淆。保留此类型作为过渡别名，
-// 将在 v7.0 移除。
+// Removed in v7.0.
 type Option = AppOption
 
 // options 是 AppOption 的内部配置结构

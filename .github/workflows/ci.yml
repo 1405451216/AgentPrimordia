@@ -88,6 +88,8 @@ jobs:
       - name: Test without race detector (Windows)
         if: runner.os == 'Windows'
         working-directory: agentprimordia
+        # pwsh 会把 ./... 的 ... 当 spread 运算符展开（报 package .out）
+        shell: bash
         env:
           CGO_ENABLED: 0
           SOAK_CI_MODE: '1'  # 同 ubuntu/mac（见 studio_soak_test）
