@@ -55,6 +55,46 @@ describe('InMemoryStore', () => {
       await expect(store.add(ep)).rejects.toThrow('Episode content is required');
     });
 
+    it('add：importance 超出 [0,1] 应返回 MEM_002 码（对齐 Go Episode.Validate）', async () => {
+      let err: unknown;
+      try {
+        await store.add(makeEpisode({ importance: 1.5 }));
+      } catch (e) {
+        err = e;
+      }
+      expect(getErrorCode(err)).toBe('MEM_002');
+    });
+
+    it('add：负数 importance 同样拒绝（MEM_002）', async () => {
+      let err: unknown;
+      try {
+        await store.add(makeEpisode({ importance: -0.1 }));
+      } catch (e) {
+        err = e;
+      }
+      expect(getErrorCode(err)).toBe('MEM_002');
+    });
+
+    it('add：空 ID 应返回 MEM_003 码（对齐 Go ErrEmptyEpisodeID）', async () => {
+      let err: unknown;
+      try {
+        await store.add(makeEpisode({ id: '' }));
+      } catch (e) {
+        err = e;
+      }
+      expect(getErrorCode(err)).toBe('MEM_003');
+    });
+
+    it('add：空 content 应返回 MEM_006 码（对齐 Go ErrEmptyContent）', async () => {
+      let err: unknown;
+      try {
+        await store.add(makeEpisode({ content: '' }));
+      } catch (e) {
+        err = e;
+      }
+      expect(getErrorCode(err)).toBe('MEM_006');
+    });
+
     it('重复添加应更新索引（先移除旧索引再添加新索引）', async () => {
       const ep = makeEpisode({ content: 'learn about AI' });
       await store.add(ep);
@@ -190,6 +230,18 @@ describe('InMemoryStore', () => {
       const ep = makeEpisode({ id: '1' });
       await store.add(ep);
       await expect(store.setImportance('1', 1.5)).rejects.toThrow('between 0 and 1');
+    });
+
+    it('setImportance 越界应携带 MEM_002 结构化错误码', async () => {
+      const ep = makeEpisode({ id: '1' });
+      await store.add(ep);
+      let err: unknown;
+      try {
+        await store.setImportance('1', 1.5);
+      } catch (e) {
+        err = e;
+      }
+      expect(getErrorCode(err)).toBe('MEM_002');
     });
   });
 

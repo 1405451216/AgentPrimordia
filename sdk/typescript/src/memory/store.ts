@@ -1,4 +1,5 @@
 import type { MemoryEpisode, MemoryStats, SearchOptions, ListOptions } from '../types.js';
+import { CodeError } from '../errors.js';
 
 /** 记忆存储接口，与 Go 端 Memory 接口对齐。
  *
@@ -88,8 +89,13 @@ export class InMemoryStore implements Memory {
   // ===== 公共 API =====
 
   async add(episode: MemoryEpisode): Promise<void> {
-    if (!episode.id?.trim()) throw new Error('Episode ID is required');
-    if (!episode.content?.trim()) throw new Error('Episode content is required');
+    // 输入校验对齐 Go 端 Episode.Validate()（internal/memory/episode.go），
+    // 错误码与 Go pkg/errors.go 保持一致；sessionId/role 由 TS 类型系统强制非空。
+    if (!episode.id?.trim()) throw new CodeError('MEM_003', 'Episode ID is required');
+    if (!episode.content?.trim()) throw new CodeError('MEM_006', 'Episode content is required');
+    if (episode.importance !== undefined && (episode.importance < 0 || episode.importance > 1)) {
+      throw new CodeError('MEM_002', 'Importance must be between 0 and 1');
+    }
     // 如果已存在，先移除旧索引（使用存储的旧值）
     const existing = this.episodes.get(episode.id);
     if (existing) this.removeFromIndex(existing);
@@ -164,7 +170,7 @@ export class InMemoryStore implements Memory {
 
   async updateSummary(id: string, summary: string, topics: string): Promise<void> {
     const ep = this.episodes.get(id);
-    if (!ep) throw new Error(`Episode ${id} not found`);
+    if (!ep) throw new CodeError('MEM_001', `Episode ${id} not found`);
     // 移除旧索引
     this.removeFromIndex(ep);
     ep.summary = summary;
@@ -174,9 +180,12 @@ export class InMemoryStore implements Memory {
   }
 
   async setImportance(id: string, importance: number): Promise<void> {
-    if (importance < 0 || importance > 1) throw new Error('Importance must be between 0 and 1');
+    // 校验语义对齐 Go 端 ErrInvalidImportance（MEM_002）
+    if (importance < 0 || importance > 1) {
+      throw new CodeError('MEM_002', 'Importance must be between 0 and 1');
+    }
     const ep = this.episodes.get(id);
-    if (!ep) throw new Error(`Episode ${id} not found`);
+    if (!ep) throw new CodeError('MEM_001', `Episode ${id} not found`);
     ep.importance = importance;
   }
 

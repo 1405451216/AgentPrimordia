@@ -1,5 +1,97 @@
 import type { VectorSearchResult } from '../types.js';
 
+// ===== 二叉堆 =====
+
+/**
+ * BinaryHeap 通用二叉堆：push/pop/peek 均为 O(log n)。
+ *
+ * 比较器语义与 Array.prototype.sort 一致：
+ * compare(a, b) < 0 时 a 先出堆（升序比较器 = 最小堆，反向 = 最大堆）。
+ * 用于 HNSW searchLayer 的候选集（最小堆）与结果集（最大堆）维护，
+ * 替代早期 sort+shift 的 O(n log n) 简化实现。
+ */
+export class BinaryHeap<T> {
+  private items: T[] = [];
+
+  constructor(private readonly compare: (a: T, b: T) => number) {}
+
+  get size(): number {
+    return this.items.length;
+  }
+
+  isEmpty(): boolean {
+    return this.items.length === 0;
+  }
+
+  push(item: T): void {
+    this.items.push(item);
+    this.siftUp(this.items.length - 1);
+  }
+
+  /** 弹出堆顶；空堆返回 undefined */
+  pop(): T | undefined {
+    const n = this.items.length;
+    if (n === 0) return undefined;
+    const top = this.items[0]!;
+    const last = this.items.pop()!;
+    if (n > 1) {
+      this.items[0] = last;
+      this.siftDown(0);
+    }
+    return top;
+  }
+
+  /** 查看堆顶但不弹出；空堆返回 undefined */
+  peek(): T | undefined {
+    return this.items[0];
+  }
+
+  /** 返回堆内全部元素的副本（无顺序保证，调用方按需自行排序） */
+  toArray(): T[] {
+    return [...this.items];
+  }
+
+  private siftUp(start: number): void {
+    let i = start;
+    const item = this.items[i]!;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      const parentItem = this.items[parent]!;
+      if (this.compare(item, parentItem) < 0) {
+        this.items[i] = parentItem;
+        i = parent;
+      } else {
+        break;
+      }
+    }
+    this.items[i] = item;
+  }
+
+  private siftDown(start: number): void {
+    const n = this.items.length;
+    let i = start;
+    const item = this.items[i]!;
+    for (;;) {
+      const left = i * 2 + 1;
+      const right = left + 1;
+      let best = i;
+      let bestItem = item;
+      if (left < n && this.compare(this.items[left]!, bestItem) < 0) {
+        best = left;
+        bestItem = this.items[left]!;
+      }
+      if (right < n && this.compare(this.items[right]!, bestItem) < 0) {
+        best = right;
+        bestItem = this.items[right]!;
+      }
+      if (best === i) break;
+      this.items[i] = bestItem;
+      i = best;
+    }
+    this.items[i] = item;
+  }
+}
+
 // ===== HNSW (Hierarchical Navigable Small World) — Simplified implementation =====
 
 interface HNSWNode {
@@ -140,26 +232,26 @@ export class HNSW {
 
   /**
    * searchLayer 在单层做 ef-搜索：返回距离 query 最近的最多 ef 个候选。
-   * 实现细节：用动态数组 + sort 充当简化版最小堆；当前规模下足够快。
-   * 真正生产场景应替换为 MinHeap（BinaryHeap）以获得稳定 O(log n) 插入。
+   * 实现细节：candidates 用最小堆按距离取最近（O(log n) push/pop），
+   * results 用堆顶为最远项的有界堆在超过 ef 时裁剪。
+   * 返回顺序不保证，调用方按需自行排序。
    */
   private searchLayer(query: number[], entryPoint: string, ef: number, level: number): Array<{ id: string; dist: number }> {
     const visited = new Set<string>([entryPoint]);
-    const startNode = this.nodes.get(entryPoint)!;
-    const startDist = this.distance(query, startNode.vector);
+    const startDist = this.distance(query, this.nodes.get(entryPoint)!.vector);
 
-    // candidates：待扩展（用 sort+shift 简化；TODO: 替换为 MinHeap）
-    const candidates: Array<{ id: string; dist: number }> = [{ id: entryPoint, dist: startDist }];
-    // results：当前最好的 ef 个
-    const results: Array<{ id: string; dist: number }> = [{ id: entryPoint, dist: startDist }];
+    // candidates：待扩展候选集，按距离最小堆（替代早期 sort+shift 简化实现）
+    const candidates = new BinaryHeap<{ id: string; dist: number }>((a, b) => a.dist - b.dist);
+    candidates.push({ id: entryPoint, dist: startDist });
+    // results：当前最好的 ef 个，堆顶为最远项，便于超限裁剪
+    const results = new BinaryHeap<{ id: string; dist: number }>((a, b) => b.dist - a.dist);
+    results.push({ id: entryPoint, dist: startDist });
 
-    while (candidates.length > 0) {
+    while (!candidates.isEmpty()) {
       // 取最近候选
-      candidates.sort((a, b) => a.dist - b.dist);
-      const current = candidates.shift()!;
-      // 如果当前候选比 results 最远还差，则提前退出
-      const furthestResultDist = results[results.length - 1]!.dist;
-      if (current.dist > furthestResultDist && results.length >= ef) {
+      const current = candidates.pop()!;
+      // 如果当前候选比 results 最远还差且 results 已满，则提前退出
+      if (current.dist > results.peek()!.dist && results.size >= ef) {
         break;
       }
 
@@ -169,16 +261,15 @@ export class HNSW {
         if (visited.has(nid)) continue;
         visited.add(nid);
         const d = this.distance(query, this.nodes.get(nid)!.vector);
-        const furthestResultDist2 = results[results.length - 1]!.dist;
-        if (results.length < ef || d < furthestResultDist2) {
+        if (results.size < ef || d < results.peek()!.dist) {
           candidates.push({ id: nid, dist: d });
           results.push({ id: nid, dist: d });
-          results.sort((a, b) => a.dist - b.dist);
-          if (results.length > ef) results.pop();
+          // 超过 ef 上限时弹出最远项
+          if (results.size > ef) results.pop();
         }
       }
     }
-    return results;
+    return results.toArray();
   }
 
   search(query: number[], k: number): VectorSearchResult[] {

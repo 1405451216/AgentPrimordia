@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MockProvider } from '../../src/llm/provider.js';
+import { getErrorCode } from '../../src/errors.js';
 import {
   validateConfig,
   validateConfigOrThrow,
@@ -86,6 +87,22 @@ describe('MockProvider', () => {
   it('should throw error when configured', async () => {
     const provider = new MockProvider({ error: true });
     await expect(provider.complete({ messages: sampleMessages })).rejects.toThrow('mock error');
+  });
+
+  it('错误模式应携带 LLM_001 结构化错误码（对齐 Go 端 ErrLLMCallFailed）', async () => {
+    const provider = new MockProvider({ error: true });
+    let err: unknown;
+    try {
+      await provider.complete({ messages: sampleMessages });
+    } catch (e) {
+      err = e;
+    }
+    expect(getErrorCode(err)).toBe('LLM_001');
+  });
+
+  it('空消息列表应被拒绝（对齐 Go 端 xlMockProvider 空消息校验）', async () => {
+    const provider = new MockProvider();
+    await expect(provider.complete({ messages: [] })).rejects.toThrow('empty messages');
   });
 
   it('should delay response when configured', async () => {

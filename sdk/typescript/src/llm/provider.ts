@@ -7,6 +7,7 @@ import type {
   ModelInfo,
   ToolCall,
 } from '../types.js';
+import { CodeError } from '../errors.js';
 
 /** LLM Provider 接口，与 Go 端 llm.Provider 对齐。
  *
@@ -46,12 +47,17 @@ export class MockProvider implements Provider {
     this.delay = opts?.delay ?? 0;
   }
 
-  async complete(_req: CompletionRequest): Promise<CompletionResponse> {
+  async complete(req: CompletionRequest): Promise<CompletionResponse> {
     if (this.delay > 0) {
       await new Promise((r) => setTimeout(r, this.delay));
     }
+    // 错误模式对齐 Go 端 ErrLLMCallFailed：携带 LLM_001 结构化错误码
     if (this.shouldError) {
-      throw new Error('mock error');
+      throw new CodeError('LLM_001', 'mock error');
+    }
+    // 空消息校验对齐 Go 端 xlMockProvider.Complete
+    if (!req.messages || req.messages.length === 0) {
+      throw new Error('empty messages');
     }
     return {
       id: 'mock-' + Math.random().toString(36).slice(2),
@@ -61,9 +67,12 @@ export class MockProvider implements Provider {
     };
   }
 
-  async *stream(_req: CompletionRequest): AsyncIterable<Chunk> {
+  async *stream(req: CompletionRequest): AsyncIterable<Chunk> {
     if (this.shouldError) {
-      throw new Error('mock error');
+      throw new CodeError('LLM_001', 'mock error');
+    }
+    if (!req.messages || req.messages.length === 0) {
+      throw new Error('empty messages');
     }
     const words = this.response.split(' ');
     for (let i = 0; i < words.length; i++) {
@@ -73,7 +82,7 @@ export class MockProvider implements Provider {
 
   async callTools(_req: ToolCallRequest): Promise<ToolCallResponse> {
     if (this.shouldError) {
-      throw new Error('mock error');
+      throw new CodeError('LLM_001', 'mock error');
     }
     return {
       content: this.response,

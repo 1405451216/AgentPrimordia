@@ -13,6 +13,48 @@ import * as path from 'node:path';
 import { ToolRegistry } from '../../src/tools/registry.js';
 import { ReActAgent } from '../../src/agent/react-loop.js';
 import { MockProvider } from '../../src/llm/provider.js';
+import { InMemoryStore } from '../../src/memory/store.js';
+import {
+  getErrorCode,
+  errorCodeToMessage,
+  ErrAgentStopped,
+  ErrAgentRunning,
+  ErrMaxTurnsExceeded,
+  ErrNoToolkit,
+  ErrToolNotFound,
+  ErrToolExecution,
+  ErrInvalidConfig,
+  ErrConfirmDenied,
+  ErrLLMCallFailed,
+  ErrNotSupported,
+  ErrCircuitOpen,
+  ErrAPIKeyRequired,
+  ErrEmptyResponse,
+  ErrResponseParseFailed,
+  ErrRetriesExhausted,
+  ErrFallbackFailed,
+  ErrPoolFull,
+  ErrTaskNotFound,
+  ErrTimeout,
+  ErrEpisodeNotFound,
+  ErrInvalidImportance,
+  ErrEmptyEpisodeID,
+  ErrEmptySessionID,
+  ErrEmptyRole,
+  ErrEmptyContent,
+  ErrDimensionMismatch,
+  ErrVectorNotFound,
+  ErrCommandBlocked,
+  ErrCommandNotAllowed,
+  ErrAccessDenied,
+  ErrPathTraversal,
+  ErrBusClosed,
+  ErrCheckpointNotFound,
+  ErrGlobalWriteConflict,
+  ErrScopeOverlap,
+  ErrContextCanceled,
+} from '../../src/errors.js';
+import type { MemoryEpisode, Message } from '../../src/types.js';
 import { TokenBucket, QuotaManager } from '../../src/governance/quota.js';
 import { ACL } from '../../src/security/sandbox.js';
 import { GuardrailEngine, RuleEngine, PromptInjectionRule, PIIRule } from '../../src/security/guardrails.js';
@@ -75,10 +117,10 @@ describe('Cross-Language Behavioral Alignment', () => {
               runErrorCodeMappingTest(testCase);
               break;
             case 'memory_store':
-              runMemoryStoreTest(testCase);
+              await runMemoryStoreTest(testCase);
               break;
             case 'llm_provider':
-              runLlmProviderTest(testCase);
+              await runLlmProviderTest(testCase);
               break;
             case 'health_check':
               runHealthCheckTest(testCase);
@@ -207,47 +249,123 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 // ===== 新增套件测试骨架 =====
 
-function runErrorCodeMappingTest(tc: TestCase) {
-  // 骨架：验证 TS ErrorCode 枚举与 Go pkg/errors.go 错误码映射一致
-  const module = tc.input.module as string | undefined;
-  const expectedCodes = tc.expected.codes as string[] | undefined;
+// 模块 → TS SDK 实际导出的 sentinel 错误码集合（来自 errors.ts）。
+// 与共享规范对账，确保 TS 错误码定义与 Go pkg/errors.go 完全一致。
+const MODULE_SENTINEL_CODES: Record<string, string[]> = {
+  agent: [ErrAgentStopped, ErrAgentRunning, ErrMaxTurnsExceeded, ErrNoToolkit].map((e) => e.code),
+  tool: [ErrToolNotFound, ErrToolExecution, ErrInvalidConfig, ErrConfirmDenied].map((e) => e.code),
+  llm: [
+    ErrLLMCallFailed,
+    ErrNotSupported,
+    ErrCircuitOpen,
+    ErrAPIKeyRequired,
+    ErrEmptyResponse,
+    ErrResponseParseFailed,
+    ErrRetriesExhausted,
+    ErrFallbackFailed,
+  ].map((e) => e.code),
+  pool: [ErrPoolFull, ErrTaskNotFound, ErrTimeout].map((e) => e.code),
+  memory: [
+    ErrEpisodeNotFound,
+    ErrInvalidImportance,
+    ErrEmptyEpisodeID,
+    ErrEmptySessionID,
+    ErrEmptyRole,
+    ErrEmptyContent,
+    ErrDimensionMismatch,
+    ErrVectorNotFound,
+  ].map((e) => e.code),
+  security: [ErrCommandBlocked, ErrCommandNotAllowed, ErrAccessDenied, ErrPathTraversal].map(
+    (e) => e.code,
+  ),
+  infra: [
+    ErrBusClosed,
+    ErrCheckpointNotFound,
+    ErrGlobalWriteConflict,
+    ErrScopeOverlap,
+    ErrContextCanceled,
+  ].map((e) => e.code),
+};
 
-  if (expectedCodes && module) {
-    // TODO: 从 TS ErrorCode 枚举中按模块前缀过滤，验证编号与 Go 侧一致
-    expect(expectedCodes.length).toBeGreaterThan(0);
-    // 验证错误码格式：大写字母前缀 + _ + 三位数字
-    for (const code of expectedCodes) {
-      expect(code).toMatch(/^[A-Z]+_\d{3}$/);
-    }
+function runErrorCodeMappingTest(tc: TestCase) {
+  // 未知错误 fallback：非 CodeError 经 getErrorCode 应得到 UNKNOWN
+  if (tc.expected.code !== undefined) {
+    const raw = new Error(String(tc.input.error ?? 'some random error'));
+    expect(getErrorCode(raw)).toBe(tc.expected.code);
+    return;
   }
 
-  if (tc.expected.code) {
-    // 未知错误 fallback 验证
-    expect(tc.expected.code).toBe('UNKNOWN');
+  const module = tc.input.module as string;
+  const expectedCodes = tc.expected.codes as string[];
+  expect(expectedCodes.length).toBeGreaterThan(0);
+
+  // 验证错误码格式：大写字母前缀 + _ + 三位数字
+  for (const code of expectedCodes) {
+    expect(code).toMatch(/^[A-Z]+_\d{3}$/);
+  }
+
+  // TS SDK 实际 sentinel 错误码必须与规范双向一致（防漏定义/多定义）
+  const actualCodes = MODULE_SENTINEL_CODES[module];
+  expect(actualCodes, `模块 ${module} 缺少 sentinel 错误码定义`).toBeDefined();
+  expect([...actualCodes!].sort()).toEqual([...expectedCodes].sort());
+
+  // 每个错误码必须在消息映射表中注册（errorCodeToMessage 与 Go errorCodeMapping 对齐）
+  for (const code of expectedCodes) {
+    expect(errorCodeToMessage(code)).not.toBe('unknown error code');
   }
 }
 
-function runMemoryStoreTest(tc: TestCase) {
-  // 骨架：验证 Memory CRUD 操作行为一致性
+/** 从 fixture episode 数据构建 TS MemoryEpisode（字段对齐：sessionID → sessionId） */
+function episodeFromFixture(data: Record<string, unknown>): MemoryEpisode {
+  return {
+    id: String(data.id ?? ''),
+    sessionId: String(data.sessionID ?? 'fixture-session'),
+    role: String(data.role ?? 'user'),
+    content: String(data.content ?? ''),
+    importance: data.importance as number | undefined,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function runMemoryStoreTest(tc: TestCase) {
+  // 真实调用 InMemoryStore 验证 Memory CRUD 行为（对齐 Go runMemoryStoreTest）
   const operation = tc.input.operation as string;
+  const store = new InMemoryStore();
 
   switch (operation) {
     case 'add_then_search': {
-      // TODO: 调用 TS MemoryStore.add() 后 search()，验证可检索
-      expect(tc.expected.found).toBe(true);
-      expect(tc.expected.minResults).toBeGreaterThanOrEqual(1);
+      // 添加记忆后搜索，验证可检索
+      await store.add(episodeFromFixture(tc.input.episode as Record<string, unknown>));
+      const results = await store.search(tc.input.searchQuery as string);
+      expect(results.length > 0).toBe(tc.expected.found as boolean);
+      if (tc.expected.found) {
+        expect(results.length).toBeGreaterThanOrEqual((tc.expected.minResults as number) ?? 1);
+      }
       break;
     }
     case 'search': {
-      // TODO: 空存储搜索应返回空结果
-      expect(tc.expected.found).toBe(false);
-      expect(tc.expected.resultCount).toBe(0);
+      // 空存储搜索应返回空结果
+      const results = await store.search(tc.input.searchQuery as string);
+      expect(results.length > 0).toBe(tc.expected.found as boolean);
+      expect(results).toHaveLength((tc.expected.resultCount as number) ?? 0);
       break;
     }
     case 'add': {
-      // TODO: 验证输入校验（importance 范围、空内容拒绝）
+      // 验证输入校验（importance 范围、空内容拒绝），错误码与 Go Episode.Validate 对齐
+      let err: unknown;
+      try {
+        await store.add(episodeFromFixture(tc.input.episode as Record<string, unknown>));
+      } catch (e) {
+        err = e;
+      }
       if (tc.expected.shouldError) {
-        expect(tc.expected.shouldError).toBe(true);
+        expect(err, '期望产生校验错误').toBeDefined();
+        const expectedCode = tc.expected.errorCode as string | undefined;
+        if (expectedCode) {
+          expect(getErrorCode(err)).toBe(expectedCode);
+        }
+      } else {
+        expect(err).toBeUndefined();
       }
       break;
     }
@@ -256,28 +374,38 @@ function runMemoryStoreTest(tc: TestCase) {
   }
 }
 
-function runLlmProviderTest(tc: TestCase) {
-  // 骨架：验证 Provider 接口行为（CompletionRequest/Response 格式）
-  const provider = tc.input.provider as string;
-  expect(provider).toBe('mock');
+async function runLlmProviderTest(tc: TestCase) {
+  // 真实调用 TS MockProvider 验证 Provider 行为（对齐 Go xlMockProvider 语义）
+  const providerName = tc.input.provider as string;
+  expect(providerName).toBe('mock');
 
-  if (tc.input.errorMode) {
-    // TODO: MockProvider 错误模式应返回 LLM_001
-    expect(tc.expected.shouldError).toBe(true);
-    expect(tc.expected.errorCode).toBe('LLM_001');
+  const configuredResponse = (tc.input.configuredResponse as string) ?? 'mock response';
+  const errorMode = Boolean(tc.input.errorMode);
+  const messages = (tc.input.messages ?? []) as Message[];
+
+  const provider = new MockProvider({ response: configuredResponse, error: errorMode });
+
+  let resp: Awaited<ReturnType<MockProvider['complete']>> | undefined;
+  let err: unknown;
+  try {
+    resp = await provider.complete({ messages });
+  } catch (e) {
+    err = e;
+  }
+
+  if (tc.expected.shouldError) {
+    expect(err, '期望产生错误').toBeDefined();
+    // 错误模式应返回 LLM_001（对齐 Go 端 ErrLLMCallFailed）
+    const expectedCode = tc.expected.errorCode as string | undefined;
+    if (expectedCode) {
+      expect(getErrorCode(err)).toBe(expectedCode);
+    }
     return;
   }
 
-  const messages = tc.input.messages as Array<Record<string, unknown>>;
-  if (messages.length === 0) {
-    // TODO: 空消息列表应返回错误
-    expect(tc.expected.shouldError).toBe(true);
-    return;
-  }
-
-  // TODO: 正常请求应返回预配置响应
-  expect(tc.expected.role).toBe('assistant');
-  expect(tc.expected.content).toBeDefined();
+  expect(err).toBeUndefined();
+  expect(resp!.role).toBe(tc.expected.role);
+  expect(resp!.content).toBe(tc.expected.content);
 }
 
 function runHealthCheckTest(tc: TestCase) {
