@@ -1,7 +1,7 @@
 {
   "version": "5.0.0",
   "description": "Go/TS 跨语言行为一致性测试规范",
-  "lastUpdated": "2026-08-02",
+  "lastUpdated": "2026-08-21",
   "testSuites": [
     {
       "name": "agent_config",
@@ -1006,6 +1006,54 @@
           "expected": {
             "newState": "listening",
             "allowed": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "hnsw_recall",
+      "description": "HNSW 召回质量双线门（v5.1 检索质量革命）。双侧用相同算法生成聚类数据集（mulberry32 种子 PRNG + Box-Muller 高斯；dim=16、10 簇心、簇心分量×5 缩放；向量与查询共用同一 RNG 流，顺序：先 10×16 簇心、后 datasetSize 条向量、最后 queryCount 条查询），所有向量与查询生成后做 L2 归一化（单位向量下欧氏与余弦距离排序单调等价，Go 侧建图用余弦、TS 侧用欧氏，ground truth 双线一致），各自构建 HNSW（M=16/efC=200/efSearch=50，注入 rngSeed 随机源），对每个查询以暴力搜索为 ground truth 断言 recall@topK ≥ minRecall。双线差值 ≤0.02 由 bench/results 召回基线对照保障。",
+      "cases": [
+        {
+          "id": "recall_at_10_n300",
+          "description": "N=300 固定种子召回门",
+          "input": {
+            "datasetSize": 300,
+            "dataSeed": 342,
+            "rngSeed": 307,
+            "queryCount": 20,
+            "topK": 10
+          },
+          "expected": {
+            "minRecall": 0.95
+          }
+        },
+        {
+          "id": "recall_at_10_n1000",
+          "description": "N=1000 固定种子召回门",
+          "input": {
+            "datasetSize": 1000,
+            "dataSeed": 1042,
+            "rngSeed": 1007,
+            "queryCount": 20,
+            "topK": 10
+          },
+          "expected": {
+            "minRecall": 0.95
+          }
+        },
+        {
+          "id": "recall_at_10_n3000",
+          "description": "N=3000 固定种子召回门",
+          "input": {
+            "datasetSize": 3000,
+            "dataSeed": 3042,
+            "rngSeed": 3007,
+            "queryCount": 20,
+            "topK": 10
+          },
+          "expected": {
+            "minRecall": 0.95
           }
         }
       ]

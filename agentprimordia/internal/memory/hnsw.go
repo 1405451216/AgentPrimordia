@@ -17,6 +17,11 @@ type HNSWConfig struct {
 	EfSearch       int // 查询时搜索范围
 	Dimensions     int // 向量维度
 	MaxElements    int // 最大元素数（0 表示无限）
+
+	// Rand 可注入随机源（用于层级生成），nil 时使用 math/rand 全局源。
+	// 注入固定种子 PRNG 可获得确定性图构建——跨语言召回门（v5.1 检索质量革命）
+	// 依赖可复现构建。与 TS 侧 HNSWConfig.random 对齐。
+	Rand func() float64 `json:"-"`
 }
 
 // HNSWIndex HNSW 图索引实现
@@ -100,21 +105,25 @@ func (idx *HNSWIndex) Insert(ctx context.Context, id string, vector []float32, m
 	for lev := hnswMin(level, idx.maxLvl); lev >= 0; lev-- {
 		neighbors := idx.searchLayer(ep, vector, idx.cfg.EfConstruction, lev)
 
-		// 选择最近的 M 个邻居
+		// 选择 M 个邻居；layer 0 用更宽松的 M0 上限。
+		// v5.1 检索质量革命：用论文 Algorithm 4 多样性启发式替代简单截断——
+		// 简单截断在聚类数据上会系统性驱逐簇间桥接边，导致图碎片化
+		// （实测 N=3000 时层-0 连通分量达 1424 个、recall@10 仅 0.13）。
 		maxConn := idx.cfg.MaxConnections
 		if lev == 0 {
 			maxConn = idx.cfg.MaxConnections * 2
 		}
-		selected := neighbors
-		if len(selected) > maxConn {
-			selected = selected[:maxConn]
+		candIDs := make([]string, len(neighbors))
+		for i, n := range neighbors {
+			candIDs[i] = n.id
 		}
+		selIDs := idx.selectNeighborsHeuristic(vector, candIDs, maxConn)
 
 		// 建立双向连接
-		node.neighbors[lev] = make([]string, len(selected))
-		for i, n := range selected {
-			node.neighbors[lev][i] = n.id
-			idx.addConnection(n.id, id, lev)
+		node.neighbors[lev] = make([]string, len(selIDs))
+		for i, id := range selIDs {
+			node.neighbors[lev][i] = id
+			idx.addConnection(id, node.id, lev)
 		}
 
 		if len(neighbors) > 0 {
@@ -257,10 +266,20 @@ func (idx *HNSWIndex) Compact() int {
 func (idx *HNSWIndex) randomLevel() int {
 	level := 0
 	ml := 1.0 / math.Log(float64(idx.cfg.MaxConnections))
-	for rand.Float64() < math.Exp(-float64(level)/ml) {
+	next := idx.nextRandom()
+	for next < math.Exp(-float64(level)/ml) {
 		level++
+		next = idx.nextRandom()
 	}
 	return level
+}
+
+// nextRandom 返回层级生成的随机数：优先使用注入源（确定性构建），否则全局源
+func (idx *HNSWIndex) nextRandom() float64 {
+	if idx.cfg.Rand != nil {
+		return idx.cfg.Rand()
+	}
+	return rand.Float64()
 }
 
 func (idx *HNSWIndex) searchLayer(entryID string, query []float32, ef int, level int) []hnswScoredNode {
@@ -406,11 +425,68 @@ func (idx *HNSWIndex) pruneConnections(nodeID string, level int, maxConn int) {
 	// 优化（Task 3.7）：使用泛型 slices.SortFunc 替代 sort.Slice，避免反射开销
 	slices.SortFunc(dists, func(a, b dist) int { return cmp.Compare(a.d, b.d) })
 
-	kept := make([]string, 0, maxConn)
-	for i := 0; i < maxConn && i < len(dists); i++ {
-		kept = append(kept, dists[i].id)
+	// v5.1 检索质量革命：反向边裁剪同样用 Algorithm 4 启发式——
+	// 简单最近截断会剪掉方向多样的桥接边（碎片化根因之一）
+	allIDs := make([]string, len(dists))
+	for i, d := range dists {
+		allIDs[i] = d.id
 	}
-	node.neighbors[level] = kept
+	node.neighbors[level] = idx.selectNeighborsHeuristic(node.vector, allIDs, maxConn)
+}
+
+// selectNeighborsHeuristic 论文 Algorithm 4（Malkov & Yashunin 2016）的
+// select-neighbors-heuristic（extendCandidates=false，keepPrunedConnections=true）：
+// 候选按到 query 距离升序遍历；若候选到某已选点的距离小于其到 query 的距离，
+// 视为被该已选点"覆盖"而跳过（多样性保持）；不足 m 时用被跳过的最近点补齐。
+// 与 TS 侧 vector-extended.ts selectNeighborsHeuristic 语义对齐。
+//
+// 调用方须持有写锁（Insert/pruneConnections 均在锁内）。
+func (idx *HNSWIndex) selectNeighborsHeuristic(query []float32, candidateIDs []string, m int) []string {
+	type cand struct {
+		id string
+		dQ float32
+	}
+	cands := make([]cand, 0, len(candidateIDs))
+	for _, id := range candidateIDs {
+		n := idx.nodes[id]
+		if n == nil {
+			continue
+		}
+		cands = append(cands, cand{id, hnswCosineDistance(n.vector, query)})
+	}
+	slices.SortFunc(cands, func(a, b cand) int { return cmp.Compare(a.dQ, b.dQ) })
+
+	selected := make([]cand, 0, m)
+	var pruned []cand
+	for _, c := range cands {
+		if len(selected) >= m {
+			break
+		}
+		cv := idx.nodes[c.id].vector
+		dominated := false
+		for _, s := range selected {
+			if hnswCosineDistance(cv, idx.nodes[s.id].vector) < c.dQ {
+				dominated = true
+				break
+			}
+		}
+		if !dominated {
+			selected = append(selected, cand{id: c.id})
+		} else {
+			pruned = append(pruned, cand{id: c.id})
+		}
+	}
+	for _, p := range pruned {
+		if len(selected) >= m {
+			break
+		}
+		selected = append(selected, p)
+	}
+	out := make([]string, len(selected))
+	for i, s := range selected {
+		out[i] = s.id
+	}
+	return out
 }
 
 // --- 辅助类型 ---

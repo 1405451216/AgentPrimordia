@@ -29,12 +29,18 @@ export class VectorStore {
   private readonly M: number;
   private readonly efConstruction: number;
   private readonly efSearch: number;
+  // 层级生成随机源；可注入固定种子 PRNG 获得确定性图构建（v5.1 召回门依赖可复现）
+  private readonly random: () => number;
 
-  constructor(dimensions: number = 16, opts?: { M?: number; efConstruction?: number; efSearch?: number }) {
+  constructor(
+    dimensions: number = 16,
+    opts?: { M?: number; efConstruction?: number; efSearch?: number; random?: () => number },
+  ) {
     this.dim = dimensions;
     this.M = opts?.M ?? DEFAULT_M;
     this.efConstruction = opts?.efConstruction ?? DEFAULT_EF_CONSTRUCTION;
     this.efSearch = opts?.efSearch ?? DEFAULT_EF_SEARCH;
+    this.random = opts?.random ?? Math.random;
   }
 
   add(id: string, vector: number[], metadata?: Record<string, string>): void {
@@ -192,7 +198,7 @@ export class VectorStore {
 
   private randomLevel(): number {
     let level = 0;
-    while (Math.random() < 1 / Math.exp(1) && level < 16) {
+    while (this.random() < 1 / Math.exp(1) && level < 16) {
       level++;
     }
     return level;
@@ -320,14 +326,41 @@ export class VectorStore {
     return results.map((r) => r.index);
   }
 
+  /**
+   * selectNeighbors — 论文 Algorithm 4（Malkov & Yashunin 2016）多样性启发式
+   * （extendCandidates=false，keepPrunedConnections=true）。
+   * v5.1 检索质量革命：替代简单 top-M 截断——截断会系统性驱逐簇间桥接边，
+   * 聚类数据上图碎片化导致召回崩塌。本实现用 cosine similarity（越大越近），
+   * "被覆盖"判定：候选到某已选点的相似度高于其到 query 的相似度。
+   */
   private selectNeighbors(queryVector: number[], candidates: number[], M: number): number[] {
-    // Simple selection: choose M nearest neighbors
     const scored = candidates.map((idx) => ({
       index: idx,
       dist: cosineSimilarity(queryVector, this.nodes[idx].vector),
     }));
     scored.sort((a, b) => b.dist - a.dist);
-    return scored.slice(0, M).map((s) => s.index);
+
+    const selected: Array<{ index: number; vec: number[] }> = [];
+    const pruned: number[] = [];
+    for (const c of scored) {
+      if (selected.length >= M) break;
+      const cv = this.nodes[c.index].vector;
+      let dominated = false;
+      for (const s of selected) {
+        if (cosineSimilarity(cv, s.vec) > c.dist) {
+          dominated = true;
+          break;
+        }
+      }
+      if (!dominated) selected.push({ index: c.index, vec: cv });
+      else pruned.push(c.index);
+    }
+    // keepPrunedConnections：不足 M 时用被裁剪的最近点补齐
+    for (const idx of pruned) {
+      if (selected.length >= M) break;
+      selected.push({ index: idx, vec: this.nodes[idx].vector });
+    }
+    return selected.map((s) => s.index);
   }
 
   private bruteForceSearch(query: number[], topK: number): VectorSearchResult[] {

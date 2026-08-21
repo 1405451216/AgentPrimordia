@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 )
@@ -108,6 +109,8 @@ func TestCrossLanguage(t *testing.T) {
 						runChaosConfigTest(t, tc)
 					case "orchestration":
 						runOrchestrationTest(t, tc)
+					case "hnsw_recall":
+						runHNSWRecallTest(t, tc)
 					default:
 						t.Skipf("未知测试套件: %s", suite.Name)
 					}
@@ -865,4 +868,171 @@ func clIsValidTopologicalOrder(order []string, deps map[string][]string) bool {
 		}
 	}
 	return true
+}
+
+// ===== hnsw_recall — HNSW 召回质量双线门（v5.1 检索质量革命）=====
+//
+// 与 TS 侧 tests/shared/cross-language.test.ts 的 runHnswRecallTest 对应：
+// 双侧用相同算法生成聚类数据集并各自构建 HNSW，断言 recall@topK ≥ minRecall。
+// 数据集生成算法（双侧必须逐位一致）：
+//  1. mulberry32 种子 PRNG（uint32 环绕语义）
+//  2. Box-Muller 变换生成标准正态数
+//  3. dim=16、10 个簇心（每分量 gaussian×5）；向量与查询共用同一 RNG 流，
+//     顺序：先 10×16 簇心、后 datasetSize 条向量、最后 queryCount 条查询；
+//     每次取样 = 1 次簇选择 + dim 次 gaussian
+
+// clMulberry32 mulberry32 种子 PRNG（与 TS 实现的 uint32 环绕语义一致）
+func clMulberry32(seed uint32) func() float64 {
+	a := seed
+	return func() float64 {
+		a += 0x6d2b79f5
+		t := a ^ (a >> 15)
+		t = t * (t | 1)
+		t = (t + (t^(t>>7))*(t|61)) ^ t
+		return float64(t^(t>>14)) / 4294967296.0
+	}
+}
+
+// clGaussian Box-Muller 变换生成标准正态随机数（与 TS 实现一致）
+func clGaussian(next func() float64) float64 {
+	u, v := 0.0, 0.0
+	for u == 0 {
+		u = next()
+	}
+	for v == 0 {
+		v = next()
+	}
+	return math.Sqrt(-2*math.Log(u)) * math.Cos(2*math.Pi*v)
+}
+
+// clEuclidean 欧氏距离
+func clEuclidean(a, b []float64) float64 {
+	sum := 0.0
+	for i := range a {
+		d := a[i] - b[i]
+		sum += d * d
+	}
+	return math.Sqrt(sum)
+}
+
+// clNormalize L2 归一化：单位向量下欧氏与余弦距离排序单调等价，
+// 使 Go（余弦建图）与 TS（欧氏建图）双线 ground truth 一致
+func clNormalize(v []float64) []float64 {
+	norm := 0.0
+	for _, x := range v {
+		norm += x * x
+	}
+	norm = math.Sqrt(norm)
+	if norm == 0 {
+		return v
+	}
+	out := make([]float64, len(v))
+	for i, x := range v {
+		out[i] = x / norm
+	}
+	return out
+}
+
+func runHNSWRecallTest(t *testing.T, tc testCaseSpec) {
+	t.Helper()
+
+	var input struct {
+		DatasetSize int    `json:"datasetSize"`
+		DataSeed    uint32 `json:"dataSeed"`
+		RNGSeed     uint32 `json:"rngSeed"`
+		QueryCount  int    `json:"queryCount"`
+		TopK        int    `json:"topK"`
+	}
+	if err := json.Unmarshal(tc.Input, &input); err != nil {
+		t.Fatalf("解析输入失败: %v", err)
+	}
+	var expected struct {
+		MinRecall float64 `json:"minRecall"`
+	}
+	if err := json.Unmarshal(tc.Expected, &expected); err != nil {
+		t.Fatalf("解析期望值失败: %v", err)
+	}
+
+	const (
+		dim      = 16
+		clusters = 10
+	)
+
+	dataRng := clMulberry32(input.DataSeed)
+	centroids := make([][]float64, clusters)
+	for c := range centroids {
+		ct := make([]float64, dim)
+		for d := range ct {
+			ct[d] = clGaussian(dataRng) * 5
+		}
+		centroids[c] = ct
+	}
+	pick := func(next func() float64) []float64 {
+		base := centroids[int(next()*float64(clusters))]
+		v := make([]float64, dim)
+		for d := range v {
+			v[d] = base[d] + clGaussian(next)
+		}
+		return v
+	}
+
+	vectors := make([][]float64, input.DatasetSize)
+	for i := range vectors {
+		vectors[i] = clNormalize(pick(dataRng))
+	}
+	queries := make([][]float64, input.QueryCount)
+	for q := range queries {
+		queries[q] = clNormalize(pick(dataRng))
+	}
+
+	idx := NewHNSWIndex(HNSWConfig{
+		MaxConnections: 16,
+		EfConstruction: 200,
+		EfSearch:       50,
+		Rand:           clMulberry32(input.RNGSeed),
+	})
+	ids := make([]string, input.DatasetSize)
+	for i, v := range vectors {
+		ids[i] = fmt.Sprintf("v%d", i)
+		fv := make([]float32, dim)
+		for d := range v {
+			fv[d] = float32(v[d])
+		}
+		idx.Insert(context.Background(), ids[i], fv, nil)
+	}
+
+	totalRecall := 0.0
+	for _, q := range queries {
+		// 暴力搜索 ground truth（float64 精度）
+		type scored struct {
+			id string
+			d  float64
+		}
+		all := make([]scored, len(ids))
+		for i, id := range ids {
+			all[i] = scored{id, clEuclidean(q, vectors[i])}
+		}
+		sort.Slice(all, func(x, y int) bool { return all[x].d < all[y].d })
+		truth := make(map[string]bool, input.TopK)
+		for _, s := range all[:input.TopK] {
+			truth[s.id] = true
+		}
+
+		fq := make([]float32, dim)
+		for d := range q {
+			fq[d] = float32(q[d])
+		}
+		results := idx.Search(context.Background(), fq, input.TopK)
+		hits := 0
+		for _, r := range results {
+			if truth[r.ID] {
+				hits++
+			}
+		}
+		totalRecall += float64(hits) / float64(input.TopK)
+	}
+	recall := totalRecall / float64(input.QueryCount)
+	if recall < expected.MinRecall {
+		t.Errorf("recall@%d = %.3f, 门槛 %.3f（N=%d）", input.TopK, recall, expected.MinRecall, input.DatasetSize)
+	}
 }

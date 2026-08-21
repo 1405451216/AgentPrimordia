@@ -107,6 +107,11 @@ export interface HNSWConfig {
   efConstruction: number;
   efSearch: number;
   ml: number; // level generation factor
+  /**
+   * 随机源（用于层级生成），默认 Math.random。
+   * 可注入固定种子 PRNG 以获得确定性的图构建——召回量化门（v5.1）依赖可复现构建。
+   */
+  random?: () => number;
 }
 
 export class HNSW {
@@ -121,7 +126,13 @@ export class HNSW {
       maxConnectionsLayer0: config?.maxConnectionsLayer0 ?? 32,
       efConstruction: config?.efConstruction ?? 200,
       efSearch: config?.efSearch ?? 50,
-      ml: config?.ml ?? 1 / Math.log(16),
+      // ml 默认取 1.0 而非论文的 1/ln(M)：后者上层节点仅占 1/M（M=16 时 6.25%），
+      // 在聚类数据上 layer-0 桥接边不足导致图碎片化（recall@10 卡在 ≈0.62，
+      // 提高 efSearch 也无法恢复——不可达簇与搜索努力无关）。
+      // ml=1.0 上层占 e^-1≈37%，实测 recall@10 ≥0.99，且更贴近 Go 侧
+      // internal/memory/hnsw.go randomLevel 的实际拓扑（全部节点 ≥layer 1）。
+      ml: config?.ml ?? 1.0,
+      random: config?.random ?? Math.random,
     };
   }
 
@@ -163,38 +174,38 @@ export class HNSW {
     let entryAtLevel = currentEntry;
     for (const l of insertLevels) {
       const candidates = this.searchLayer(vector, entryAtLevel, this.config.efConstruction, l);
-      // 选择最近的 maxConnections 个
-      const selected = candidates
-        .slice() // 复制避免破坏 searchLayer 的内部状态
-        .sort((a, b) => a.dist - b.dist)
-        .slice(0, this.config.maxConnections);
+      // 选择 M 个邻居；layer 0 用更宽松的 M0 上限（对齐 Go hnsw.go Insert：
+      // lev==0 时 maxConn = MaxConnections*2，M0>M 显著提升召回）。
+      // 用 Algorithm 4 多样性启发式而非简单截断：保留簇间桥接边。
+      const selectCount = l === 0 ? this.config.maxConnectionsLayer0 : this.config.maxConnections;
+      const selectedIds = this.selectNeighborsHeuristic(
+        vector,
+        candidates.map(c => c.id),
+        selectCount,
+      );
+      node.neighbors.set(l, selectedIds);
 
-      // 建立 node → selected 的连接
-      node.neighbors.set(l, selected.map(c => c.id));
-
-      // 反向：每个 selected 节点也加上 node，并按距离裁剪
-      for (const c of selected) {
-        const peer = this.nodes.get(c.id)!;
+      // 反向：每个 selected 节点也加上 node，超限用启发式裁剪
+      for (const nid of selectedIds) {
+        const peer = this.nodes.get(nid)!;
         const peerNeighbors = peer.neighbors.get(l) ?? [];
         peerNeighbors.push(id);
         // 裁剪到 maxConnections（layer 0 用更宽松的上限）
         const maxConn = l === 0 ? this.config.maxConnectionsLayer0 : this.config.maxConnections;
         if (peerNeighbors.length > maxConn) {
-          // 按距 peer 的距离升序裁剪。
-          // 注意：新节点 id 此时尚未写入 this.nodes，需要跳过
-          const peerVec = peer.vector;
-          peerNeighbors.sort((a, b) => {
-            const va = a === id ? vector : this.nodes.get(a)!.vector;
-            const vb = b === id ? vector : this.nodes.get(b)!.vector;
-            return this.distance(peerVec, va) - this.distance(peerVec, vb);
-          });
-          peer.neighbors.set(l, peerNeighbors.slice(0, maxConn));
+          // 注意：新节点 id 此时尚未写入 this.nodes，需通过 resolve 闭包提供其向量
+          peer.neighbors.set(
+            l,
+            this.selectNeighborsHeuristic(peer.vector, peerNeighbors, maxConn, (x) =>
+              x === id ? vector : this.nodes.get(x)!.vector,
+            ),
+          );
         }
       }
 
       // 进入下一层时，把入口收敛到当前层最近的节点
-      if (selected.length > 0) {
-        entryAtLevel = selected[0]!.id;
+      if (selectedIds.length > 0) {
+        entryAtLevel = selectedIds[0]!;
       }
     }
 
@@ -205,6 +216,52 @@ export class HNSW {
     }
 
     this.nodes.set(id, node);
+  }
+
+  /**
+   * selectNeighborsHeuristic — 论文 Algorithm 4（Malkov & Yashunin 2016）的
+   * select-neighbors-heuristic（extendCandidates=false，keepPrunedConnections=true）：
+   * 候选按到 query 距离升序遍历；若候选到某已选点的距离小于其到 query 的距离，
+   * 视为被该已选点"覆盖"而跳过（多样性保持）；不足 M 时用被跳过的最近点补齐。
+   *
+   * 相比简单距离截断，启发式保留方向多样的连接（尤其是簇间桥接边），
+   * 避免聚类数据上图碎片化——这是 v5.1 召回门（recall@10 ≥0.95）的关键之一。
+   *
+   * @param resolve 可选的 id→向量解析器；插入期新节点尚未入表时由调用方提供其向量
+   */
+  private selectNeighborsHeuristic(
+    queryVector: number[],
+    candidateIds: string[],
+    m: number,
+    resolve?: (id: string) => number[],
+  ): string[] {
+    const vecOf = resolve ?? ((id: string) => this.nodes.get(id)!.vector);
+    const cand = candidateIds
+      .map((id) => ({ id, dQ: this.distance(queryVector, vecOf(id)) }))
+      .sort((a, b) => a.dQ - b.dQ);
+
+    const selected: Array<{ id: string; vec: number[] }> = [];
+    const pruned: Array<{ id: string }> = [];
+
+    for (const c of cand) {
+      if (selected.length >= m) break;
+      const cv = vecOf(c.id);
+      let dominated = false;
+      for (const s of selected) {
+        if (this.distance(cv, s.vec) < c.dQ) {
+          dominated = true;
+          break;
+        }
+      }
+      if (!dominated) selected.push({ id: c.id, vec: cv });
+      else pruned.push({ id: c.id });
+    }
+    // keepPrunedConnections：用被裁剪的最近点补齐至 M
+    for (const p of pruned) {
+      if (selected.length >= m) break;
+      selected.push({ id: p.id, vec: vecOf(p.id) });
+    }
+    return selected.map((s) => s.id);
   }
 
   /**
@@ -275,51 +332,18 @@ export class HNSW {
   search(query: number[], k: number): VectorSearchResult[] {
     if (!this.entryPoint || this.nodes.size === 0) return [];
 
-    // Start from entry point
+    // Phase 1：从顶层贪心下降到 layer 1（对齐 Go hnsw.go Search 的 greedyClosest 循环）
     let current = this.entryPoint;
-    const visited = new Set<string>();
-
-    // Greedy search from top level to level 1
     for (let l = this.maxLevel; l > 0; l--) {
-      let improved = true;
-      while (improved) {
-        improved = false;
-        const node = this.nodes.get(current)!;
-        const neighbors = node.neighbors.get(l) ?? [];
-        for (const neighborId of neighbors) {
-          if (visited.has(neighborId)) continue;
-          visited.add(neighborId);
-          if (this.distance(query, this.nodes.get(neighborId)!.vector) <
-              this.distance(query, node.vector)) {
-            current = neighborId;
-            improved = true;
-          }
-        }
-      }
+      current = this.greedyDescend(query, current, l);
     }
 
-    // EF search at level 0
+    // Phase 2：layer 0 用堆式 ef-search（最小堆候选 + 最大堆结果 + 最远剪枝），
+    // 与 Go internal/memory/hnsw.go searchLayer 的 beam search 语义一致。
+    // v5.1 修复：原实现为 BFS + candidates.length < ef 硬上限，按队列顺序
+    // 而非最近优先扩展候选，N=1000 时 recall@10 仅 ≈0.5、N=3000 时 ≈0.08。
     const ef = Math.max(k, this.config.efSearch);
-    const candidates: Array<{ id: string; dist: number }> = [];
-    const searchQueue: string[] = [current];
-    const searchVisited = new Set<string>([current]);
-
-    while (searchQueue.length > 0 && candidates.length < ef) {
-      const nodeId = searchQueue.shift()!;
-      const node = this.nodes.get(nodeId);
-      if (!node) continue;
-
-      const dist = this.distance(query, node.vector);
-      candidates.push({ id: nodeId, dist });
-
-      const neighbors = node.neighbors.get(0) ?? [];
-      for (const neighborId of neighbors) {
-        if (!searchVisited.has(neighborId)) {
-          searchVisited.add(neighborId);
-          searchQueue.push(neighborId);
-        }
-      }
-    }
+    const candidates = this.searchLayer(query, current, ef, 0);
 
     return candidates
       .sort((a, b) => a.dist - b.dist)
@@ -357,7 +381,8 @@ export class HNSW {
   size(): number { return this.nodes.size; }
 
   private randomLevel(): number {
-    const r = Math.random();
+    // 构造函数保证 random 必有值（默认 Math.random）
+    const r = this.config.random!();
     return Math.floor(-Math.log(r) * this.config.ml);
   }
 

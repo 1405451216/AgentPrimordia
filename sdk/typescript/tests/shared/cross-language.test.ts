@@ -14,6 +14,7 @@ import { ToolRegistry } from '../../src/tools/registry.js';
 import { ReActAgent } from '../../src/agent/react-loop.js';
 import { MockProvider } from '../../src/llm/provider.js';
 import { InMemoryStore } from '../../src/memory/store.js';
+import { HNSW } from '../../src/memory/vector-extended.js';
 import {
   getErrorCode,
   errorCodeToMessage,
@@ -157,6 +158,9 @@ describe('Cross-Language Behavioral Alignment', () => {
               break;
             case 'realtime_session':
               runRealtimeSessionTest(testCase);
+              break;
+            case 'hnsw_recall':
+              runHnswRecallTest(testCase);
               break;
             default:
               // 其余套件不需要 LLM Provider 的测试骨架
@@ -865,4 +869,102 @@ function runRealtimeSessionTest(tc: TestCase) {
   if (expected.finalState !== undefined) {
     expect(s.state).toBe(expected.finalState);
   }
+}
+
+// ===== hnsw_recall — HNSW 召回质量双线门（v5.1 检索质量革命）=====
+//
+// 与 Go 侧 internal/memory/cross_language_test.go 的 runHNSWRecallTest 对应。
+// 数据集生成算法（双侧必须逐位一致）：mulberry32 种子 PRNG + Box-Muller 高斯；
+// dim=16、10 簇心（每分量 gaussian×5）；向量与查询共用同一 RNG 流，
+// 顺序：先 10×16 簇心、后 datasetSize 条向量、最后 queryCount 条查询；
+// 所有向量生成后 L2 归一化（单位向量下欧氏与余弦排序单调等价，
+// Go 侧建图用余弦、TS 侧用欧氏，ground truth 双线一致）。
+
+function xlMulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function xlGaussian(next: () => number): number {
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = next();
+  while (v === 0) v = next();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function xlNormalize(v: number[]): number[] {
+  let norm = 0;
+  for (const x of v) norm += x * x;
+  norm = Math.sqrt(norm);
+  if (norm === 0) return v;
+  return v.map((x) => x / norm);
+}
+
+function runHnswRecallTest(tc: TestCase): void {
+  const input = tc.input as {
+    datasetSize: number;
+    dataSeed: number;
+    rngSeed: number;
+    queryCount: number;
+    topK: number;
+  };
+  const expected = tc.expected as { minRecall: number };
+
+  const DIM = 16;
+  const CLUSTERS = 10;
+
+  const dataRng = xlMulberry32(input.dataSeed);
+  const centroids: number[][] = [];
+  for (let c = 0; c < CLUSTERS; c++) {
+    const ct: number[] = [];
+    for (let d = 0; d < DIM; d++) ct.push(xlGaussian(dataRng) * 5);
+    centroids.push(ct);
+  }
+  const pick = (): number[] => {
+    const base = centroids[Math.floor(dataRng() * CLUSTERS)]!;
+    return base.map((x) => x + xlGaussian(dataRng));
+  };
+
+  const vectors: number[][] = [];
+  for (let i = 0; i < input.datasetSize; i++) vectors.push(xlNormalize(pick()));
+  const queries: number[][] = [];
+  for (let q = 0; q < input.queryCount; q++) queries.push(xlNormalize(pick()));
+
+  const hnsw = new HNSW({
+    maxConnections: 16,
+    efConstruction: 200,
+    efSearch: 50,
+    random: xlMulberry32(input.rngSeed),
+  });
+  const items = vectors.map((v, i) => ({ id: `v${i}`, vector: v }));
+  for (const item of items) hnsw.insert(item.id, item.vector);
+
+  const euclidean = (a: number[], b: number[]): number => {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) {
+      const d = a[i]! - b[i]!;
+      sum += d * d;
+    }
+    return Math.sqrt(sum);
+  };
+
+  let totalRecall = 0;
+  for (const query of queries) {
+    const scored = items
+      .map((v) => ({ id: v.id, d: euclidean(query, v.vector) }))
+      .sort((a, b) => a.d - b.d);
+    const truth = new Set(scored.slice(0, input.topK).map((s) => s.id));
+    const results = hnsw.search(query, input.topK);
+    const hits = results.filter((r) => truth.has(r.id)).length;
+    totalRecall += hits / input.topK;
+  }
+  const recall = totalRecall / queries.length;
+  expect(recall).toBeGreaterThanOrEqual(expected.minRecall);
 }

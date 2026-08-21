@@ -72,6 +72,11 @@ const SUITE_SYMBOLS = {
     ts: ['cosineSimilarity', 'VectorRecord'],
     tsSearchPaths: ['sdk/typescript/src'],
   },
+  hnsw_recall: {
+    go: ['HNSWIndex', 'HNSWConfig', 'NewHNSWIndex'],
+    ts: ['HNSW', 'HNSWConfig'],
+    tsSearchPaths: ['sdk/typescript/src'],
+  },
   error_handling: {
     go: ['CodeError', 'GetErrorCode'],
     ts: ['CodeError', 'getErrorCode'],

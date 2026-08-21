@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "name": "v5.1-recall-baseline",
+    "title": "v5.1 检索质量革命 — 双线召回基线（recall@10）",
+    "date": "2026-08-21",
+    "version": "Go v5.0.0 + v5.1-wip / TS v5.0.0 + v5.1-wip",
+    "gate": {
+      "minRecallAt10": 0.95,
+      "maxDualLineDiff": 0.02,
+      "datasetSizes": [300, 1000, 3000],
+      "queryCount": 20,
+      "topK": 10,
+      "hnswParams": { "M": 16, "efConstruction": 200, "efSearch": 50 }
+    },
+    "dataset": {
+      "generator": "mulberry32 种子 PRNG + Box-Muller 高斯聚类（dim=16、10 簇心、簇心分量×5）",
+      "seeds": { "dataSeed": "42+N", "rngSeed": "7+N" },
+      "normalization": "跨语言套件数据 L2 归一化（欧氏/余弦排序等价）；单侧单元测试不归一化"
+    }
+  },
+  "before": {
+    "note": "修复前基线（2026-08-21 实测，固定种子）",
+    "ts_hnsw_extended": {
+      "symptom": "layer-0 为 BFS + candidates.length<ef 硬上限，按队列顺序扩展；构建期简单截断剪枝驱逐桥接边",
+      "recall_at_10": { "n300": 0.700, "n1000": 0.620, "n3000": 0.705 }
+    },
+    "go_hnsw_index": {
+      "symptom": "构建期简单截断剪枝导致图碎片化：N=300/1000/3000 层-0 连通分量分别为 4/48/1424，ef 增大无效",
+      "recall_at_10": { "n300": 0.755, "n1000": 0.815, "n3000": 0.130 }
+    }
+  },
+  "after": {
+    "note": "修复后基线（2026-08-21 实测，固定种子，6 次重复稳定）",
+    "fixes": [
+      "TS vector-extended.ts: search() 重写为堆式 ef-search（对齐 Go beam search 语义）；insert 采用 Algorithm 4 启发式选择+反向剪枝；layer-0 选 M0=32；ml 默认 1/ln(16)→1.0；随机源可注入",
+      "TS vector.ts (RAG 主路径): selectNeighbors 替换为 Algorithm 4 启发式；随机源可注入",
+      "Go hnsw.go: Insert 邻居选择与 pruneConnections 反向剪枝替换为 Algorithm 4 启发式；HNSWConfig.Rand 可注入随机源"
+    ],
+    "ts_hnsw_extended_recall_at_10": { "n300": 1.0, "n1000": 1.0, "n3000": 1.0 },
+    "ts_vector_store_recall_at_10": { "n300": ">=0.95", "n1000": ">=0.95", "n3000": ">=0.95" },
+    "go_hnsw_index_recall_at_10": { "n300": 1.0, "n1000": 1.0, "n3000": 1.0 },
+    "go_layer0_connectivity": { "n300": "300/300", "n1000": "1000/1000", "n3000": "3000/3000" },
+    "dual_line_diff": "<=0.02（双侧均 ≥0.95 门内；精确值随 nightly 刷新）"
+  },
+  "verification": {
+    "ts": "tests/unit/hnsw-recall.test.ts（6 用例量化门）+ tests/shared/cross-language.test.ts#hnsw_recall（3 用例）",
+    "go": "internal/memory/cross_language_test.go#TestCrossLanguage/hnsw_recall（3 用例）",
+    "spec": "sdk/typescript/tests/shared/cross-language-spec.json#hnsw_recall（套件 19→20）"
+  }
+}
