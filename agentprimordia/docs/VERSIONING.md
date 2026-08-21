@@ -71,6 +71,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 | `pkg/chaos.go` | `NewChaosEngine()` 等 | 混沌工程框架 |
 | `pkg/cluster.go` | `ClusterManager` / `KVStore` | 分布式集群协调 |
 | `pkg/otel.go`（Stable 子集） | `WithTelemetry()` 相关 | OpenTelemetry 桥接（Experimental 子集除外） |
+| `pkg/strategy.go` | `Strategy` / `Registry` / `Verifier` / 三策略构造器 / 计划级 checkpoint / `ABCompare` | v5.2-v5.5 认知内核（策略驱动引擎 / 组织智能）；v6.0-1 经 stability 双门转正 |
 
 > **评审记录（v4.0-3）**：以上 Stable 模块的清单由 `stability_compliance_test.go` 自动比对，
 > 新增 Stable 标注必须同步更新本表，否则测试失败（见 §"稳定清单一致性验证"）。

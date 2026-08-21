@@ -12,67 +12,67 @@ import (
 
 // Strategy 推理策略接口：实现 Name/Run 即插件
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type Strategy = strategy.Strategy
 
 // Engine 引擎原语接口（策略的最小依赖面）
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type Engine = strategy.Engine
 
 // Task 策略执行任务
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type StrategyTask = strategy.Task
 
 // Result 策略执行结果
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type StrategyResult = strategy.Result
 
 // Registry 策略注册表（注册/取用/默认策略热切换，并发安全）
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type StrategyRegistry = strategy.Registry
 
 // Verifier 结果校验器接口
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type Verifier = strategy.Verifier
 
 // VerificationReport 验证报告
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type VerificationReport = strategy.VerificationReport
 
 // ThinkBudget 思考预算（自适应思考深度）
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type ThinkBudget = strategy.ThinkBudget
 
 // PlanCheckpoint 计划级检查点
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type PlanCheckpoint = strategy.PlanCheckpoint
 
 // PlanCheckpointStore 计划级检查点存储接口
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type PlanCheckpointStore = strategy.PlanCheckpointStore
 
 // ABReport A/B 对照报告
 //
-// Stability: Experimental（v6.0 转正评审）
+// Stability: Stable
 // Since: 5.2.0
 type ABReport = strategy.ABReport
 

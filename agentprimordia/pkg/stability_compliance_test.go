@@ -39,6 +39,7 @@ var documentedStableModules = []string{
 	"chaos.go",
 	"cluster.go",
 	"otel.go",
+	"strategy.go",
 }
 
 var (
