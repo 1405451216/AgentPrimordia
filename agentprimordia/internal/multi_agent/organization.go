@@ -135,31 +135,29 @@ func (r *OrgRouter) Record(agentName, domain string, success bool) {
 	}
 }
 
-// Route 为 domain 选择最优候选；全部无历史时回退 candidates[0]（冷启动确定性）
+// Route 为 domain 选择最优候选（多臂老虎机式探索-利用）：
+//   - 有成功历史者按成功率利用；
+//   - 无历史候选得探索分 0.5（高于 0% 成员，保证冷启动探索）；
+//   - 全员无历史时按候选顺序确定性回退。
 func (r *OrgRouter) Route(domain string, candidates []string) string {
 	if len(candidates) == 0 {
 		return ""
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	best, bestRate := "", -1.0
-	for _, a := range candidates {
-		st := r.stats[domain][a]
-		total := 0
-		rate := 0.0
-		if st != nil {
-			total = st.succ + st.fail
-			rate = float64(st.succ) / float64(total)
+	best, bestScore := "", -1.0
+	for i, a := range candidates {
+		var score float64
+		if st := r.stats[domain][a]; st != nil && st.succ+st.fail > 0 {
+			score = float64(st.succ) / float64(st.succ+st.fail)
+		} else {
+			score = 0.5 + 1e-9*float64(len(candidates)-i) // 探索优先，序位打破平局
 		}
-		// 有历史者优先于无历史者；同率比样本量
-		if total > 0 && rate >= bestRate {
-			best, bestRate = a, rate
+		if score > bestScore {
+			best, bestScore = a, score
 		}
 	}
-	if best != "" {
-		return best
-	}
-	return candidates[0]
+	return best
 }
 
 // ===== 组织级调度 =====

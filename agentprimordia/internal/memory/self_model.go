@@ -87,13 +87,17 @@ func (m *SelfModel) RecordOutcome(domain string, success bool, turns int, signat
 	cp.LastUpdated = now
 }
 
-// SetMitigation 登记某失败签名的缓解手段（学习回路写入）
+// SetMitigation 登记某失败签名的缓解手段（学习回路写入）。
+// upsert 语义：签名尚无失败记录时先建条目——缓解知识可先于失败到达。
 func (m *SelfModel) SetMitigation(signature, mitigation string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if fp, ok := m.failures[signature]; ok {
-		fp.Mitigation = mitigation
+	fp := m.failures[signature]
+	if fp == nil {
+		fp = &FailurePattern{Signature: signature}
+		m.failures[signature] = fp
 	}
+	fp.Mitigation = mitigation
 }
 
 // WeakDomains 返回弱项能力域（样本 ≥ minSamples 且成功率 < threshold），按成功率升序

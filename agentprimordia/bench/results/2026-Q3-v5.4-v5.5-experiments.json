@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "name": "v5.4-v5.5-acceptance-experiments",
+    "title": "v5.4 受控自进化实验 + v5.5 组织规模扩展基准（确定性引擎版）",
+    "date": "2026-08-21",
+    "version": "Go v5.0.0 + v5.4/v5.5-wip",
+    "note": "确定性 Mock 引擎驱动；真实 LLM 版由 nightly 有 key 后刷新"
+  },
+  "self_evolution": {
+    "design": "20 任务 × 6 轮；执行器由 FeedbackLoop 建议真实驱动（config 层调预算 / prompt 层注规避提示）；Applier 真实修改执行器配置",
+    "success_curve": [0.25, 1.0, 1.0, 1.0, 1.0, 1.0],
+    "verdict": "曲线上升、第 2 轮起零回归（阈值 2%）——通过",
+    "test": "internal/agent/learning/selfevolution_test.go#TestControlledSelfEvolutionExperiment"
+  },
+  "org_scale": {
+    "design": "每成员胜任 1 域 × 8 域任务集 × 20 次重复；涌现分工路由（探索-利用）",
+    "scale_4_success_rate": 0.925,
+    "scale_8_doubled_success_rate": 0.825,
+    "final_benchmark": { "members_4": 0.463, "members_8_doubled": 0.825 },
+    "verdict": "翻倍后成功率提升且无退化（≥ -2% 门）——通过",
+    "test": "internal/multi_agent/organization_scale_test.go#TestOrganizationScaleDoublingNoDegradation"
+  },
+  "fixes_found_by_experiments": [
+    "SelfModel.SetMitigation 改为 upsert 语义：缓解知识可先于失败记录到达（原实现静默丢失）",
+    "OrgRouter.Route 加入探索机制：未试候选优先于 0% 成员（原实现冷启动后永久锁定失败者）"
+  ]
+}
