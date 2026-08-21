@@ -2,7 +2,28 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
-## [Unreleased]
+## [6.0.0] - 2026-08-21
+
+### Added — v5.1–v6.0「优化 → 进化 → 学习 → 借鉴 → 大成」全弧线落地
+
+- **v5.1 核心链路质量革命**：质量四件套回归门（`internal/eval/quality_baseline.go`：召回/成功率/P95/成本，无 key 环境可跑）+ recorded-response 回放降级（`internal/llm/recorded_provider.go`）；TS HNSW `search()` 重写为真实 ef-search、双侧 Algorithm 4 对齐，recall@10 双线 1.0 ≥ 0.95、双线差 0.0 ≤ 0.02；上下文压缩 TokenBudget 对齐 TS（`internal/agent/context/token_budget.go`，P95 3600ns vs 基线 10954ns，-67%）；Pool 尾延迟基线入库 + 预算超限自动暂停/恢复；评估集扩容 60→160 条
+- **v5.2 认知引擎架构进化**：Strategy 抽象 + Registry 热切换（`internal/agent/strategy/`），ReAct / Plan-Execute-Reflect / 验证循环三策略可插拔；Verifier 一等公民（SelfCheck/Keyword）；自适应思考深度（think_budget.go）；计划级 checkpoint 断点续跑（plan_checkpoint.go，偿还 v3.4 缺口）；A/B 对照 harness
+- **v5.3 记忆认知化**：episodic→semantic 固化管道（蒸馏 + 半衰期衰减 + 主动遗忘，`internal/memory/consolidation.go`）；图-向量混合检索路由（hybrid_retrieval.go）；跨任务经验迁移（TransferIndex）；自我模型画像（self_model.go）
+- **v5.4 自进化闭环**：结果反馈回路（Outcome→画像/失败库双写→三层规则建议→人工批准→应用，`internal/agent/learning/feedback.go`）；技能合成打通 skills.Acquire 验签链路；自改进安全边界（code 层沙箱永久拒绝 `ErrImprovementScopeViolation`）；受控自进化实验 6 轮×20 任务成功率 0.25→1.00 零回归；**自举季度曲线制度**（`internal/self_bootstrap/quarterly.go`：RunQuarterly 自举组 vs base 冻结对照组 + 季度回归门 CompareQuarters + bench/results 落盘，首期 2026-Q3：自举 0.33→1.00 vs base 平坦 0.33、缺陷修复率 1.0）
+- **v5.5 组织智能**：共享记忆黑板（directive/claim/result/observation 全轨迹 + 认领租约）、涌现分工路由（历史成功率数据驱动 + 探索机制）、组织级调度闭环（`internal/multi_agent/organization.go`）；规模翻倍基准 4→8 人成功率 0.463→0.825 无退化
+- **v6.0 大成**：strategy API Experimental→Stable 转正（stability 双门 + VERSIONING 登记）；deprecation 残留门 0 残留；v6 迁移指南发布（`ecosystem/docs/migration/v6-deprecations.md`）；契约基线冻结
+- **深度复测报告**：`docs/PROJECT-EVALUATION-RETEST-v6.0.md`——加权总评 ≈9.0/10（≥9.0 达标），核心分项引擎 9.5 / 评估 9.0 / 性能 9.0 全部 ≥9.0
+
+### Fixed — v6.0 复测期间门禁捕获的双线欠账
+
+- **API 契约漂移**：v5.x 新增导出（TokenBudgetStrategy + strategy 模块 28 符号）未入 `api-contract.json` 基线，TestAPIContractNoDrift 失败 → 刷新基线恢复绿
+- **TS 基准集脱节**：评估集扩容 160 条后 TS 侧生成文件未同步，双线 parity 测试失败 → `generate-benchmark-ts.mjs` 再生成，vitest 2692 全绿
+
+### Changed — 版本四方一致（6.0.0）
+
+- Go SDK（pkg/agent.go）/ TypeScript SDK（package.json）/ VERSION 文件 / Helm（Chart appVersion + values tag）/ api-contract 全部 bump 至 6.0.0
+
+## [5.0.0] - 2026-08-09
 
 ### Added — v4.1 → v5.0 均衡混排弧线全部落地（2026-08-09）
 
