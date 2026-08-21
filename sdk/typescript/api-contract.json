@@ -1377,6 +1377,12 @@
           "doc": "DefaultStrategy 是默认的上下文窗口裁剪策略，保留系统消息和最近的对话历史"
         },
         {
+          "name": "TokenBudgetStrategy",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "TokenBudgetStrategy 是 token 预算裁剪策略（v5.1）：按 token 预算裁剪历史并"
+        },
+        {
           "name": "HealthChecker",
           "kind": "alias",
           "doc": "HealthChecker 聚合健康检查器，处理 /healthz 和 /readyz 请求"
@@ -1880,6 +1886,11 @@
         {
           "name": "NewDefaultStrategy",
           "doc": "NewDefaultStrategy 创建默认上下文窗口裁剪策略"
+        },
+        {
+          "name": "NewTokenBudgetStrategy",
+          "stability": "Stable",
+          "doc": "NewTokenBudgetStrategy 创建 token 预算裁剪策略；charsPerToken \u003c= 0 时用默认值 4"
         },
         {
           "name": "NewHealthChecker",
@@ -6067,6 +6078,152 @@
         {
           "name": "DefaultDegradationThreshold",
           "doc": "DefaultDegradationThreshold 默认退化检测阈值"
+        }
+      ]
+    },
+    {
+      "name": "strategy",
+      "file": "pkg/strategy.go",
+      "types": [
+        {
+          "name": "Strategy",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "Strategy 推理策略接口：实现 Name/Run 即插件"
+        },
+        {
+          "name": "Engine",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "Engine 引擎原语接口（策略的最小依赖面）"
+        },
+        {
+          "name": "StrategyTask",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "Task 策略执行任务"
+        },
+        {
+          "name": "StrategyResult",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "Result 策略执行结果"
+        },
+        {
+          "name": "StrategyRegistry",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "Registry 策略注册表（注册/取用/默认策略热切换，并发安全）"
+        },
+        {
+          "name": "Verifier",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "Verifier 结果校验器接口"
+        },
+        {
+          "name": "VerificationReport",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "VerificationReport 验证报告"
+        },
+        {
+          "name": "ThinkBudget",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "ThinkBudget 思考预算（自适应思考深度）"
+        },
+        {
+          "name": "PlanCheckpoint",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "PlanCheckpoint 计划级检查点"
+        },
+        {
+          "name": "PlanCheckpointStore",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "PlanCheckpointStore 计划级检查点存储接口"
+        },
+        {
+          "name": "ABReport",
+          "kind": "alias",
+          "stability": "Stable",
+          "doc": "ABReport A/B 对照报告"
+        }
+      ],
+      "constants": [
+        {
+          "name": "StrategyNameReAct",
+          "value": "strategy.NameReAct",
+          "doc": "StrategyNameReAct 经典 ReAct 策略名"
+        },
+        {
+          "name": "StrategyNamePlanReflect",
+          "value": "strategy.NamePlanReflect",
+          "doc": "StrategyNamePlanReflect 计划-执行-反思策略名"
+        },
+        {
+          "name": "StrategyNameVerification",
+          "value": "strategy.NameVerification",
+          "doc": "StrategyNameVerification 验证循环策略名"
+        }
+      ],
+      "variables": [
+        {
+          "name": "NewStrategyRegistry",
+          "stability": "Stable",
+          "doc": "NewStrategyRegistry 创建策略注册表"
+        },
+        {
+          "name": "NewReActStrategy",
+          "stability": "Stable",
+          "doc": "NewReActStrategy 创建经典 ReAct 策略"
+        },
+        {
+          "name": "NewPlanExecuteReflectStrategy",
+          "stability": "Stable",
+          "doc": "NewPlanExecuteReflectStrategy 创建计划-执行-反思策略"
+        },
+        {
+          "name": "NewVerificationLoopStrategy",
+          "stability": "Stable",
+          "doc": "NewVerificationLoopStrategy 创建验证循环策略（verifier 必填）"
+        },
+        {
+          "name": "NewKeywordVerifier",
+          "stability": "Stable",
+          "doc": "NewKeywordVerifier 创建确定性关键词校验器"
+        },
+        {
+          "name": "NewSelfCheckVerifier",
+          "stability": "Stable",
+          "doc": "NewSelfCheckVerifier 创建 LLM 自校验器"
+        },
+        {
+          "name": "AdaptiveBudget",
+          "stability": "Stable",
+          "doc": "AdaptiveBudget 按任务信号计算自适应思考预算"
+        },
+        {
+          "name": "NewInMemoryPlanCheckpointStore",
+          "stability": "Stable",
+          "doc": "NewInMemoryPlanCheckpointStore 创建内存计划级检查点存储"
+        },
+        {
+          "name": "SavePlanCheckpoint",
+          "stability": "Stable",
+          "doc": "SavePlanCheckpoint 保存计划级检查点"
+        },
+        {
+          "name": "ResumePlan",
+          "stability": "Stable",
+          "doc": "ResumePlan 从计划级检查点恢复（返回计划与下一批可执行子任务）"
+        },
+        {
+          "name": "ABCompare",
+          "stability": "Stable",
+          "doc": "ABCompare 双策略同任务集对照跑分"
         }
       ]
     },
