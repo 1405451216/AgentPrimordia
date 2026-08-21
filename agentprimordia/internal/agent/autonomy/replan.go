@@ -37,6 +37,9 @@ type ReplanRecord struct {
 // ErrGoalBudgetExceeded 目标级成本预算耗尽（v4.9-4）。
 var ErrGoalBudgetExceeded = errors.New("autonomy: 目标成本预算耗尽")
 
+// ErrGoalNotPaused 目标未处于暂停态（v5.1 调度质量：Resume 前置校验）。
+var ErrGoalNotPaused = errors.New("autonomy: 目标未处于暂停态")
+
 // Replanner 校验与再计划引擎
 type Replanner struct {
 	mu       sync.Mutex

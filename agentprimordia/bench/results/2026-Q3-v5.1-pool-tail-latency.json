@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "name": "v5.1-pool-tail-latency",
+    "title": "v5.1 调度质量 — Pool 尾延迟基线（P50/P95/P99）",
+    "date": "2026-08-21",
+    "version": "Go v5.0.0 + v5.1-wip",
+    "scenario": {
+      "batchSize": 10,
+      "maxConcurrency": 10,
+      "llm": "MockLLM（无网络）",
+      "samples": 300,
+      "command": "go test -bench=BenchmarkPoolTailLatency -benchtime=300x -run='^$' ./internal/pool"
+    }
+  },
+  "baseline": {
+    "p50_ns": 91916,
+    "p95_ns": 232167,
+    "p99_ns": 282750,
+    "ns_per_op": 112924,
+    "alloc_bytes_per_op": 143280,
+    "allocs_per_op": 1448
+  },
+  "notes": [
+    "macOS darwin/arm64 本机数据，CI 数字随环境浮动；回归门以相对漂移为准",
+    "配套预算护栏：autonomy Goal 预算超限自动暂停（GoalPaused）+ AddBudget/Resume 恢复，回归测试 goal_budget_pause_test.go 全绿"
+  ]
+}

@@ -579,11 +579,24 @@ type ContextWindowStrategy = agent.ContextWindowStrategy
 // DefaultStrategy 是默认的上下文窗口裁剪策略，保留系统消息和最近的对话历史
 type DefaultStrategy = agent.DefaultStrategy
 
+// TokenBudgetStrategy 是 token 预算裁剪策略（v5.1）：按 token 预算裁剪历史并
+// 始终保留系统消息，对齐 TS SDK 的 TokenBudgetStrategy。相比计数窗口直接约束
+// LLM 输入规模，同任务集 token 成本降幅可量化。
+//
+// Stability: Stable
+// Since: 5.1.0
+type TokenBudgetStrategy = agent.TokenBudgetStrategy
+
 var (
 	// NewLifecycle 创建 Agent 生命周期管理器实例
 	NewLifecycle = agent.NewLifecycle
 	// NewDefaultStrategy 创建默认上下文窗口裁剪策略
 	NewDefaultStrategy = agent.NewDefaultStrategy
+	// NewTokenBudgetStrategy 创建 token 预算裁剪策略；charsPerToken <= 0 时用默认值 4
+	//
+	// Stability: Stable
+	// Since: 5.1.0
+	NewTokenBudgetStrategy = agent.NewTokenBudgetStrategy
 )
 
 // ===== 健康检查 =====

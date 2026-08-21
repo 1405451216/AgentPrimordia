@@ -25,6 +25,9 @@ const (
 	GoalDone
 	// GoalFailed 目标失败（终态，可重试转回 planned）
 	GoalFailed
+	// GoalPaused 目标暂停（v5.1 调度质量：预算超限自动暂停，追加预算后可恢复）。
+	// 追加在枚举尾部以保持既有值的序列化兼容。
+	GoalPaused
 )
 
 // String 返回状态的字符串表示
@@ -42,6 +45,8 @@ func (s GoalState) String() string {
 		return "done"
 	case GoalFailed:
 		return "failed"
+	case GoalPaused:
+		return "paused"
 	default:
 		return fmt.Sprintf("unknown(%d)", int(s))
 	}
@@ -75,10 +80,12 @@ func NewStateMachine() *StateMachine {
 	}
 	// 合法转换定义
 	sm.transitions[GoalCreated] = []GoalState{GoalPlanned, GoalFailed}
-	sm.transitions[GoalPlanned] = []GoalState{GoalExecuting, GoalFailed}
-	sm.transitions[GoalExecuting] = []GoalState{GoalValidated, GoalFailed}
+	sm.transitions[GoalPlanned] = []GoalState{GoalExecuting, GoalFailed, GoalPaused}
+	sm.transitions[GoalExecuting] = []GoalState{GoalValidated, GoalFailed, GoalPaused}
 	sm.transitions[GoalValidated] = []GoalState{GoalDone, GoalExecuting} // executing: 校验不通过→重规划
 	sm.transitions[GoalFailed] = []GoalState{GoalPlanned}                // 重试
+	// v5.1 调度质量：暂停态可恢复执行或放弃（转 failed 走重试路径）
+	sm.transitions[GoalPaused] = []GoalState{GoalExecuting, GoalFailed}
 	// GoalDone 无出边（终态）
 	return sm
 }

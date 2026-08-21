@@ -27,3 +27,13 @@ type SummarizingStrategy = context.SummarizingStrategy
 func NewSummarizingStrategy(keepLast int) *SummarizingStrategy {
 	return context.NewSummarizingStrategy(keepLast)
 }
+
+// TokenBudgetStrategy token 预算裁剪策略（v5.1 引擎热路径）：
+// 按 token 预算裁剪历史并始终保留系统消息，对齐 TS TokenBudgetStrategy。
+// 相比计数窗口，直接约束 LLM 输入规模 → 同任务集 token 成本降幅可量化。
+type TokenBudgetStrategy = context.TokenBudgetStrategy
+
+// NewTokenBudgetStrategy 创建 token 预算策略；charsPerToken <= 0 时用默认值 4
+func NewTokenBudgetStrategy(charsPerToken int) *TokenBudgetStrategy {
+	return context.NewTokenBudgetStrategy(charsPerToken)
+}

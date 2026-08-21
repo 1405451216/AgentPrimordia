@@ -3,6 +3,7 @@ package autonomy
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -125,13 +126,70 @@ func (g *AgentGoal) ReplanCost() float64 {
 }
 
 // Charge 记账一次成本消耗（预算已满时返回 ErrGoalBudgetExceeded）。
+//
+// v5.1 调度质量：
+//   - 暂停态（GoalPaused）为执行闸门——Charge 直接拒绝，必须先 Resume；
+//   - 预算超限时目标自动转入 GoalPaused（幂等——已暂停不重复转换、不刷新 UpdatedAt）；
+//   - 追加预算（AddBudget）后调用 Resume 恢复执行。
 func (g *AgentGoal) Charge(cost float64) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if g.State == GoalPaused {
+		// 暂停闸门：即使有剩余额度也拒绝记账，恢复必须走 Resume
+		return ErrGoalBudgetExceeded
+	}
 	if g.budgetUSD > 0 && g.CostSpentUSD+cost > g.budgetUSD {
+		// 自动暂停：仅在合法转换时变更状态，失败（如已终态）不影响错误返回
+		if _, err := g.sm.Apply(g.State, GoalPaused); err == nil {
+			g.State = GoalPaused
+			g.UpdatedAt = time.Now()
+		}
 		return ErrGoalBudgetExceeded
 	}
 	g.CostSpentUSD += cost
+	return nil
+}
+
+// SetBudget 设置目标级成本预算（0 表示不限）。测试与运维调整用。
+func (g *AgentGoal) SetBudget(usd float64) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.budgetUSD = usd
+	g.UpdatedAt = time.Now()
+}
+
+// AddBudget 追加预算（v5.1 调度质量：暂停目标的恢复路径）。
+// extra 必须为正数；成功后可调用 Resume 恢复执行。
+func (g *AgentGoal) AddBudget(extra float64) error {
+	if extra <= 0 {
+		return fmt.Errorf("autonomy: 追加预算必须为正数，得到 %f", extra)
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.budgetUSD += extra
+	g.UpdatedAt = time.Now()
+	return nil
+}
+
+// Resume 恢复已暂停的目标（v5.1 调度质量）。
+// 前置校验：必须处于 GoalPaused（否则 ErrGoalNotPaused）；
+// 预算仍不足（CostSpent >= Budget，Budget>0 时）返回 ErrGoalBudgetExceeded，
+// 需先 AddBudget 追加预算。
+func (g *AgentGoal) Resume() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != GoalPaused {
+		return ErrGoalNotPaused
+	}
+	if g.budgetUSD > 0 && g.CostSpentUSD >= g.budgetUSD {
+		return ErrGoalBudgetExceeded
+	}
+	newState, err := g.sm.Apply(g.State, GoalExecuting)
+	if err != nil {
+		return err
+	}
+	g.State = newState
+	g.UpdatedAt = time.Now()
 	return nil
 }
 

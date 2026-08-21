@@ -1,0 +1,64 @@
+{
+  "version": "5.1.0-wip",
+  "updated": "2026-08-21",
+  "description": "v5.1 质量度量体系 — 核心四件套质量看板与回归门数据（召回/成功率/延迟/成本）",
+  "gates": [
+    {
+      "name": "recall_ts_hnsw_n3000",
+      "metric": "recall_at_10",
+      "value": 1.0,
+      "threshold": 0.95,
+      "comparison": ">=",
+      "source": "bench/results/2026-Q3-v5.1-recall-baseline.json + tests/unit/hnsw-recall.test.ts"
+    },
+    {
+      "name": "recall_go_hnsw_n3000",
+      "metric": "recall_at_10",
+      "value": 1.0,
+      "threshold": 0.95,
+      "comparison": ">=",
+      "source": "internal/memory/cross_language_test.go#TestCrossLanguage/hnsw_recall"
+    },
+    {
+      "name": "recall_dual_line_diff_n3000",
+      "metric": "dual_line_abs_diff",
+      "value": 0.0,
+      "threshold": 0.02,
+      "comparison": "<=",
+      "source": "bench/results/2026-Q3-v5.1-recall-baseline.json"
+    },
+    {
+      "name": "task_success_rate_mock_harness",
+      "metric": "success_rate",
+      "value": 1.0,
+      "threshold": 0.8,
+      "comparison": ">=",
+      "source": "bench/suite 混沌 harness 基准集（60 条，MockLLM 路径）"
+    },
+    {
+      "name": "agent_run_p95_local",
+      "metric": "p95_ns",
+      "value": 3600,
+      "threshold": 10954,
+      "comparison": "<=",
+      "source": "go test -bench=BenchmarkP95AgentRun ./bench/suite；阈值为 2026-Q4 基线（回归护栏），v5.1 目标较其降 ≥20%"
+    },
+    {
+      "name": "pool_tail_p99_local",
+      "metric": "p99_ns",
+      "value": 282750,
+      "threshold": 500000,
+      "comparison": "<=",
+      "source": "bench/results/2026-Q3-v5.1-pool-tail-latency.json；阈值 = 基线 ×1.75 回归护栏"
+    },
+    {
+      "name": "llm_cost_per_task_real",
+      "metric": "cost_usd_per_task",
+      "value": 0,
+      "threshold": 0.05,
+      "comparison": "<=",
+      "source": "nightly 真实 LLM 跑分（需 CI secrets）；无 key 时由 RecordedProvider 回放路径替代",
+      "requires_key": true
+    }
+  ]
+}
