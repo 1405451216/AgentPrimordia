@@ -1,0 +1,24 @@
+{
+  "quarter": "2026-Q3",
+  "date": "2026-08-21",
+  "version": "v6.0.0-wip",
+  "task_count": 6,
+  "rounds": 4,
+  "bootstrap_curve": [
+    0.3333333333333333,
+    0.6666666666666666,
+    1,
+    1
+  ],
+  "base_curve": [
+    0.3333333333333333,
+    0.3333333333333333,
+    0.3333333333333333,
+    0.3333333333333333
+  ],
+  "started_rate": 0.3333333333333333,
+  "ended_rate": 1,
+  "base_ended_rate": 0.3333333333333333,
+  "defect_detection_rate": 1,
+  "verdict": "pass"
+}
