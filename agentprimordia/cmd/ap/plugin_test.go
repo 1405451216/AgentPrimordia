@@ -60,8 +60,11 @@ func TestPluginCreate_Success(t *testing.T) {
 
 	// 验证 go.mod 版本
 	modContent, _ := os.ReadFile(filepath.Join(pluginDir, "go.mod"))
-	if !contains(string(modContent), "go 1.23") {
-		t.Error("plugin go.mod 应包含 go 1.23")
+	if !contains(string(modContent), "go 1.26") {
+		t.Error("plugin go.mod 应包含 go 1.26")
+	}
+	if !contains(string(modContent), "agentprimordia v0.0.0") {
+		t.Error("plugin go.mod 应包含 require agentprimordia（占位版本）")
 	}
 
 	// 验证 plugin.go 内容

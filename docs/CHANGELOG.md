@@ -2,6 +2,15 @@
 
 本文件记录 AgentPrimordia 框架的所有重要变更。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/)。
 
+## [Unreleased]
+
+### Fixed — ap 脚手架生成的项目无法编译（v6.0 复测巡检发现）
+
+- **pgvector 依赖链断裂**：根模块的 `replace agentprimordia/pgvector => ../pgvector` 不具传递性，`ap init` / `ap plugin create` 生成的独立子项目经 pkg → internal/memory → pgvector 引用链解析失败，`go mod tidy` 直接报错（workspace 模式掩盖了该问题，独立构建必现）
+- 修复：脚手架统一走 `buildGoMod`——向上探测框架模块后 emit 相对路径 replace 并连带 pgvector 的 require+replace；standalone 场景不再 emit 失效 replace 并打印指引
+- **版本声明过时**：模板 `go 1.23` → `go 1.26`（对齐框架要求）、`agentprimordia v1.0.0` → SIV 合法占位版本（无 `/vN` 后缀路径不允许 require v2+，详见 VERSIONING.md「模块消费与语义化导入版本限制」）
+- E2E 验证：init → go mod tidy → go build 全链路通过（GOWORK=off 独立构建）；新增 gomod_template_test.go 锁定行为
+
 ## [6.0.0] - 2026-08-21
 
 ### Added — v5.1–v6.0「优化 → 进化 → 学习 → 借鉴 → 大成」全弧线落地

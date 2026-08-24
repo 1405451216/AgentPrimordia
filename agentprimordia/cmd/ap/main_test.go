@@ -379,7 +379,8 @@ func TestRunInit_QuickstartTemplate(t *testing.T) {
 	}
 }
 
-// TestRunInit_GoModVersion 验证生成的 go.mod 使用 go 1.23
+// TestRunInit_GoModVersion 验证生成的 go.mod 版本对齐（go 1.26 + v6.0.0）；
+// TempDir 为 standalone 场景：不应包含 replace（框架不在上级）。
 func TestRunInit_GoModVersion(t *testing.T) {
 	tmpDir := t.TempDir()
 	origDir, _ := os.Getwd()
@@ -391,8 +392,14 @@ func TestRunInit_GoModVersion(t *testing.T) {
 	}
 
 	modContent, _ := os.ReadFile(filepath.Join(tmpDir, "ver-agent", "go.mod"))
-	if !contains(string(modContent), "go 1.23") {
-		t.Errorf("生成的 go.mod 应包含 go 1.23，实际: %s", string(modContent))
+	if !contains(string(modContent), "go 1.26") {
+		t.Errorf("生成的 go.mod 应包含 go 1.26，实际: %s", string(modContent))
+	}
+	if !contains(string(modContent), "agentprimordia v0.0.0") {
+		t.Errorf("生成的 go.mod 应包含 require agentprimordia（占位版本），实际: %s", string(modContent))
+	}
+	if contains(string(modContent), "replace") {
+		t.Errorf("standalone 场景 go.mod 不应包含 replace，实际: %s", string(modContent))
 	}
 }
 

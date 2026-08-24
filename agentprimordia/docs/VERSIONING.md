@@ -37,6 +37,31 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
    并触发 `release.yml` 发布流程。**因此每次发布只需 bump `const Version` 即可自动完成**
 6. `pkg/version_gate_test.go` 强制校验版本格式合法且与 VERSIONING.md 一致（漂移即失败）
 
+## 模块消费与语义化导入版本限制（v6.0 记录）
+
+Go 语义化导入版本（SIV）规则：**无 `/vN` 后缀的模块路径，require 版本不允许 ≥ v2**
+（`go mod tidy` 直接报 `invalid version`）。框架模块路径为 `agentprimordia`，
+因此 v2.0.0+ 的 git tag **无法被 GOPROXY 直接 require**——tag-release 流水线虽会
+索引代理，下游实际消费需走本地 replace。这是历史模块命名遗留，非本版引入。
+
+当前合规的消费方式（`ap init` / `ap plugin create` 已内置）：
+
+```
+require (
+	agentprimordia v0.0.0            // SIV 合法占位；replace 场景版本号不参与解析
+	agentprimordia/pgvector v0.0.0
+)
+
+replace agentprimordia => ../..            // 指向框架模块根
+replace agentprimordia/pgvector => ../../pgvector
+```
+
+> 注意 replace 不具传递性：任何独立子模块经 pkg → internal/memory → pgvector
+> 引用链消费框架时，必须自行声明上述 require+replace，否则 tidy 断链。
+
+未来若需真正的代理分发，二选一：① 迁移模块路径为 `agentprimordia/v6`
+（全量 import 改写，破坏性）；② 回落发布 v1.x 维护标签。决策留待社区需求出现。
+
 ## 兼容性承诺
 
 ### 稳定 API（Stable）

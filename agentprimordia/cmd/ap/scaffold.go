@@ -4,6 +4,8 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -115,16 +117,132 @@ data/
 `
 	files[".gitignore"] = []byte(gitignore)
 
-	// 生成 go.mod
-	goMod := fmt.Sprintf(`module %s
-
-go 1.23
-
-require agentprimordia v1.0.0
-
-replace agentprimordia => ..
-`, opts.Name)
+	// 生成 go.mod（统一走 buildGoMod：版本对齐 + pgvector 依赖链闭合策略）
+	goMod, _ := buildGoMod(opts.Name, filepath.Join(cwd(), opts.Name))
 	files["go.mod"] = []byte(goMod)
 
 	return files, nil
+}
+
+// apRequirePlaceholder 生成项目 go.mod 的框架 require 占位版本。
+//
+// 为什么不是 v6.0.0：框架模块路径为无 /vN 后缀的 `agentprimordia`，按 Go 语义化导入
+// 版本（SIV）规则，require 行不允许出现 v2+ 版本（tidy 直接报 invalid version）。
+// 在框架采用 agentprimordia/vN 路径或回落 v1.x 标签之前，replace 场景一律使用
+// v0.0.0 占位（replace 后版本号不参与解析）；standalone 场景由调用方提示补 replace。
+// 详见 agentprimordia/docs/VERSIONING.md「模块消费与语义化导入版本限制」。
+const apRequirePlaceholder = "v0.0.0"
+
+// buildGoMod 生成脚手架项目的 go.mod 内容。
+//
+// 背景（v6.0 复测发现的断链问题）：框架根模块的
+// `replace agentprimordia/pgvector => ../pgvector` 不具传递性——生成的独立子项目
+// 经 pkg → internal/memory → agentprimordia/pgvector 引用链解析该模块时，
+// 必须在自己的 go.mod 里自行 require+replace，否则 go mod tidy 直接失败
+// （仓库内 workspace 模式会掩盖此问题，独立构建必现）。
+//
+// 策略：
+//   - 从 projectDir 向上探测框架模块（go.mod 声明 module agentprimordia）：
+//     找到 → 以相对路径 emit replace，并连带 pgvector 的 require+replace；
+//   - 未找到（standalone）→ 不 emit replace，依赖 GOPROXY 发布版，
+//     返回 standalone=true 供调用方打印提示。
+func buildGoMod(projectName, projectDir string) (content string, standalone bool) {
+	// 统一转绝对路径：调用方可能传入相对目录（如 init 的 targetDir=name），
+	// 混用相对路径会使 filepath.Rel/向上探测产生错误层级
+	if abs, err := filepath.Abs(projectDir); err == nil {
+		projectDir = abs
+	}
+	frameworkDir := findFrameworkRoot(filepath.Dir(projectDir))
+	if frameworkDir == "" {
+		// standalone：无本地框架，依赖代理发布版
+		return fmt.Sprintf(`module %s
+
+go 1.26
+
+require agentprimordia %s
+`, projectName, apRequirePlaceholder), true
+	}
+
+	// 相对路径：项目目录 → 框架模块 / pgvector 模块
+	// （真实仓库布局：pgvector 与框架模块互为兄弟目录，如 <repo>/agentprimordia 与 <repo>/pgvector）
+	frameRel, err := filepath.Rel(projectDir, frameworkDir)
+	if err != nil {
+		frameRel = ".."
+	}
+	pgvGoMod := filepath.Join(filepath.Dir(frameworkDir), "pgvector", "go.mod")
+	hasPgvector := false
+	if data, err := os.ReadFile(pgvGoMod); err == nil && strings.Contains(string(data), "module agentprimordia/pgvector") {
+		hasPgvector = true
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("module %s\n\ngo 1.26\n\n", projectName))
+	if hasPgvector {
+		pgvRel, err := filepath.Rel(projectDir, filepath.Join(filepath.Dir(frameworkDir), "pgvector"))
+		if err != nil || pgvRel == "" {
+			pgvRel = filepath.Join(frameRel, "..", "pgvector")
+		}
+		sb.WriteString(fmt.Sprintf(`require (
+	agentprimordia %s
+	agentprimordia/pgvector v0.0.0
+)
+
+replace agentprimordia => %s
+replace agentprimordia/pgvector => %s
+`, apRequirePlaceholder, frameRel, pgvRel))
+	} else {
+		sb.WriteString(fmt.Sprintf("require agentprimordia %s\n\nreplace agentprimordia => %s\n", apRequirePlaceholder, frameRel))
+	}
+	return sb.String(), false
+}
+
+// findFrameworkRoot 从 start 向上探测框架模块根（go.mod 声明 module agentprimordia），
+// 最多回溯 6 层；未找到返回空串。
+func findFrameworkRoot(start string) string {
+	dir := start
+	for i := 0; i < 6; i++ {
+		data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+		if err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "module agentprimordia" {
+					return dir
+				}
+				if strings.HasPrefix(line, "module ") {
+					break // 是模块但不是框架，继续向上
+				}
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// findGoWorkUp 从 start 向上探测 go.work（最多 6 层），命中返回 true。
+func findGoWorkUp(start string) bool {
+	dir := start
+	for i := 0; i < 6; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "go.work")); err == nil {
+			return true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return false
+		}
+		dir = parent
+	}
+	return false
+}
+
+// cwd 返回当前工作目录（出错时退回 "."）。
+func cwd() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return dir
 }
