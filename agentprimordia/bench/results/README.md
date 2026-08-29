@@ -1,6 +1,8 @@
 # AgentPrimordia Benchmark 排行榜（公开）
 
-> v4.8-3 榜单页：随版本发布更新 ｜ 基线文件：`bench/results/2026-Q4.json`（4.1.0）
+> v6.0.0 榜单页：随版本发布更新 ｜ 基线文件：`bench/results/2026-Q4.json`
+>
+> 季度记录：2026-Q3 系列基线以 `2026-Q3-*.json` 形式落盘（自举曲线见 `2026-Q3-v5.4-bootstrap-curve.json`：任务完成率自举 0.33→1.00，base 对照组平坦 0.33）；最新基线为 `2026-Q4.json`。
 
 ## 关键路径延迟（P50 / P95 / P99，ns）
 

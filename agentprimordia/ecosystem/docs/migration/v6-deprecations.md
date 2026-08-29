@@ -34,7 +34,7 @@
 
 | 能力 | 版本 | 入口 |
 |------|------|------|
-| 检索质量门 recall@10 ≥0.95 双线 | 5.1 | `tests/unit/hnsw-recall.test.ts` + `internal/memory/cross_language_test.go#hnsw_recall` |
+| 检索质量门 recall@10 ≥0.95 双线 | 5.1 | `sdk/typescript/tests/unit/hnsw-recall.test.ts` + `internal/memory/cross_language_test.go#hnsw_recall` |
 | TokenBudget 上下文裁剪 | 5.1 | `NewTokenBudgetStrategy()` |
 | 目标预算自动暂停/恢复 | 5.1 | `autonomy.GoalPaused` / `AddBudget` / `Resume` |
 | recorded-response 回放（无 key CI） | 5.1 | `llm.NewRecordProvider` / `NewReplayProvider` |

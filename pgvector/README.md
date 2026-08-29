@@ -41,21 +41,40 @@ err = store.Add(ctx, "ep_1", []float32{0.1, 0.2, ...}, map[string]string{"tenant
 results, err := store.Search(ctx, queryVec, 10, map[string]string{"tenant": "t1"})
 ```
 
-## 与 memory.RAGStore 集成
+## 与 memory 向量体系集成
+
+`pgvector.Store` 不直接读取环境变量，全部配置经 `pgvector.Config{...}` 结构体传入 `pgvector.New(ctx, cfg)`。
+
+框架侧接入路径：`internal/memory/pgvector_store.go` 中的 `PgVectorVectorStore` 适配器实现了 memory 的 `VectorStore` 接口（Insert/Delete/Search/CreateCollection/DropCollection），公共入口为 `ap.NewPgVectorVectorStore(ctx, ap.PgVectorConfig{...})`。RAG 混合检索与 HNSW 内存向量库的公共构造器：
 
 ```go
-import "agentprimordia/internal/memory"
+import ap "agentprimordia/pkg"
 
-// 替换默认向量存储
-vecStore := memory.NewVectorStoreWithHNSW(1536, memory.HNSWConfig{...})
-// pgVector 作为底层存储
-rag := memory.NewRAGStore(mem, embedder)
+// RAG 混合检索（Memory + Embedding + 向量通道）
+embedder := ap.NewEmbeddingAdapter(provider, 1536) // llm.Provider 适配为 EmbeddingProvider
+rag := ap.NewRAGStore(memStore, embedder)
+
+// HNSW 内存向量库（pgvector 之外的默认实现）
+vec := ap.NewVectorStoreWithHNSW(1536, ap.HNSWConfig{...})
+
+// pgvector 后端（经适配器接入 memory.VectorStore 接口）
+pv, err := ap.NewPgVectorVectorStore(ctx, ap.PgVectorConfig{
+    ConnString: "postgres://localhost:5432/ap",
+    TableName:  "agent_vectors",
+    Dimensions: 1536,
+})
 ```
 
-## 环境变量
+> 注意：`ap.NewRAGStore` 内部使用内置向量通道，pgvector 后端经 `internal/memory/pgvector_store.go`
+> 的适配接入，两者维度需与 EmbeddingProvider 保持一致。
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `PGVECTOR_CONN_STRING` | — | PostgreSQL 连接字符串 |
-| `PGVECTOR_TABLE` | `agent_vectors` | 表名 |
-| `PGVECTOR_DIMENSIONS` | `16` | 向量维度 |
+## 配置
+
+配置仅经 `pgvector.Config` 结构体传入（`New(ctx, cfg)`），不读取任何环境变量：
+
+- `ConnString` — PostgreSQL 连接字符串（必填）
+- `TableName` — 表名（默认 `agent_vectors`）
+- `Dimensions` — 向量维度（默认 16，按需显式指定，如 OpenAI text-embedding-3-large 为 1536）
+- `Distance` — 距离度量（默认 cosine）
+- `IndexType` — 索引类型（默认 hnsw，可选 ivfflat）
+- `MaxConnections` — 连接池大小（默认 5）

@@ -403,15 +403,22 @@ for _, chunk := range chunks {
 
 ```go
 // 1. 创建缓存
-cache := ap.NewInMemoryCache(1000) // 最多缓存 1000 条
+cache := ap.NewFingerprintCache(10000, time.Hour) // 指纹精确匹配缓存（容量, TTL）
 
-// 2. 包装 Provider
-cachedProvider := ap.NewCachedProvider(provider, cache)
+// 2. 包装 Provider（三参：provider, cache, minScore）
+cachedProvider, err := ap.NewCachedProvider(provider, cache, 0.85)
+if err != nil {
+	log.Fatal(err)
+}
 
 // 3. 用缓存 Provider 创建 Agent
-agent := ap.NewAgent("cached-rag", "你是知识库助手。", cachedProvider,
+agent, err := ap.NewAgent("cached-rag", "你是知识库助手。", cachedProvider,
 	ap.WithMaxTurns(10),
-).WithRAG(ap.RAGConfig{
+)
+if err != nil {
+	log.Fatal(err)
+}
+agent = agent.WithRAG(ap.RAGConfig{
 	Provider: ragProvider,
 	Mode:     ap.RAGModeFirst, // First 模式减少重复检索
 	TopK:     5,

@@ -29,12 +29,9 @@ go tool pprof cpu.prof
 | `BenchmarkMemoryStore` | ns/op | 记忆写入和搜索延迟 |
 | `BenchmarkVectorSearch` | ns/op | 10K 向量搜索延迟 |
 
-## 对比框架
+## 对比基线
 
-`compare/` 目录包含同等任务的其他框架实现，用于横向对比：
-
-- **LangChain (Python)** — `compare/langchain_equiv.py`
-- 运行方式: `python compare/langchain_equiv.py --benchmark throughput`
+本仓库不维护其他框架（如 LangChain）的等价实现代码；横向对比以基线数据的形式落盘于 `results/` 目录（JSON 基线 + 季度记录），后续评测可与历史基线直接比对。
 
 ## 结果发布
 

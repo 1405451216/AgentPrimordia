@@ -3,51 +3,51 @@
 ## SDK 包导出
 
 | 导出路径 | 说明 |
-||------|------|
-|| `@agentprimordia/sdk` | 主入口 |
-|| `@agentprimordia/sdk/agent` | ReActAgent、Builder |
-|| `@agentprimordia/sdk/llm` | LLM Providers |
-|| `@agentprimordia/sdk/tools` | 工具系统 |
-|| `@agentprimordia/sdk/orchestration` | 编排模式 |
+|------|------|
+| `@agentprimordia/sdk` | 主入口 |
+| `@agentprimordia/sdk/agent` | ReActAgent、Builder |
+| `@agentprimordia/sdk/llm` | LLM Providers |
+| `@agentprimordia/sdk/tools` | 工具系统 |
+| `@agentprimordia/sdk/orchestration` | 编排模式 |
 
 ## 核心类型
 
 ### Agent / ReAct
 
-|| 名称 | 说明 |
-||------|------|
-|| `ReActAgent` | ReAct Loop 引擎 |
-|| `createAgent(name)` | Builder DSL 入口 |
-|| `StreamEvent` | 流式响应事件 |
+| 名称 | 说明 |
+|------|------|
+| `ReActAgent` | ReAct Loop 引擎 |
+| `createAgent(name)` | Builder DSL 入口 |
+| `StreamEvent` | 流式响应事件 |
 
 ### LLM Providers
 
-|| Provider | 说明 |
-||------|------|
-|| `OpenAIProvider` | OpenAI API |
-|| `AnthropicProvider` | Anthropic API |
-|| `GeminiProvider` | Google Gemini |
-|| `OllamaProvider` | Local Ollama |
-|| `DeepSeekProvider` | DeepSeek API |
-|| `MockProvider` | 测试用模拟 Provider |
+| Provider | 说明 |
+|------|------|
+| `OpenAIProvider` | OpenAI API |
+| `AnthropicProvider` | Anthropic API |
+| `GeminiProvider` | Google Gemini |
+| `OllamaProvider` | Local Ollama |
+| `DeepSeekProvider` | DeepSeek API |
+| `MockProvider` | 测试用模拟 Provider |
 
 ### Memory
 
-|| 类型 | 说明 |
-||------|------|
-|| `InMemoryStore` | 内存记忆存储 |
-|| `SQLiteStore` | SQLite 持久化存储 |
-|| `RAGProvider` | RAG 检索增强 |
+| 类型 | 说明 |
+|------|------|
+| `InMemoryStore` | 内存记忆存储 |
+| `SqliteStore` | SQLite 持久化存储 |
+| `RAGProvider` | RAG 检索增强 |
 
 ### Tools
 
-|| 类型 | 说明 |
-||------|------|
-|| `ToolRegistry` | 工具注册中心 |
-|| `FileSystemTool` | 文件系统工具 |
-|| `ShellTool` | Shell 工具 |
-|| `WebTool` | Web 工具 |
-|| `APITool` | API 调用工具 |
+| 类型 | 说明 |
+|------|------|
+| `ToolRegistry` | 工具注册中心 |
+| `FileSystemTool` | 文件系统工具 |
+| `ShellTool` | Shell 工具 |
+| `WebTool` | Web 工具 |
+| `APITool` | API 调用工具 |
 
 ## 快速示例
 

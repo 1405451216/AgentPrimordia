@@ -21,7 +21,7 @@
 ## Architecture
 
 ```
-sdk/browser-extension/
+extensions/browser-extension/
 ├── manifest.json            # MV3 manifest (permissions, content scripts, devtools page)
 ├── src/
 │   ├── background.ts        # Service worker — message routing, state, Studio polling
@@ -29,12 +29,12 @@ sdk/browser-extension/
 │   ├── popup/               # Popup UI (toolbar click)
 │   ├── devtools/            # DevTools panel (custom DevTools tab)
 │   └── shared/
-│       ├── types.ts         # Shared TypeScript interfaces
-│       ├── api.ts           # Studio REST API client
-│       └── bridge.ts        # Message-passing helpers between content script and extension
+│       ├── messages.ts      # Message-passing helpers between content script and extension
+│       └── api.ts           # Studio REST API client
 ├── icons/                   # Extension icons (SVG + generated PNGs)
 ├── scripts/
-│   └── generate-icons.mjs   # Builds PNG icons from scratch (no external deps)
+│   ├── generate-icons.mjs   # Builds PNG icons from scratch (no external deps)
+│   └── copy-assets.mjs      # Copies static assets into dist/ during build
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -58,7 +58,7 @@ the background service worker acts as the single source of truth for state.
 1. Build the extension (see [Build](#build) below).
 2. Open Chrome and navigate to `chrome://extensions`.
 3. Enable **Developer mode** (top-right toggle).
-4. Click **Load unpacked** and select the `sdk/browser-extension` directory
+4. Click **Load unpacked** and select the `extensions/browser-extension` directory
    *(the directory that contains `manifest.json`)*.
 5. The extension icon will appear in the toolbar. Click it to open the popup.
 6. Open DevTools (F12) on any page to see the *AgentPrimordia* panel.
@@ -71,7 +71,7 @@ the background service worker acts as the single source of truth for state.
 Requirements: Node.js ≥ 18.
 
 ```bash
-cd sdk/browser-extension
+cd extensions/browser-extension
 npm install
 npm run build          # Compile TypeScript → dist/
 ```
@@ -103,8 +103,9 @@ required. The source design lives in `icons/icon.svg`. See
 npm run package        # Builds then zips dist/ + icons/ + manifest.json
 ```
 
-The resulting `extension-v0.1.0.zip` can be uploaded to the Chrome Web Store
-or Firefox Add-ons.
+The resulting `extension-v5.0.0.zip` (the filename is generated from
+`npm_package_version`, so it follows the `version` field in `package.json`)
+can be uploaded to the Chrome Web Store or Firefox Add-ons.
 
 ## Configuration
 

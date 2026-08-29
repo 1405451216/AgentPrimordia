@@ -164,13 +164,15 @@ resp, err := agent.Run(context.Background(), ap.UserMessage("你好"))
 
 ```go
 // 使用 LLM 缓存（Experimental）
-cache := ap.NewInMemoryCache(embedFunc)
-cachedProvider := ap.NewCachedProvider(provider, cache)
+cache := ap.NewFingerprintCache(10000, time.Hour) // 指纹精确匹配缓存（容量, TTL）
+cachedProvider, err := ap.NewCachedProvider(provider, cache, 0.85) // 三参：provider, cache, minScore
+if err != nil { log.Fatal(err) }
 
-agent := ap.NewAgent("CachedBot", "你是一个助手",
+agent, err := ap.NewAgent("CachedBot", "你是一个助手",
     cachedProvider,
     ap.WithMaxTurns(10),
 )
+if err != nil { log.Fatal(err) }
 ```
 
 ### 4. 批量操作

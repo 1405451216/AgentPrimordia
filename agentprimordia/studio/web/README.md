@@ -12,14 +12,20 @@
 | `/learning` | 学习监控 | 知识蒸馏统计 + 能力进化趋势线 |
 | `/marketplace` | Agent 市场 | 模板浏览 / 搜索 / 部署，已部署 Agent 治理 |
 | `/help` | 帮助文档 | 面板、快捷键、混沌语义与数据说明 |
+| `/autonomy` | 自治目标 | 自治任务运行 / 进度 / 断点恢复监控 |
+| `/skills` | 技能库 | 演化技能浏览 / 校验 / 管理 |
+| `/a2a-interop` | A2A 互通 | Agent2Agent 协议互通自检 |
+| `/realtime` | 实时控制台 | 实时多模态会话状态 |
 
 ## 一键启动
 
+启动脚本位于仓库根目录的 `scripts/`（不在 `studio/web/` 内）：
+
 ```bash
-# Windows（PowerShell）
+# Windows（PowerShell，在仓库根目录执行）
 powershell -ExecutionPolicy Bypass -File scripts\dev-studio.ps1
 
-# macOS / Linux
+# macOS / Linux（在仓库根目录执行）
 ./scripts/dev-studio.sh
 ```
 

@@ -1424,8 +1424,9 @@ ap.NewHTTPTransport(addr)          // 创建 HTTP 传输层
 **常用函数：**
 
 ```go
-ap.NewInMemoryCache(embedFunc)     // 创建内存缓存
-ap.NewCachedProvider(provider, cache) // 创建缓存 Provider
+cache, _ := ap.NewCachedProvider(provider,
+    ap.NewFingerprintCache(10000, time.Hour), // 创建指纹缓存（容量, TTL）
+    0.85)                                     // minScore：语义相似度阈值
 ```
 
 ### 9.11 结构化输出

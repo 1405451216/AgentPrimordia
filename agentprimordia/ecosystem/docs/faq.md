@@ -325,13 +325,22 @@ go func() {
 
 ```go
 // Pipeline：固定顺序
-pipeline := ap.NewPipeline(agent1, agent2, agent3)
+pipeline := ap.NewPipeline(
+    ap.PipelineStep{Name: "step1", Agent: agent1},
+    ap.PipelineStep{Name: "step2", Agent: agent2},
+    ap.PipelineStep{Name: "step3", Agent: agent3},
+)
 pipeline.Run(ctx, input)
 
-// Handoff：动态交接
-handoff := ap.NewHandoff(routerAgent, map[string]ap.Agent{
-    "code":    codeAgent,
-    "security": secAgent,
+// Handoff：动态交接（Router 返回目标 Agent 在 Agents 中的下标）
+handoff := ap.NewHandoff(ap.HandoffConfig{
+    Agents: []ap.Agent{codeAgent, secAgent},
+    Router: func(ctx context.Context, input string) int {
+        if strings.Contains(input, "安全") {
+            return 1
+        }
+        return 0
+    },
 })
 handoff.Run(ctx, input)
 ```
@@ -343,26 +352,30 @@ handoff.Run(ctx, input)
 使用 `MessageBus`（发布-订阅模式）：
 
 ```go
-bus := ap.NewMessageBus()
+bus := ap.NewLocalMessageBus()
 
-// Agent A 订阅
-ch := bus.Subscribe("agent-b")
-
-// Agent B 发送
-bus.Send(ctx, "agent-b", ap.Message{
-    From:    "agent-a",
-    Type:    "task-done",
-    Payload: map[string]any{"result": 42},
+// Agent A 注册消息处理器（也可 Subscribe 订阅通道）
+bus.Register("agent-a", func(ctx context.Context, msg *ap.BusMessage) (*ap.BusMessage, error) {
+    // 处理收到的消息
+    return msg, nil
 })
 
-// Agent A 接收
-msg := <-ch
+// Agent B 发送点对点消息
+reply, err := bus.Send(ctx, &ap.BusMessage{
+    From:    "agent-b",
+    To:      "agent-a",
+    Type:    ap.BusMsgTaskRequest,
+    Content: "task-done",
+})
+
+// 广播给所有已注册 Agent（排除发送方）
+bus.Broadcast(ctx, &ap.BusMessage{From: "agent-b", Content: "hello"})
 ```
 
 支持三种模式：
 - **Send**：点对点发送
-- **Broadcast**：广播给所有订阅者
-- **Subscribe**：订阅主题通道
+- **Broadcast**：广播给所有已注册 Agent（排除发送方）
+- **Subscribe**：订阅指定 Agent 的消息通道
 
 ---
 
@@ -372,14 +385,13 @@ msg := <-ch
 
 三层保障：
 
-1. **ResilientProvider**：自动重试 + 故障转移
+1. **ResilientProvider**：自动重试 + 故障转移 + 熔断
    ```go
-   provider := ap.NewResilientProvider(
-       ap.WithPrimary(openaiProvider),
-       ap.WithFallback(azureProvider),
-       ap.WithRetry(3, time.Second*2),
-   )
+   provider, err := ap.NewResilientProvider(openaiProvider, ap.DefaultResilientConfig())
+   if err != nil { log.Fatal(err) }
+   provider.AddFallback(azureProvider) // 主 Provider 不可用时切换到备用
    ```
+   重试/退避参数可在 `ap.ResilientConfig{MaxRetries, RetryBackoff, ...}` 中自定义（默认 3 次重试、500ms 退避）。
 
 2. **降级策略**：主 Provider 不可用时自动切换到备用 Provider
 
@@ -432,12 +444,33 @@ agent, _ := ap.NewAgent(
 4. **PII 检测**：自动识别和脱敏个人身份信息
 
 ```go
-agent, _ := ap.NewAgent(
-    ap.WithACL(aclRules),
-    ap.WithSandbox(sandboxConfig),
-    ap.WithGuardrails(guardrails),
-    ap.WithPIIDetection(),
-)
+// 工具白名单：只注册允许的内置工具，未注册的不可被调用
+registry := ap.NewToolRegistry()
+registry.RegisterMultiple(ap.NewWeb(), ap.NewCalculator())
+
+// 文件访问范围限制
+fsTool, err := ap.NewFileSystem("/data/workspace") // 越界访问被 scope 拒绝
+if err != nil { log.Fatal(err) }
+registry.Register(fsTool)
+
+// 护栏 + PII 检测：经 Guardrail 引擎注入输入端护栏
+engine := ap.NewGuardrailEngine()
+engine.AddRule(ap.NewPromptInjectionRule(ap.PromptInjectionConfig{})) // 注入检测
+engine.AddRule(ap.NewPIIRule(ap.PIIRuleConfig{}))                     // PII 脱敏
+
+agent, err := ap.NewAgent("secure-bot", "你是一个助手", provider,
+    ap.WithToolkit(registry),
+    ap.WithInputGuard(func(content string) (string, bool, error) {
+        report, err := engine.Check(content, ap.CheckInput)
+        if err != nil {
+            return content, false, err
+        }
+        if !report.Passed {
+            return content, true, nil // blocked=true 拒绝该输入
+        }
+        return content, false, nil
+    }))
+if err != nil { log.Fatal(err) }
 ```
 
 ---
@@ -446,26 +479,21 @@ agent, _ := ap.NewAgent(
 
 ### Q: 从 v0.x 升级到 v0.7 需要注意什么？
 
-**核心变更**：`ReActConfig` 的 14 个字段全部标记为 Deprecated，迁移到链式 API。
+**核心变更**：`ReActConfig` 的核心字段已迁移到函数式 Option（`ap.NewAgent(name, prompt, model, opts...)`），推荐直接使用新入口。
 
 迁移对照表：
 
 | 旧写法（Deprecated） | 新写法 |
 |---------------------|--------|
+| `ReActConfig.Name` | `NewAgent(name, systemPrompt, model, ...)` 第 1 参 |
+| `ReActConfig.SystemPrompt` | `NewAgent(name, systemPrompt, model, ...)` 第 2 参 |
+| `ReActConfig.Model` | `NewAgent(name, systemPrompt, model, ...)` 第 3 参（llm.Provider） |
 | `ReActConfig.MaxTurns` | `WithMaxTurns(n)` |
-| `ReActConfig.SystemPrompt` | `WithSystemPrompt(s)` |
-| `ReActConfig.Provider` | `WithProvider(p)` |
-| `ReActConfig.Tools` | `WithTools(r)` |
-| `ReActConfig.Memory` | `WithMemory(m)` |
-| `ReActConfig.Verbose` | `WithVerbose(true)` |
-| `ReActConfig.MaxTokens` | `WithMaxTokens(n)` |
 | `ReActConfig.Temperature` | `WithTemperature(f)` |
-| `ReActConfig.Timeout` | `WithTimeout(d)` |
-| `ReActConfig.OnToolCall` | `WithToolCallHook(fn)` |
-| `ReActConfig.OnThinking` | `WithThinkingHook(fn)` |
-| `ReActConfig.StopWords` | `WithStopWords(ws)` |
-| `ReActConfig.RetryCount` | `WithRetry(n)` |
-| `ReActConfig.ModelName` | `WithModelName(s)` |
+| `ReActConfig.SessionID` | `WithSessionID(id)` |
+| `ReActConfig.Memory`（原 Tools 等分组配置） | `WithMemory(m)` / `WithToolkit(r)` |
+
+重试不作为 Agent 配置项：LLM 调用的重试/故障转移/熔断统一在 Provider 层处理——`ap.NewResilientProvider(primary, ap.DefaultResilientConfig())`。
 
 详细迁移指南参见 [v0-deprecations.md](migration/v0-deprecations.md)。
 

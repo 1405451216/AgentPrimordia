@@ -21,12 +21,13 @@ cd agentprimordia
 go build ./...
 ```
 
-### 方式二：Go module 引用
+### 方式二：Go module 引用（本地 replace 消费）
 
-在你的 `go.mod` 中添加：
+框架目前以本地模块方式消费（模块名 `agentprimordia`，无远程发布路径），在你的 `go.mod` 中通过 `replace` 指向框架源码目录：
 
-```
-require agentprimordia v1.0.0
+```bash
+go mod edit -require=agentprimordia@v0.0.0 -replace=agentprimordia=/path/to/agentprimordia
+go mod tidy
 ```
 
 ## 第一个 Agent（无需 API Key）
