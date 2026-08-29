@@ -11,7 +11,7 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 
 ## 2. 技术栈约束
 
-- **语言**: Go 1.26+（`go.mod` 已声明 `go 1.26`）
+- **语言**: Go 1.26+（`go.mod` 已声明 `go 1.26.6`）
 - **默认原则：所有新模块仅使用 Go 标准库**（net/http、database/sql、os/exec 等）
 - **不引入**：任何 Web 框架、ORM、配置解析库、CLI 框架等第三方包
 
@@ -51,7 +51,7 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 ## 4. 模块边界
 
 > **2026-06 更新**: 随着 Phase 6 及后续阶段演进，项目模块已从最初的 6 个核心包扩展为更大的 monorepo 结构。
-> 当前 `agent/` 仍是 ReAct 循环与协议式微内核的顶层入口，实际依赖关系以本节为准。
+> 当前 `agent/` 仍是 ReAct 循环与协议式微内核的顶层入口；完整模块清单见 [`internal/AGENTS.md`](agentprimordia/internal/AGENTS.md)。
 > 历史 Phase 实施记录见 [`docs/CHANGELOG.md`](docs/CHANGELOG.md)。
 
 ### 4.1 当前模块结构
@@ -59,7 +59,7 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 ```
 internal/
 ├── admin/          — Admin HTTP API（调试/管理接口）
-├── agent/          — ReActLoop 引擎 + 协议式微内核（顶层）
+├── agent/          — ReActLoop 引擎 + 协议式微内核（顶层，下含 a2a/planning/reflection/tool_learning/cluster/transport 等 32 个子包，完整清单见 internal/AGENTS.md）
 │   ├── a2a/        — Agent2Agent 协议实现（JSON-RPC / SSE / 任务管理）
 │   ├── planning/   — 任务规划器
 │   ├── reflection/ — Agent 自反思能力
@@ -86,6 +86,8 @@ operator/           — Kubernetes Operator（AgentDeployment CRD）
 pgvector/           — pgvector 向量存储扩展
 ```
 
+> 上图仅列核心分层包。其余横向支撑包（audit/chaos/eval/governance/health/jsonutil/logger/marketplace/multi_agent/observability/resilience/self_bootstrap/studio）见 [`internal/AGENTS.md`](agentprimordia/internal/AGENTS.md) 的完整 29 包表格。
+
 ### 4.2 依赖方向规则
 
 ```
@@ -103,11 +105,11 @@ pgvector/           — pgvector 向量存储扩展
                                      └─────────┘
 
         orchestration/、debugger/、metrics/、otel/、guardrail/、
-        security/、events/、config/、prompt/ 等模块为横向支撑层，
+        security/、events/、config/、agent/prompt/ 等模块为横向支撑层，
         可消费 agent/llm/memory/tools/pool 等下层能力。
 ```
 
-- **`agent/` 处于依赖顶层**：可引用 `llm/memory/persist/tools/pool/orchestration/security/metrics/otel/events/config/prompt/concurrency` 等下层/横向模块。
+- **`agent/` 处于依赖顶层**：可引用 `llm/memory/persist/tools/pool/orchestration/security/metrics/otel/events/config/agent/prompt/concurrency` 等下层/横向模块。
 - **下层模块禁止反向引用上层**：`llm/memory/persist/tools` 不得 import `agent/`、`pool/`、`orchestration/`。
 - **编排/调试/可观测等横向模块**：可引用 `agent/` 及以下模块，但不得被 `llm/memory/persist/tools` 反向引用。
 - **`pkg/` 以类型导出和 re-export 为主**：允许少量不可或缺的公共错误/辅助构造器（如 `pkg/errors.go` 中的 `CodeError`），新增业务逻辑应优先放在 `internal/`。

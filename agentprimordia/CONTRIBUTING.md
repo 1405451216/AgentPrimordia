@@ -85,7 +85,6 @@ agentprimordia/
 │   ├── pool/          # Agent 池（多 Agent 调度）
 │   ├── orchestration/ # 工作流编排（DAG/条件/并行/状态机）
 │   ├── persist/       # 状态持久化
-│   ├── prompt/        # 提示词模板
 │   ├── admin/         # 管理面板
 │   ├── debugger/      # 调试工具（Inspector、可视化编辑器）
 │   ├── guardrail/     # 安全护栏
@@ -94,7 +93,8 @@ agentprimordia/
 │   ├── concurrency/   # 并发原语
 │   ├── config/        # 配置管理
 │   ├── events/        # 事件系统
-│   └── security/      # 安全工具
+│   ├── security/      # 安全工具
+│   └── ...            # 其余横向支撑包：audit/chaos/eval/governance/health/jsonutil/logger/marketplace/multi_agent/observability/resilience/self_bootstrap/studio（完整 29 包见 internal/AGENTS.md）
 ├── pkg/               # 公共 API（类型别名导出）
 ├── cmd/               # 命令行工具
 │   ├── ap/           # CLI 工具
@@ -150,7 +150,7 @@ func NewAgent(name, systemPrompt string, model llm.Provider, opts ...AgentOption
 ### 测试要求
 
 - 所有新功能必须包含单元测试
-- 测试覆盖率目标：80% 以上
+- 测试覆盖率门槛：核心包（internal/llm、pkg）65% 以上（`make cover-check` 门禁）；新增代码建议对齐所在包现状
 - 使用表驱动测试（table-driven tests）
 
 ```go

@@ -1,12 +1,12 @@
 # AgentPrimordia 实施进度总览（截至 2026-07-06）
 
 > **⚠️ 历史页面（2026-08-09 标注）**：本文档为 Phase 1-5 历史实施记录，**仅作追溯用途**，
-> 不再反映当前完成度。当前状态请以 `docs/ROADMAP.md`（v3.3→v4.0 实证版，唯一权威路线图）
-> 与 `docs/CAPABILITY-INVENTORY.md`（能力实况）为准。评估报告见
+> 不再反映当前完成度。当前状态请以 `../../docs/ROADMAP.md`（v3.3→v4.0 实证版，唯一权威路线图）
+> 与 `../../docs/CAPABILITY-INVENTORY.md`（能力实况）为准。评估报告见
 > `docs/PROJECT-EVALUATION-2026-08-09.md`。
 
 > **版本体系说明（2026-08-03 对齐）**：本文档的 Phase 1-5 为**历史实施记录**，与当前版本体系并存。
-> **版本路线以 `docs/ROADMAP.md`（v3.3→v4.0 实证版）为唯一权威**；能力实况以 `docs/CAPABILITY-INVENTORY.md` 为准。
+> **版本路线以 `../../docs/ROADMAP.md`（v3.3→v4.0 实证版）为唯一权威**；能力实况以 `../../docs/CAPABILITY-INVENTORY.md` 为准。
 > Phase 遗留事项（如协程池集成、插件远程注册中心）已并入 ROADMAP v3.4/v3.9 对应版本。
 
 > 本文档汇总 5 个核心阶段的实施状态、关键决策与遗留事项。

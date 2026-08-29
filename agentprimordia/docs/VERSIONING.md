@@ -10,7 +10,7 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 
 当前版本：`6.0.0`（定义于 `pkg/agent.go`，git tag 管理）
 
-> 版本演化路线以 `docs/ROADMAP.md` 为权威（v3.3→v4.0），能力实况以 `docs/CAPABILITY-INVENTORY.md` 为准。
+> 版本演化路线以 `../../docs/ROADMAP.md`（仓库根 docs/ 目录）为权威（v3.3→v4.0），能力实况以 `../../docs/CAPABILITY-INVENTORY.md` 为准。
 > git tag 曾长期脱节（仅 v0.7.0），已在本文件维护规则中强制"发布即打 tag"。
 
 ## 版本信息单一事实来源
@@ -20,9 +20,9 @@ AgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) �
 | 组件 | 当前版本 | 版本定义位置 |
 |------|----------|----------------|
 | Go SDK | v6.0.0 | `pkg/agent.go` + git tag |
-| TypeScript SDK | v6.0.0 | `sdk/typescript/package.json` |
-| Python 客户端 | v2.0.0 | `sdk/python/pyproject.toml` |
-| Rust 客户端 | v2.0.0 | `sdk/rust/Cargo.toml` |
+| TypeScript SDK | v6.0.0 | `../../sdk/typescript/package.json`（仓库根 sdk/ 目录） |
+| Python 客户端 | v2.0.0 | `../../sdk/python/pyproject.toml` |
+| Rust 客户端 | v2.0.0 | `../../sdk/rust/Cargo.toml` |
 | CLI | v6.0.0 | `cmd/ap/main.go`（`var Version`，发布经 ldflags 注入） |
 | K8s Operator | v2.0.0 | operator 模块无版本字段（镜像 tag 见 deploy/helm values.yaml） |
 

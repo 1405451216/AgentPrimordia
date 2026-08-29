@@ -45,7 +45,7 @@ AgentPrimordia 采用分层架构，核心设计原则：
 1. **接口驱动** — 所有子系统通过 Go interface 解耦，可独立替换
 2. **组合优于继承** — Agent 能力通过配置组合（Memory、Hooks、RAG 等），而非继承
 3. **弹性优先** — ResilientProvider 内建重试、降级、熔断，生产级可靠性
-4. **零外部依赖** — 仅依赖纯 Go SQLite 驱动（modernc.org/sqlite），无需 CGO
+4. **核心路径零第三方依赖** — 核心路径仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）；受限第三方依赖（gRPC/etcd/redis/wazero 等，均有 build tag 或模块边界）见 [AGENTS.md](AGENTS.md) §2.1
 
 ### 数据流
 
@@ -381,6 +381,9 @@ result, err := exec.Execute(ctx, "tool-name", argsJSON, agentID)
 | `FileSystem` | `builtin/filesystem.go` | 文件/目录读写、搜索（默认字符串匹配，可选 regex 模式） |
 | `Shell` | `builtin/shell.go` | Shell 命令执行 |
 | `Web` | `builtin/web.go` | HTTP 请求（GET/POST） |
+| `API` | `builtin/api.go` | API 调用工具（`NewAPI()`） |
+| `Database` | `builtin/database.go` | 数据库查询工具（`NewDatabase(dbPath, opts...)`） |
+| `CodeExecution` | `builtin/code_execution.go` | 代码执行工具（`NewCodeExecution()`） |
 | `Knowledge` | `builtin/knowledge.go` | RAG on_demand 模式的知识检索工具 |
 
 #### 权限与确认
@@ -958,7 +961,7 @@ func (s *SlidingWindowStrategy) Trim(messages []agent.Message, maxMessages int) 
 
 Hook 系统允许在 Agent 生命周期的关键节点注入自定义逻辑。
 
-### 11 个 Hook 点
+### 12 个 Hook 点
 
 | HookPoint | 常量 | 触发时机 |
 |-----------|------|----------|
@@ -1336,4 +1339,4 @@ Operator 会自动创建 ConfigMap、Deployment、Service 和 HPA 资源，详�
 ### 依赖变更
 
 - Go 版本要求：1.22 → **1.26+**
-- 外部依赖：仅 `modernc.org/sqlite` + `gopkg.in/yaml.v3`（纯 Go，无需 CGO）
+- 外部依赖：核心路径零第三方依赖（纯 Go SQLite 驱动 modernc.org/sqlite）；受限第三方依赖（gRPC/etcd/redis/wazero 等，均有 build tag 或模块边界）见 [AGENTS.md](AGENTS.md) §2.1
