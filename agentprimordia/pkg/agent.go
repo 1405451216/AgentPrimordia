@@ -31,7 +31,7 @@
 //	              文件内未导出符号默认属于此等级。
 //
 // 用户应使用 `go doc` 或 IDE 悬浮提示查看每个 export 的稳定性等级。
-// 详细治理策略见 agentprimordia/docs/VERSIONING.md（兼容性承诺与废弃策略）。
+// 详细治理策略见 agentprimordia/docs/版本规范.md（兼容性承诺与废弃策略）。
 package ap
 
 import (
@@ -651,7 +651,7 @@ var NewConfigLoader = config.New
 // ===== 版本与通用类型 =====
 
 // Version 是 AgentPrimordia 框架的当前版本号
-// 与 VERSIONING.md 和 Release Notes 保持一致（当前 6.0.0）
+// 与 版本规范.md 和 Release Notes 保持一致（当前 6.0.0）
 const Version = "6.0.0"
 
 // Metadata 是消息的元数据，包含时间戳、跟踪 ID 和扩展键值对

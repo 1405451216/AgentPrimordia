@@ -1,6 +1,6 @@
 // hnsw-recall.test.ts — v5.1 检索质量革命：双实现 recall@10 量化门（V6-ROADMAP §三 任务 2）
 //
-// 验收标准（V6-ROADMAP.md 铁律 4）：
+// 验收标准（V6路线图.md 铁律 4）：
 //   - 双线（VectorStore / HNSW）recall@10 ≥ 0.95
 //   - 数据集规模 300 / 1000 / 3000 三档，固定种子可复现
 //   - 聚类高斯分布模拟真实 embedding 数据（10 个簇心）

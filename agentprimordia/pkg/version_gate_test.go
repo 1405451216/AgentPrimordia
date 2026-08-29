@@ -47,16 +47,16 @@ func TestVersionDefinedAndValid(t *testing.T) {
 	}
 }
 
-// TestVersionMatchesVERSIONING 校验 VERSIONING.md 版本表与 const Version 一致。
+// TestVersionMatchesVERSIONING 校验 版本规范.md 版本表与 const Version 一致。
 // 版本漂移会导致 release 打错 tag，属于发布纪律问题。
 func TestVersionMatchesVERSIONING(t *testing.T) {
-	path := "../docs/VERSIONING.md"
+	path := "../docs/版本规范.md"
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Skipf("跳过（无法读取 %s）: %v", path, err)
 	}
 	content := string(data)
 	if !strings.Contains(content, "当前版本：`"+Version+"`") {
-		t.Errorf("docs/VERSIONING.md 的「当前版本」应为 %q（与 pkg/agent.go const Version 一致）", Version)
+		t.Errorf("docs/版本规范.md 的「当前版本」应为 %q（与 pkg/agent.go const Version 一致）", Version)
 	}
 }

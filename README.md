@@ -7,7 +7,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Go%20Parity-3178C6.svg)](sdk/typescript/)
-[![Version](https://img.shields.io/badge/version-6.0.0-2ea44f.svg)](docs/ROADMAP.md)
+[![Version](https://img.shields.io/badge/version-6.0.0-2ea44f.svg)](docs/路线图.md)
 
 <p align="center">
   <img src="agentprimordia/docs/ap-architecture.png" alt="Architecture" width="85%">
@@ -35,7 +35,7 @@
 
 ## v6.0.0 Highlights — 大成（v5.1 → v6.0 全弧线收官）
 
-> 2026-08-21：认知引擎架构进化、记忆认知化、自进化闭环、组织智能与契约重锁，详见 [docs/V6-ROADMAP.md](docs/V6-ROADMAP.md) 与 [docs/RELEASE-NOTES-v6.0.0.md](docs/RELEASE-NOTES-v6.0.0.md)。深度复测加权总评 ≈9.0/10。
+> 2026-08-21：认知引擎架构进化、记忆认知化、自进化闭环、组织智能与契约重锁，详见 [docs/V6路线图.md](docs/V6路线图.md) 与 [docs/发布说明-v6.0.0.md](docs/发布说明-v6.0.0.md)。深度复测加权总评 ≈9.0/10。
 
 - **v5.1 优化**：质量四件套（召回/成功率/P95/成本）进回归门；检索质量革命 recall@10 双线 1.0；上下文压缩 P95 -67%；评估集 60→160 条
 - **v5.2 进化·壹**：Strategy 抽象 + 三策略热切换（ReAct / Plan-Execute-Reflect / 验证循环）；Verifier 一等公民；自适应思考深度；计划级 checkpoint
@@ -46,7 +46,7 @@
 
 ## v5.0.0 Highlights — 均衡混排弧线收官（v4.1 → v5.0）
 
-> 2026-08-10：10 个版本全部落地（奇数深化 / 偶数稳定），详见 [docs/V5-ROADMAP.md](docs/V5-ROADMAP.md)。
+> 2026-08-10：10 个版本全部落地（奇数深化 / 偶数稳定），详见 [docs/V5路线图.md](docs/V5路线图.md)。
 
 - **真实接线**：真实 ASR/TTS 适配器（OpenAI 兼容 + 本地 faster-whisper/Piper 免 key）、CLI 一键语音、`ProviderFromEnv` 环境驱动真实 LLM、Studio 面板真实引擎数据
 - **不塌**：Soak/并发/故障注入量化验收（恢复率 1.0、集群 kill-1 degradation 0、Pool×autonomy 100 并发持平）
@@ -85,7 +85,7 @@ v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成
 | v3.9 | 生态 | 市场 + Studio + 文档站 | ✅ 4/4 |
 | v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 | ✅ 5/5 |
 
-> 详细路线见 [docs/ROADMAP.md](docs/ROADMAP.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v6.0.0；v5.1–v6.0 弧线详情见 [docs/V6-ROADMAP.md](docs/V6-ROADMAP.md)）。
+> 详细路线见 [docs/路线图.md](docs/路线图.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v6.0.0；v5.1–v6.0 弧线详情见 [docs/V6路线图.md](docs/V6路线图.md)）。
 
 ## v3.2.0 Highlights — 架构解耦与双语言对齐
 
@@ -150,7 +150,7 @@ v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成
 - **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试
 - **`testutil` 测试包** — `MockProvider` + `NewTestAgent()`，无需手写 40 行 Mock
 - **向后兼容** — Stable API 向后兼容，链式 API 仍可用
-- **版本统一** — Go SDK / CLI / TypeScript SDK 全局对齐 v1.0.0；API 稳定性承诺锁定（详见 [VERSIONING.md](agentprimordia/docs/VERSIONING.md)）
+- **版本统一** — Go SDK / CLI / TypeScript SDK 全局对齐 v1.0.0；API 稳定性承诺锁定（详见 [版本规范.md](agentprimordia/docs/版本规范.md)）
 
 ## v0.7.0 Highlights
 
@@ -680,15 +680,15 @@ golangci-lint run
 ## 文档
 
 - [CHANGELOG](docs/CHANGELOG.md)
-- [版本策略与兼容性承诺](agentprimordia/docs/VERSIONING.md)
-- [v2.0.0 发布说明](docs/RELEASE-NOTES-v2.0.0.md)
-- [v1.0.0 发布说明](docs/RELEASE-NOTES-v1.0.0.md)
-- [v0.8.0 发布说明](docs/RELEASE-NOTES-v0.8.0.md)
-- [v0.7.0 发布说明](docs/RELEASE-NOTES-v0.7.0.md)
-- [v0.2.0 发布说明](docs/RELEASE-NOTES-v0.2.0.md)
-- [v0.1.0 发布说明](docs/RELEASE-NOTES-v0.1.0.md)
-- [架构图](docs/architecture-mermaid.md)
-- [API 完整参考](docs/api-reference.md)
+- [版本策略与兼容性承诺](agentprimordia/docs/版本规范.md)
+- [v2.0.0 发布说明](docs/发布说明-v2.0.0.md)
+- [v1.0.0 发布说明](docs/发布说明-v1.0.0.md)
+- [v0.8.0 发布说明](docs/发布说明-v0.8.0.md)
+- [v0.7.0 发布说明](docs/发布说明-v0.7.0.md)
+- [v0.2.0 发布说明](docs/发布说明-v0.2.0.md)
+- [v0.1.0 发布说明](docs/发布说明-v0.1.0.md)
+- [架构图](docs/架构图.md)
+- [API 完整参考](docs/API参考.md)
 - [TypeScript SDK 文档](sdk/typescript/README.md)
 - [TypeScript API 参考](sdk/typescript/docs/api/index.md)
 - [开发文档](agentprimordia/DEVELOPMENT.md)
@@ -700,7 +700,7 @@ golangci-lint run
 - [Cookbook: 客服机器人](agentprimordia/ecosystem/docs/cookbook/customer-support-bot.md)
 - [Cookbook: 代码审查 Agent](agentprimordia/ecosystem/docs/cookbook/code-review-agent.md)
 - [Cookbook: 数据分析 Agent](agentprimordia/ecosystem/docs/cookbook/data-analysis-agent.md)
-- [Cookbook: RAG Agent](agentprimordia/ecosystem/docs/cookbook/rag-agent.md)
+- [Cookbook: RAG Agent](agentprimordia/ecosystem/docs/cookbook/RAG-Agent.md)
 - [v0 → v1 迁移指南](agentprimordia/ecosystem/docs/migration/v0-deprecations.md)
 - [Go 生态概览](agentprimordia/ecosystem/docs/go-ecosystem.md)
 - [贡献 Provider](agentprimordia/ecosystem/contributing/PROVIDER.md)

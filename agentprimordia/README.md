@@ -44,7 +44,7 @@
 | v3.5 | 协议互操作 | 对齐开放 Agent2Agent 协议，跨生态任务委托 + 符合性报告 | `ap a2a interop-check` |
 | v3.6 | 多模态实时 | 语音/视觉实时双向流 + 打断，ASR/TTS 可插拔 | `ap realtime` |
 
-> 详见 [`docs/V4-ROADMAP.md`](../docs/V4-ROADMAP.md)，模块概念 `docs/concepts/{autonomy,skills,realtime}.md`，使用指南 `docs/guides/{skill-format,a2a-interop,realtime}.md`。
+> 详见 [`docs/V4路线图.md`](../docs/V4路线图.md)，模块概念 `docs/concepts/{autonomy,skills,realtime}.md`，使用指南 `docs/guides/{skill-format,a2a-interop,realtime}.md`。
 
 ---
 
@@ -119,7 +119,7 @@ func main() {
 
 **设计原则**：接口驱动 · 组合优于继承 · 弹性优先 · 零 CGO · 协议式微内核（能力经 `*Capable` 接口自动发现）。
 
-> 分层详解与 ReAct 数据流见 [docs/architecture-mermaid.md](../docs/architecture-mermaid.md) 与 [docs/concepts/react-loop.md](docs/concepts/react-loop.md)。
+> 分层详解与 ReAct 数据流见 [docs/架构图.md](../docs/架构图.md) 与 [docs/concepts/react-loop.md](docs/concepts/ReAct循环.md)。
 
 ---
 
@@ -181,13 +181,13 @@ go run ./ecosystem/examples/realtime-voice/    # v3.6 语音多轮 + 打断
 
 ## 📚 文档
 
-- **入门** — [getting-started/](docs/getting-started/) · [guides/create-agent.md](docs/guides/create-agent.md)
-- **概念** — [concepts/](docs/concepts/)（react-loop / memory / orchestration / tools / [autonomy](docs/concepts/autonomy.md) / [skills](docs/concepts/skills.md) / [realtime](docs/concepts/realtime.md) / [a2a](docs/concepts/a2a.md)）
-- **指南** — [guides/](docs/guides/)（[skill-format](docs/guides/skill-format.md) · [a2a-interop](docs/guides/a2a-interop.md) · [realtime](docs/guides/realtime.md) · 部署 · 安全 · 性能）
+- **入门** — [getting-started/](docs/getting-started/) · [guides/create-agent.md](docs/guides/创建Agent.md)
+- **概念** — [concepts/](docs/concepts/)（react-loop / memory / orchestration / tools / [autonomy](docs/concepts/自治.md) / [skills](docs/concepts/技能系统.md) / [realtime](docs/concepts/实时通信.md) / [a2a](docs/concepts/A2A通信.md)）
+- **指南** — [guides/](docs/guides/)（[skill-format](docs/guides/技能格式.md) · [a2a-interop](docs/guides/A2A互通.md) · [realtime](docs/guides/实时通信.md) · 部署 · 安全 · 性能）
 - **API 参考** — [docs/api/](docs/api/) · [docs/api-reference/](docs/api-reference/)
 - ** cookbook** — [docs/cookbook/](docs/cookbook/)（RAG / 多 Agent / 代码审查机器人 / K8s 部署 / WASM 沙箱 …）
-- **路线图与变更** — [V4-ROADMAP.md](../docs/V4-ROADMAP.md) · [ROADMAP.md](../docs/ROADMAP.md) · [CHANGELOG.md](../docs/CHANGELOG.md)
-- **性能与部署** — [benchmarks/](docs/benchmarks/) · [DEPLOYMENT.md](../docs/DEPLOYMENT.md) · [DEVELOPMENT.md](./DEVELOPMENT.md)
+- **路线图与变更** — [V4路线图.md](../docs/V4路线图.md) · [ROADMAP.md](../docs/路线图.md) · [CHANGELOG.md](../docs/CHANGELOG.md)
+- **性能与部署** — [benchmarks/](docs/benchmarks/) · [DEPLOYMENT.md](../docs/部署指南.md) · [DEVELOPMENT.md](./DEVELOPMENT.md)
 
 ---
 

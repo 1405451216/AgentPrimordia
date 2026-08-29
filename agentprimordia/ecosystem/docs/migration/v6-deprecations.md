@@ -52,4 +52,4 @@
 
 - v6 契约基线 = 本文件发布时 `api-contract.json` 快照；此后任何公共导出变更走 SemVer 主版本流程
 - TS 侧契约由 `cross-language-api-check.mjs`（20 套件）与 `version-sync-check.mjs` 守护
-- Go 侧由 stability 双门（Stable↔VERSIONING.md 自动比对 + deprecation 残留门）守护
+- Go 侧由 stability 双门（Stable↔版本规范.md 自动比对 + deprecation 残留门）守护

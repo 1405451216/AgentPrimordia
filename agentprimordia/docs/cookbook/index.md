@@ -6,17 +6,17 @@
 
 | 菜谱 | 描述 | 涉及组件 |
 |------|------|----------|
-| [RAG Agent](./rag-agent.md) | 构建带知识检索的 Agent | Memory(RAG)、Tools(web)、LLM |
-| [多 Agent 协作](./multi-agent-collab.md) | 用 Handoff 模式编排多 Agent | Orchestration、Pool |
-| [代码审查 Bot](./code-review-bot.md) | 自动审查 GitHub PR | Tools(filesystem,shell,web)、MCP |
-| [客服 Agent](./customer-support.md) | 接入向量数据库的客服机器人 | Memory(vector)、RAG、Guardrail |
-| [数据分析 Agent](./data-analysis.md) | 从 CSV 到洞察的端到端流程 | Tools(filesystem,database) |
-| [自定义 Provider](./custom-provider.md) | 接入非内置 LLM | LLM Provider 接口 |
-| [自定义工具](./custom-tool.md) | 实现 ap.Tool 接口 | Tools 系统、Sandbox |
-| [K8s 部署](./k8s-deployment.md) | 用 Operator 部署 AgentPool | Operator、Pool、Metrics |
-| [混沌工程实验](./chaos-engineering.md) | 故障注入验证系统韧性 | Chaos Engine、LLM Faults、Soak |
-| [WASM 沙箱执行](./wasm-sandbox.md) | 安全执行第三方工具代码 | WASM Runtime、VirtualFS、WASI |
-| [集群协调部署](./cluster-coordination.md) | 多节点 Agent 集群部署 | Cluster、ConsistentHash、Election |
+| [RAG Agent](./RAG-Agent.md) | 构建带知识检索的 Agent | Memory(RAG)、Tools(web)、LLM |
+| [多 Agent 协作](./多Agent协作.md) | 用 Handoff 模式编排多 Agent | Orchestration、Pool |
+| [代码审查 Bot](./代码审查Bot.md) | 自动审查 GitHub PR | Tools(filesystem,shell,web)、MCP |
+| [客服 Agent](./客服Agent.md) | 接入向量数据库的客服机器人 | Memory(vector)、RAG、Guardrail |
+| [数据分析 Agent](./数据分析Agent.md) | 从 CSV 到洞察的端到端流程 | Tools(filesystem,database) |
+| [自定义 Provider](./自定义Provider.md) | 接入非内置 LLM | LLM Provider 接口 |
+| [自定义工具](./自定义工具.md) | 实现 ap.Tool 接口 | Tools 系统、Sandbox |
+| [K8s 部署](./K8s部署.md) | 用 Operator 部署 AgentPool | Operator、Pool、Metrics |
+| [混沌工程实验](./混沌工程.md) | 故障注入验证系统韧性 | Chaos Engine、LLM Faults、Soak |
+| [WASM 沙箱执行](./WASM沙箱.md) | 安全执行第三方工具代码 | WASM Runtime、VirtualFS、WASI |
+| [集群协调部署](./集群协调.md) | 多节点 Agent 集群部署 | Cluster、ConsistentHash、Election |
 
 ## 如何阅读
 

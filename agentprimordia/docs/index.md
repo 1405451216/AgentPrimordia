@@ -141,7 +141,7 @@ ap run
 | 并发吞吐 | 852 req/s | 98 req/s | **8.7x** |
 | 部署体积 | 15MB | 280MB | **18x** |
 
-详细性能报告：[Go vs TypeScript 基准对比](benchmarks/go-vs-typescript.md)
+详细性能报告：[Go vs TypeScript 基准对比](benchmarks/Go与TypeScript对比.md)
 
 ## 架构
 
@@ -203,7 +203,7 @@ ap completion bash                              # 生成 Shell 补全脚本
 ## A2A 协议（默认 gRPC）
 
 自 v1.x 起 **gRPC 是 A2A 的默认且唯一传输**（序列化延迟更低、消息体积更小、内建拦截器链）。
-JSON-RPC over HTTP 兼容层已于 **v4.0.0 移除**（见 VERSIONING.md「已移除记录」）；
+JSON-RPC over HTTP 兼容层已于 **v4.0.0 移除**（见 版本规范.md「已移除记录」）；
 开放 Agent2Agent 协议互操作（JSON-RPC over HTTP/SSE 承载开放协议）见 `pkg/a2a_interop.go`。
 
 === "Go（推荐 gRPC）"
@@ -233,13 +233,13 @@ JSON-RPC over HTTP 兼容层已于 **v4.0.0 移除**（见 VERSIONING.md「已�
 
 | 类别 | 内容 |
 |------|------|
-| **快速开始** | [安装](getting-started/installation.md) · [入门](getting-started/quickstart.md) · [第一个Agent](getting-started/first-agent.md) |
-| **核心概念** | [Agent架构](concepts/agent.md) · [ReAct循环](concepts/react-loop.md) · [工具系统](concepts/tools.md) · [记忆系统](concepts/memory.md) · [RAG](concepts/rag.md) · [编排](concepts/orchestration.md) · [A2A](concepts/a2a.md) · [护栏](concepts/guardrail.md) |
-| **使用指南** | [创建Agent](guides/create-agent.md) · [添加工具](guides/add-tools.md) · [并发调度](guides/pool.md) · [流式输出](guides/streaming.md) · [多模态](guides/multimodal.md) · [部署](guides/deployment.md) |
-| **API参考** | [Agent](api/agent.md) · [LLM](api/llm.md) · [Tools](api/tools.md) · [Memory](api/memory.md) · [Pool](api/pool.md) · [A2A](api/a2a.md) |
-| **进阶主题** | [性能优化](advanced/performance.md) · [PGO调优](advanced/pgo.md) · [安全](advanced/security.md) · [供应链安全](advanced/supply-chain-security.md) · [Debugger](advanced/debugger.md) · [Metrics](advanced/metrics.md) · [OTel](advanced/otel.md) |
-| **基准测试** | [Go vs TypeScript](benchmarks/go-vs-typescript.md) · [性能对比](benchmarks/performance-comparison-2026.md) |
-| **实施进度** | [STATUS 总览](STATUS.md) · [VERSIONING](VERSIONING.md) · [路线图](../../docs/ROADMAP.md) |
+| **快速开始** | [安装](getting-started/安装指南.md) · [入门](getting-started/五分钟入门.md) · [第一个Agent](getting-started/第一个Agent.md) |
+| **核心概念** | [Agent架构](concepts/Agent架构.md) · [ReAct循环](concepts/ReAct循环.md) · [工具系统](concepts/工具系统.md) · [记忆系统](concepts/记忆系统.md) · [RAG](concepts/RAG检索增强.md) · [编排](concepts/多Agent编排.md) · [A2A](concepts/A2A通信.md) · [护栏](concepts/安全护栏.md) |
+| **使用指南** | [创建Agent](guides/创建Agent.md) · [添加工具](guides/添加工具.md) · [并发调度](guides/并发调度.md) · [流式输出](guides/流式输出.md) · [多模态](guides/多模态.md) · [部署](guides/部署到生产.md) |
+| **API参考** | [Agent](api/Agent-API.md) · [LLM](api/LLM-API.md) · [Tools](api/Tools-API.md) · [Memory](api/Memory-API.md) · [Pool](api/Pool-API.md) · [A2A](api/A2A-API.md) |
+| **进阶主题** | [性能优化](advanced/性能优化.md) · [PGO调优](advanced/PGO调优.md) · [安全](advanced/安全最佳实践.md) · [供应链安全](advanced/供应链安全.md) · [Debugger](advanced/调试器.md) · [Metrics](advanced/指标.md) · [OTel](advanced/OpenTelemetry.md) |
+| **基准测试** | [Go vs TypeScript](benchmarks/Go与TypeScript对比.md) · [性能对比](benchmarks/性能对比-2026.md) |
+| **实施进度** | [STATUS 总览](项目状态.md) · [VERSIONING](版本规范.md) · [路线图](../../docs/路线图.md) |
 
 ## 社区
 

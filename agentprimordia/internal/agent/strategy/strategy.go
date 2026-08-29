@@ -2,7 +2,7 @@
 //
 // 从「单一 ReAct 循环」到「策略即一等公民」——推理策略可插拔、可运行时
 // 热切换、可 A/B 对照。本包为新增式隔离层：通过 Engine 原语接口消费底层
-// 能力，零改动 react_loop 热路径（回滚 = 移除包引用，见 docs/v5.2-refactor-risk-review.md）。
+// 能力，零改动 react_loop 热路径（回滚 = 移除包引用，见 docs/v5.2重构风险评审.md）。
 package strategy
 
 import (

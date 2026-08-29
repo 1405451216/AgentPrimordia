@@ -130,7 +130,7 @@ data/
 // 版本（SIV）规则，require 行不允许出现 v2+ 版本（tidy 直接报 invalid version）。
 // 在框架采用 agentprimordia/vN 路径或回落 v1.x 标签之前，replace 场景一律使用
 // v0.0.0 占位（replace 后版本号不参与解析）；standalone 场景由调用方提示补 replace。
-// 详见 agentprimordia/docs/VERSIONING.md「模块消费与语义化导入版本限制」。
+// 详见 agentprimordia/docs/版本规范.md「模块消费与语义化导入版本限制」。
 const apRequirePlaceholder = "v0.0.0"
 
 // buildGoMod 生成脚手架项目的 go.mod 内容。

@@ -257,7 +257,7 @@ func pluginCreate(args []string) error {
 		return fmt.Errorf("write go.mod failed: %w", err)
 	}
 	if standalone {
-		infof("提示：未检测到本地框架源码。受 Go 语义化导入版本限制，框架 v2+ 标签暂不可经 GOPROXY require；请手动在 go.mod 添加 replace agentprimordia => <框架源码目录>（详见 docs/VERSIONING.md）")
+		infof("提示：未检测到本地框架源码。受 Go 语义化导入版本限制，框架 v2+ 标签暂不可经 GOPROXY require；请手动在 go.mod 添加 replace agentprimordia => <框架源码目录>（详见 docs/版本规范.md）")
 	} else if findGoWorkUp(".") {
 		infof("提示：检测到上级 go.work。若在仓库内构建本项目，请将其加入 go.work 的 use 列表，或以 GOWORK=off 构建（replace 已指向本地框架与 pgvector）")
 	}

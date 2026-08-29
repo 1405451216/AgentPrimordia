@@ -1,7 +1,7 @@
 // Package ap — 认知引擎策略内核公共 API 导出（v5.2）。
 //
 // 策略驱动的认知内核：ReAct / Plan-Execute-Reflect / 验证循环可插拔热切换。
-// 详见 docs/v5.2-refactor-risk-review.md 的接口冻结点承诺。
+// 详见 docs/v5.2重构风险评审.md 的接口冻结点承诺。
 package ap
 
 import (

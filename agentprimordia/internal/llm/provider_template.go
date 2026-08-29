@@ -23,7 +23,7 @@
 // 防止任何生态代码或示例误把模板当真 Provider 用 —— 运行时才
 // 暴露 "TODO: 未实现" 太晚，启动期拒绝能更早发现问题。
 //
-// 误用防护设计参考 agentprimordia/docs/VERSIONING.md 的兼容性承诺与
+// 误用防护设计参考 agentprimordia/docs/版本规范.md 的兼容性承诺与
 // Experimental API 定义。
 package llm
 

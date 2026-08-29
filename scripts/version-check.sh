@@ -4,7 +4,7 @@
 # 检查以下三处版本定义是否一致：
 #   1. agentprimordia/pkg/agent.go    — const Version = "x.y.z"
 #   2. sdk/typescript/package.json    — "version": "x.y.z"
-#   3. agentprimordia/docs/VERSIONING.md — 版本表中 Go SDK 行
+#   3. agentprimordia/docs/版本规范.md — 版本表中 Go SDK 行
 #
 # 规则：
 #   - Go 版本 与 Docs 版本必须完全一致
@@ -19,7 +19,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 GO_FILE="${REPO_ROOT}/agentprimordia/pkg/agent.go"
 TS_FILE="${REPO_ROOT}/sdk/typescript/package.json"
-DOC_FILE="${REPO_ROOT}/agentprimordia/docs/VERSIONING.md"
+DOC_FILE="${REPO_ROOT}/agentprimordia/docs/版本规范.md"
 
 ERRORS=0
 
@@ -63,9 +63,9 @@ echo "========================================"
 echo ""
 echo "  Go SDK (pkg/agent.go):       ${GO_VERSION}"
 echo "  TS SDK (package.json):       ${TS_VERSION}"
-echo "  Docs Go SDK (VERSIONING.md): ${DOC_GO_VERSION}"
+echo "  Docs Go SDK (版本规范.md): ${DOC_GO_VERSION}"
 if [ -n "$DOC_TS_VERSION" ]; then
-  echo "  Docs TS SDK (VERSIONING.md): ${DOC_TS_VERSION}"
+  echo "  Docs TS SDK (版本规范.md): ${DOC_TS_VERSION}"
 fi
 echo ""
 
@@ -90,11 +90,11 @@ FAIL=0
 
 # 检查 1: Go 版本 vs Docs Go 版本
 if [ "$GO_VERSION" != "$DOC_GO_VERSION" ]; then
-  echo "::error::Go 版本 (${GO_VERSION}) 与 VERSIONING.md 中 Go SDK 版本 (${DOC_GO_VERSION}) 不一致"
-  echo "  请更新 agentprimordia/docs/VERSIONING.md 版本表中的 Go SDK 行"
+  echo "::error::Go 版本 (${GO_VERSION}) 与 版本规范.md 中 Go SDK 版本 (${DOC_GO_VERSION}) 不一致"
+  echo "  请更新 agentprimordia/docs/版本规范.md 版本表中的 Go SDK 行"
   FAIL=1
 else
-  echo "OK: Go 版本与 VERSIONING.md 一致 (${GO_VERSION})"
+  echo "OK: Go 版本与 版本规范.md 一致 (${GO_VERSION})"
 fi
 
 # 检查 2: TS 基础版本 vs Go 版本
@@ -126,7 +126,7 @@ if [ -n "$DOC_TS_VERSION" ]; then
   if [ "$TS_BASE" != "$DOC_TS_VERSION" ]; then
     TS_DOC_MM=$(major_minor "$DOC_TS_VERSION")
     if [ "$TS_MM" != "$TS_DOC_MM" ]; then
-      echo "::error::package.json TS 版本 (${TS_BASE}) 与 VERSIONING.md 中 TS SDK 版本 (${DOC_TS_VERSION}) 的 major.minor 不匹配"
+      echo "::error::package.json TS 版本 (${TS_BASE}) 与 版本规范.md 中 TS SDK 版本 (${DOC_TS_VERSION}) 的 major.minor 不匹配"
       FAIL=1
     else
       echo "WARN: Docs 中 TS 版本 (${DOC_TS_VERSION}) 与 package.json (${TS_BASE}) patch 不一致"
@@ -142,7 +142,7 @@ if [ "$FAIL" -eq 1 ]; then
   echo "::error::版本一致性检查失败！请确保以下三处版本保持同步："
   echo "  1. agentprimordia/pkg/agent.go          — const Version"
   echo "  2. sdk/typescript/package.json           — \"version\""
-  echo "  3. agentprimordia/docs/VERSIONING.md     — 版本表"
+  echo "  3. agentprimordia/docs/版本规范.md     — 版本表"
   exit 1
 fi
 

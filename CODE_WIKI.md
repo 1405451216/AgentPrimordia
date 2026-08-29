@@ -4,7 +4,7 @@
 
 **版本**: v6.0.0（截至 v6.0.0 全弧线已实现） | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
 
-> 注：本 Wiki 主体成文于 v3.6 时期。v5.1–v6.0 新增能力（策略自适应、记忆固化、组织智能、自进化反馈、自举季度曲线）未在此展开，详见 [docs/V6-ROADMAP.md](docs/V6-ROADMAP.md)。
+> 注：本 Wiki 主体成文于 v3.6 时期。v5.1–v6.0 新增能力（策略自适应、记忆固化、组织智能、自进化反馈、自举季度曲线）未在此展开，详见 [docs/V6路线图.md](docs/V6路线图.md)。
 
 ---
 
@@ -1399,7 +1399,7 @@ ChaosEngine.Run()
 | `IdempotencyGuard` | `idempotency.go` | 幂等键保护（goalID→keys 精确重置） |
 | `AutonomyRuntime` | `runtime.go` | 端到端装配 |
 
-**目标状态机：** `created → planned → executing → validated → done`；非终态可转 `failed`；`validated` 可回 `executing` 重规划；`failed` 可回 `planned` 重试。能力注入 `WithAutonomy(...)`，引擎经 `AutonomyCapable` 发现。详见 [concepts/autonomy](agentprimordia/docs/concepts/autonomy.md)。
+**目标状态机：** `created → planned → executing → validated → done`；非终态可转 `failed`；`validated` 可回 `executing` 重规划；`failed` 可回 `planned` 重试。能力注入 `WithAutonomy(...)`，引擎经 `AutonomyCapable` 发现。详见 [concepts/autonomy](agentprimordia/docs/concepts/自治.md)。
 
 ---
 
@@ -1424,7 +1424,7 @@ ChaosEngine.Run()
 | `Store` / `Matcher` | `store.go` / `matcher.go` | 技能库存取 + 语义匹配（置信度三档） |
 | `UsageTracker` | `usage.go` | 命中率/成功率/成本统计 |
 
-**跨组件集成：** 技能 × 工具/学习/市场/自治/RAG（`integration.go`）。能力注入 `WithSkills(...)`，引擎经 `SkillsCapable` 发现。详见 [concepts/skills](agentprimordia/docs/concepts/skills.md)。
+**跨组件集成：** 技能 × 工具/学习/市场/自治/RAG（`integration.go`）。能力注入 `WithSkills(...)`，引擎经 `SkillsCapable` 发现。详见 [concepts/skills](agentprimordia/docs/concepts/技能系统.md)。
 
 ---
 
@@ -1449,7 +1449,7 @@ ChaosEngine.Run()
 | `CleanupManager` | `cleanup.go` | 空闲超时关闭 + 资源回收 |
 | `Runtime` | `runtime.go` | Hub+感知流+事件+清理+ReAct 桥接装配 |
 
-**跨组件集成：** 实时 × 多模态/边缘/自治/守卫/A2A（`integration.go`）。能力注入 `WithRealtime(...)`，引擎经 `RealtimeCapable` 发现。详见 [concepts/realtime](agentprimordia/docs/concepts/realtime.md)。
+**跨组件集成：** 实时 × 多模态/边缘/自治/守卫/A2A（`integration.go`）。能力注入 `WithRealtime(...)`，引擎经 `RealtimeCapable` 发现。详见 [concepts/realtime](agentprimordia/docs/concepts/实时通信.md)。
 
 ---
 
@@ -1960,9 +1960,9 @@ BenchmarkToolCall-8          200     6.2 ms/op     512 B/op     8 allocs/op
 | **TokenCache** | `internal/agent/tokencache.go` | FNV-1a hash + `sync.Map` 的 token 估算缓存，面向长文档 chunk 和重复消息场景 |
 | **JSON Buffer Pool** | `internal/jsonutil/pool.go` | JSON 序列化/反序列化的 buffer 复用池 |
 | **pprof 端点** | `internal/health/pprof.go` | `ap.RegisterPProf(mux)` 和 `ap.PProfHandler()` 导出至 `pkg/`，支持所有标准 profile 类型 |
-| **PGO** | `docs/advanced/pgo.md` | Profile-Guided Optimization 使用指南 |
+| **PGO** | `docs/advanced/PGO调优.md` | Profile-Guided Optimization 使用指南 |
 | **Fuzz 测试** | `internal/security/`, `internal/memory/`, `internal/tools/` | Sandbox 路径遍历、RAG 检索、工具执行器安全模糊测试 |
-| **供应链安全** | `docs/advanced/supply-chain-security.md` | govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成 |
+| **供应链安全** | `docs/advanced/供应链安全.md` | govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成 |
 
 ---
 
@@ -2432,8 +2432,8 @@ agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
 |------|------|------|
 | Code Wiki | `CODE_WIKI.md` | 完整代码文档（22 章节，4.1–4.30 模块详解） |
 | CHANGELOG | `docs/CHANGELOG.md` | 变更日志 |
-| v2.0.0 发布说明 | `docs/RELEASE-NOTES-v2.0.0.md` | 生产就绪里程碑 |
-| v1.0.0 发布说明 | `docs/RELEASE-NOTES-v1.0.0.md` | API 稳定性锁定 |
+| v2.0.0 发布说明 | `docs/发布说明-v2.0.0.md` | 生产就绪里程碑 |
+| v1.0.0 发布说明 | `docs/发布说明-v1.0.0.md` | API 稳定性锁定 |
 | 开发文档 | `DEVELOPMENT.md` | 开发者指南 |
 | 快速入门 | `ecosystem/docs/getting-started.md` | 5 分钟上手 |
 | API 参考 | `ecosystem/docs/api-reference.md` | 完整 API 文档 |
@@ -2442,9 +2442,9 @@ agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
 | Go 生态 | `ecosystem/docs/go-ecosystem.md` | Go 生态集成 |
 | 向量库指南 | `ecosystem/docs/vector-db-guide.md` | 向量数据库集成 |
 | Cookbook | `ecosystem/docs/cookbook/` | 实战菜谱 |
-| 供应链安全 | `docs/advanced/supply-chain-security.md` | govulncheck + Trivy + cosign 签名 + SBOM |
-| PGO 性能调优 | `docs/advanced/pgo.md` | Profile-Guided Optimization 指南 |
-| Go vs TypeScript 基准 | `docs/benchmarks/go-vs-typescript.md` | 双 SDK 性能对比报告 |
+| 供应链安全 | `docs/advanced/供应链安全.md` | govulncheck + Trivy + cosign 签名 + SBOM |
+| PGO 性能调优 | `docs/advanced/PGO调优.md` | Profile-Guided Optimization 指南 |
+| Go vs TypeScript 基准 | `docs/benchmarks/Go与TypeScript对比.md` | 双 SDK 性能对比报告 |
 
 ### 贡献指南
 

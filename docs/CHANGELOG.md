@@ -8,7 +8,7 @@
 
 - **pgvector 依赖链断裂**：根模块的 `replace agentprimordia/pgvector => ../pgvector` 不具传递性，`ap init` / `ap plugin create` 生成的独立子项目经 pkg → internal/memory → pgvector 引用链解析失败，`go mod tidy` 直接报错（workspace 模式掩盖了该问题，独立构建必现）
 - 修复：脚手架统一走 `buildGoMod`——向上探测框架模块后 emit 相对路径 replace 并连带 pgvector 的 require+replace；standalone 场景不再 emit 失效 replace 并打印指引
-- **版本声明过时**：模板 `go 1.23` → `go 1.26`（对齐框架要求）、`agentprimordia v1.0.0` → SIV 合法占位版本（无 `/vN` 后缀路径不允许 require v2+，详见 VERSIONING.md「模块消费与语义化导入版本限制」）
+- **版本声明过时**：模板 `go 1.23` → `go 1.26`（对齐框架要求）、`agentprimordia v1.0.0` → SIV 合法占位版本（无 `/vN` 后缀路径不允许 require v2+，详见 版本规范.md「模块消费与语义化导入版本限制」）
 - E2E 验证：init → go mod tidy → go build 全链路通过（GOWORK=off 独立构建）；新增 gomod_template_test.go 锁定行为
 
 ## [6.0.0] - 2026-08-21
@@ -21,7 +21,7 @@
 - **v5.4 自进化闭环**：结果反馈回路（Outcome→画像/失败库双写→三层规则建议→人工批准→应用，`internal/agent/learning/feedback.go`）；技能合成打通 skills.Acquire 验签链路；自改进安全边界（code 层沙箱永久拒绝 `ErrImprovementScopeViolation`）；受控自进化实验 6 轮×20 任务成功率 0.25→1.00 零回归；**自举季度曲线制度**（`internal/self_bootstrap/quarterly.go`：RunQuarterly 自举组 vs base 冻结对照组 + 季度回归门 CompareQuarters + bench/results 落盘，首期 2026-Q3：自举 0.33→1.00 vs base 平坦 0.33、缺陷修复率 1.0）
 - **v5.5 组织智能**：共享记忆黑板（directive/claim/result/observation 全轨迹 + 认领租约）、涌现分工路由（历史成功率数据驱动 + 探索机制）、组织级调度闭环（`internal/multi_agent/organization.go`）；规模翻倍基准 4→8 人成功率 0.463→0.825 无退化
 - **v6.0 大成**：strategy API Experimental→Stable 转正（stability 双门 + VERSIONING 登记）；deprecation 残留门 0 残留；v6 迁移指南发布（`ecosystem/docs/migration/v6-deprecations.md`）；契约基线冻结
-- **深度复测报告**：`docs/PROJECT-EVALUATION-RETEST-v6.0.md`——加权总评 ≈9.0/10（≥9.0 达标），核心分项引擎 9.5 / 评估 9.0 / 性能 9.0 全部 ≥9.0
+- **深度复测报告**：`docs/项目复测报告-v6.0.md`——加权总评 ≈9.0/10（≥9.0 达标），核心分项引擎 9.5 / 评估 9.0 / 性能 9.0 全部 ≥9.0
 
 ### Fixed — v6.0 复测期间门禁捕获的双线欠账
 
@@ -62,7 +62,7 @@
 
 ### Added — 深度评估报告（2026-08-09）
 
-- 新增 `agentprimordia/docs/PROJECT-EVALUATION-2026-08-09.md`（v4.0.0 全维度深度评估：ROADMAP 35 项声称逐一复核、33 项与代码相符；加权总评 7.2/10；修复建议 Top-10 按影响 × 成本排序）
+- 新增 `agentprimordia/docs/项目评估-2026-08-09.md`（v4.0.0 全维度深度评估：ROADMAP 35 项声称逐一复核、33 项与代码相符；加权总评 7.2/10；修复建议 Top-10 按影响 × 成本排序）
 
 ### Fixed — 2026-08-09 评估整改（Top-10 落地）
 
@@ -94,29 +94,29 @@
 
 - 新增 `.github/workflows/tag-release.yml`：合并到 main 后读取 `pkg/agent.go` 的 `const Version`，
   与最高既有 tag 对比，版本更高则自动打 tag（`v{MAJOR}.{MINOR}.{PATCH}`）并触发 `release.yml` 发布流程
-- 新增 `pkg/version_gate_test.go`：强制校验 `const Version` 格式合法（语义化版本）且与 VERSIONING.md 一致
+- 新增 `pkg/version_gate_test.go`：强制校验 `const Version` 格式合法（语义化版本）且与 版本规范.md 一致
 - **版本 bump 至 4.0.0**（v4.0 收官）：Go SDK / TS SDK / CLI / VERSIONING / api-contract 全线对齐
 - `scripts/version-sync-check.mjs` fallback 更新为 4.0.0
-- VERSIONING.md 版本发布纪律新增第 5-6 条（自动打 tag + 版本 gate）
+- 版本规范.md 版本发布纪律新增第 5-6 条（自动打 tag + 版本 gate）
 
 ### Performance — v4.0-4 性能大版本（基准对比全量刷新 + 关键路径 P95）
 
 - 新增 `bench/suite/p95_latency_test.go`：Agent 单轮 / 工具调用 / 记忆检索三条关键路径的 P50/P95/P99 延迟分布基准（批次累积策略，规避 Windows 时钟粒度）
-- 全量刷新基准：新建 `bench/results/2026-Q4.json`（v4.0.0 基线），更新 `docs/benchmarks/official-benchmarks.md`（含 P95 表）
+- 全量刷新基准：新建 `bench/results/2026-Q4.json`（v4.0.0 基线），更新 `docs/benchmarks/官方基准.md`（含 P95 表）
 - `scripts/bench-regression-check.sh`：默认基线切换到 2026-Q4，新增 P95/P99 回归基准解析；CI bench job 加入 BenchmarkP95 子集
 - 关键路径 P95 实测（MockLLM）：AgentRun 3.5µs / 10.8µs；ToolCall 4.1µs / 11.0µs；MemorySearch 29.6µs / 46.3µs
 
 ### Changed — v4.0-3 兼容性承诺收紧（稳定清单与实际一致）
 
-- `docs/VERSIONING.md`「稳定 API」表按实际 `pkg/` 源文件标注重写（21 个 Stable/混合模块），并注明"稳定性标注的唯一事实来源是源文件注释"
+- `docs/版本规范.md`「稳定 API」表按实际 `pkg/` 源文件标注重写（21 个 Stable/混合模块），并注明"稳定性标注的唯一事实来源是源文件注释"
 - `pkg/a2a.go` 转正：gRPC 传输自 v1.x 为默认且生产验证，JSON-RPC 已在 v4.0-1 移除，标注 `Stability: Stable（gRPC 传输）`
 - 评审记录：planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 保持 Experimental；llm.go / tools.go / memory.go / otel.go / adapters.go 标注"混合"（核心 Stable + 子集 Experimental）
-- 新增 `pkg/stability_compliance_test.go`：VERSIONING.md 记录的 Stable 模块与实际 `// Stability: Stable` 标注互相比对，漂移即失败
+- 新增 `pkg/stability_compliance_test.go`：版本规范.md 记录的 Stable 模块与实际 `// Stability: Stable` 标注互相比对，漂移即失败
 - 同步更新 `sdk/typescript/api-contract.json`（a2a.go Stability 变更）
 
 ### Removed — v4.0-1 废弃 API 清理
 
-按 `docs/VERSIONING.md` 的废弃承诺，v4.0.0 清理全部超期废弃 API：
+按 `docs/版本规范.md` 的废弃承诺，v4.0.0 清理全部超期废弃 API：
 
 - **`RegisterPProf()`** — 无鉴权 pprof 端点注册，已移除。替代：`RegisterPProfSecure()` / `RegisterPProfStrict()`
 - **`NewReActAgent()`** — 已无实现（v3.x 起移除），v4.0.0 清理全部文档残留
@@ -132,14 +132,14 @@
 - **CI 盲区**：`sdk/python` / `sdk/rust` 不在任何 workflow 中，缺陷无法被门禁捕获 → ci.yml 新增 `changes` 过滤（py/rust）、`python-sdk` job（compileall + import 检查 + U+FFFD 乱码扫描）、`rust-sdk` job（`cargo build --locked` + `cargo clippy -- -D warnings`），随变更范围选择性触发
 - **`.gitignore` 补充**：新增 `target/` / `**/target/` 规则，防止 Rust 构建产物误入库
 
-### Added — v3.3–v3.6 能力跃迁（V4 路线图，详见 `docs/V4-ROADMAP.md`）
+### Added — v3.3–v3.6 能力跃迁（V4 路线图，详见 `docs/V4路线图.md`）
 
 四个版本的核心能力已全部实现并通过验证门（`go vet`/`go build ./...`/各包测试/`tsc --noEmit`/跨语言契约脚本全绿）：
 
 - **v3.3 长期自治** (`internal/agent/autonomy/`)：目标状态机（created→planned→executing→validated→done/failed）、`GoalPlan` 依赖 DAG + 并行执行、`GoalExecutor` 重试/重规划、`Scheduler` 定时+事件调度、`Monitor` 停滞检测、跨会话记忆、`ResumeManager` 崩溃恢复、`IdempotencyGuard` 幂等保护、`AutonomyRuntime` 端到端装配；能力接口 `WithAutonomy` + `pkg/autonomy.go` + CLI `ap autonomy`；验收 demo `ecosystem/examples/autonomous-task/`
-- **v3.4 技能进化** (`internal/agent/skills/`)：`Skill` 多步骤抽象 + SemVer、`Validator`（循环依赖/安全扫描）、`Codec`、`Composition`、习得流水线 `Acquisition` + 验证门 `Verification`、`Deduplicator` 去重、`Trigger` 触发策略、`Store`/`Matcher`（置信度三档）/`UsageTracker`；技能×工具/学习/市场/自治/RAG 五集成；`WithSkills` + `pkg/skills.go` + CLI `ap skill`；文档 `docs/guides/skill-format.md`；验收 demo `ecosystem/examples/skill-evolution/`
-- **v3.5 协议互操作** (`internal/agent/a2a/interop_*`)：对齐开放 Agent2Agent 协议——`OpenAgentCard`/`OpenMessage`/`OpenTask`/标准错误码/IO 模式、`interop_sse` 流式事件、`OpenInteropServer`/`OpenInteropClient`、`GenerateInteropReport` 符合性报告、互操作×认证/发现/追踪/限流/技能五集成；JSON-RPC 重新定位为开放协议标准传输（不再标记移除）；`pkg/a2a_interop.go` + CLI `ap a2a interop-check` + golden/集成/基准测试；文档 `docs/guides/a2a-interop.md`；验收 demo `ecosystem/examples/a2a-interop/`
-- **v3.6 多模态实时** (`internal/agent/realtime/`)：会话状态机（idle→listening→thinking→speaking）、`RealtimeHub` 双向流编排、`ASRAdapter`/`TTSAdapter` 可插拔、`AudioStream` 静音检测、`VisionStream`、`Fusion` 多路感知融合、`BargeInHandler` 打断、`EventBus`、`CleanupManager` 超时回收、`Runtime` 装配 + ReAct 桥接；实时×多模态/边缘/自治/守卫/A2A 五集成；`WithRealtime` + `pkg/realtime.go` + CLI `ap realtime voice`；TS 边缘链路 `sdk/typescript/src/realtime/edge.ts`；文档 `docs/guides/realtime.md`；验收 demo `ecosystem/examples/realtime-voice/`
+- **v3.4 技能进化** (`internal/agent/skills/`)：`Skill` 多步骤抽象 + SemVer、`Validator`（循环依赖/安全扫描）、`Codec`、`Composition`、习得流水线 `Acquisition` + 验证门 `Verification`、`Deduplicator` 去重、`Trigger` 触发策略、`Store`/`Matcher`（置信度三档）/`UsageTracker`；技能×工具/学习/市场/自治/RAG 五集成；`WithSkills` + `pkg/skills.go` + CLI `ap skill`；文档 `docs/guides/技能格式.md`；验收 demo `ecosystem/examples/skill-evolution/`
+- **v3.5 协议互操作** (`internal/agent/a2a/interop_*`)：对齐开放 Agent2Agent 协议——`OpenAgentCard`/`OpenMessage`/`OpenTask`/标准错误码/IO 模式、`interop_sse` 流式事件、`OpenInteropServer`/`OpenInteropClient`、`GenerateInteropReport` 符合性报告、互操作×认证/发现/追踪/限流/技能五集成；JSON-RPC 重新定位为开放协议标准传输（不再标记移除）；`pkg/a2a_interop.go` + CLI `ap a2a interop-check` + golden/集成/基准测试；文档 `docs/guides/A2A互通.md`；验收 demo `ecosystem/examples/a2a-interop/`
+- **v3.6 多模态实时** (`internal/agent/realtime/`)：会话状态机（idle→listening→thinking→speaking）、`RealtimeHub` 双向流编排、`ASRAdapter`/`TTSAdapter` 可插拔、`AudioStream` 静音检测、`VisionStream`、`Fusion` 多路感知融合、`BargeInHandler` 打断、`EventBus`、`CleanupManager` 超时回收、`Runtime` 装配 + ReAct 桥接；实时×多模态/边缘/自治/守卫/A2A 五集成；`WithRealtime` + `pkg/realtime.go` + CLI `ap realtime voice`；TS 边缘链路 `sdk/typescript/src/realtime/edge.ts`；文档 `docs/guides/实时通信.md`；验收 demo `ecosystem/examples/realtime-voice/`
 - **跨语言与开发者体验**：`cross-language-spec.json` 新增 `autonomy_goal`/`skills_lifecycle`/`a2a_interop`/`realtime_session` 四套件（v3.6.0）；TS SDK 对等实现 `src/{autonomy,skills,realtime,a2a/interop}` + 22 项单元测试；Studio 面板 `AutonomyMonitor`/`SkillLibrary`/`A2AInterop`/`RealtimeConsole`（前后端接通）；部署 `deploy/docker-compose.autonomy.yml` + `autonomous-agent.service`
 - **核查修复**：回头核查发现并修复"能编译但未接通"断点——三 `*Capable` 接口接入 `CapabilityAgent` 使引擎可发现、`IdempotencyGuard.Reset` 精确化、Studio 面板挂载路由+后端、TS 根导出、跨语言脚本由系统 grep 改 node 原生搜索（修复 Windows 假阴性）
 
@@ -165,7 +165,7 @@
 - **Agent Eval 失败**：Build sanity 同路径问题 + 软失败逻辑 `$?` 读到 `cat` 退出码恒为 0 → 补 working-directory + `set +e` 捕获真实退出码
 - **Supply Chain SBOM 失败**：`scripts/generate-sbom.sh` / `cosign-sign.sh` 被 workflow 引用但从未提交 → 新建两脚本
 - **jsonutil `ReadAllPooled` 脏读回归修复**（真实 bug）：Get 后未 Reset 就 `io.Copy`，同包 `Marshal` 留下的池残留导致结果含陈旧数据（实测 4096+1889=5985）→ Get 处补 `buf.Reset()` + 新增确定性回归测试
-- **悬空文档引用修正**：两处指向不存在的 `docs/plans/2026-06-04-phase6-implementation.md` 改为指向 `agentprimordia/docs/VERSIONING.md`
+- **悬空文档引用修正**：两处指向不存在的 `docs/plans/2026-06-04-phase6-implementation.md` 改为指向 `agentprimordia/docs/版本规范.md`
 
 ### Changed — Lint 门修复（TS ESLint + Go golangci-lint 长期红灯）
 
@@ -205,7 +205,7 @@
 
 - **api-extract 版本单一事实来源**: 版本号不再硬编码 `3.1.0`，改为从 `pkg/agent.go` 的 `const Version` 经 go/ast 提取；新增 `-no-timestamp` 确定性输出模式
 - **version-sync-check.mjs**: 硬编码 fallback `3.1.0` → `3.2.0`
-- **VERSIONING.md 版本表对齐 `3.2.0`**（Go/TS/CLI 三行 + 修正 `pkg/version.go` 引用），修复 `version-check.sh` 的 FAIL
+- **版本规范.md 版本表对齐 `3.2.0`**（Go/TS/CLI 三行 + 修正 `pkg/version.go` 引用），修复 `version-check.sh` 的 FAIL
 - **deprecation 检查精度修复**: 排除生成代码（`*.pb.go`）与测试文件，模式收紧为 `^// Deprecated:`（消除文档块提及与 `Deprecated: true` 误报）；按文件粒度校验；`RegisterPProf` 补 `// Removed in v4.0.0.`，检查 17/17 通过
 - **api-contract.json 基线刷新为 `3.2.0`**：新增此前缺失的 governance 模块、修正 14 个漂移模块，并改为与 Makefile/CI 一致的确定性输出
 - **CI 新增 `contract-baseline` job**: 重新生成契约与已提交基线比对，漂移即失败，杜绝 `api-contract.json` 过期复发
@@ -250,7 +250,7 @@
 - **Bun 边缘适配器生产强化** (`sdk/typescript/src/edge/bun-agent.ts`): 重试/超时/限流/健康检查 (44→210 行)
 - **跨语言规范扩展** (`cross-language-spec.json`): 11→15 套件 (governance_quota / security_acl / guardrail_rules / persist_checkpoint)
 - **CRDT 持久化接口** (`sdk/typescript/src/collaboration/crdt.ts`): CRDTPersistence + InMemoryCRDTPersistence + createSnapshot
-- **Agent 市场协议规范** (`docs/marketplace-protocol.md`): AgentTemplate JSON Schema + 注册表 API + 部署协议
+- **Agent 市场协议规范** (`docs/市场协议.md`): AgentTemplate JSON Schema + 注册表 API + 部署协议
 - **Playground 部署配置** (`sdk/typescript/playground/wrangler.toml`): Cloudflare Pages 部署配置
 - **@xenova/transformers 可选 peer 依赖**: 用户自行安装即可启用 WebGPU 真实推理
 
@@ -368,7 +368,7 @@
 - **全局版本统一 v1.0.0** — Go SDK (`pkg.Version`)、TypeScript SDK (`package.json`)、CLI (`ap version`)、脚手架模板全部对齐为 `v1.0.0`
 - **API 稳定性承诺锁定** — Stable API 向后兼容，破坏性变更需大版本（v2.0）
 - **API 参考文档全面重写** — `docs/api/` 下 7 个文件（agent / llm / tools / memory / pool / a2a / guardrail）对照源码逐行校验，修正接口签名、导入路径、类型定义
-- **Go vs TypeScript 基准对比** (`docs/benchmarks/go-vs-typescript.md`): 双 SDK 性能基准报告
+- **Go vs TypeScript 基准对比** (`docs/benchmarks/Go与TypeScript对比.md`): 双 SDK 性能基准报告
 
 ### Added (Go 性能优化 — perf-v11)
 
@@ -388,9 +388,9 @@
   - `ap loop resume` — 从检查点恢复运行
 - **Fuzz 测试**: Sandbox 路径遍历（`sandbox_fuzz_test.go`）、RAG 检索（`rag_fuzz_test.go`）、
   工具执行器（`executor_fuzz_test.go`）安全模糊测试
-- **供应链安全文档** (`docs/advanced/supply-chain-security.md`): govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成完整指南
-- **PGO 性能调优文档** (`docs/advanced/pgo.md`): Profile-Guided Optimization 使用指南
-- **Go vs TypeScript 基准对比** (`docs/benchmarks/go-vs-typescript.md`): 双 SDK 性能基准报告
+- **供应链安全文档** (`docs/advanced/供应链安全.md`): govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成完整指南
+- **PGO 性能调优文档** (`docs/advanced/PGO调优.md`): Profile-Guided Optimization 使用指南
+- **Go vs TypeScript 基准对比** (`docs/benchmarks/Go与TypeScript对比.md`): 双 SDK 性能基准报告
 
 ### Added (TypeScript SDK — 100% Go Parity)
 
@@ -465,7 +465,7 @@
   - 验证 OpenAI 兼容接口（`BaseURL=https://api.deepseek.com/v1`）的 Complete / CallTools / Stream 路径
 - **Phase 16 实施计划** (Phase 16): `docs/plans/2026-06-12-llm-provider-tests.md`
 - **FAQ 文档** (Phase 15 补遗): `agentprimordia/ecosystem/docs/faq.md` — 7 大分类 22 个问答
-- **RAG Agent Cookbook** (Phase 15 补遗): `agentprimordia/ecosystem/docs/cookbook/rag-agent.md` — 含架构图、完整代码、三种 RAG 模式对比
+- **RAG Agent Cookbook** (Phase 15 补遗): `agentprimordia/ecosystem/docs/cookbook/RAG-Agent.md` — 含架构图、完整代码、三种 RAG 模式对比
 - **`pkg/example_test.go`**: 8 个 Go Example 函数（NewAgent / Pool / DAG / Session / ResilientProvider 等）
   覆盖公共 API，可在 `go doc` 和 pkg.go.dev 上展示
 
@@ -533,7 +533,7 @@
 - **TypeScript A2A**: A2ABus 跨 Agent 消息通信
 - **TypeScript MCP**: MCPClient 占位 + 完整类型定义
 - **E2E 集成测试**: ReActAgent 真实 API 调用测试 (//go:build integration)
-- **架构文档重写**: architecture-mermaid.md 从 CodeCast 改为 AP 架构（6 张图）
+- **架构文档重写**: 架构图.md 从 CodeCast 改为 AP 架构（6 张图）
 - **CHANGELOG 回填**: v0.3.0 - v0.6.0 完整条目
 - **TypeScript 上下文窗口管理**: `maxMessages` 配置 + `trimMessages()` 保留 system prompt
 - **TypeScript AgentPool 并发安全**: 索引分派替代 queue.shift()

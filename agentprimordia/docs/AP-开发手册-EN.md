@@ -3,7 +3,7 @@
 
 > Primary document for three audiences — **framework users** only need Part I to get productive; **contributors** should also read Parts II–III; when something breaks, go straight to the FAQ (Part IV).
 >
-> Every command and behavior below was verified against the actual codebase (2026-08-27, go1.26.6). For a deep dive into CLI internals see `AP-CLI-DEVELOPMENT.md`; illustrated beginner tutorials live under `docs/getting-started/`. Chinese edition: `AP-开发手册.md`.
+> Every command and behavior below was verified against the actual codebase (2026-08-27, go1.26.6). For a deep dive into CLI internals see `AP-CLI开发手册.md`; illustrated beginner tutorials live under `docs/getting-started/`. Chinese edition: `AP-开发手册.md`.
 
 # Part I · Beginner Tutorial
 
@@ -177,7 +177,7 @@ Then change exactly two things: system_prompt & registered toolset in main.go; m
 
 ## 11. Recipe B: Implement a custom built-in tool
 
-Three steps (full walkthrough in docs/cookbook/custom-tool.md):
+Three steps (full walkthrough in docs/cookbook/自定义工具.md):
 
 1. Create internal/tools/builtin/<name>.go implementing the internal/tools.Tool interface (name/description/schema/Execute); model it after builtin/text_splitter.go — struct fields are parameters, JSON tags are the input contract;
 2. Any file/command side effects MUST go through Scope validation (see existing patterns in filesystem_safety_test.go, shell_scope_test.go);
@@ -259,10 +259,10 @@ git tag vX.Y.0 && push          # tag-release.yml / release.yml take over
 You generated the project inside the monorepo tree but the root go.work doesn't list the new module. Workarounds: `GOWORK=off go build ./...` or `go work use ./myagent`. (Fix direction tracked in the CLI doc pitfalls table: init should auto-detect workspace context.)
 
 `Q3` Project generated outside the framework tree fails tidy with *malformed module path: missing dot in first path element*?
-Standalone scaffolds carry no replace by default (semantic import versioning limit + v0.0.0 placeholder). Following init's trailing hint, add `replace agentprimordia => <absolute framework source path>`; for vector storage also `replace agentprimordia/pgvector => <source>/pgvector`. See VERSIONING.md.
+Standalone scaffolds carry no replace by default (semantic import versioning limit + v0.0.0 placeholder). Following init's trailing hint, add `replace agentprimordia => <absolute framework source path>`; for vector storage also `replace agentprimordia/pgvector => <source>/pgvector`. See 版本规范.md.
 
 `Q4` Why can't I just `go get` it like a normal library?
-The framework hasn't adopted the major-version-suffix publishing route yet (SIV limitation) — decision recorded in VERSIONING.md. GOPROXY-based installs require that module-path evolution first.
+The framework hasn't adopted the major-version-suffix publishing route yet (SIV limitation) — decision recorded in 版本规范.md. GOPROXY-based installs require that module-path evolution first.
 
 ## 19. Runtime behavior
 
@@ -314,12 +314,12 @@ etcd/redis backend tests are gated behind build tags and excluded from default s
 ## Appendix B · Key paths index
 
 ```
-docs/AP-CLI-DEVELOPMENT.md      # deep dive into CLI internals (finer-grained pitfalls)
+docs/AP-CLI开发手册.md      # deep dive into CLI internals (finer-grained pitfalls)
 docs/getting-started/*.md       # installation / quickstart / first-agent illustrated tutorials
-docs/cookbook/custom-tool.md custom-provider.md customer-support.md …   # recipes
-docs/guide/react-loop.md orchestration.md security.md deployment.md     # topic guides
-docs/VERSIONING.md              # API compatibility promises & replace-strategy rationale
-docs/supply-chain-security.md   # SBOM / cosign supply-chain security notes
+docs/cookbook/自定义工具.md custom-provider.md customer-support.md …   # recipes
+docs/guide/ReAct循环.md orchestration.md security.md deployment.md     # topic guides
+docs/版本规范.md              # API compatibility promises & replace-strategy rationale
+docs/供应链安全.md   # SBOM / cosign supply-chain security notes
 agentprimordia/internal/AGENTS.md  # responsibility table of all 30 sub-packages
 bench/results/                  # quarterly benchmarks & regression reports archive
 ```

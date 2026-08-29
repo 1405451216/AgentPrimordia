@@ -3,7 +3,7 @@
 
 > 主文档：面向三类读者——**只用框架的开发者**读第一部分即可动手；**为框架贡献代码的工程师**加读第二、三部分；遇到问题直接查第四部分 FAQ。
 >
-> 手册内所有命令与行为均经实际验证（2026-08-27，go1.26.6）。CLI 内部实现细节深潜见 `AP-CLI-DEVELOPMENT.md`；图文版入门三连见 `docs/getting-started/`。
+> 手册内所有命令与行为均经实际验证（2026-08-27，go1.26.6）。CLI 内部实现细节深潜见 `AP-CLI开发手册.md`；图文版入门三连见 `docs/getting-started/`。
 >
 > English edition: `AP-开发手册-EN.md`（逐节对应 / section-by-section mirror）.
 
@@ -179,7 +179,7 @@ ap init my-bot --template with-tools      # 需要文件/shell/web 选 with-tool
 
 ## 11. Recipe B：实现一个自定义内置工具
 
-三步（docs/cookbook/custom-tool.md 有完整图文版）：
+三步（docs/cookbook/自定义工具.md 有完整图文版）：
 
 1. 在 internal/tools/builtin/ 新建 <name>.go，实现 internal/tools.Tool 接口（名称/描述/schema/Execute）；参照 builtin/text_splitter.go 的最简形态——结构体字段即参数、JSON tag 即入参契约；
 2. 若带文件/命令副作用，必须接 Scope 校验（参照 filesystem_safety_test.go、shell_scope_test.go 既有模式）；
@@ -261,10 +261,10 @@ go run 只在模块上下文有效。先构建二进制（§2），之后任意�
 你在 monorepo 目录树内生成了项目，仓库根 go.work 未包含新模块。绕法：GOWORK=off go build ./... 或 go work use ./myagent。（修复方向已列入 CLI 文档坑位表：init 应自动检测 workspace。）
 
 `Q3` 框架目录外生成的项目 tidy 报 malformed module path: missing dot in first path element？
-standalone 场景默认无 replace（语义化导入版本限制 + v0.0.0 占位）。按 init 尾部提示补 replace agentprimordia => <框架源码绝对路径>；用到向量存储还需 replace agentprimordia/pgvector => <源码>/pgvector。详见 VERSIONING.md。
+standalone 场景默认无 replace（语义化导入版本限制 + v0.0.0 占位）。按 init 尾部提示补 replace agentprimordia => <框架源码绝对路径>；用到向量存储还需 replace agentprimordia/pgvector => <源码>/pgvector。详见 版本规范.md。
 
 `Q4` 为什么不能像普通开源库一样 go get？
-框架尚未启用主版本后缀发布路线（SIV 限制），决策记录在 VERSIONING.md。想走 GOPROXY 直装需先按该文档规划模块路径演进。
+框架尚未启用主版本后缀发布路线（SIV 限制），决策记录在 版本规范.md。想走 GOPROXY 直装需先按该文档规划模块路径演进。
 
 ## 19. 运行与行为
 
@@ -316,12 +316,12 @@ etcd/redis 后端测试由 build tag 门控且不在常规套件：make test-dis
 ## 附录 B · 关键路径索引
 
 ```
-docs/AP-CLI-DEVELOPMENT.md      # CLI 内部实现深潜（坑位表更细）
+docs/AP-CLI开发手册.md      # CLI 内部实现深潜（坑位表更细）
 docs/getting-started/*.md       # installation / quickstart / first-agent 图文教程
-docs/cookbook/custom-tool.md custom-provider.md customer-support.md …   # 实战配方
-docs/guide/react-loop.md orchestration.md security.md deployment.md     # 专题指南
-docs/VERSIONING.md              # API 兼容承诺与 replace 策略依据
-docs/supply-chain-security.md   # SBOM / cosign 供应链安全说明
+docs/cookbook/自定义工具.md custom-provider.md customer-support.md …   # 实战配方
+docs/guide/ReAct循环.md orchestration.md security.md deployment.md     # 专题指南
+docs/版本规范.md              # API 兼容承诺与 replace 策略依据
+docs/供应链安全.md   # SBOM / cosign 供应链安全说明
 agentprimordia/internal/AGENTS.md  # 30 个子包职责总表
 bench/results/                  # 季度基准与回归报告存证
 ```

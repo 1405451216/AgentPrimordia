@@ -45,7 +45,7 @@ AgentPrimordia 采用分层架构，核心设计原则：
 1. **接口驱动** — 所有子系统通过 Go interface 解耦，可独立替换
 2. **组合优于继承** — Agent 能力通过配置组合（Memory、Hooks、RAG 等），而非继承
 3. **弹性优先** — ResilientProvider 内建重试、降级、熔断，生产级可靠性
-4. **核心路径零第三方依赖** — 核心路径仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）；受限第三方依赖（gRPC/etcd/redis/wazero 等，均有 build tag 或模块边界）见 [AGENTS.md](AGENTS.md) §2.1
+4. **核心路径零第三方依赖** — 核心路径仅依赖纯 Go SQLite 驱动（modernc.org/sqlite）；受限第三方依赖（gRPC/etcd/redis/wazero 等，均有 build tag 或模块边界）见 [AGENTS.md](../AGENTS.md) §2.1
 
 ### 数据流
 
@@ -1339,4 +1339,4 @@ Operator 会自动创建 ConfigMap、Deployment、Service 和 HPA 资源，详�
 ### 依赖变更
 
 - Go 版本要求：1.22 → **1.26+**
-- 外部依赖：核心路径零第三方依赖（纯 Go SQLite 驱动 modernc.org/sqlite）；受限第三方依赖（gRPC/etcd/redis/wazero 等，均有 build tag 或模块边界）见 [AGENTS.md](AGENTS.md) §2.1
+- 外部依赖：核心路径零第三方依赖（纯 Go SQLite 驱动 modernc.org/sqlite）；受限第三方依赖（gRPC/etcd/redis/wazero 等，均有 build tag 或模块边界）见 [AGENTS.md](../AGENTS.md) §2.1

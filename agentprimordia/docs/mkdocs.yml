@@ -98,99 +98,99 @@ extra:
 nav:
   - 首页: index.md
   - 实施进度:
-    - 阶段总览: STATUS.md
-    - 版本路线图: ../../ROADMAP.md
+    - 阶段总览:: 项目状态.md
+    - 版本路线图: ../../docs/路线图.md
   - 快速开始:
-    - 安装指南: getting-started/installation.md
-    - 5分钟入门: getting-started/quickstart.md
-    - 第一个Agent: getting-started/first-agent.md
+    - 安装指南:: getting-started/安装指南.md
+    - 5分钟入门:: getting-started/五分钟入门.md
+    - 第一个Agent:: getting-started/第一个Agent.md
   - 核心概念:
-    - Agent架构: concepts/agent.md
-    - ReAct循环: concepts/react-loop.md
-    - 工具系统: concepts/tools.md
-    - 记忆系统: concepts/memory.md
-    - RAG检索增强: concepts/rag.md
-    - 多Agent编排: concepts/orchestration.md
-    - A2A通信: concepts/a2a.md
-    - 事件总线: concepts/events.md
-    - 安全护栏: concepts/guardrail.md
-    - 状态持久化: concepts/persist.md
-    - 任务规划: concepts/planning.md
-    - 自反思: concepts/reflection.md
-    - 工具学习: concepts/tool-learning.md
+    - Agent架构:: concepts/Agent架构.md
+    - ReAct循环:: concepts/ReAct循环.md
+    - 工具系统:: concepts/工具系统.md
+    - 记忆系统:: concepts/记忆系统.md
+    - RAG检索增强:: concepts/RAG检索增强.md
+    - 多Agent编排:: concepts/多Agent编排.md
+    - A2A通信:: concepts/A2A通信.md
+    - 事件总线:: concepts/事件总线.md
+    - 安全护栏:: concepts/安全护栏.md
+    - 状态持久化:: concepts/状态持久化.md
+    - 任务规划:: concepts/任务规划.md
+    - 自反思:: concepts/自反思.md
+    - 工具学习:: concepts/工具学习.md
   - 使用指南:
-    - 创建Agent: guides/create-agent.md
-    - 添加工具: guides/add-tools.md
-    - 配置记忆: guides/configure-memory.md
-    - 配置护栏: guides/configure-guardrail.md
-    - 一体化 Coding Harness: guides/coding-harness.md
-    - 多Agent协作: guides/multi-agent.md
-    - 多租户部署: guides/multi-tenant.md
-    - 并发调度: guides/pool.md
-    - 流式输出: guides/streaming.md
-    - 多模态: guides/multimodal.md
-    - 人机协作: guides/hitl.md
-    - 提示词模板: guides/prompt-templates.md
-    - 配置热加载: guides/config-hot-reload.md
-    - React Hooks: guides/react-hooks.md
-    - VS Code 扩展: guides/vscode-extension.md
-    - Edge Runtime: guides/edge-runtime.md
-    - 部署到生产: guides/deployment.md
+    - 创建Agent:: guides/创建Agent.md
+    - 添加工具:: guides/添加工具.md
+    - 配置记忆:: guides/配置记忆.md
+    - 配置护栏:: guides/配置护栏.md
+    - 一体化 Coding Harness:: guides/Coding-Harness.md
+    - 多Agent协作:: guides/多Agent协作.md
+    - 多租户部署:: guides/多租户.md
+    - 并发调度:: guides/并发调度.md
+    - 流式输出:: guides/流式输出.md
+    - 多模态:: guides/多模态.md
+    - 人机协作:: guides/人机协作.md
+    - 提示词模板:: guides/提示词模板.md
+    - 配置热加载:: guides/配置热加载.md
+    - React Hooks:: guides/React-Hooks.md
+    - VS Code 扩展:: guides/VSCode扩展.md
+    - Edge Runtime:: guides/Edge-Runtime.md
+    - 部署到生产:: guides/部署到生产.md
   - API参考:
-    - Agent API: api/agent.md
-    - LLM API: api/llm.md
-    - Tools API: api/tools.md
-    - Memory API: api/memory.md
-    - Pool API: api/pool.md
-    - A2A API: api/a2a.md
-    - Guardrail API: api/guardrail.md
-    - Orchestration API: api/orchestration.md
-    - Config API: api/config.md
-    - Metrics API: api/metrics.md
+    - Agent API:: api/Agent-API.md
+    - LLM API:: api/LLM-API.md
+    - Tools API:: api/Tools-API.md
+    - Memory API:: api/Memory-API.md
+    - Pool API:: api/Pool-API.md
+    - A2A API:: api/A2A-API.md
+    - Guardrail API:: api/Guardrail-API.md
+    - Orchestration API:: api/Orchestration-API.md
+    - Config API:: api/配置API.md
+    - Metrics API:: api/指标API.md
   - 实战菜谱:
     - 菜谱索引: cookbook/index.md
-    - RAG Agent: cookbook/rag-agent.md
-    - 多 Agent 协作: cookbook/multi-agent-collab.md
-    - 代码审查 Bot: cookbook/code-review-bot.md
-    - 客服 Agent: cookbook/customer-support.md
-    - 数据分析 Agent: cookbook/data-analysis.md
-    - 自定义 Provider: cookbook/custom-provider.md
-    - 自定义工具: cookbook/custom-tool.md
-    - K8s 部署: cookbook/k8s-deployment.md
+    - RAG Agent:: cookbook/RAG-Agent.md
+    - 多 Agent 协作:: cookbook/多Agent协作.md
+    - 代码审查 Bot:: cookbook/代码审查Bot.md
+    - 客服 Agent:: cookbook/客服Agent.md
+    - 数据分析 Agent:: cookbook/数据分析Agent.md
+    - 自定义 Provider:: cookbook/自定义Provider.md
+    - 自定义工具:: cookbook/自定义工具.md
+    - K8s 部署:: cookbook/K8s部署.md
   - 进阶主题:
-    - 性能优化: advanced/performance.md
-    - PGO性能调优: advanced/pgo.md
-    - 安全最佳实践: advanced/security.md
-    - 供应链安全: advanced/supply-chain-security.md
-    - 并发原语: advanced/concurrency.md
-    - 自定义Provider: advanced/custom-provider.md
-    - 插件开发: advanced/plugin-development.md
-    - Admin API: advanced/admin-api.md
-    - Debugger调试器: advanced/debugger.md
-    - Metrics指标: advanced/metrics.md
-    - OpenTelemetry: advanced/otel.md
+    - 性能优化:: advanced/性能优化.md
+    - PGO性能调优:: advanced/PGO调优.md
+    - 安全最佳实践:: advanced/安全最佳实践.md
+    - 供应链安全:: advanced/供应链安全.md
+    - 并发原语:: advanced/并发原语.md
+    - 自定义Provider:: advanced/自定义Provider.md
+    - 插件开发:: advanced/插件开发.md
+    - Admin API:: advanced/管理API.md
+    - Debugger调试器:: advanced/调试器.md
+    - Metrics指标:: advanced/指标.md
+    - OpenTelemetry:: advanced/OpenTelemetry.md
   - 基准测试:
-    - Go vs TypeScript: benchmarks/go-vs-typescript.md
-    - 性能对比2026: benchmarks/performance-comparison-2026.md
+    - Go vs TypeScript:: benchmarks/Go与TypeScript对比.md
+    - 性能对比2026:: benchmarks/性能对比-2026.md
   - 版本管理:
-    - 版本策略: VERSIONING.md
+    - 版本策略:: 版本规范.md
   - 教程系列:
-    - 5分钟入门: guide/getting-started.md
-    - 核心概念: guide/concepts.md
-    - ReAct 循环: guide/react-loop.md
-    - 工具系统: guide/tools.md
-    - 记忆系统: guide/memory.md
-    - 多 Agent 编排: guide/orchestration.md
-    - 部署与运维: guide/deployment.md
-    - 安全最佳实践: guide/security.md
-    - 性能调优: guide/performance.md
+    - 5分钟入门:: guide/入门.md
+    - 核心概念:: guide/核心概念.md
+    - ReAct 循环:: guide/ReAct循环.md
+    - 工具系统:: guide/工具系统.md
+    - 记忆系统:: guide/记忆系统.md
+    - 多 Agent 编排:: guide/多Agent编排.md
+    - 部署与运维:: guide/部署与运维.md
+    - 安全最佳实践:: guide/安全最佳实践.md
+    - 性能调优:: guide/性能调优.md
   - API 参考（完整版）:
     - API 索引: api-reference/index.md
-    - Agent API: api-reference/agent.md
-    - Tools API: api-reference/tools.md
-    - Memory API: api-reference/memory.md
-    - LLM API: api-reference/llm.md
-    - Orchestration API: api-reference/orchestration.md
-    - Pool API: api-reference/pool.md
-    - Guardrail API: api-reference/guardrail.md
-    - Security API: api-reference/security.md
+    - Agent API:: api-reference/Agent-API.md
+    - Tools API:: api-reference/Tools-API.md
+    - Memory API:: api-reference/Memory-API.md
+    - LLM API:: api-reference/LLM-API.md
+    - Orchestration API:: api-reference/Orchestration-API.md
+    - Pool API:: api-reference/Pool-API.md
+    - Guardrail API:: api-reference/Guardrail-API.md
+    - Security API:: api-reference/Security-API.md
