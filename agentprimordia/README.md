@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&style=for-the-badge" alt="TypeScript">
   <img src="https://img.shields.io/badge/License-Apache--2.0-blue?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Zero_CGO-✓-brightgreen?style=for-the-badge" alt="Zero CGO">
-  <img src="https://img.shields.io/badge/version-v5.0.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-v6.0.0-blue?style=for-the-badge" alt="Version">
 </p>
 
 <h1 align="center">⚡ AgentPrimordia</h1>
@@ -155,7 +155,7 @@ agentprimordia/
 ├── operator/            # Kubernetes Operator (CRD + HPA)
 ├── bench/               # 性能基准测试套件
 ├── docs/                # 概念 / 指南 / API 参考 / 路线图
-└── sdk/typescript/      # TypeScript SDK
+└── ../sdk/typescript/   # TypeScript SDK（仓库根，另有 ../sdk/python、../sdk/rust）
 ```
 
 ---

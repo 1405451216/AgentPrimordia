@@ -2,7 +2,9 @@
 
 > 万物之源,智能之始 — 生产级 AI Agent 开发框架 (Go + TypeScript 双语言 SDK)
 
-**版本**: v3.6.0 (V4 路线图 v3.3–v3.6 已实现) | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
+**版本**: v6.0.0（截至 v6.0.0 全弧线已实现） | **语言**: Go 1.26+ / TypeScript 5.4+ | **许可**: Apache-2.0 | **CGO**: 核心零 CGO（SQLite + YAML）；可选 gRPC/Redis/etcd/wazero 按需引入
+
+> 注：本 Wiki 主体成文于 v3.6 时期。v5.1–v6.0 新增能力（策略自适应、记忆固化、组织智能、自进化反馈、自举季度曲线）未在此展开，详见 [docs/V6-ROADMAP.md](docs/V6-ROADMAP.md)。
 
 ---
 
@@ -991,7 +993,7 @@ defer watcher.Close()
 
 ### 4.15 prompt — Prompt 工程
 
-**位置：** `internal/prompt/`
+**位置：** `internal/agent/prompt/`
 
 #### 模板引擎
 
@@ -2471,5 +2473,5 @@ agent, _ := ap.NewAgent("my-agent", "你是一个助手", provider).
 
 ---
 
-*文档更新时间：2026-07-29*
-*版本：v3.1.0 (Go SDK) / v2.0.0 (TypeScript SDK)*
+*文档更新时间：2026-08-28*
+*版本：v6.0.0 (Go SDK) / v6.0.0 (TypeScript SDK)*

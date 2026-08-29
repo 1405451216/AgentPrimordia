@@ -1,13 +1,13 @@
 # AgentPrimordia
 
 > 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证
-> **Go + TypeScript 双语言 SDK，功能对等，34 模块全覆盖**
-> **当前版本：Go SDK v5.0.0 / TypeScript SDK v5.0.0**
+> **Go + TypeScript 双语言 SDK，功能对等，39 模块全覆盖**
+> **当前版本：Go SDK v6.0.0 / TypeScript SDK v6.0.0**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Go%20Parity-3178C6.svg)](sdk/typescript/)
-[![Version](https://img.shields.io/badge/version-5.0.0-2ea44f.svg)](docs/ROADMAP.md)
+[![Version](https://img.shields.io/badge/version-6.0.0-2ea44f.svg)](docs/ROADMAP.md)
 
 <p align="center">
   <img src="agentprimordia/docs/ap-architecture.png" alt="Architecture" width="85%">
@@ -29,9 +29,20 @@
 - **gRPC 传输** — Agent-to-Agent gRPC + 连接池
 - **语义缓存** — LLM 响应语义缓存 + 多级缓存
 - **K8s Operator** — AgentDeployment CRD 声明式部署
-- **TypeScript SDK** — Go 功能对等，34 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Edge / Visual / Infrastructure）
-- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / doctor / completion`
+- **TypeScript SDK** — Go 功能对等，39 个模块全覆盖（Agent / LLM / Tools / Memory / Orchestration / A2A / MCP / Edge / Visual / Infrastructure）
+- **CLI 工具** — 18 个子命令：`ap init / run / debug / loop / test / config / mcp / plugin / cluster / market / autonomy / skill / a2a / realtime / edge / doctor / completion / version`（见 `ap --help`）
 - **最小外部依赖** — 核心零 CGO，仅依赖纯 Go SQLite（modernc.org/sqlite）+ YAML（gopkg.in/yaml.v3）；可选 gRPC/Protobuf（A2A 传输）、Redis（缓存后端）、etcd（服务发现）、wazero（WASM 沙箱）按需引入
+
+## v6.0.0 Highlights — 大成（v5.1 → v6.0 全弧线收官）
+
+> 2026-08-21：认知引擎架构进化、记忆认知化、自进化闭环、组织智能与契约重锁，详见 [docs/V6-ROADMAP.md](docs/V6-ROADMAP.md) 与 [docs/RELEASE-NOTES-v6.0.0.md](docs/RELEASE-NOTES-v6.0.0.md)。深度复测加权总评 ≈9.0/10。
+
+- **v5.1 优化**：质量四件套（召回/成功率/P95/成本）进回归门；检索质量革命 recall@10 双线 1.0；上下文压缩 P95 -67%；评估集 60→160 条
+- **v5.2 进化·壹**：Strategy 抽象 + 三策略热切换（ReAct / Plan-Execute-Reflect / 验证循环）；Verifier 一等公民；自适应思考深度；计划级 checkpoint
+- **v5.3 进化·贰**：记忆固化管道（episodic→semantic 蒸馏 + 遗忘）；图-向量混合检索；记忆迁移；自我模型记忆
+- **v5.4 学习**：结果反馈自进化闭环 + 技能合成；自举季度改进曲线制度（首期 2026-Q3 自举 0.33→1.00）；code 层变更沙箱永久拒绝的安全边界
+- **v5.5 借鉴**：多 Agent 从协作升级为组织智能
+- **v6.0 定型**：新增 API 全部转正并冻结 v6 契约基线（39 模块）；版本四方统一 6.0.0（Go/TS/CLI/Helm）
 
 ## v5.0.0 Highlights — 均衡混排弧线收官（v4.1 → v5.0）
 
@@ -74,7 +85,7 @@ v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成
 | v3.9 | 生态 | 市场 + Studio + 文档站 | ✅ 4/4 |
 | v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 | ✅ 5/5 |
 
-> 详细路线见 [docs/ROADMAP.md](docs/ROADMAP.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v5.0.0）。
+> 详细路线见 [docs/ROADMAP.md](docs/ROADMAP.md)（唯一权威路线文档，含完整版本历史轨迹 v0.1.0 → v6.0.0；v5.1–v6.0 弧线详情见 [docs/V6-ROADMAP.md](docs/V6-ROADMAP.md)）。
 
 ## v3.2.0 Highlights — 架构解耦与双语言对齐
 
@@ -171,7 +182,7 @@ v4.0 是实证版版本路线的终点：从"声称完成"转向"可证明完成
 | Inspector / Debugger | `debugger/` | `debugger/` | ✅ |
 | SQLite Checkpoint | `persist/` | `persist/` | ✅ |
 | Health Endpoints | `health/` | `health/` | ✅ |
-| Edge / Browser Runtime | `edgeruntime/` `wasm/` | `edge/` `browser/` | ✅ |
+| Edge / Browser Runtime | `wasm/` `extensions/browser-extension/` | `edge/` `browser/` | ✅ |
 | Visual Editor (React) | `studio/web/` | `react/` `visual/` | ✅ |
 | VSCode 集成 | `extensions/vscode/` | `vscode/` | ✅ |
 | Codegen / Schema | — | `codegen/` `schema/` | ✅ |
@@ -512,54 +523,48 @@ P99 耗时:   1.4s
 ## 项目结构
 
 ```
-agentprimordia/
-├── cmd/
-│   ├── ap/                   # CLI 工具 (ap init/run/debug/test/mcp/plugin)
-│   ├── admin/                # Admin HTTP API Server
-│   └── example/              # 示例应用
-├── internal/
-│   ├── agent/                # ReActLoop 引擎 + 协议式微内核
-│   │   ├── a2a/              # Agent2Agent 协议
-│   │   ├── planning/         # 任务规划
-│   │   ├── reflection/       # 自反思
-│   │   └── tool_learning/    # 工具学习
-│   ├── pool/                 # 多 Agent 并发调度
-│   ├── tools/                # 工具系统 (Registry/MCP/Plugin/Builtin)
-│   ├── memory/               # 记忆存储 (SQLite/Vector/RAG)
-│   ├── llm/                  # LLM 抽象层 (10+ Provider + Resilient)
-│   ├── guardrail/            # 输入输出护栏 (PII/Topic/Injection/Trie)
-│   ├── governance/           # 多租户与治理 (v2.0)
-│   ├── audit/                # 合规审计报告 (v2.0)
-│   ├── debugger/             # Inspector / Visualizer / 断点 / 时间旅行
-│   ├── prompt/               # 提示词模板
-│   ├── config/               # 配置热加载
-│   ├── metrics/              # Prometheus 指标
-│   ├── otel/                 # OpenTelemetry 桥接
-│   ├── events/               # 事件总线 + 事件流
-│   ├── security/             # ACL + Sandbox + 密钥管理 + AES-GCM
-│   ├── resilience/           # 熔断器 + 重试 + 降级包装器
-│   ├── logger/               # 结构化日志 + Shipper (v2.0)
-│   ├── chaos/                # 混沌工程 (v3.0)
-│   ├── eval/                 # Agent 评估框架 (v2.0)
-│   ├── mcp/                  # MCP Server 端实现
-│   ├── protocol/             # 通用协议定义
-│   ├── registry/             # 服务注册中心
-│   ├── health/               # /healthz /readyz /livez + pprof
-│   ├── jsonutil/             # JSON 序列化 buffer 池
-│   ├── persist/              # 状态持久化
-│   └── concurrency/          # 文件锁等并发原语
-├── operator/                  # K8s Operator (独立 go.mod)
-│   ├── api/v1/               # AgentDeployment CRD
-│   ├── controller/           # Reconciler
-│   ├── cmd/                  # Operator 入口
-│   └── manifest/             # CRD + 部署清单 + 示例
+AgentPrimordia/（仓库根，go.work 多模块）
+├── agentprimordia/            # 核心框架模块
+│   ├── cmd/
+│   │   ├── ap/               # CLI 工具（18 个子命令）
+│   │   ├── admin/            # Admin HTTP API Server
+│   │   ├── studio/           # Studio Server
+│   │   └── example/          # 示例应用
+│   ├── internal/             # 29 个包（完整清单见 agentprimordia/internal/AGENTS.md）
+│   │   ├── agent/            # ReActLoop 引擎 + 协议式微内核（32 个子包）
+│   │   │   ├── a2a/          # Agent2Agent 协议
+│   │   │   ├── cluster/      # 分布式集群
+│   │   │   ├── transport/    # gRPC/TCP 传输
+│   │   │   ├── planning/     # 任务规划
+│   │   │   ├── reflection/   # 自反思
+│   │   │   ├── strategy/     # 认知策略（v5.2）
+│   │   │   └── ...           # 其余子包见 internal/AGENTS.md
+│   │   ├── pool/             # 多 Agent 并发调度
+│   │   ├── tools/            # 工具系统 (Registry/MCP/Plugin/Builtin)
+│   │   ├── memory/           # 记忆存储 (SQLite/Vector/RAG/固化)
+│   │   ├── llm/              # LLM 抽象层 (10+ Provider + Resilient)
+│   │   ├── guardrail/        # 输入输出护栏 (PII/Topic/Injection/Trie)
+│   │   ├── governance/       # 多租户与治理
+│   │   ├── security/         # ACL + Sandbox + 密钥管理 + AES-GCM
+│   │   ├── eval/             # Agent 评估框架
+│   │   ├── studio/           # Studio 引擎接线
+│   │   ├── self_bootstrap/   # 自举季度曲线 (v5.4)
+│   │   └── ...               # 其余包（admin/audit/chaos/…）见 internal/AGENTS.md
+│   ├── pkg/                  # 公共 API (类型别名 + re-export)
+│   ├── operator/             # K8s Operator (独立 go.mod)
+│   ├── studio/web/           # 可视化控制台 (React)
+│   ├── bench/                # 性能基准测试套件
+│   └── deploy/               # Grafana/Prometheus/Helm 部署模板
+├── pgvector/                  # pgvector 向量存储扩展（独立模块）
+├── gateway/                   # 网关（独立模块）
+├── wasm/                      # WASM 沙箱执行（独立模块，wazero）
+├── sdk/                       # 多语言 SDK（仓库根）
+│   ├── typescript/           # TypeScript SDK (Go Parity, 39 模块)
+│   ├── python/               # Python 轻量客户端
+│   └── rust/                 # Rust 轻量客户端
+├── extensions/                # 浏览器扩展等
 ├── testutil/                  # 测试辅助工具 (MockProvider / NewTestAgent)
-├── pgvector/                  # pgvector 向量存储扩展
-├── deploy/grafana/            # Grafana Dashboard 模板
-├── bench/                     # 性能基准测试套件
-├── docs/                      # 文档 + Cookbook
-├── sdk/typescript/            # TypeScript SDK (Go Parity, 34 模块)
-└── pkg/                       # 公共 API (类型别名 + re-export)
+└── docs/                      # 路线图 / 发布说明 / 评估报告
 ```
 
 ## CLI 命令

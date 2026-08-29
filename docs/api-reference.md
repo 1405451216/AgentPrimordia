@@ -2,7 +2,7 @@
 
 > 包路径：`agentprimordia/pkg` → 导入别名 `ap`
 >
-> 版本：`ap.Version` = `"1.0.0"` (Go) / `@agentprimordia/sdk` `1.0.0` (TypeScript)
+> 版本：`ap.Version` = `"6.0.0"` (Go) / `@agentprimordia/sdk` `6.0.0` (TypeScript)
 >
 > **TypeScript SDK 与 Go 框架 100% 功能对等**，下方 API 参考 covers Go 公共 API。
 > TypeScript SDK 完整 API 参考见 [sdk/typescript/docs/api/index.md](../sdk/typescript/docs/api/index.md)。
@@ -919,4 +919,4 @@ import {
 | `autonomy.GoalConfig.BudgetUSD` | v4.9 | 目标级成本预算护栏 | V5-ROADMAP.md §十 |
 | `marketplace.Installer.EnableDownloadStats` | v4.8 | 市场下载统计 | publishing.md |
 
-完整契约见 `sdk/typescript/api-contract.json`（38 模块，version-sync + api-extract 门维护）。
+完整契约见 `sdk/typescript/api-contract.json`（39 模块，version-sync + api-extract 门维护）。v5.1–v6.0 新增转正 API（strategy / consolidation / organization / learning feedback 等）见 [`V6-ROADMAP.md`](V6-ROADMAP.md) 与 api-contract.json。

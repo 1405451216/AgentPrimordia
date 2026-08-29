@@ -5,6 +5,11 @@
 >
 > **最后更新**：2026 年 8 月 3 日
 > **与 ROADMAP 的关系**：本清单是路线图「现状对账」章节的完整展开；所有"已完成"声明以此清单为准。
+>
+> ⚠️ **时效声明**：本清单为 2026-08-03 审计快照。此后 v3.3–v6.0 弧线已修复其中大量 🟠/🔴 缺口
+> （输入端护栏、tool 重试、plan 级 checkpoint、marketplace 远程协议+验签、Studio 真实引擎接线、
+> eval 160 条基准、otel 接线、TS guardrail-in-loop 等），最新完成状态以
+> [`V6-ROADMAP.md`](V6-ROADMAP.md) 进度表与 `docs/CHANGELOG.md` 为准。
 
 ---
 

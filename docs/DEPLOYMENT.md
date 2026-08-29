@@ -61,7 +61,7 @@ readinessProbe:
 
 ### Grafana Dashboard
 
-`agentprimordia/deploy/grafana/` 下 6 个开箱即用面板：
+`agentprimordia/deploy/grafana/` 下 7 个开箱即用面板：
 - `dashboard-agent.json` — Agent 运行指标
 - `dashboard-llm.json` — LLM 调用/成本
 - `dashboard-memory.json` — 记忆系统
@@ -114,7 +114,7 @@ go test ./...
 |------|------|---------|
 | 开发一键 | `scripts/dev-platform.sh` | 全能力示例编译校验 + Studio（:8090） |
 | 开发/演示 Compose | `deploy/compose/` | 单机全能力 + 可选 etcd/redis |
-| 生产 Helm | `deploy/helm/agentprimordia/` | autonomy/skills/a2a/realtime/studio（镜像 tag v5.0.0，version-sync 门校验） |
+| 生产 Helm | `deploy/helm/agentprimordia/` | autonomy/skills/a2a/realtime/studio（镜像 tag v6.0.0，version-sync 门校验） |
 | 生产 Terraform | `deploy/terraform/` | VPC/节点/存储 |
 | 单机 systemd | `deploy/autonomous-agent.service` | 自治 Agent 常驻 |
 | Operator | `operator/` | AgentDeployment CRD |
