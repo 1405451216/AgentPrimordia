@@ -46,7 +46,7 @@ for event := range ch {
 
 ## 与 LLM 流式的关系
 
-`StreamRun` 内部调用 LLM Provider 的 `StreamComplete` 方法，将 token 级别的流式数据聚合为语义级别的 StreamEvent。如果 Provider 不支持流式，会自动降级为单次调用后一次性输出。
+`StreamRun` 内部调用 LLM Provider 的 `Stream` 方法，将 token 级别的流式数据聚合为语义级别的 StreamEvent。如果 Provider 不支持流式，会自动降级为单次调用后一次性输出。
 
 ## 注意事项
 

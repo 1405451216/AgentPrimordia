@@ -66,12 +66,9 @@ type Episode struct {
 基于 SQLite 的全文搜索记忆，适合结构化数据：
 
 ```go
-// 创建 SQLite 记忆
+// 创建 SQLite 记忆（文件数据库默认启用 WAL 模式，无需额外配置）
 mem, _ := memory.NewSQLiteStore("./data/memory.db")
 defer mem.Close()
-
-// 启用 WAL 模式（可选）
-mem = mem.WithWAL()
 
 // 存储记忆
 mem.Add(ctx, &memory.Episode{
@@ -89,8 +86,8 @@ results, _ := mem.Search(ctx, "你好", &memory.SearchOptions{Limit: 10})
 
 - **全文搜索**：基于 FTS5 的高效文本搜索
 - **批量操作**：`AddBatch` / `DeleteBatch` / `GetBatch` 减少数据库往返
-- **WAL 模式**：并发读写不阻塞
-- **自动清理**：`WithCleanup(maxAgeDays)` 自动清理过期记忆
+- **WAL 模式**：内置开启，并发读写不阻塞
+- **自动清理**：`StartAutoCleanup(memory.CleanupConfig{MaxAgeDays: 30})` 自动清理过期记忆
 - **持久化**：数据保存在磁盘
 
 ## Vector Store
@@ -119,9 +116,9 @@ Hierarchical Navigable Small World 索引提供快速的近似最近邻搜索：
 
 ```go
 vectorStore := memory.NewVectorStoreWithHNSW(1536, memory.HNSWConfig{
-    M:              16,   // 每个节点的最大连接数
-    EFConstruction: 200,  // 构建时的搜索范围
-    EFSearch:       100,  // 搜索时的搜索范围
+    MaxConnections: 16,   // 每层最大连接数 M
+    EfConstruction: 200,  // 构建时的搜索范围
+    EfSearch:       100,  // 查询时的搜索范围
 })
 ```
 
@@ -212,8 +209,9 @@ results, _ := mem.SearchByTag(ctx, "ai", &memory.SearchOptions{Limit: 10})
 ```go
 mem, _ := memory.NewSQLiteStore("./data/memory.db")
 
-// 启用自动清理（30 天过期）
-mem = mem.WithCleanup(30)
+// 启动后台自动清理（30 天过期）
+stop := mem.StartAutoCleanup(memory.CleanupConfig{MaxAgeDays: 30})
+defer stop()
 
 // 手动清理
 deleted, _ := mem.CleanupExpired(ctx, 30)  // 清理 30 天前的记忆
@@ -221,22 +219,12 @@ deleted, _ := mem.CleanupExpired(ctx, 30)  // 清理 30 天前的记忆
 
 ## 外部向量库
 
-### QdrantProvider
+Qdrant / Milvus 客户端位于 `internal/memory`（`NewQdrantClient` / `NewMilvusClient`），**未经 `pkg/` 导出，外部代码不可直接 import**。已有 PostgreSQL 或需要经公共 API 使用外部向量库时，推荐 pgvector：
 
 ```go
-provider, _ := memory.NewQdrantProvider(memory.QdrantConfig{
-    Host:   "localhost",
-    Port:   6333,
-    APIKey: "optional-api-key",
-})
-```
-
-### MilvusProvider
-
-```go
-provider, _ := memory.NewMilvusProvider(memory.MilvusConfig{
-    Host:   "localhost",
-    Port:   19530,
+store, err := ap.NewPgVectorVectorStore(ctx, ap.PgVectorConfig{
+    ConnString: "postgres://user:pass@localhost:5432/ap?sslmode=disable",
+    Dimensions: 1536,
 })
 ```
 

@@ -9,8 +9,11 @@
 
 ## 安装
 
+模块名为 `agentprimordia`（无远程模块路径），需从源码构建安装：
+
 ```bash
-go install github.com/agentprimordia/cmd/ap@latest
+git clone https://github.com/AgentPrimordia/agentprimordia.git
+cd agentprimordia && go install ./cmd/ap
 ```
 
 ## 创建项目
@@ -45,21 +48,32 @@ ap run
 
 ## 添加工具
 
-让 Agent 能搜索网页：
+让 Agent 能操作文件、执行命令和访问网络：
 
 ```bash
 ap init . --template with-tools
-# 编辑 .ap.yaml 添加 tools: [web_search, filesystem, shell]
 ```
 
-```yaml
-tools:
-  - web_search
-  - filesystem
-  - shell
+该模板会在生成的 `main.go` 中注册内置工具。内置工具（filesystem / shell /
+web 等）在**代码中**通过 `WithToolkit` 选项注册：
+
+```go
+registry := ap.NewToolRegistry()
+
+fs, _ := ap.NewFileSystem("./workspace") // 文件读写（限定在 workspace 目录内）
+registry.Register(fs)
+registry.Register(ap.NewShell()) // 命令行执行
+registry.Register(ap.NewWeb())   // HTTP 请求
+
+agent, _ := ap.NewAgent("my-agent", "你是助手", provider,
+	ap.WithToolkit(registry),
+)
 ```
 
-再次 `ap run`，Agent 现在可以联网搜索了。
+> 注意：`.ap.yaml` 没有 `tools` 配置字段，工具能力由代码注册。
+> 可用模板见 `ap init --help`（basic / quickstart / with-tools 等）。
+
+再次 `ap run`，Agent 现在可以使用这些工具了。
 
 ## 下一步
 

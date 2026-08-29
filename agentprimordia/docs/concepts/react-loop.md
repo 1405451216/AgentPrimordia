@@ -47,10 +47,13 @@ ReAct 循环由 `Agent.Run()` 方法内部驱动，用户无需手动管理循�
     )
 
     func main() {
-        agent := ap.NewAgent("assistant", "你是一个专业的助手",
+        agent, err := ap.NewAgent("assistant", "你是一个专业的助手",
             provider,
             ap.WithMaxTurns(10), // 控制最大迭代次数
         )
+        if err != nil {
+            panic(err)
+        }
 
         // Run 内部自动执行 Think → Act → Observe 循环
         response, err := agent.Run(ctx, ap.UserMessage("帮我分析这段代码"))
@@ -86,7 +89,12 @@ ReAct 循环由 `Agent.Run()` 方法内部驱动，用户无需手动管理循�
 === "Go"
 
     ```go
-    for event := range agent.StreamRun(ctx, ap.UserMessage("分析这段代码")) {
+    // StreamRun 返回事件通道，需双值接收并处理错误
+    events, err := agent.StreamRun(ctx, ap.UserMessage("分析这段代码"))
+    if err != nil {
+        panic(err)
+    }
+    for event := range events {
         switch event.Type {
         case ap.StreamEventThought:
             fmt.Printf("[思考] %s\n", event.Content)
@@ -115,31 +123,31 @@ ReAct 循环的每个阶段都可以注入自定义逻辑：
 
 === "Go"
 
-    通过 `WithHooks()` Option 注入：
+    通过 `NewHookManager()` 创建钩子管理器，在 HookPoint 上注册处理函数，
+    再经 `WithHooks()` Option 注入：
 
     ```go
-    agent := ap.NewAgent("assistant", "你是助手", provider,
+    hooks := ap.NewHookManager()
+
+    // Register(point, fn)：fn 签名为 func(ctx context.Context, hctx *ap.HookContext) error
+    hooks.Register(ap.HookBeforeLLM, func(ctx context.Context, hctx *ap.HookContext) error {
+        log.Printf("Turn %d: 即将调用 LLM", hctx.Turn)
+        return nil
+    })
+    hooks.Register(ap.HookBeforeTool, func(ctx context.Context, hctx *ap.HookContext) error {
+        if !isAllowed(hctx.ToolCall.Name) {
+            return fmt.Errorf("工具 %s 不允许执行", hctx.ToolCall.Name)
+        }
+        return nil
+    })
+    hooks.Register(ap.HookAfterTool, func(ctx context.Context, hctx *ap.HookContext) error {
+        log.Printf("工具 %s 执行完成", hctx.ToolCall.Name)
+        return nil
+    })
+
+    agent, err := ap.NewAgent("assistant", "你是助手", provider,
         ap.WithMaxTurns(10),
-        ap.WithHooks(ap.LifecycleHooks{
-            BeforeThink: func(ctx context.Context, messages []ap.Message) error {
-                log.Printf("即将开始推理")
-                return nil
-            },
-            AfterThink: func(ctx context.Context, thought ap.Thought) error {
-                log.Printf("推理完成，工具调用: %d", len(thought.ToolCalls))
-                return nil
-            },
-            BeforeAct: func(ctx context.Context, toolCall ap.ToolCall) error {
-                if !isAllowed(toolCall.Name) {
-                    return fmt.Errorf("工具 %s 不允许执行", toolCall.Name)
-                }
-                return nil
-            },
-            AfterAct: func(ctx context.Context, toolCall ap.ToolCall, result ap.ToolResult) error {
-                log.Printf("工具 %s 执行完成", toolCall.Name)
-                return nil
-            },
-        }),
+        ap.WithHooks(hooks),
     )
     ```
 
@@ -167,16 +175,19 @@ ReAct 循环的每个阶段都可以注入自定义逻辑：
     });
     ```
 
-支持的钩子阶段：
+支持的钩子点（HookPoint，共 20+，此处为常用部分）：
 
-| 钩子 | 触发时机 | 典型用途 |
+| 钩子点 | 触发时机 | 典型用途 |
 |------|----------|----------|
-| `BeforeThink` | LLM 推理前 | 日志、输入预处理 |
-| `AfterThink` | LLM 推理后、工具调用前 | 拦截敏感操作 |
-| `BeforeAct` | 工具执行前 | 权限检查、参数验证 |
-| `AfterAct` | 工具执行后 | 结果记录、指标收集 |
-| `OnComplete` | 循环结束 | 资源清理 |
-| `OnError` | 发生错误 | 错误上报 |
+| `HookBeforeLLM` | LLM 调用前 | 日志、输入预处理 |
+| `HookAfterLLM` | LLM 响应后 | 结果记录 |
+| `HookBeforeTool` | 工具执行前 | 权限检查、参数验证 |
+| `HookAfterTool` | 工具执行后 | 结果记录、指标收集 |
+| `HookOnComplete` | 循环结束 | 资源清理 |
+| `HookOnError` | 发生错误 | 错误上报 |
+
+此外可通过 `RegisterWithPriority(point, fn, priority)` 控制执行优先级，
+通过 `Use(middleware)` 注入钩子中间件。
 
 ## 最大迭代控制
 
@@ -185,7 +196,7 @@ ReAct 循环的每个阶段都可以注入自定义逻辑：
 === "Go"
 
     ```go
-    agent := ap.NewAgent("assistant", "你是助手", provider,
+    agent, err := ap.NewAgent("assistant", "你是助手", provider,
         ap.WithMaxTurns(20), // 最大 20 轮
     )
     ```
@@ -214,10 +225,13 @@ ReAct 循环中的错误处理策略：
 === "Go"
 
     ```go
-    resilient := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
+    resilient, err := ap.NewResilientProvider(primary, ap.DefaultResilientConfig())
+    if err != nil {
+        panic(err)
+    }
     resilient.AddFallback(fallbackProvider)
 
-    agent := ap.NewAgent("assistant", "你是助手", resilient,
+    agent, err := ap.NewAgent("assistant", "你是助手", resilient,
         ap.WithMaxTurns(10),
     )
     ```
@@ -247,7 +261,7 @@ ReAct 循环通过 `context.Context` 传递请求 ID、会话 ID 等信息：
 ctx := ap.WithRequestID(context.Background(), ap.NewRequestID())
 
 // 设置会话 ID（关联记忆）
-agent := ap.NewAgent("assistant", "你是助手", provider,
+agent, err := ap.NewAgent("assistant", "你是助手", provider,
     ap.WithSessionID("session-123"),
 )
 
@@ -261,8 +275,15 @@ result, err := agent.Run(ctx, ap.UserMessage("任务"))
 使用 `CachedProvider` 包装 LLM Provider，对相同输入缓存响应：
 
 ```go
-cached := ap.NewCachedProvider(provider, ap.NewInMemoryCache())
-agent := ap.NewAgent("assistant", "你是助手", cached,
+// 指纹精确匹配缓存（无需 Embedding）
+cache := ap.NewFingerprintCache(10000, time.Hour)
+
+// NewCachedProvider(inner, cache, minScore)：minScore 为语义相似度阈值
+cached, err := ap.NewCachedProvider(provider, cache, 0.8)
+if err != nil {
+    panic(err)
+}
+agent, err := ap.NewAgent("assistant", "你是助手", cached,
     ap.WithMaxTurns(10),
 )
 ```

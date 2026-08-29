@@ -78,11 +78,9 @@ results, err := executor.ExecuteBatch(ctx, []*tools.FunctionCall{
 文件操作：
 
 ```go
-fileTool := tools.NewFileSystemTool(tools.FSToolConfig{
-    RootDir:      "/workspace",
-    AllowedPaths: []string{"/tmp", "/home/user"},  // 限制访问路径
-    ReadOnly:     false,
-})
+// NewFileSystem 以 rootDir 为根目录约束文件访问范围，
+// 只读能力经文件系统权限/路径范围（scope）控制
+fileTool, err := tools.NewFileSystem("/workspace")
 registry.Register(fileTool)
 ```
 
@@ -91,10 +89,8 @@ registry.Register(fileTool)
 执行 Shell 命令：
 
 ```go
-shellTool := tools.NewShellTool(tools.ShellConfig{
-    AllowedCommands: []string{"ls", "cat", "echo"},  // 白名单
-    Timeout:         30 * time.Second,
-})
+// WithAllowedWorkdirs 限制命令执行的工作目录范围
+shellTool := tools.NewShell().WithAllowedWorkdirs([]string{"/tmp", "/workspace"})
 registry.Register(shellTool)
 ```
 
@@ -103,20 +99,16 @@ registry.Register(shellTool)
 发送 HTTP 请求：
 
 ```go
-webTool := tools.NewWebTool()
+webTool := tools.NewWeb()
 registry.Register(webTool)
 ```
 
 ### API 工具
 
-REST API 调用（带白名单、超时、重试）：
+REST API 调用：
 
 ```go
-apiTool := tools.NewAPIClient(tools.APIClientConfig{
-    BaseURL:    "https://api.example.com",
-    Timeout:    30 * time.Second,
-    MaxRetries: 3,
-})
+apiTool := tools.NewAPI()
 registry.Register(apiTool)
 ```
 
@@ -140,7 +132,9 @@ type ConfirmationFunc func(toolName string, args json.RawMessage) bool
 在工具执行前要求人工确认：
 
 ```go
-registry.Register(&MyTool{}, tools.Permission{
+myTool := &MyTool{}
+registry.Register(myTool)
+registry.SetPermission(myTool.Name(), tools.Permission{
     RequireConfirmation: true,
     ConfirmFunc: func(toolName string, args json.RawMessage) bool {
         // 检查参数，返回 true 允许执行，false 拒绝

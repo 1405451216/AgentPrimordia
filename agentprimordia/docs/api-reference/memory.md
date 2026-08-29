@@ -159,7 +159,8 @@ type ListOptions struct {
 内存存储（测试用）：
 
 ```go
-func WithInMemory() (Memory, error)
+// ap.WithInMemory() 创建内存数据库（底层 SQLite :memory:），返回 *SQLiteStore
+func WithInMemory() (*SQLiteStore, error)
 ```
 
 **示例：**
@@ -177,13 +178,10 @@ mem.Add(ctx, &memory.Episode{
 
 ### SQLiteStore
 
-SQLite + FTS5 全文搜索实现：
+SQLite + FTS5 全文搜索实现（WAL 模式默认开启，内部 PRAGMA 配置）：
 
 ```go
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error)
-
-func (s *SQLiteStore) WithWAL() *SQLiteStore
-func (s *SQLiteStore) WithCleanup(maxAgeDays int) *SQLiteStore
 ```
 
 **示例：**
@@ -230,9 +228,9 @@ type VectorSearchResult struct {
 ```go
 type HNSWConfig struct {
     Dimensions     int
-    M              int     // 每个节点的最大连接数（默认 16）
-    EFConstruction int     // 构建时的搜索范围（默认 200）
-    EFSearch       int     // 搜索时的搜索范围（默认 100）
+    MaxConnections int // 每个节点的最大连接数 M（默认 16）
+    EfConstruction int // 构建时的搜索范围（默认 200）
+    EfSearch       int // 搜索时的搜索范围（默认 50）
 }
 ```
 
@@ -276,16 +274,11 @@ type EmbeddingProvider interface {
 
 ## 外部向量库
 
-### QdrantProvider
+Qdrant / Milvus 客户端位于 `internal/memory`（不 经 pkg re-export，属内部实现细节）：
 
 ```go
-func NewQdrantProvider(config QdrantConfig) (*QdrantProvider, error)
-```
-
-### MilvusProvider
-
-```go
-func NewMilvusProvider(config MilvusConfig) (*MilvusProvider, error)
+func NewQdrantClient(config QdrantConfig) (*QdrantClient, error)   // internal/memory
+func NewMilvusClient(config MilvusConfig) (*MilvusClient, error)   // internal/memory
 ```
 
 ## Vector DB 选型
@@ -319,10 +312,13 @@ func NewMilvusProvider(config MilvusConfig) (*MilvusProvider, error)
         defer mem.Close()
 
         // 2. 创建 Agent（链式 API）
-        provider := ap.NewOpenAIProvider(ap.Config{
+        provider, err := ap.NewOpenAIProvider(ap.Config{
             APIKey: os.Getenv("OPENAI_API_KEY"),
             Model:  "gpt-4o",
         })
+        if err != nil {
+            log.Fatal(err)
+        }
         agent, _ := ap.NewAgent("rag-agent", "你是助手", provider,
             ap.WithMaxTurns(10),
             ap.WithMemory(mem),
@@ -340,9 +336,9 @@ func NewMilvusProvider(config MilvusConfig) (*MilvusProvider, error)
 === "TypeScript"
 
     ```typescript
-    import { ReActAgent, OpenAIProvider, SQLiteStore } from '@agentprimordia/sdk';
+    import { ReActAgent, OpenAIProvider, SqliteStore } from '@agentprimordia/sdk';
 
-    const mem = new SQLiteStore({ dbPath: './data/memory.db' });
+    const mem = new SqliteStore({ dbPath: './data/memory.db' });
 
     const agent = new ReActAgent({
       name: 'rag-agent',

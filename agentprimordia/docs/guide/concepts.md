@@ -52,9 +52,9 @@ Thought → Action(tool, args) → Observation → Thought → ... → Final Ans
 
 | 后端 | 场景 | 接口 |
 |------|------|------|
-| InMemory | 临时/测试 | `memory.NewInMemory()` |
-| SQLite | 单机持久化 | `memory.NewSQLite(path)` |
-| Vector | 语义检索/RAG | `memory.NewVector(cfg)` |
+| InMemory | 临时/测试 | `memory.NewInMemoryStore()` |
+| SQLite | 单机持久化 | `memory.NewSQLiteStore(path)` |
+| Vector | 语义检索/RAG | `memory.NewVectorStore(dimensions)` |
 
 ### Tool（工具系统）
 

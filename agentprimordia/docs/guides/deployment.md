@@ -10,12 +10,12 @@
 
 ```go
 // 不推荐
-llmConfig := llm.OpenAIConfig{
+llmConfig := llm.Config{
     APIKey: "sk-xxx",  // 硬编码密钥
 }
 
 // 推荐
-llmConfig := llm.OpenAIConfig{
+llmConfig := llm.Config{
     APIKey: os.Getenv("OPENAI_API_KEY"),
 }
 ```
@@ -358,27 +358,28 @@ func authMiddleware(next http.Handler) http.Handler {
 
 ### 连接池
 
+SQLiteStore 内置连接池管理（SQLite 场景默认限制并发连接数以保证写入安全），无需手动配置：
+
 ```go
-mem := memory.NewSQLiteMemory(memory.SQLiteConfig{
-    Path:         "./data/memory.db",
-    MaxOpenConns: 10,
-    MaxIdleConns: 5,
-})
+mem, err := ap.NewSQLiteStore("./data/memory.db")
 ```
 
 ### 缓存
 
+热点请求缓存经 LLM 层语义缓存实现：
+
 ```go
-mem := memory.NewSQLiteMemory(config).
-    WithCache(memory.NewLRUCache(10000))
+cache, _ := ap.NewFingerprintCache(10000, time.Hour)
+cached, _ := ap.NewCachedProvider(provider, cache, 0)
 ```
 
 ### 批量操作
 
 ```go
-// 批量存储减少数据库往返
-items := make([]memory.MemoryItem, 1000)
-mem.BatchStore(ctx, items)
+// 逐条写入由 SQLite 事务批量提交；无需专门的批量 API
+for _, item := range items {
+    mem.Add(ctx, item)
+}
 ```
 
 ## 备份与恢复

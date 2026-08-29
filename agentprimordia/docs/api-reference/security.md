@@ -1,89 +1,75 @@
 # Security API 参考
 
-> `package security` — 沙箱、TLS、加密与访问控制。
+> `package security`（经 `agentprimordia/pkg` 部分导出）— ACL、沙箱、路径校验、加密与权限管理。
 
 ## ACL（访问控制列表）
 
-```go
-type ACL struct {
-    Roles   map[string][]string  // role → 允许的工具列表
-    Tenants map[string]TenantACL
-}
+按「Agent × 资源 × 访问级别」三元组授权：
 
+```go
 func NewACL() *ACL
-func (a *ACL) Check(role, tool string) bool
+
+func (a *ACL) Allow(agentID, resource string, level AccessLevel)   // 授权
+func (a *ACL) Deny(agentID, resource string)                       // 显式拒绝
+func (a *ACL) Check(agentID, resource string, required AccessLevel) bool
 ```
 
-## 沙箱
+`AccessLevel` 取值：`AccessNone / AccessRead / AccessWrite / AccessFull`（`AccessLevel = PermissionLevel` 别名）。
+
+**示例：**
 
 ```go
-type Sandbox struct {
-    Permissions SandboxPermissions
-}
+acl := security.NewACL()
+acl.Allow("agent-1", "filesystem", security.AccessRead)
+acl.Allow("admin-agent", "shell", security.AccessFull)
 
-type SandboxPermissions struct {
-    AllowedFileReadPaths  []string
-    AllowedFileWritePaths []string
-    AllowedNetworkHosts   []string
-    MaxMemoryBytes        int64
-    MaxExecutionTime      time.Duration
-    DisableSubprocess     bool
+if !acl.Check("agent-1", "shell", security.AccessExecute) {
+    // 拒绝调用
 }
 ```
 
-## 路径校验
+## 沙箱与路径校验
+
+Sandbox 与 ACL 联动，提供命令白名单与路径校验：
 
 ```go
-func ValidatePath(path string, allowedRoots []string) error
-func SafeJoin(root, userInput string) (string, error)  // 防路径穿越
+type Sandbox struct { /* acl + 命令白名单 + 参数模式 */ }
+
+// 路径校验：校验 agentID 对 path 的访问是否满足 level
+func (s *Sandbox) ValidatePath(agentID, path string, level AccessLevel) error
 ```
 
-## TLS/mTLS 配置
+## 权限管理器
 
 ```go
-type TLSConfig struct {
-    CertFile    string
-    KeyFile     string
-    ClientCA    string     // 客户端 CA（mTLS）
-    MinVersion  uint16     tls.VersionTLS13
-}
+func NewPermissionManager() *PermissionManager
+
+func (pm *PermissionManager) Grant(agentID string, level PermissionLevel, resources ...string) error
+func (pm *PermissionManager) Allow(agentID, resource string, requested PermissionLevel) bool
 ```
 
 ## 加密
 
+AES-256-GCM 加密器（用于密钥/敏感配置加密）：
+
 ```go
-// 配置字段加密（AES-256-GCM）
-func EncryptConfigField(plaintext []byte, key []byte) (string, error)
-func DecryptConfigField(ciphertext string, key []byte) ([]byte, error)
+func NewAESGCMEncryptor(key []byte) (*AESGCMEncryptor, error) // key 长度需符合 aesKeySize
 ```
+
+`Encryptor` 接口提供 Encrypt/Decrypt 能力；密钥管理经 `SecretsManager`（环境/Vault 多后端 + 缓存装饰器）。
 
 ## 审计日志
 
 ```go
-type AuditLogger interface {
-    Log(entry AuditEntry)
-    Close() error
-}
-
 type AuditEntry struct {
-    Timestamp   time.Time
-    TenantID    string
-    UserID      string
-    Action      string   // agent.run / tool.call / memory.search ...
-    Resource    string
-    Result      allow / deny
-    ClientIP    string
+    Action    string    `json:"action"`
+    Key       string    `json:"key"`
+    Timestamp time.Time `json:"timestamp"`
+    Success   bool      `json:"success"`
+    Error     string    `json:"error,omitempty"`
 }
+
+func NewAuditLog() *AuditLog
 ```
 
-## 示例
-
-```go
-// 启用 TLS + ACL
-cert, _ := tls.LoadX509KeyPair("server.crt", "server.key")
-acl := security.NewACL()
-acl.SetRole("user", []string{"filesystem"})
-acl.SetRole("admin", []string{"filesystem", "shell"})
-
-http.ListenAndServeTLS(":8443", cert, nil, middleware.RequireAuth(auth, handler, denyHandler))
-```
+> 注：安全模块不含 HTTP TLS 配置类型；mTLS/证书管理由部署层（deploy/、gateway/）承担。

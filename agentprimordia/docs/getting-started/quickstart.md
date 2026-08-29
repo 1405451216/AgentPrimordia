@@ -23,8 +23,9 @@
 ## 步骤 1：安装 CLI 工具
 
 ```bash
-# 安装 ap CLI 工具
-go install github.com/AgentPrimordia/agentprimordia/cmd/ap@latest
+# 模块名为 agentprimordia（无远程模块路径），需从源码构建安装
+git clone https://github.com/AgentPrimordia/agentprimordia.git
+cd agentprimordia && go install ./cmd/ap
 
 # 验证安装
 ap version
@@ -153,13 +154,18 @@ llm:
 
 ### Q: 如何调试 Agent？
 
-启动 Inspector：
+启动调试服务器：
 
 ```bash
-ap debug --inspector
+ap debug
 ```
 
-然后在浏览器中打开 `http://localhost:6061/inspector` 查看实时追踪。
+然后在浏览器中打开 `http://localhost:6060/` 查看实时追踪。调试服务器
+（默认端口 6060，可用 `ap debug --port <port>` 修改）提供以下端点：
+
+- `/` — 调试首页（Agent 事件与运行状态）
+- `/api/events` — 事件流 JSON
+- `/api/snapshots` — Memory 快照 JSON
 
 ## 视频教程
 

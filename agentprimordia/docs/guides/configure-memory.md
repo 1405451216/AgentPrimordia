@@ -56,11 +56,11 @@
     memory, _ := ap.NewSQLiteStore("./data/memory.db")
     defer memory.Close()
 
-    // 可选：启用 WAL 模式（并发读写）
-    memory = memory.WithWAL()
+    // 文件数据库默认启用 WAL 模式（并发读写），无需额外配置
 
-    // 可选：启用自动清理（30 天过期）
-    memory = memory.WithCleanup(30)
+    // 可选：启动后台自动清理（30 天过期）
+    stop := memory.StartAutoCleanup(ap.CleanupConfig{MaxAgeDays: 30})
+    defer stop()
 
     agent, err := ap.NewAgent("assistant", "你是助手", provider,
         ap.WithMaxTurns(10),
@@ -139,13 +139,13 @@
 
     ```go
     // 创建向量存储（指定维度）
-    vectorStore := memory.NewVectorStore(1536)
+    vectorStore := ap.NewVectorStore(1536)
 
     // 或创建带 HNSW 索引的向量存储（推荐生产使用）
-    vectorStore = memory.NewVectorStoreWithHNSW(1536, memory.HNSWConfig{
-        M:              16,
-        EFConstruction: 200,
-        EFSearch:       100,
+    vectorStore = ap.NewVectorStoreWithHNSW(1536, ap.HNSWConfig{
+        MaxConnections: 16,
+        EfConstruction: 200,
+        EfSearch:       100,
     })
 
     // 存储向量
@@ -273,9 +273,10 @@ important, _ := mem.GetImportant(ctx, 0.7, 10)
 ## 记忆清理
 
 ```go
-// 自动清理（在创建时配置）
+// 自动清理（创建后启动后台 goroutine）
 mem, _ := ap.NewSQLiteStore("./data/memory.db")
-mem = mem.WithCleanup(30) // 30 天过期
+stop := mem.StartAutoCleanup(ap.CleanupConfig{MaxAgeDays: 30}) // 30 天过期
+defer stop()
 
 // 手动清理
 deleted, _ := mem.CleanupExpired(ctx, 30)
@@ -318,8 +319,8 @@ fmt.Printf("导入了 %d 条记忆\n", count)
 
 ## 最佳实践
 
-1. **生产环境用 SQLite + WAL**：`mem.WithWAL()` 并发读写不阻塞
-2. **设置清理策略**：`mem.WithCleanup(30)` 防止记忆无限增长
+1. **生产环境用 SQLite**：WAL 模式内置开启，多连接并发读写不阻塞
+2. **设置清理策略**：`mem.StartAutoCleanup(ap.CleanupConfig{MaxAgeDays: 30})` 防止记忆无限增长
 3. **RAG 用 RRF 融合**：`FusionRRF` 对量纲差异鲁棒
 4. **批量操作**：使用 `AddBatch` 减少数据库往返
 5. **重要性评分**：为关键信息设置高重要性，优先检索

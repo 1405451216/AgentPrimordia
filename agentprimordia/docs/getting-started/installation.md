@@ -4,7 +4,7 @@
 
 ## 系统要求
 
-- **Go 版本**: 1.22 或更高
+- **Go 版本**: 1.26 或更高（`go.mod` 声明 `go 1.26`）
 - **操作系统**: Windows 10+, macOS 10.15+, Linux (Ubuntu 18.04+, CentOS 7+)
 - **内存**: 最低 512MB，推荐 2GB+
 - **磁盘空间**: 最低 100MB
@@ -53,12 +53,21 @@ go version
 
 ### 安装 AgentPrimordia CLI
 
-```bash
-# 安装最新稳定版
-go install github.com/AgentPrimordia/agentprimordia/cmd/ap@latest
+> 注意：AgentPrimordia 的 Go 模块名为 `agentprimordia`，没有发布到远程模块仓库，
+> 因此**不能**使用 `go install github.com/...@latest` 方式安装，需从源码构建。
+> 应用项目通过 `go.mod` 的 `replace` 指向本地框架目录来消费框架（见
+> [第一个 Agent](first-agent.md)）。
 
-# 或安装开发版
-go install github.com/AgentPrimordia/agentprimordia/cmd/ap@main
+```bash
+# 克隆本仓库
+git clone https://github.com/AgentPrimordia/agentprimordia.git
+cd agentprimordia
+
+# 方式一：使用 go install 安装 CLI 到 $GOPATH/bin
+go install ./cmd/ap
+
+# 方式二：使用 make 构建（输出到 bin/）
+make build
 ```
 
 ### 验证安装

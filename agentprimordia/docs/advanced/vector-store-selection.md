@@ -15,12 +15,8 @@
 
 ```go
 // 零配置，适合小规模场景
-store := memory.NewVectorStore(1536) // 维度
-store.Add(ctx, memory.VectorRecord{
-    ID:     "doc-1",
-    Vector: embedding,
-    Meta:   map[string]any{"source": "wiki"},
-})
+store := ap.NewVectorStore(1536) // 维度
+store.Add(ctx, "doc-1", embedding, map[string]string{"source": "wiki"})
 results, _ := store.Search(ctx, queryVec, 5) // Top-5
 ```
 
@@ -32,11 +28,11 @@ results, _ := store.Search(ctx, queryVec, 5) // Top-5
 ```go
 import "agentprimordia/pgvector"
 
-store, err := pgvector.NewStore(pgvector.Config{
-    DSN:       "postgres://user:pass@localhost:5432/ap?sslmode=disable",
-    TableName: "agent_embeddings",
-    Dimension: 1536,
-    IndexType: pgvector.IndexHNSW, // 或 IndexIVFFlat
+store, err := pgvector.New(ctx, pgvector.Config{
+    ConnString: "postgres://user:pass@localhost:5432/ap?sslmode=disable",
+    TableName:  "agent_embeddings",
+    Dimensions: 1536,
+    IndexType:  pgvector.HNSWIndex, // 或 pgvector.IVFFlatIndex
 })
 ```
 
@@ -68,10 +64,11 @@ AgentPrimordia 的 `VectorStore` 接口设计允许无缝切换后端：
 ```go
 // 只需实现 memory.VectorStore 接口
 type VectorStore interface {
-    Add(ctx context.Context, record VectorRecord) error
-    Search(ctx context.Context, query []float32, topK int) ([]SearchResult, error)
-    Delete(ctx context.Context, id string) error
-    Count(ctx context.Context) (int, error)
+    Insert(ctx context.Context, collection string, records []*VectorRecord) error
+    Delete(ctx context.Context, collection string, ids []string) error
+    Search(ctx context.Context, collection string, query []float32, opts VectorSearchOptions) ([]*VectorMatch, error)
+    CreateCollection(ctx context.Context, name string, dim int) error
+    DropCollection(ctx context.Context, name string) error
 }
 ```
 
@@ -90,11 +87,8 @@ type VectorStore interface {
 无论选择哪种后端，RAG 管道（`internal/memory/rag.go`）均通过 `VectorStore` 接口透明集成：
 
 ```go
-ragStore := memory.NewRAGStore(memory.RAGConfig{
-    VectorStore: myVectorStore, // 任意后端
-    EpisodeStore: episodeStore,
-    FusionMode:  memory.FusionRRF,
-})
+// episodeStore 为任意 memory.Memory 实现（如 ap.NewSQLiteStore 创建的实例）
+ragStore := ap.NewRAGStore(episodeStore, ap.NewEmbeddingAdapter(provider, 1536))
 ```
 
 ## 迁移路径

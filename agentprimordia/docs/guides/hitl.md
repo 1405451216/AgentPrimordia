@@ -17,15 +17,18 @@ HITL 模块让 Agent 在执行敏感操作前请求人类确认，实现人机�
 ```go
 import ap "agentprimordia/pkg"
 
-hitlMgr := ap.NewHITLManager()
-
-// 标记需要确认的工具
-hitlMgr.RequireConfirmation("shell", "filesystem.write", "database.execute")
-
-// 注入 Agent
-agent := ap.NewReActAgent(cfg).
-    WithTools(toolkit).
-    WithHITL(hitlMgr)
+// 注入 Agent：AutoApproveTools 之外的工具调用默认走人工确认；
+// InterruptPoints 指定中断点（结构体：Type 中断原因 / ToolName 工具名 / Message 说明）
+agent, err := ap.NewAgent("hitl-agent", "你是助手", provider,
+    ap.WithToolkit(toolkit),
+    ap.WithHITL(&ap.HITLConfig{
+        AutoApproveTools: []string{"web"},
+        OnInterrupt: func(req *ap.InterruptRequest) {
+            // 通知人工审批（HTTP/UI/消息推送）
+        },
+        HumanInputChan: humanInputCh, // <-chan *ap.HumanResponse，人工决定 Approved/Input
+    }),
+)
 ```
 
 ## 确认回调

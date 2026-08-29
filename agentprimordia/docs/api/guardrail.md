@@ -36,11 +36,16 @@ const (
 import ap "agentprimordia/pkg"
 
 engine := ap.NewGuardrailEngine()
-engine.AddRule(ap.NewInjectionRule())   // Prompt 注入检测
-engine.AddRule(ap.NewPIIRule())         // PII 脱敏
-engine.AddRule(ap.NewTopicRule(allowed)) // 主题过滤
+engine.AddRule(ap.NewPromptInjectionRule(ap.PromptInjectionConfig{})) // Prompt 注入检测
+engine.AddRule(ap.NewPIIRule(ap.PIIRuleConfig{}))                     // PII 脱敏
+engine.AddRule(ap.NewTopicConstraintRule(ap.TopicConstraintConfig{    // 主题过滤
+    Topics: allowed,
+}))
 
-report := engine.Check(ctx, userInput, ap.CheckInput)
+report, err := engine.Check(userInput, ap.CheckInput)
+if err != nil {
+    // 处理检查失败
+}
 if !report.Passed {
     // 拒绝或清理输入
 }
@@ -58,8 +63,18 @@ if !report.Passed {
 
 ## 与 Agent 集成
 
-通过 Hook 机制自动注入 ReAct 循环：
+通过 `WithInputGuard` 选项注入，用户输入进入 ReAct 循环前自动检查。`WithInputGuard` 接收 `InputGuard` 函数类型 `func(content string) (sanitized string, blocked bool, err error)`：
 
 ```go
-agent := ap.NewReActAgent(cfg).WithGuardrail(engine)
+agent, err := ap.NewAgent("my-agent", "You are a helpful assistant.", provider,
+    ap.WithInputGuard(func(content string) (string, bool, error) {
+        report, err := engine.Check(content, ap.CheckInput)
+        if err != nil {
+            return content, false, err
+        }
+        if !report.Passed {
+            return content, true, nil // blocked=true 拒绝该输入
+        }
+        return content, false, nil
+    }))
 ```

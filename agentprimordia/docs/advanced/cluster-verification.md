@@ -93,20 +93,22 @@ sleep 10  # 等待 etcd 就绪
 echo "[2/6] 验证节点注册..."
 for node in node-1 node-2 node-3; do
   docker compose -f $COMPOSE_FILE exec $node \
-    ap cluster status --format json | jq '.nodes | length'
+    ap cluster status --json | jq '.nodes | length'
 done
 
 # 3. 跨节点消息
+# 注意：ap cluster CLI 仅提供 init/join/status/leave/scale 子命令，
+# 不提供 send 子命令；跨节点消息路由需通过 gRPC 消息总线在代码层
+# （internal/agent/cluster/grpc_bus.go）编写集成测试验证。
 echo "[3/6] 验证跨节点消息路由..."
-docker compose -f $COMPOSE_FILE exec node-1 \
-  ap cluster send --target node-3 --message "hello-from-1"
+echo "  (需通过 gRPC 消息总线的集成测试验证，CLI 无 send 子命令)"
 
 # 4. 节点下线感知
 echo "[4/6] 验证节点下线感知..."
 docker compose -f $COMPOSE_FILE stop node-2
 sleep 35  # 等待 Lease 过期
 docker compose -f $COMPOSE_FILE exec node-1 \
-  ap cluster status --format json | jq '.nodes | length'
+  ap cluster status --json | jq '.nodes | length'
 # 期望输出: 2
 
 # 5. 节点恢复
@@ -114,7 +116,7 @@ echo "[5/6] 验证节点恢复..."
 docker compose -f $COMPOSE_FILE start node-2
 sleep 10
 docker compose -f $COMPOSE_FILE exec node-1 \
-  ap cluster status --format json | jq '.nodes | length'
+  ap cluster status --json | jq '.nodes | length'
 # 期望输出: 3
 
 # 6. 清理

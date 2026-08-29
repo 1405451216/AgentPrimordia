@@ -81,7 +81,7 @@
 输入:     用户原始需求描述
 输出:     结构化需求文档（含用户故事、验收标准、约束条件）
 关键词:   [需求, 分析, 用户故事, 验收标准, 约束, 边界]
-工具权限: [read_file, web_search, knowledge_search]
+工具权限: [read_file, web, knowledge_search]
 约束:
   - 不得直接编写业务代码
   - 需求变更必须经确认后广播给所有相关 Agent
@@ -101,7 +101,7 @@
 输入:     结构化需求文档
 输出:     架构设计文档 + 接口定义 + 技术选型报告
 关键词:   [架构, 设计, 接口, 模块, 数据模型, 技术选型]
-工具权限: [read_file, write_file, web_search, knowledge_search]
+工具权限: [read_file, write_file, web, knowledge_search]
 约束:
   - 设计决策必须记录理由和替代方案
   - 接口定义必须包含输入/输出类型和错误码
@@ -965,27 +965,20 @@ result, err := orch.Run(ctx, "为项目添加用户认证模块")
 
 ```go
 // 架构方案讨论
-groupChat := collaboration.NewGroupChat(collaboration.GroupChatConfig{
-    Agents: []collaboration.Agent{
+groupChat, err := ap.NewGroupChat(ap.GroupChatConfig{
+    Agents: []ap.Agent{
         architect,        // 架构师提出方案
         seniorDeveloper,  // 资深开发评估可行性
         securityExpert,   // 安全专家评估风险
         performanceExpert,// 性能专家评估开销
     },
-    MaxRounds:     3,
-    SelectSpeaker: collaboration.RoleBasedSelector(roleConfig),
+    MaxRounds: 3,
 })
 
-result, err := groupChat.Run(ctx, collaboration.Message{
-    Role:    "user",
-    Content: "讨论认证模块技术方案: JWT vs Session",
-})
+result, err := groupChat.Run(ctx, ap.UserMessage("讨论认证模块技术方案: JWT vs Session"))
 
 // 共识决策
-consensus, err := groupChat.RunConsensus(ctx, collaboration.Message{
-    Role:    "user",
-    Content: "请投票选择最终认证方案",
-})
+consensus, err := groupChat.RunConsensus(ctx, ap.UserMessage("请投票选择最终认证方案"))
 ```
 
 ---

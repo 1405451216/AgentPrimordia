@@ -30,7 +30,7 @@ import (
 
 func main() {
 	// 创建 LLM Provider（以 OpenAI 为例）
-	provider, err := ap.NewOpenAIProvider(ap.OpenAIConfig{
+	provider, err := ap.NewOpenAIProvider(ap.Config{
 		APIKey: "sk-your-key-here",
 		Model:  "gpt-4o",
 	})
@@ -76,10 +76,10 @@ Agent says: Hello! I'm an AI assistant powered by AgentPrimordia. I can help you
 import "agentprimordia/pkg"
 
 // 创建工具注册表
-registry := ap.NewRegistry()
+registry := ap.NewToolRegistry()
 
 // 注册内置文件系统工具
-registry.Register(ap.NewFilesystemTool("/tmp/workspace"))
+registry.Register(ap.NewFileSystem("/tmp/workspace"))
 
 // 创建带工具的 Agent
 agent, _ := ap.NewAgent("tool-agent", "You can read and write files.", provider,
@@ -113,17 +113,13 @@ for event := range ch {
 ## 7. 多 Agent 编排
 
 ```go
-// Pipeline: Agent A → Agent B → Agent C
-pipeline := ap.NewPipeline(30 * time.Second)
-pipeline.AddStage(&ap.Stage{
-    Name:    "research",
-    Handler: researchAgent.Run,
-})
-pipeline.AddStage(&ap.Stage{
-    Name:    "write",
-    Handler: writerAgent.Run,
-})
-result, _ := pipeline.Execute(ctx, "Write about Go concurrency")
+// Pipeline: Agent A → Agent B → Agent C（前一步输出作为下一步输入）
+pipeline := ap.NewPipeline(
+    ap.PipelineStep{Name: "research", Agent: researchAgent},
+    ap.PipelineStep{Name: "write", Agent: writerAgent},
+)
+result, _ := pipeline.Run(ctx, "Write about Go concurrency")
+fmt.Println(result.Final)
 ```
 
 ## 下一步
@@ -133,7 +129,7 @@ result, _ := pipeline.Execute(ctx, "Write about Go concurrency")
 - 🏗️ [架构文档](architecture-mermaid.md)
 - 🔧 [部署指南](DEPLOYMENT.md)
 
-## 7. 环境变量驱动真实 LLM（v4.1+）
+## 8. 环境变量驱动真实 LLM（v4.1+）
 
 不写死 Provider 配置，用环境变量切换真实/本地模型：
 

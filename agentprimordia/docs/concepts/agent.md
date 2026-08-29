@@ -14,14 +14,14 @@ Agent 通过类型断言发现能力，而非配置文件：
     import ap "agentprimordia/pkg"
 
     // 创建 Agent 时通过 Functional Options 注入能力
-    agent := ap.NewAgent("my-agent", "你是助手", provider,
+    agent, err := ap.NewAgent("my-agent", "你是助手", provider,
         ap.WithMaxTurns(10),
     )
 
-    // 链式 API 按需注入工具、记忆、RAG 等能力
-    agent.WithToolkit(toolkit).
+    // 构造后还可通过链式 API 按需注入工具、记忆、RAG 等能力
+    agent = agent.WithToolkit(toolkit).
         WithMemory(memory).
-        WithRAG(ragProvider)
+        WithRAG(ragConfig)
     ```
 
 === "TypeScript"
@@ -48,12 +48,12 @@ Agent 通过实现不同 `*Capable` 接口组合获得不同能力：
     所有能力通过 `WithXxx()` Option 注入：
 
     ```go
-    agent := ap.NewAgent("assistant", "你是助手", provider,
+    agent, err := ap.NewAgent("assistant", "你是助手", provider,
         ap.WithMaxTurns(10),
         ap.WithMemory(memory),       // MemoryCapable
         ap.WithToolkit(toolkit),     // ToolCapable
         ap.WithRAG(ragConfig),       // RAGCapable
-        ap.WithHooks(hooks),         // LifecycleCapable
+        ap.WithHooks(hooks),         // HookCapable
         ap.WithMetrics(recorder),    // MetricsCapable
         ap.WithTracer(tracer),       // TraceCapable
         ap.WithCostTracker(tracker), // CostCapable
@@ -81,18 +81,21 @@ Agent 通过实现不同 `*Capable` 接口组合获得不同能力：
 ReAct 循环的每个阶段都可以注入自定义逻辑：
 
 ```go
-agent := ap.NewAgent("assistant", "你是助手", provider,
+hooks := ap.NewHookManager()
+
+// Register(point, fn)：fn 签名为 func(ctx context.Context, hctx *ap.HookContext) error
+hooks.Register(ap.HookBeforeLLM, func(ctx context.Context, hctx *ap.HookContext) error {
+    fmt.Println("即将调用 LLM...")
+    return nil
+})
+hooks.Register(ap.HookAfterTool, func(ctx context.Context, hctx *ap.HookContext) error {
+    fmt.Printf("工具 %s 执行完成\n", hctx.ToolCall.Name)
+    return nil
+})
+
+agent, err := ap.NewAgent("assistant", "你是助手", provider,
     ap.WithMaxTurns(10),
-    ap.WithHooks(ap.LifecycleHooks{
-        BeforeThink: func(ctx context.Context, msgs []ap.Message) error {
-            fmt.Println("即将开始推理...")
-            return nil
-        },
-        AfterAct: func(ctx context.Context, call ap.ToolCall, result ap.ToolResult) error {
-            fmt.Printf("工具 %s 执行完成\n", call.Name)
-            return nil
-        },
-    }),
+    ap.WithHooks(hooks),
 )
 ```
 
@@ -103,7 +106,7 @@ agent := ap.NewAgent("assistant", "你是助手", provider,
     **推荐方式：`ap.NewAgent()` （v0.7.0+）**
 
     ```go
-    agent := ap.NewAgent("assistant", "你是助手", provider,
+    agent, err := ap.NewAgent("assistant", "你是助手", provider,
         ap.WithMaxTurns(10),
         ap.WithToolkit(toolkit),
         ap.WithMemory(memory),
@@ -114,22 +117,30 @@ agent := ap.NewAgent("assistant", "你是助手", provider,
 
     **链式 API：**
 
+    链式方法（`WithToolkit` / `WithMemory` / `WithRAG` 等）定义在
+    `*CapabilityAgent` 上，可在构造后继续注入能力：
+
     ```go
-    agent := ap.NewAgent("assistant", "你是助手", provider, ap.WithMaxTurns(10)).
-        WithToolkit(toolkit).
+    agent, err := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithMaxTurns(10),
+    )
+    agent = agent.WithToolkit(toolkit).
         WithMemory(memory).
-        WithRAG(ragProvider)
+        WithRAG(ragConfig)
     ```
+
+    > 注：不存在 `ap.NewAgent(ap.ReActConfig{...})` 形式的 struct 构造入口；
+    > `ReActConfig` 由框架内部使用，公共 API 统一为 `NewAgent` + Option。
 
     **传统方式：`ap.NewAgent()` （向后兼容）**
 
     ```go
-    agent := ap.NewAgent(ap.ReActConfig{
-        Name:         "assistant",
-        SystemPrompt: "你是助手",
-        Model:        provider,
-        MaxTurns:     10,
-    })
+    agent, err := ap.NewAgent("assistant", "你是助手", provider,
+        ap.WithMaxTurns(10),
+        ap.WithToolkit(toolkit),
+        ap.WithMemory(memory),
+        ap.WithTemperature(0.7),
+    )
     ```
 
 === "TypeScript"
@@ -171,13 +182,21 @@ agent := ap.NewAgent("assistant", "你是助手", provider,
 === "Go"
 
     ```go
-    // DAG 编排
+    // DAG 编排（NodeHandler 签名为 func(ctx, input string) (string, error)）
     dag, _ := ap.NewDAGBuilder("data-analysis").
         Node("analyze", func(ctx context.Context, input string) (string, error) {
-            return analyzeAgent.Run(ctx, ap.UserMessage(input))
+            resp, err := analyzeAgent.Run(ctx, ap.UserMessage(input))
+            if err != nil {
+                return "", err
+            }
+            return resp.Content, nil
         }).
         Node("report", func(ctx context.Context, input string) (string, error) {
-            return reportAgent.Run(ctx, ap.UserMessage(input))
+            resp, err := reportAgent.Run(ctx, ap.UserMessage(input))
+            if err != nil {
+                return "", err
+            }
+            return resp.Content, nil
         }).
         Edge("analyze", "report").
         Build()

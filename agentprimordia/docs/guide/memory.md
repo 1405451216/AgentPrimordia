@@ -17,7 +17,7 @@ mem := ap.NewInMemoryMemory()
 适用于生产环境单机部署：
 
 ```go
-mem, _ := ap.NewSQLiteMemory("./data/memory.db")
+mem, _ := ap.NewSQLiteStore("./data/memory.db")
 ```
 
 自动建表、自动迁移、支持数百万条对话历史。
@@ -27,11 +27,11 @@ mem, _ := ap.NewSQLiteMemory("./data/memory.db")
 适用于知识库 / RAG 场景：
 
 ```go
-mem, _ := ap.NewVectorMemory(ap.VectorConfig{
-    DBPath:   "./data/vectors.db",
-    Embedder: ap.NewOpenAIEmbedder(), // 或本地 ONNX 嵌入模型
-    Dim:      1536,                    // 嵌入向量维度
-})
+// 向量存储（内存版，维度与嵌入模型一致，如 1536）
+vectorStore := ap.NewVectorStore(1536)
+
+// 混合 RAG 检索（FTS + Vector，支持 RRF 融合）；嵌入器经适配器从 llm.Provider 得到
+rag := ap.NewRAGStore(mem, ap.NewEmbeddingAdapter(provider, 1536))
 ```
 
 ### pgvector（企业级）
@@ -39,11 +39,11 @@ mem, _ := ap.NewVectorMemory(ap.VectorConfig{
 适用于高并发、大数据量：
 
 ```go
-mem, _ := ap.NewPgVectorMemory(ap.PgConfig{
-    DSN:      "postgres://...",
-    TableName: "embeddings",
-    Dim:      1536,
+store, err := ap.NewPgVectorVectorStore(ctx, ap.PgVectorConfig{
+    ConnString: "postgres://user:pass@host:5432/dbname",
+    Dimensions: 1536,
 })
+defer store.Close()
 ```
 
 ## 写入与检索

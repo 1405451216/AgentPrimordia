@@ -113,15 +113,19 @@ type PoolEvent struct {
 ## 租户配额
 
 ```go
-// 启用多租户配额
-tenantReg := pool.NewTenantRegistry()
-tenantReg.Add("tenant-a", pool.TenantQuota{MaxConcurrency: 10, MaxTasksPerMinute: 100})
+// 构造租户注册表：factory 按租户 ID 返回配额；factory 为 nil 时所有租户用 defaultQ
+tenantReg := pool.NewTenantRegistry(
+    func(tenantID string) (pool.TenantQuota, error) {
+        return pool.TenantQuota{MaxConcurrency: 10, MaxTasksPerMinute: 100}, nil
+    },
+    pool.TenantQuota{MaxConcurrency: 5, MaxTasksPerMinute: 60}, // 默认配额
+)
 pool.EnableTenantRegistry(tenantReg)
 
-// 为租户提交任务（需要 context.Context）
+// 为租户提交任务
 result, err := pool.SubmitForTenant(ctx, "tenant-a", taskConfig)
 
-// 获取租户令牌（手动获取）
+// 获取租户令牌（手动获取，返回 release 函数）
 release, err := pool.AcquireForTenant("tenant-a")
 defer release()
 
@@ -131,15 +135,28 @@ snapshots := pool.TenantStats()
 
 ## 自动扩缩
 
-```go
-type AutoscalerConfig struct {
-    MinWorkers          int
-    MaxWorkers          int
-    ScaleUpThreshold    int   // 队列深度阈值
-    ScaleDownIdleSeconds int  // 空闲秒数
-}
+经 `PoolConfig.AutoScaler`（`*AutoScalerConfig`）启用：
 
-func (p *Pool) EnableAutoscaler(cfg AutoscalerConfig)
+```go
+type AutoScalerConfig struct {
+    MinConcurrency      int           // 最小并发
+    MaxConcurrency      int           // 最大并发
+    ScaleUpThreshold    float64       // 扩容阈值（默认 0.8）
+    ScaleDownThreshold  float64       // 缩容阈值（默认 0.2）
+    CoolDownPeriod      time.Duration // 扩缩冷却期
+    CheckInterval       time.Duration // 检查间隔
+}
+```
+
+**示例：**
+
+```go
+// 注：AutoScalerConfig 目前仅在 internal/pool 定义（pkg 尚未导出别名），
+// 需要在构造 PoolConfig 时直接内联设置；字段与默认值如上表所示。
+pool := ap.NewPool(ap.PoolConfig{
+    MaxConcurrency: 10,
+    // AutoScaler: <internal/pool.AutoScalerConfig{MinConcurrency: 2, MaxConcurrency: 32}>
+})
 ```
 
 ## 调度流程

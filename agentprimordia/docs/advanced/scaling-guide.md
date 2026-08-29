@@ -55,18 +55,20 @@ SQLite 采用单写者模型（即使 WAL 模式下也仅允许一个写事务�
 ### 配置示例
 
 ```go
-// WAL 模式（默认已启用）
-store, _ := memory.NewSqliteStore(memory.SqliteConfig{
-    Path:       "agent_memory.db",
-    WALMode:    true,
-    BusyTimeout: 5 * time.Second,
-})
+// WAL 模式与 busy_timeout（5s）已在 NewSQLiteStore 内默认启用，无需配置
+store, err := ap.NewSQLiteStore("agent_memory.db")
+if err != nil {
+    log.Fatal(err)
+}
+defer store.Close()
+```
 
-// 高并发场景：使用 Redis 检查点
-// go build -tags redis
-checkpoint, _ := persist.NewRedisCheckpoint(persist.RedisConfig{
-    Addr: "localhost:6379",
-})
+```text
+// 高并发场景：分布式检查点后端
+// - Redis 检查点：internal/persist/redis_checkpoint.go（build tag "redis"）
+// - etcd  检查点：internal/persist/etcd_checkpoint.go（build tag "etcd"）
+// 两者均为带 build tag 的内部实现（默认构建不包含），用于分布式部署的
+// 检查点存储；pkg 公共 API 暂未提供别名。
 ```
 
 ## 3. Agent 单实例串行
@@ -80,22 +82,28 @@ checkpoint, _ := persist.NewRedisCheckpoint(persist.RedisConfig{
 
 ```go
 pool := ap.NewPool(ap.PoolConfig{
-    MaxConcurrency: 10,        // 10 个 Agent 并行
-    AgentFactory: func() ap.Agent {
-        return ap.NewAgent(ap.AgentConfig{
-            Name:  "worker",
-            Model: "gpt-4",
-        })
-    },
+    MaxConcurrency: 10,             // 10 个 Agent 并行
+    Timeout:        5 * time.Minute, // 单任务超时
+})
+pool.SetModel(provider) // Pool 使用的 LLM Provider
+defer pool.Close()
+
+// 可选：自定义 Agent 工厂
+// AgentFactory 签名：func(cfg ap.AgentFactoryConfig) ap.Agent
+pool.SetAgentFactory(func(cfg ap.AgentFactoryConfig) ap.Agent {
+    agent, err := ap.NewAgent(cfg.Name, cfg.SystemPrompt, provider,
+        ap.WithMaxTurns(cfg.MaxTurns),
+    )
+    if err != nil {
+        panic(err)
+    }
+    return agent
 })
 
-// 分发任务
-for _, task := range tasks {
-    pool.Dispatch(ap.TaskConfig{
-        ID:      task.ID,
-        Message: task.Content,
-    })
-}
+// 分发任务：Dispatch 接收 context 与任务切片，返回结果切片
+results, err := pool.Dispatch(ctx, []ap.TaskConfig{
+    {ID: task.ID, Title: task.Name, Prompt: task.Content},
+})
 ```
 
 ### 性能参考
@@ -113,19 +121,27 @@ for _, task := range tasks {
 
 ```go
 // etcd 服务发现 + gRPC 消息总线
-cluster, _ := ap.NewCluster(ap.ClusterConfig{
-    NodeID:   "node-1",
-    EtcdEndpoints: []string{"localhost:2379"},
+// ClusterConfigWithDefaults 为心跳间隔/超时、选举超时等填充默认值
+cfg := ap.ClusterConfigWithDefaults(ap.ClusterConfig{
+    NodeID:     "node-1",
+    ListenAddr: ":9001",
 })
+cluster := ap.NewClusterManager(cfg)
 ```
+
+> 注：跨节点的服务发现（Discovery）与共享状态（StateStore）依赖
+> etcd 后端实现（build tag `etcd`，默认构建不包含），详见
+> [集群多节点生产化验证方案](cluster-verification.md)。
 
 ## 性能监控
 
 使用内置 Prometheus 指标监控瓶颈：
 
 ```go
-// 注册指标
-metrics := ap.NewPrometheusMetrics()
+// 创建指标收集器与 Prometheus HTTP 处理器（NewPrometheusHandler(metrics, addr)）
+m := ap.NewMetrics()
+handler := ap.NewPrometheusHandler(m, ":9090")
+go handler.Start() // 暴露 /metrics 端点
 
 // 关键指标
 // ap_pool_running_tasks    — 当前运行任务数

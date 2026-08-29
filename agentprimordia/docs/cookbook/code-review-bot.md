@@ -33,24 +33,29 @@ import (
 )
 
 func main() {
-    registry := ap.NewToolRegistry()
-    registry.Register(ap.NewFileSystemTool(ap.FSToolConfig{ReadOnly: true}))
-    registry.Register(ap.NewShellTool(ap.ShellToolConfig{Allowlist: []string{"gosec", "staticcheck", "gofmt"}}))
-    registry.Register(ap.NewWebTool()) // GitHub API
+    provider, err := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o",
+    })
+    if err != nil { log.Fatal(err) }
 
-    agent := ap.NewAgent(ap.AgentConfig{
-        Name: "code-review-bot",
-        SystemPrompt: `你是一个代码审查助理。
+    registry := ap.NewToolRegistry()
+    fsTool, err := ap.NewFileSystem(os.TempDir()) // 只读能力经文件系统权限/路径范围控制
+    if err != nil { log.Fatal(err) }
+    registry.Register(fsTool)
+    registry.Register(ap.NewShell())
+    registry.Register(ap.NewWeb()) // GitHub API
+
+    agent, err := ap.NewAgent("code-review-bot", `你是一个代码审查助理。
 1. 用 shell 工具运行 gosec / staticcheck 扫描 PR diff
 2. 用 GitHub API 提交 review 评论
 3. 高风险问题标记 'REQUEST_CHANGES'
-4. 中低风险标记 'COMMENT'`,
-        Memory: ap.NewInMemoryMemory(),
-        Tools:  registry.All(),
-    })
+4. 中低风险标记 'COMMENT'`, provider,
+        ap.WithToolkit(registry))
+    if err != nil { log.Fatal(err) }
 
     prURL := os.Getenv("PR_URL")
-    resp, err := agent.Run(context.Background(), fmt.Sprintf("审查 PR: %s", prURL))
+    resp, err := agent.Run(context.Background(), ap.UserMessage(fmt.Sprintf("审查 PR: %s", prURL)))
     if err != nil { log.Fatal(err) }
     fmt.Println(resp.Content)
 }

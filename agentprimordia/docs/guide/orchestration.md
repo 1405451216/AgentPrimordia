@@ -10,20 +10,30 @@ Agent 顺序执行，前一个输出是后一个输入：
 
 ```go
 pipeline := ap.NewPipeline(
-    ap.NewStage("extract", extractAgent),
-    ap.NewStage("transform", transformAgent),
-    ap.NewStage("load", loadAgent),
+    ap.PipelineStep{Name: "extract", Agent: extractAgent},
+    ap.PipelineStep{Name: "transform", Agent: transformAgent},
+    ap.PipelineStep{Name: "load", Agent: loadAgent},
 )
-result, _ := pipeline.Execute(ctx, rawData)
+result, _ := pipeline.Run(ctx, rawData)
 ```
 
 ### Handoff（交接）
 
-Agent 完成工作后，通过 Handoff 事件将控制权交给下一个 Agent：
+Agent 完成工作后，由 Router 决定将控制权交给下一个 Agent：
 
 ```go
-handoff := ap.NewHandoff(writerAgent, editorAgent, publisherAgent)
-result, _ :=andoff.Execute(ctx, draftContent)
+handoff := ap.NewHandoff(ap.HandoffConfig{
+    Agents: []ap.Agent{writerAgent, editorAgent, publisherAgent},
+    Router: func(ctx context.Context, input string) int {
+        // 根据输入决定交给第几个 Agent（返回下标）
+        if strings.Contains(input, "审校") {
+            return 1
+        }
+        return 0
+    },
+    MaxHandoffs: 5,
+})
+result, _ := handoff.Run(ctx, draftContent)
 ```
 
 ### DAG（有向无环图）
@@ -31,48 +41,46 @@ result, _ :=andoff.Execute(ctx, draftContent)
 支持并行分支与条件路由：
 
 ```go
-dag := ap.NewDAG().
-    AddNode("analyze", analyze).
-    AddNode("summary", summary).
-    AddNode("report", report).
-    AddNode("alert", alert).
-    AddEdge("analyze", "summary").
-    AddEdge("analyze", "alert").
-    AddEdge("summary", "report")
-result, _ := dag.Execute(ctx, input)
+dag, err := ap.NewDAGBuilder("report-pipeline").
+    Node("analyze", analyze).
+    Node("summary", summary).
+    Node("report", report).
+    Node("alert", alert).
+    Edge("analyze", "summary").
+    Edge("analyze", "alert").
+    Edge("summary", "report").
+    Build()
+result, err := dag.Run(ctx, input)
 ```
 
 ### GroupChat（圆桌讨论）
 
-多 Agent 讨论，投票决策：
+多 Agent 讨论，多轮发言：
 
 ```go
-chat := ap.NewGroupChat(
-    ap.NewMember("analyst", analystAgent),
-    ap.NewMember("skeptic", skepticAgent),
-    ap.NewMember("optimizer", optimizerAgent),
-)
-result, _ := chat.Discuss(ctx, topic, ap.VotePolicyMajority)
+chat, err := ap.NewGroupChat(ap.GroupChatConfig{
+    Agents:    []ap.Agent{analystAgent, skepticAgent, optimizerAgent},
+    MaxRounds: 6,
+})
+result, err := chat.Run(ctx, ap.UserMessage(topic))
 ```
 
 ### Debate（辩论）
 
-正反双方 + 裁判模式：
+正反双方多轮论辩，逐步达成共识：
 
 ```go
-debate := ap.NewDebate(proAgent, conAgent, judgeAgent)
-result, _ := debate.Debate(ctx, question)
+debate := ap.NewDebate(ap.DebateConfig{MaxRounds: 3})
+_ = debate.AddDebater(proDebater)    // 实现 ap.Debater 接口
+_ = debate.AddDebater(conDebater)
+result, _ := debate.Execute(ctx, question)
 ```
 
 ## 错误与重试
 
-```go
-stage := ap.NewStage("analyze", agent,
-    ap.WithRetry(3, ap.ExponentialBackoff),
-    ap.WithFallback(fallbackAgent),
-    ap.WithTimeout(60*time.Second),
-)
-```
+- DAG 节点失败时内置重试，可经 `context.Context` 传递超时控制
+- Pipeline 步骤可配置 `Condition`，基于上一步结果决定是否执行/跳过
+- LLM 调用的重试/降级在 Provider 层处理：`ap.NewResilientProvider(primary, ap.DefaultResilientConfig())`
 
 ## 可观测性
 

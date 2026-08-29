@@ -41,5 +41,7 @@ results := store.VectorSearch(ctx, queryEmbedding, 5)
 通过 `WithMemory()` 链式 API 注入 Agent 后，ReAct 循环会自动在每轮推理前检索相关记忆：
 
 ```go
-agent := ap.NewReActAgent(cfg).WithMemory(store)
+agent, err := ap.NewAgent("rag-agent", "你是助手", provider,
+    ap.WithMemory(store),
+)
 ```

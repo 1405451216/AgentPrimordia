@@ -116,7 +116,7 @@ The `Validate()` method returns a `ValidationResult`:
   "default_provider": "openai",
   "default_model": "gpt-4",
   "max_turns": 50,
-  "tools": ["web_search", "calculator"],
+  "tools": ["web", "calculator"],
   "memory_strategy": "conversation",
   "temperature": 0.7,
   "rating": 4.5,

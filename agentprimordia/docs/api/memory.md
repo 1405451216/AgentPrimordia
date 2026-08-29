@@ -156,10 +156,9 @@ SQLite + FTS5 全文搜索实现：
 
 ```go
 func NewSQLiteStore(dbPath string) (*SQLiteStore, error)
-
-func (s *SQLiteStore) WithWAL() *SQLiteStore
-func (s *SQLiteStore) WithCleanup(maxAgeDays int) *SQLiteStore
 ```
+
+> 注：文件数据库默认启用 WAL 模式（多连接并发吞吐），无需额外配置。过期数据清理使用 `CleanupExpired(ctx, maxAgeDays)` 或 `StartAutoCleanup(cfg)`（见 Summarizer 一节）。
 
 **示例：**
 
@@ -259,16 +258,27 @@ store.SetFusionConfig(memory.RAGFusionConfig{
 
 ## 外部向量库
 
-### QdrantProvider
+Qdrant / Milvus 客户端位于 `internal/memory`，**未经 `pkg/` 导出，外部代码不可直接 import**。需要外部向量库时，推荐使用经公共 API 导出的 pgvector 存储：
 
 ```go
-func NewQdrantProvider(config QdrantConfig) (*QdrantProvider, error)
+store, err := ap.NewPgVectorVectorStore(ctx, ap.PgVectorConfig{
+    ConnString: "postgres://user:pass@localhost:5432/ap?sslmode=disable",
+    Dimensions: 1536,
+})
 ```
 
-### MilvusProvider
+### QdrantClient（internal）
 
 ```go
-func NewMilvusProvider(config MilvusConfig) (*MilvusProvider, error)
+// internal/memory/qdrant_provider.go，未导出至 pkg
+func NewQdrantClient(config QdrantConfig) (*QdrantClient, error)
+```
+
+### MilvusClient（internal）
+
+```go
+// internal/memory/milvus_provider.go，未导出至 pkg
+func NewMilvusClient(config MilvusConfig) (*MilvusClient, error)
 ```
 
 ## Summarizer

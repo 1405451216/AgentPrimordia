@@ -84,12 +84,21 @@ func (t *WeatherTool) Execute(_ context.Context, args json.RawMessage) (*tools.R
 ## 注册
 
 ```go
-agent := ap.NewAgent(ap.AgentConfig{
-    Tools: []ap.Tool{
-        NewWeatherTool(os.Getenv("WEATHER_API_KEY")),
-        ap.NewWebSearchTool(),
-    },
+provider, err := ap.NewOpenAIProvider(ap.Config{
+    APIKey: os.Getenv("OPENAI_API_KEY"),
+    Model:  "gpt-4o",
 })
+if err != nil {
+    log.Fatal(err)
+}
+
+registry := ap.NewToolRegistry()
+registry.Register(NewWeatherTool(os.Getenv("WEATHER_API_KEY")))
+registry.Register(ap.NewWeb()) // 内置 web 工具；自定义工具同理 Register
+
+agent, err := ap.NewAgent("weather-agent", "你是天气助手。", provider,
+    ap.WithToolkit(registry),
+)
 ```
 
 ## 扩展

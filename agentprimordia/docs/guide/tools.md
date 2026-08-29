@@ -27,10 +27,8 @@ tools:
 
 ```go
 registry := ap.NewToolRegistry()
-registry.Register(ap.NewFileSystemTool(ap.FSToolConfig{
-    AllowedReadPaths:  []string{"./data"},
-    AllowedWritePaths: []string{"./output"},
-}))
+// NewFileSystem(rootDir) 的访问范围由 rootDir 限定（越界路径一律拒绝）
+registry.Register(ap.NewFileSystem("./data"))
 ```
 
 ## 自定义工具
@@ -77,6 +75,12 @@ sandbox:
 支持基于角色的访问控制（RBAC）：
 
 ```go
-registry.SetRole("admin", []string{"shell", "filesystem"})
-registry.SetRole("user",  []string{"filesystem"})
+// Registry 无 SetRole；细粒度权限经 SetPermission 按工具名设置
+registry.SetPermission("shell", ap.ToolPermission{
+    AllowedRoles:        []string{"admin"},
+    RequireConfirmation: true,
+})
+registry.SetPermission("filesystem", ap.ToolPermission{
+    AllowedRoles: []string{"admin", "user"},
+})
 ```

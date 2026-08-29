@@ -12,8 +12,8 @@
 graph LR
     U[用户提问] --> A[Agent]
     A --> R[ReAct Loop]
-    R --> T1[web_search]
-    R --> T2[memory_search]
+    R --> T1[web]
+    R --> T2[knowledge_search]
     T2 --> V[(Vector DB)]
     V -->|top-K chunks| A
     A --> L[LLM]
@@ -79,7 +79,7 @@ func main() {
         ap.WithMaxTurns(10),
         ap.WithMemory(mem),
         ap.WithRAG(ap.RAGConfig{
-            Provider: ragStore,
+            Provider: ap.NewRAGProviderAdapter(ragStore),
             Mode:     ap.RAGModeAuto, // 每轮自动注入检索上下文
             TopK:     5,
         }),
@@ -112,15 +112,15 @@ agent, err := ap.NewAgent("rag-agent", "你是知识助手", provider,
 
 ```go
 // 创建带 RRF 融合的 RAG Store
-ragStore := memory.NewRAGStoreWithFusionConfig(mem, embedder, memory.RAGFusionConfig{
-    FusionMode:    memory.FusionRRF,
+ragStore := ap.NewRAGStoreWithFusionConfig(mem, embedder, ap.RAGFusionConfig{
+    FusionMode:    ap.FusionRRF,
     RRFK:          60,
     OverFetchSize: 5,
 })
 
 // 运行时切换融合模式
-ragStore.SetFusionConfig(memory.RAGFusionConfig{
-    FusionMode: memory.FusionLinear,
+ragStore.SetFusionConfig(ap.RAGFusionConfig{
+    FusionMode: ap.FusionLinear,
 })
 ```
 

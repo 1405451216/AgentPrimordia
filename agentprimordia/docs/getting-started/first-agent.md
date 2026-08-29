@@ -23,7 +23,14 @@ my-agent/
 ```bash
 mkdir my-agent && cd my-agent
 go mod init my-agent
-go get agentprimordia@v1.0.0
+```
+
+AgentPrimordia 的模块名为 `agentprimordia`，没有发布到远程模块仓库，
+需在 `go.mod` 中通过 `replace` 指向本地框架源码目录消费：
+
+```bash
+# 将 /path/to/agentprimordia 替换为本地框架仓库的检出路径
+go mod edit -require=agentprimordia@v0.0.0 -replace=agentprimordia=/path/to/agentprimordia
 ```
 
 ## Step 2: 定义工具
@@ -261,10 +268,16 @@ embedder := ap.NewEmbeddingAdapter(provider, 1536)
 // 创建 RAG Store（FTS5 + 向量混合检索）
 ragStore := ap.NewRAGStore(store, embedder)
 
-// 一步完成 RAG 组装
+// 通过 WithRAG 选项注入 RAG 能力（Provider 由 NewRAGProviderAdapter 适配）
 agent, _ := ap.NewAgent("rag-agent", "你是知识库问答助手", provider,
 	ap.WithMaxTurns(15),
-	ap.WithRAGMemory(store, embedder),
+	ap.WithMemory(store),
+	ap.WithRAG(ap.RAGConfig{
+		Provider: ap.NewRAGProviderAdapter(ragStore),
+		Mode:     ap.RAGModeAuto, // 每轮推理前自动检索注入
+		TopK:     5,
+		MinScore: 0.3,
+	}),
 )
 ```
 

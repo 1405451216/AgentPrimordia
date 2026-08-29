@@ -62,8 +62,12 @@ func validateFormat(input string) error {
 只允许特定的工具：
 
 ```go
-toolMgr := tools.NewToolManager().
-    WithAllowedTools([]string{"http_request", "calculator"})
+registry := ap.NewToolRegistry()
+// 白名单：只注册允许使用的工具，未注册的工具不可被调用
+registry.RegisterMultiple(
+    ap.NewWeb(),
+    ap.NewCalculator(),
+)
 ```
 
 ### 黑名单模式
@@ -71,8 +75,10 @@ toolMgr := tools.NewToolManager().
 禁止危险的工具：
 
 ```go
-toolMgr := tools.NewToolManager().
-    WithBlockedTools([]string{"shell_exec", "file_delete", "sql_exec"})
+registry := ap.NewToolRegistry()
+// 黑名单方式一：危险工具不注册
+// 黑名单方式二：对已注册工具设置执行前人工确认
+registry.SetPermission("shell", ap.ToolPermission{RequireConfirmation: true})
 ```
 
 ### 参数验证
@@ -104,10 +110,8 @@ func (t *HTTPTool) Execute(ctx context.Context, params map[string]interface{}) (
 限制文件访问范围：
 
 ```go
-fileTool := tools.NewFileTool(tools.FileConfig{
-    AllowedPaths: []string{"/tmp", "/home/user/data"},
-    ReadOnly:     true,
-})
+// 文件访问范围由 rootDir 根目录约束，只读能力经文件系统权限/路径范围（scope）控制
+fileTool, err := ap.NewFileSystem("/data/root")
 ```
 
 ### Shell 命令限制
@@ -115,10 +119,8 @@ fileTool := tools.NewFileTool(tools.FileConfig{
 限制可执行的命令：
 
 ```go
-shellTool := tools.NewShellTool(tools.ShellConfig{
-    AllowedCommands: []string{"ls", "cat", "echo"},
-    Timeout:         30 * time.Second,
-})
+// WithAllowedWorkdirs 限制命令执行的工作目录范围
+shellTool := ap.NewShell().WithAllowedWorkdirs([]string{"/tmp", "/home/user/data"})
 ```
 
 ## LLM 安全
@@ -129,12 +131,12 @@ shellTool := tools.NewShellTool(tools.ShellConfig{
 
 ```go
 // 不推荐
-config := llm.OpenAIConfig{
+config := llm.Config{
     APIKey: "sk-xxx",
 }
 
 // 推荐
-config := llm.OpenAIConfig{
+config := llm.Config{
     APIKey: os.Getenv("OPENAI_API_KEY"),
 }
 ```

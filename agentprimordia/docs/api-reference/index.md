@@ -1,19 +1,21 @@
 # API 参考
 
-> AgentPrimordia v1.0.0 完整 API 索引。
+> AgentPrimordia v6.0.0 完整 API 索引。
 
 ## 核心模块
+
+公共 API 统一经 `agentprimordia/pkg`（导入别名 `ap`）以类型别名 re-export 暴露，实现位于 `internal/`（用户不应直接导入 internal 包）：
 
 | 模块 | 包 | 说明 |
 |------|-----|------|
 | Agent | `ap` | Agent 类型与运行循环 |
 | Tools | `ap` | 工具系统（注册表、执行器、内置工具） |
-| Memory | `memory` | 记忆存储接口与实现 |
-| LLM | `ap/llm` | LLM 抽象层与 Provider |
-| Orchestration | `ap/orchestration` | 多 Agent 编排模式 |
-| Pool | `ap` | 多 Agent 调度池 |
-| Guardrail | `ap` | 输入/输出护栏 |
-| Security | `security` | 沙箱、TLS、ACL |
+| Memory | `ap` | 记忆存储接口与实现（NewInMemoryStore / NewSQLiteStore / NewVectorStore / NewRAGStore 等） |
+| LLM | `ap` | LLM 抽象层与 Provider（NewOpenAIProvider 等） |
+| Orchestration | `ap` | 多 Agent 编排模式（NewPipeline / NewHandoff / NewDAGBuilder / GroupChat / Debate） |
+| Pool | `ap` | 多 Agent 调度池（NewPool） |
+| Guardrail | `ap` | 输入/输出护栏（NewEngine + 规则构造器） |
+| Security | `ap` | ACL / Sandbox / 密钥管理 |
 
 ## 详细参考
 

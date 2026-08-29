@@ -23,20 +23,23 @@ type Result struct {
 
 | 工具 | 构造函数 | 说明 |
 |------|----------|------|
-| FileSystem | `NewFileSystemTool(FSToolConfig)` | 读写文件 |
-| Shell | `NewShellTool(ShellToolConfig)` | 执行 Shell 命令 |
-| Web | `NewWebTool()` | HTTP 请求 |
-| API | `NewAPIClient(APIClientConfig)` | REST API 调用（白名单、超时、重试） |
-| Database | `NewDatabaseTool(DBConfig)` | SQL 查询 |
-| CodeExecution | `NewCodeExecutionTool(CodeConfig)` | 沙箱代码执行 |
-| MemorySearch | `NewMemorySearchTool(mem)` | 记忆检索 |
+| FileSystem | `NewFileSystem(rootDir string) (*FileSystem, error)` | 读写文件 |
+| Shell | `NewShell()` | 执行 Shell 命令 |
+| Web | `NewWeb()` | HTTP 请求 |
+| HTTPClient | `NewHTTPClient()` | HTTP 客户端封装（插件版） |
+| API | `NewAPI()` | REST API 调用 |
+| Database | `NewDatabase(dbPath string, opts ...DatabaseOption) (*Database, error)` | SQL 查询 |
+| CodeExecution | `NewCodeExecution()` | 沙箱代码执行 |
+| Knowledge | `NewKnowledgeSearch(searcher KnowledgeSearcher)` | 知识检索 |
 
 ## 工具注册表
+
+`internal/tools` 提供 `NewRegistry()`；经公共 API 暴露为 `ap.NewToolRegistry()`：
 
 ```go
 type Registry struct{}
 
-func NewRegistry() *Registry
+func NewRegistry() *Registry              // 公共入口：ap.NewToolRegistry()
 func (r *Registry) Register(tool Tool) error
 func (r *Registry) RegisterMultiple(tools ...Tool) error
 func (r *Registry) Get(name string) (Tool, bool)
@@ -119,16 +122,19 @@ var (
 
     func main() {
         // 创建工具注册表
-        registry := ap.NewRegistry()
+        registry := ap.NewToolRegistry()
 
         // 注册自定义工具
         registry.Register(&WeatherTool{})
 
         // 创建 Agent
-        provider := ap.NewOpenAIProvider(ap.Config{
+        provider, err := ap.NewOpenAIProvider(ap.Config{
             APIKey: os.Getenv("OPENAI_API_KEY"),
             Model:  "gpt-4o",
         })
+        if err != nil {
+            log.Fatal(err)
+        }
         agent, _ := ap.NewAgent("tool-agent", "你是助手", provider,
             ap.WithMaxTurns(10),
             ap.WithToolkit(registry),

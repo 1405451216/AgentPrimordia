@@ -30,11 +30,12 @@ type ToolLearner interface {
 
 ## 与 ReAct 循环的集成
 
-通过配置置信度阈值控制建议触发：
+用 `ap.NewMemoryToolLearner` 创建学习器（基于 MemoryStore 沉淀成功/失败模式），经链式 `WithToolLearner()` 注入 Agent：
 
 ```go
-cfg := ap.ReActConfig{
-    ToolLearningConfidenceThreshold: 0.7, // 置信度 >= 0.7 才触发建议
-}
-agent := ap.NewReActAgent(cfg).WithToolLearning(learner)
+learner := ap.NewMemoryToolLearner(memStore)
+
+agent, err := ap.NewAgent("learning-agent", "你是助手", provider).WithToolLearner(learner)
 ```
+
+注入后，Agent 的工具调用结果会自动回流到学习器；`SuggestImprovement` / `SuggestProcessCorrection` 依置信度给出建议（阈值在学习器内部配置）。

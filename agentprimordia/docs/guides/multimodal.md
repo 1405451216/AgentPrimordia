@@ -13,10 +13,13 @@ AgentPrimordia 支持图片、音频、视频等多模态输入，目前主要�
 ## 快速开始
 
 ```go
-provider := llm.NewOpenAIMultimodalProvider(llm.OpenAIConfig{
+provider, err := llm.NewOpenAIMultimodalProvider(llm.Config{
     APIKey: os.Getenv("OPENAI_API_KEY"),
     Model:  "gpt-4o",
 })
+if err != nil {
+    log.Fatal(err)
+}
 
 imageData, _ := os.ReadFile("image.png")
 

@@ -20,91 +20,128 @@
 
 ### LLM 缓存
 
-相同 prefix 的请求自动缓存：
+使用 `CachedProvider` 包装 LLM Provider，对相同输入缓存响应：
 
 ```go
-llmCfg := ap.LLMConfig{
-    CacheEnabled: true,
-    CacheBackend:  ap.RedisCache("localhost:6379"), // 或 ap.InMemoryCache()
-    CacheTTL:      1 * time.Hour,
+// 方式一：指纹精确匹配缓存（无需 Embedding）
+cache := ap.NewFingerprintCache(10000, time.Hour)
+
+// 方式二：语义相似度缓存（需提供向量化函数，相似度 >= 0.8 视为命中）
+// cache := ap.NewInMemoryCache(embedFn, 10000, 0.8)
+
+// 可选：混合缓存，先精确匹配再语义匹配
+// hybrid, err := ap.NewHybridCache(fingerprint, semanticCache)
+
+cached, err := ap.NewCachedProvider(provider, cache, 0.8)
+if err != nil {
+    log.Fatal(err)
 }
+
+agent, err := ap.NewAgent("assistant", "你是助手", cached, ap.WithMaxTurns(10))
 ```
 
 命中率通常可达 30-60%（system prompt 相同）。
 
 ### 模型路由
 
-根据 prompt 长度等特征自动选择模型：
+框架内置成本感知模型路由器（`ModelRouter`），根据消息复杂度、上下文长度、
+是否需要工具等指标，从多个注册的 Provider 中选择最优模型。路由策略为
+`RouteStrategy` 枚举，取值：
+
+- `StrategyCostFirst` — 优先选择成本最低的可用模型
+- `StrategyQualityFirst` — 优先选择能力最强的模型（按 ComplexityLimit 倒序）
+- `StrategyBalanced` — 综合评分（成本 + 能力）
 
 ```go
-router := ap.NewModelRouter(ap.RouterConfig{
-    Rules: []ap.RouteRule{
-        {MaxTokens: 1000, Model: "gpt-4o-mini"},    // 短任务用便宜模型
-        {MinTokens: 1000, Model: "gpt-4o"},          // 长任务用强模型
-    },
-    Fallback: "gpt-4o",
+router := NewModelRouter(StrategyBalanced)
+router.Register(ModelRouteConfig{
+    Name:            "gpt-4o-mini",
+    Provider:        miniProvider,
+    CostPer1K:       0.00015,
+    ComplexityLimit: 0.5,     // 可处理的复杂度上限 [0, 1]
+    MaxContext:      128000,
+    SupportsTools:   true,
 })
+router.Register(ModelRouteConfig{
+    Name:            "gpt-4o",
+    Provider:        strongProvider,
+    ComplexityLimit: 1.0,
+})
+router.SetFallback("gpt-4o") // 兜底模型
 ```
+
+> 注：`ModelRouter` 目前由框架 LLM 抽象层（`internal/llm`）实现，
+> pkg 公共 API 尚未提供导出别名，以上为真实 API 形态，仅供框架内部
+> 与扩展开发参考。
 
 ## Memory 性能
 
 ### HNSW 索引
 
-向量检索加速（150x 暴力搜索）：
+向量检索加速（相比暴力搜索有数量级提升）。创建带 HNSW 索引的向量存储：
 
 ```go
-mem, _ := ap.NewVectorMemory(ap.VectorConfig{
-    IndexType: ap.IndexHNSW,
-    HNSWM:     16,       // 每层连接数
-    HNSWEfConstruction: 200,
-    HNSWEfSearch: 50,
+store := ap.NewVectorStoreWithHNSW(1536, ap.HNSWConfig{
+    MaxConnections: 16,  // 每层最大连接数 M（默认 16）
+    EfConstruction: 200, // 构建时搜索范围（默认 200）
+    EfSearch:       50,  // 查询时搜索范围（默认 50）
+    Dimensions:     1536,
 })
 ```
 
-### 批量写入
-
-高吞吐场景使用批量写入：
+也可单独创建 HNSW 索引使用：
 
 ```go
-writer := mem.BatchWriter(ap.BatchConfig{
-    Size:     100,           // 攒够 100 条写入
-    FlushInterval: 1 * time.Second, // 或 1s 刷盘
+index := ap.NewHNSWIndex(ap.HNSWConfig{
+    MaxConnections: 16,
+    EfConstruction: 200,
+    EfSearch:       50,
+    Dimensions:     1536,
 })
-writer.Write(episode)
 ```
 
 ## Pool 调优
 
 ```go
 pool := ap.NewPool(ap.PoolConfig{
-    MaxConcurrent: 100,        // 最大并发 Agent 数
-    QueueSize:     10000,      // 任务队列深度
-    WorkerIdleTTL: 5 * time.Minute, // 空闲 worker 存活时间
+    MaxConcurrency:   100,            // 最大并发 Agent 数
+    Timeout:          5 * time.Minute, // 单任务超时
+    MaxRetainedTasks: 1000,           // 保留的已完成任务数上限（防长期运行内存泄漏）
 })
+pool.SetModel(provider)
+defer pool.Close()
 ```
 
 ### 自动扩缩
 
-```yaml
-pool:
-  min_workers: 2
-  max_workers: 50
-  scale_up_queue_depth: 100   # 队列超过 100 扩容
-  scale_down_idle_seconds: 300 # 空闲 5 分钟缩容
-```
+自动扩缩容通过 `PoolConfig.AutoScaler` 字段（`*AutoScalerConfig`）启用，
+关键参数：`MinConcurrency` / `MaxConcurrency`（并发度上下限）、
+`ScaleUpThreshold`（利用率超过此值扩容，默认 0.8）、
+`ScaleDownThreshold`（利用率低于此值缩容，默认 0.2）、
+`CoolDownPeriod`（扩缩容冷却期）、`CheckInterval`（检查间隔）。
 
 ## OpenTelemetry 追踪
 
-全链路追踪定位瓶颈：
+全链路追踪定位瓶颈。通过 pkg 公共 API 创建遥测提供者（`TelemetryConfig`
+支持 `ServiceName` / `ServiceVersion` / `OTLPEndpoint` / `OTLPHeaders` /
+`ExportInterval` / `EnableTraces` / `EnableMetrics`）：
 
 ```go
-import "agentprimordia/internal/otel"
+m := ap.NewMetrics()
 
-tp, _ := otel.NewTracerProvider(ctx, otel.Config{
-    ServiceName: "ap-agent",
-    Endpoint:    "otel-collector:4317",
-    SampleRate:  0.1,   // 10% 采样
-})
+tp, err := ap.NewTelemetryProvider(ap.TelemetryConfig{
+    ServiceName:   "ap-agent",
+    OTLPEndpoint:  "otel-collector:4317",
+    EnableTraces:  true,
+    EnableMetrics: true,
+}, m)
+if err != nil {
+    log.Fatal(err)
+}
+defer tp.Shutdown()
+
+// WithTelemetry 将 Tracer 与 Metrics 一次性注入 Agent
+agent, err := ap.NewAgent("assistant", "你是助手", provider, ap.WithTelemetry(tp))
 ```
 
 Grafana 可直观看到：

@@ -11,25 +11,39 @@ import (
     "context"
     "fmt"
     "log"
+    "os"
 
     ap "agentprimordia/pkg"
 )
 
 func main() {
-    agent := ap.NewAgent(ap.AgentConfig{
-        Name: "data-analyst",
-        SystemPrompt: `你是数据分析师。
+    provider, err := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o",
+    })
+    if err != nil { log.Fatal(err) }
+
+    registry := ap.NewToolRegistry()
+    fsTool, err := ap.NewFileSystem("./data") // 只读能力经文件系统权限/路径范围控制
+    if err != nil { log.Fatal(err) }
+    dbTool, err := ap.NewDatabase("./data.db")
+    if err != nil { log.Fatal(err) }
+    registry.RegisterMultiple(
+        fsTool,
+        dbTool,
+        ap.NewShell(),
+        ap.NewCodeExecution(),
+    )
+
+    agent, err := ap.NewAgent("data-analyst", `你是数据分析师。
 1. 用 filesystem 工具读取 CSV
 2. 用 database 工具执行 SQL 统计
-3. 用 shell 工具生成图表（gnuplot / matplotlib）`,
-        Tools: []ap.Tool{
-            ap.NewFileSystemTool(ap.FSToolConfig{ReadOnly: true}),
-            ap.NewDatabaseTool(ap.DBConfig{URL: "sqlite:./data.db"}),
-            ap.NewShellTool(ap.ShellToolConfig{Allowlist: []string{"python3", "gnuplot"}}),
-        },
-    })
+3. 用 code_execution / shell 工具生成图表（gnuplot / matplotlib）`,
+        provider, ap.WithToolkit(registry))
+    if err != nil { log.Fatal(err) }
 
-    resp, err := agent.Run(context.Background(), "分析 sales.csv：按月统计销售额并生成折线图")
+    resp, err := agent.Run(context.Background(),
+        ap.UserMessage("分析 sales.csv：按月统计销售额并生成折线图"))
     if err != nil { log.Fatal(err) }
     fmt.Println(resp.Content)
 }

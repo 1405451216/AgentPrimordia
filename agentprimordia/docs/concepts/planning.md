@@ -39,10 +39,12 @@ LLMPlanner 通过结构化提示词引导 LLM 输出 JSON 格式的子任务列�
 
 ## 与 ReAct 循环的集成
 
-通过链式 API `WithPlanning()` 注入 Agent：
+通过 `WithPlanner()` 选项注入 Agent：
 
 ```go
-agent := ap.NewReActAgent(cfg).WithPlanning(planner)
+agent, err := ap.NewAgent("plan-agent", "你是助手", provider,
+    ap.WithPlanner(planner),
+)
 ```
 
 注入后，Agent 在处理复杂任务时会先调用 Planner 进行分解，再逐步执行子任务。

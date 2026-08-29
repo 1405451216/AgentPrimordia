@@ -7,8 +7,9 @@ LLM 抽象层提供统一的 Provider 接口，屏蔽不同模型服务商的 AP
 ```go
 type Provider interface {
     Complete(ctx context.Context, req *CompletionRequest) (*CompletionResponse, error)
-    StreamComplete(ctx context.Context, req *CompletionRequest) (<-chan StreamChunk, error)
-    Name() string
+    Stream(ctx context.Context, req *CompletionRequest) (<-chan Chunk, error)
+    CallTools(ctx context.Context, req *ToolCallRequest) (*ToolCallResponse, error)
+    Info() ModelInfo
 }
 ```
 
@@ -20,7 +21,7 @@ type Provider interface {
 | Anthropic | `NewAnthropicProvider(cfg)` | Claude 系列 |
 | Gemini | `NewGeminiProvider(cfg)` | Google Gemini |
 | Ollama | `NewOllamaProvider(cfg)` | 本地模型 |
-| Azure | `NewAzureProvider(cfg)` | Azure OpenAI |
+| Azure | `NewAzureOpenAIProvider(AzureConfig)` | Azure OpenAI |
 | Cohere | `NewCohereProvider(cfg)` | Command 系列 |
 | Mistral | `NewMistralProvider(cfg)` | Mistral 系列 |
 | Qwen | `NewQwenProvider(cfg)` | 通义千问 |

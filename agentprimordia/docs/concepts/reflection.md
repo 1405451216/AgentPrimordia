@@ -24,13 +24,13 @@ type Reflector interface {
 
 ## 与 ReAct 循环的集成
 
-通过链式 API 注入 Agent，配合严重度阈值控制触发频率：
+通过 `WithReflector()` 注入 Agent，配合严重度阈值控制触发频率：
 
 ```go
-cfg := ap.ReActConfig{
-    ReflectionSeverityThreshold: "high", // 仅 high/critical 触发改进
-}
-agent := ap.NewReActAgent(cfg).WithReflection(reflector)
+agent, err := ap.NewAgent("reflect-agent", "你是助手", provider,
+    ap.WithReflector(reflector),
+    ap.WithReflectionThreshold("high"), // 仅 high/critical 触发改进
+)
 ```
 
 当 Critique 的严重程度达到阈值时，Agent 自动调用 `Improve()` 生成改进后的输出。

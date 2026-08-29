@@ -48,5 +48,7 @@ server := debugger.NewInspectorServer(inspector, ":8081")
 go server.Start()
 
 // 将 inspector 注入 Agent（通过 Tracer 接口）
-agent := ap.NewReActAgent(cfg).WithTracer(inspector)
+agent, err := ap.NewAgent("debug-agent", "你是助手", provider,
+    ap.WithTracer(inspector),
+)
 ```

@@ -39,7 +39,9 @@ bridge.WithExporter(exporter)
 通过 Tracer 接口注入 ReAct 循环，自动为每轮推理、LLM 调用、工具执行创建 Span：
 
 ```go
-agent := ap.NewReActAgent(cfg).WithTracer(bridge)
+agent, err := ap.NewAgent("otel-agent", "你是助手", provider,
+    ap.WithTracer(bridge),
+)
 ```
 
 ## 部署配置

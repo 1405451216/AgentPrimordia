@@ -18,9 +18,9 @@ sequenceDiagram
 
     U->>A: "今天北京天气如何？"
     A->>L: Turn 1: [System, User] → Thought+Action
-    L-->>A: {thought:"需要查天气", action:"web_search", args:{q:"北京天气"}}
-    A->>E: Execute(web_search, args)
-    E->>T: web_search({"q":"北京天气"})
+    L-->>A: {thought:"需要查天气", action:"web", args:{q:"北京天气"}}
+    A->>E: Execute(web, args)
+    E->>T: web({"q":"北京天气"})
     T-->>E: {"temp":25, "weather":"晴"}
     E-->>A: Result{content:"..."}
     A->>L: Turn 2: [+, Observation] → Thought
@@ -31,11 +31,10 @@ sequenceDiagram
 ## ReAct Loop 配置
 
 ```go
-agent := ap.NewAgent(ap.AgentConfig{
-    MaxTurns:     10,     // 最大循环次数（防止无限循环）
-    SystemPrompt: "...",
-    Memory:       mem,
-})
+agent, err := ap.NewAgent("weather-agent", "你是天气助手。", provider,
+    ap.WithMaxTurns(10),   // 最大循环次数（防止无限循环）
+    ap.WithMemory(mem),
+)
 ```
 
 ## 关键参数

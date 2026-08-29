@@ -11,13 +11,24 @@ import ap "agentprimordia/pkg"
 engine := ap.NewGuardrailEngine()
 
 // 添加 Prompt 注入检测（优先级最高）
-engine.AddRule(ap.NewInjectionRule())
+engine.AddRule(ap.NewPromptInjectionRule(ap.PromptInjectionConfig{}))
 
 // 添加 PII 脱敏规则
-engine.AddRule(ap.NewPIIRule())
+engine.AddRule(ap.NewPIIRule(ap.PIIRuleConfig{}))
 
-// 注入 Agent
-agent := ap.NewReActAgent(cfg).WithGuardrail(engine)
+// 注入 Agent：通过 WithInputGuard 传入护栏检查函数，
+// 用户输入进入 ReAct 循环前自动检查
+agent, err := ap.NewAgent("my-agent", "You are a helpful assistant.", provider,
+    ap.WithInputGuard(func(content string) (string, bool, error) {
+        report, err := engine.Check(content, ap.CheckInput)
+        if err != nil {
+            return content, false, err
+        }
+        if !report.Passed {
+            return content, true, nil // blocked=true 拒绝该输入
+        }
+        return content, false, nil
+    }))
 ```
 
 ## 自定义规则
@@ -30,16 +41,16 @@ type MyRule struct{}
 func (r *MyRule) Name() string { return "my-rule" }
 func (r *MyRule) Priority() int { return 200 }
 
-func (r *MyRule) Check(ctx context.Context, input string, cp ap.CheckPoint) (*ap.Result, error) {
+func (r *MyRule) Check(input string, cp ap.GuardrailCheckPoint) (*ap.GuardrailResult, error) {
     if containsForbidden(input) {
-        return &ap.Result{
+        return &ap.GuardrailResult{
             RuleName: "my-rule",
-            Action:   ap.ActionReject,
+            Action:   ap.GuardrailReject,
             Severity: ap.SeverityHigh,
             Message:  "包含禁止内容",
         }, nil
     }
-    return &ap.Result{RuleName: "my-rule", Action: ap.ActionPass}, nil
+    return &ap.GuardrailResult{RuleName: "my-rule", Action: ap.GuardrailPass}, nil
 }
 ```
 
@@ -48,7 +59,9 @@ func (r *MyRule) Check(ctx context.Context, input string, cp ap.CheckPoint) (*ap
 限制 Agent 只处理特定主题：
 
 ```go
-topicRule := ap.NewTopicRule([]string{"编程", "技术", "科学"})
+topicRule := ap.NewTopicConstraintRule(ap.TopicConstraintConfig{
+    Topics: []string{"编程", "技术", "科学"},
+})
 engine.AddRule(topicRule)
 ```
 
@@ -57,7 +70,9 @@ engine.AddRule(topicRule)
 基于 Trie 树的高效敏感词匹配：
 
 ```go
-trieRule := ap.NewTrieRule([]string{"敏感词1", "敏感词2"})
+trieRule := ap.NewSensitiveWordRule(ap.SensitiveWordConfig{
+    Words: []string{"敏感词1", "敏感词2"},
+})
 engine.AddRule(trieRule)
 ```
 
@@ -66,4 +81,4 @@ engine.AddRule(trieRule)
 - `CheckInput`：在 Agent 处理用户输入前检查
 - `CheckOutput`：在 Agent 返回响应前检查
 
-规则按优先级降序执行，遇到 `ActionReject` 立即终止。
+规则按优先级降序执行，遇到 `GuardrailReject` 立即终止。

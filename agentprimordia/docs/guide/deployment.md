@@ -26,7 +26,8 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/ap /usr/local/bin/
 EXPOSE 8080
-CMD ["ap", "run", "--server"]
+# --watch: 监听项目文件（含 .ap.yaml）变更，自动重新编译并重启 Agent（热重载）
+CMD ["ap", "run", "--watch"]
 ```
 
 ```bash
@@ -46,17 +47,17 @@ kubectl apply -f agent-deployment.yaml
 
 ## 配置热加载
 
-`.ap.yaml` 文件监听 + 动态生效，无需重启：
+配置热重载由 `ap run --watch` 提供：它会监听项目目录的文件变更（包括
+`.ap.yaml`），检测到变更后自动重新编译并重启 Agent，使配置修改即时生效，
+无需手动重启进程：
 
-```go
-loader, _ := config.NewLoader(".ap.yaml")
-go loader.Watch(ctx)
-
-loader.OnChange(func(old, new config.Config) {
-    // Provider 变更时平滑切换
-    provider = llm.NewProvider(new.LLM)
-})
+```bash
+ap run --watch
 ```
+
+说明：pkg 公共 API 提供的配置加载器（`ap.NewConfigLoader`，YAML < ENV <
+flags）为一次性加载，不提供运行时 Watch / OnChange 回调；进程级热重载
+统一由 CLI 的 `--watch` 模式完成。
 
 ## 监控
 
@@ -81,7 +82,9 @@ GET /readyz     → 200 (依赖就绪) / 503 (依赖异常)
 
 ### Grafana Dashboard
 
-开箱即用 Dashboard JSON 位于 `deploy/grafana/dashboard.json`。
+开箱即用的 Dashboard JSON 位于 `deploy/grafana/` 目录，包括
+`agentprimordia-overview.json`（总览）、`dashboard-agent.json`（Agent）、
+`dashboard-llm.json`（LLM）等，直接在 Grafana 中导入即可。
 
 ## 日志
 

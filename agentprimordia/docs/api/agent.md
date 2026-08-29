@@ -15,31 +15,30 @@ type Agent interface {
 }
 ```
 
-## 构造 ReActAgent
+## 构造 Agent
 
 ```go
 import ap "agentprimordia/pkg"
 
-agent := ap.NewReActAgent(ap.ReActConfig{
-    Name:         "my-agent",
-    SystemPrompt: "You are a helpful assistant.",
-    Model:        provider,
-    MaxTurns:     20,
-    Temperature:  0.7,
-})
+agent, err := ap.NewAgent("my-agent", "You are a helpful assistant.", provider,
+    ap.WithMaxTurns(20),
+    ap.WithTemperature(0.7),
+)
 ```
 
 ## 链式能力注入
 
+`NewAgent` 返回的 `*CapabilityAgent` 支持链式注入能力：
+
 ```go
-agent := ap.NewReActAgent(cfg).
-    WithTools(toolkit).
+agent, err := ap.NewAgent("my-agent", "You are a helpful assistant.", provider).
+    WithToolkit(toolkit).
     WithMemory(memStore).
     WithHooks(hooks).
-    WithHITL(hitlMgr).
-    WithPlanning(planner).
-    WithReflection(reflector).
-    WithToolLearning(learner).
+    WithHITL(hitlCfg).
+    WithPlanner(planner).
+    WithReflector(reflector).
+    WithToolLearner(learner).
     WithTracer(tracer).
     WithMetrics(metricsRecorder)
 ```

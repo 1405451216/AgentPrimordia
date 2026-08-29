@@ -20,11 +20,17 @@ auth:
 ### 工具权限
 
 ```go
-registry.SetRole("admin", []string{"shell", "filesystem", "web"})
-registry.SetRole("readonly", []string{"filesystem"})
+// Registry 无 SetRole；经 SetPermission 按工具名设置权限（角色白名单 / 确认开关）
+registry.SetPermission("shell", ap.ToolPermission{
+    AllowedRoles:        []string{"admin"},
+    RequireConfirmation: true,
+})
+registry.SetPermission("filesystem", ap.ToolPermission{
+    AllowedRoles: []string{"admin", "readonly"},
+})
 ```
 
-只拥有 `filesystem` 角色的 Agent 无法执行 shell 命令。
+只拥有 `filesystem` 权限的 Agent 无法执行 shell 命令。
 
 ## 输入 / 输出护栏
 

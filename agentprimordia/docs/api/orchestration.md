@@ -5,53 +5,65 @@
 ## 接口概览
 
 ```go
-type Orchestrator interface {
-    Execute(ctx context.Context, input any) (*Result, error)
-}
-
 // Pipeline — 顺序执行
-func NewPipeline(stages ...Stage) *Pipeline
+func NewPipeline(steps ...PipelineStep) *Pipeline
+// PipelineStep{Name string, Agent Agent, Input string, Condition func(...)}
+func (p *Pipeline) Run(ctx context.Context, initialInput string) (*PipelineResult, error)
 
 // Handoff — Agent间传递控制权
-func NewHandoff(orchestrators ...Orchestrator) *Handoff
+func NewHandoff(config HandoffConfig) *Handoff
+// HandoffConfig{Agents []Agent, Router func(ctx, input string) int, MaxHandoffs int}
+func (h *Handoff) Run(ctx context.Context, input string) (*HandoffResult, error)
 
 // DAG — 有向无环图执行
-func NewDAG() *DAGBuilder
+func NewDAGBuilder(name string) *DAGBuilder
+// NodeHandler: func(ctx context.Context, input string) (string, error)
+func (b *DAGBuilder) Node(id string, handler NodeHandler) *DAGBuilder
+func (b *DAGBuilder) NodeWithAgent(id string, agent Agent) *DAGBuilder
+func (b *DAGBuilder) Edge(from, to string) *DAGBuilder
+func (b *DAGBuilder) Build() (*DAGWorkflow, error)
+func (w *DAGWorkflow) Run(ctx context.Context, input string) (*DAGResult, error)
 
 // GroupChat — 多 Agent 圆桌讨论
-func NewGroupChat(members ...*GroupMember) *GroupChat
+func NewGroupChat(cfg GroupChatConfig) (*GroupChat, error)
+// GroupChatConfig{Agents []Agent, MaxRounds int, SelectSpeaker SpeakerSelector, Bus MessageBus}
+func (g *GroupChat) Run(ctx context.Context, initialMessage Message) (*GroupChatResult, error)
 
 // Debate — 对抗式辩论
-func NewDebate(pro, con Orchestrator, judge Orchestrator) *Debate
+func NewDebate(config DebateConfig) *Debate
+// DebateConfig{MaxRounds int, Timeout time.Duration}
+func (d *Debate) AddDebater(debater Debater) error
+func (d *Debate) Execute(ctx context.Context, topic string) (*DebateResult, error)
 ```
 
 ## 示例：Pipeline
 
 ```go
 pipeline := ap.NewPipeline(
-    ap.NewStage("extract", extractorAgent),
-    ap.NewStage("transform", transformerAgent),
-    ap.NewStage("load", loaderAgent),
+    ap.PipelineStep{Name: "extract", Agent: extractorAgent},
+    ap.PipelineStep{Name: "transform", Agent: transformerAgent},
+    ap.PipelineStep{Name: "load", Agent: loaderAgent},
 )
-result, _ := pipeline.Execute(ctx, rawData)
+result, _ := pipeline.Run(ctx, rawData)
 ```
 
 ## 示例：DAG
 
 ```go
-dag := ap.NewDAG().
-    AddNode("A", taskA).
-    AddNode("B", taskB).
-    AddNode("C", taskC).
-    AddEdge("A", "B").
-    AddEdge("A", "C")  // B 和 C 并行
-result, _ := dag.Execute(ctx, input)
+dag, err := ap.NewDAGBuilder("etl").
+    Node("a", taskA).
+    Node("b", taskB).
+    Node("c", taskC).
+    Edge("a", "b").
+    Edge("a", "c"). // b 和 c 并行
+    Build()
+result, err := dag.Run(ctx, input)
 ```
 
 ## 错误处理
 
-- 每个 Stage 可配置 `RetryPolicy`（最大重试次数、退避策略）
-- DAG 节点失败时，下游节点可以选择跳过或终止
+- Pipeline 步骤可配置 `Condition`（基于上一步结果决定是否执行/跳过）
+- DAG 节点失败时内置重试，下游节点可以选择跳过或终止
 - 超时控制通过 `context.Context` 传递
 
 ## 可观测性

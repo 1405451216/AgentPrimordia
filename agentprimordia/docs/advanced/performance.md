@@ -55,43 +55,42 @@ embeddings, err := embedder.EmbedBatch(ctx, texts)
 
 ## 记忆优化
 
-### 启用 WAL 模式
+### WAL 模式
 
-提高并发读写性能：
+SQLiteStore 默认启用 WAL 模式（写入 P95 显著降低），无需额外配置：
 
 ```go
-mem := memory.NewSQLiteMemory(memory.SQLiteConfig{
-    Path: "./data/memory.db",
-    WAL:  true,
-})
+mem, err := ap.NewSQLiteStore("./data/memory.db")
 ```
 
 ### 使用缓存
 
-热点数据缓存减少数据库查询：
+热点数据缓存经 LLM 层语义缓存实现（缓存 Provider 响应）：
 
 ```go
-mem := memory.NewSQLiteMemory(config).
-    WithCache(memory.NewLRUCache(10000))
+cache, _ := ap.NewFingerprintCache(10000, time.Hour)
+cached, _ := ap.NewCachedProvider(provider, cache, 0)
 ```
 
 ### 批量操作
 
-批量存储减少数据库往返：
+写入由 SQLite 事务提交，多条写入共享同一事务上下文即可获得批量效果：
 
 ```go
-items := make([]memory.MemoryItem, 1000)
-// 填充 items
-err := mem.BatchStore(ctx, items)
+for _, episode := range episodes {
+    if err := mem.Add(ctx, episode); err != nil {
+        return err
+    }
+}
 ```
 
-### 优化索引
+### FTS5 与向量索引
 
-为常用查询字段创建索引：
+SQLite FTS5 全文索引与向量索引在存储层自动维护，无需手动建索引：
 
 ```go
-mem.CreateIndex(ctx, "idx_user_id", "user_id")
-mem.CreateIndex(ctx, "idx_created_at", "created_at")
+// FTS5 全文搜索（自动使用倒排索引）
+results, _ := mem.Search(ctx, "Agent 框架", &memory.SearchOptions{Limit: 10})
 ```
 
 ### HNSW 索引优化

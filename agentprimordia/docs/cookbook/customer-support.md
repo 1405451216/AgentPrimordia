@@ -15,31 +15,49 @@ import (
     "context"
     "fmt"
     "log"
+    "os"
 
     ap "agentprimordia/pkg"
 )
 
 func main() {
-    // 向量知识库（产品手册 / FAQ）
-    mem := ap.NewVectorMemory(ap.VectorConfig{DBPath: "./data/support.db"})
-    _ = mem.IndexDirectory("./knowledge-base")
-
-    // 护栏：PII 过滤 + 注入检测 + 主题隔离
-    guardrail := ap.NewGuardrailPipeline(
-        ap.NewPIIFilter(),
-        ap.NewInjectionDetector(),
-        ap.NewTopicBoundary([]string{"产品使用", "订单查询", "退换货政策"}),
-    )
-
-    agent := ap.NewAgent(ap.AgentConfig{
-        Name: "customer-support",
-        SystemPrompt: "你是客服助手。只回答产品相关问题，不讨论内部实现。",
-        Memory: mem,
-        Tools: []ap.Tool{ap.NewMemorySearchTool(mem)},
-        Guardrail: guardrail,
+    provider, err := ap.NewOpenAIProvider(ap.Config{
+        APIKey: os.Getenv("OPENAI_API_KEY"),
+        Model:  "gpt-4o",
     })
+    if err != nil { log.Fatal(err) }
 
-    resp, err := agent.Run(context.Background(), "如何申请退换货？")
+    // 向量知识库（产品手册 / FAQ）：SQLite 记忆 + RAG 混合检索
+    episodeStore, err := ap.NewSQLiteStore("./data/support.db")
+    if err != nil { log.Fatal(err) }
+    defer episodeStore.Close()
+    ragStore := ap.NewRAGStore(episodeStore, ap.NewEmbeddingAdapter(provider, 1536))
+
+    // 护栏：注入检测 + PII 过滤 + 主题隔离
+    engine := ap.NewGuardrailEngine()
+    engine.AddRule(ap.NewPromptInjectionRule(ap.PromptInjectionConfig{}))
+    engine.AddRule(ap.NewPIIRule(ap.PIIRuleConfig{}))
+    engine.AddRule(ap.NewTopicConstraintRule(ap.TopicConstraintConfig{
+        Topics: []string{"产品使用", "订单查询", "退换货政策"},
+    }))
+
+    agent, err := ap.NewAgent("customer-support", "你是客服助手。只回答产品相关问题，不讨论内部实现。",
+        provider,
+        ap.WithMemory(episodeStore),
+        ap.WithRAG(ap.RAGConfig{Provider: ap.NewRAGProviderAdapter(ragStore)}),
+        ap.WithInputGuard(func(content string) (string, bool, error) {
+            report, err := engine.Check(content, ap.CheckInput)
+            if err != nil {
+                return content, false, err
+            }
+            if !report.Passed {
+                return content, true, nil // 拒绝越权/注入输入
+            }
+            return content, false, nil
+        }))
+    if err != nil { log.Fatal(err) }
+
+    resp, err := agent.Run(context.Background(), ap.UserMessage("如何申请退换货？"))
     if err != nil { log.Fatal(err) }
     fmt.Println(resp.Content)
 }

@@ -16,17 +16,36 @@ type CapabilityAgent struct {
 
 ### AgentConfig
 
+`AgentConfig` 为分组结构（能力配置各自成组），日常使用推荐直接用 Functional Options：
+
 ```go
 type AgentConfig struct {
-    Name           string           // Agent 名称
-    SystemPrompt   string           // 系统提示
-    Model          llm.Provider     // LLM Provider
-    MaxTurns       int              // 最大 ReAct 轮次
-    Temperature    float64          // 温度参数
-    Memory         memory.Memory    // 后端记忆（可选）
-    Toolkit        *tools.Registry  // 工具注册表（可选）
-    PromptTemplate PromptTemplate   // 自定义提示模板（可选）
-    // ... 更多选项通过 Option 函数注入
+    // 核心配置（必填）
+    Name           string
+    SystemPrompt   string
+    Model          llm.Provider
+    PromptTemplate *PromptTemplate
+
+    // 标量配置
+    MaxTurns    int     // 默认 50
+    Temperature float64 // 默认 0.0
+    SessionID   string
+
+    // 能力分组
+    Memory        MemoryConfig
+    RAG           RAGConfig
+    Observability ObservabilityConfig
+    Resilience    ResilienceConfig
+    Tools         ToolsConfig
+    Learning      LearningConfig
+    Cognition     CognitionConfig
+    Autonomy      AutonomyConfig
+    Skills        SkillsConfig
+    Realtime      RealtimeConfig
+
+    // 运行时辅助
+    Lifecycle *Lifecycle
+    Logger    *slog.Logger
 }
 ```
 
@@ -84,16 +103,16 @@ func NewAgent(name, systemPrompt string, model llm.Provider, opts ...Option) (*C
 | `WithPromptTemplate(tmpl PromptTemplate)` | 自定义提示模板 |
 | `WithCache(cache llm.LLMCache)` | 注入 LLM 缓存 |
 | `WithHooks(hooks *HookManager)` | 注入 Hook 管理器 |
-| `WithGuardrail(engine *guardrail.Engine)` | 注入护栏引擎 |
+| `WithInputGuard(engine *guardrail.Engine)` | 注入输入端护栏（用户输入进入循环前检查，v3.4-4） |
 
 ## 方法
 
 ```go
 // Run 同步执行 Agent，接收 Message 输入并返回 Response
-func (c *CapabilityAgent) Run(ctx context.Context, input core.Message) (*core.Response, error)
+func (c *CapabilityAgent) Run(ctx context.Context, input Message) (*Response, error)
 
-// StreamRun 流式执行，返回 StreamEvent 通道
-func (c *CapabilityAgent) StreamRun(ctx context.Context, input core.Message) (<-chan core.StreamEvent, error)
+// StreamRun 流式执行，返回 StreamEvent 只读通道（channel 在流结束后由 Provider 关闭）
+func (c *CapabilityAgent) StreamRun(ctx context.Context, input Message) (<-chan StreamEvent, error)
 
 // Stop 停止当前运行
 func (c *CapabilityAgent) Stop()
