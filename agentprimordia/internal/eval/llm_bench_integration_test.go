@@ -3,7 +3,8 @@
 
 // 真实 LLM 跑分集成测试（v3.5-2）。
 //
-// 需要 OPENAI_API_KEY（或 LLM_BENCH_PROVIDER / LLM_BENCH_API_KEY 指定其他 Provider）。
+// 需要 OPENAI_API_KEY（或 LLM_BENCH_PROVIDER / LLM_BENCH_API_KEY 指定其他 Provider，
+// LLM_BENCH_BASE_URL 指定 OpenAI 兼容网关）。
 // 默认仅跑 3 条用例以控制成本；设置 LLM_BENCH_FULL=1 时跑完整 60 条基准集。
 package eval
 
@@ -40,7 +41,8 @@ func newBenchProviderFromEnv(t *testing.T) llm.Provider {
 		prov llm.Provider
 		err  error
 	)
-	cfg := llm.Config{APIKey: key, Model: model}
+	// v6.0.1：支持 LLM_BENCH_BASE_URL 指定 OpenAI 兼容网关（默认 provider 官方端点）
+	cfg := llm.Config{APIKey: key, Model: model, BaseURL: os.Getenv("LLM_BENCH_BASE_URL")}
 	switch providerName {
 	case "openai":
 		prov, err = llm.NewOpenAIProvider(cfg)

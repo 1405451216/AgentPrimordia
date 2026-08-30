@@ -30,6 +30,7 @@ func main() {
 		provider       = flag.String("provider", "openai", "LLM Provider: openai/anthropic/deepseek/qwen/gemini/glm")
 		model          = flag.String("model", "gpt-4o-mini", "被测模型名")
 		apiKey         = flag.String("api-key", "", "API Key（默认从环境变量读取）")
+		baseURL        = flag.String("base-url", "", "自定义 Base URL（OpenAI 兼容网关，如 https://api.deepseek.com/v1；默认按 provider 官方端点）")
 		out            = flag.String("out", "llm-bench-report.json", "报告输出路径")
 		baseline       = flag.String("baseline", "bench/llm-bench/baseline.json", "基线文件路径")
 		updateBaseline = flag.Bool("update-baseline", false, "将本次报告写入基线文件")
@@ -65,7 +66,7 @@ func main() {
 	var prov llm.Provider
 	var err error
 	if !noKey {
-		prov, err = newProvider(*provider, key, *model)
+		prov, err = newProvider(*provider, key, *model, *baseURL)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ERROR: 创建 Provider 失败: %v\n", err)
 			os.Exit(2)
@@ -175,9 +176,9 @@ func maxOf(a, b float64) float64 {
 	return b
 }
 
-// newProvider 按名称构造 Provider。
-func newProvider(name, apiKey, model string) (llm.Provider, error) {
-	cfg := llm.Config{APIKey: apiKey, Model: model}
+// newProvider 按名称构造 Provider。baseURL 非空时覆盖默认端点（OpenAI 兼容网关）。
+func newProvider(name, apiKey, model, baseURL string) (llm.Provider, error) {
+	cfg := llm.Config{APIKey: apiKey, Model: model, BaseURL: baseURL}
 	switch name {
 	case "openai":
 		return llm.NewOpenAIProvider(cfg)

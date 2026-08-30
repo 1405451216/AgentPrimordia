@@ -19,6 +19,7 @@ import (
 // 如果这里任何一个失败，意味着 pkg/example_test.go 里的 Example 与真实 API 行为不一致。
 // 必须设置真实 API Key 才能运行（缺 Key 自动 Skip）。
 
+// getOpenAIKey 返回真实 LLM API Key；未设置时跳过测试。
 func getOpenAIKey(t *testing.T) string {
 	t.Helper()
 	key := os.Getenv("OPENAI_API_KEY")
@@ -28,15 +29,29 @@ func getOpenAIKey(t *testing.T) string {
 	return key
 }
 
+// openAIConfigFromEnv 构建 Provider 配置，支持第三方 OpenAI 兼容网关：
+//   - OPENAI_BASE_URL：自定义 Base URL（默认 https://api.openai.com/v1）
+//   - OPENAI_MODEL：自定义模型名（默认 gpt-4o-mini）
+//
+// v6.0.1：真实 LLM 复测发现硬编码官方端点/模型导致兼容网关无法运行集成测试。
+func openAIConfigFromEnv(t *testing.T) ap.Config {
+	t.Helper()
+	cfg := ap.Config{
+		APIKey:  getOpenAIKey(t),
+		Model:   "gpt-4o-mini",
+		BaseURL: os.Getenv("OPENAI_BASE_URL"),
+	}
+	if m := os.Getenv("OPENAI_MODEL"); m != "" {
+		cfg.Model = m
+	}
+	return cfg
+}
+
 // TestIntegration_NewAgent_Run 验证 ap.NewAgent + ap.NewOpenAIProvider 端到端跑通
 func TestIntegration_NewAgent_Run(t *testing.T) {
 	t.Parallel()
-	apiKey := getOpenAIKey(t)
 
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: apiKey,
-		Model:  "gpt-4o-mini",
-	})
+	provider, err := ap.NewOpenAIProvider(openAIConfigFromEnv(t))
 	if err != nil {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
@@ -70,12 +85,8 @@ func TestIntegration_NewAgent_Run(t *testing.T) {
 // TestIntegration_NewAgent_Stream 验证 agent.StreamRun 流式输出
 func TestIntegration_NewAgent_Stream(t *testing.T) {
 	t.Parallel()
-	apiKey := getOpenAIKey(t)
 
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: apiKey,
-		Model:  "gpt-4o-mini",
-	})
+	provider, err := ap.NewOpenAIProvider(openAIConfigFromEnv(t))
 	if err != nil {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
@@ -119,14 +130,11 @@ func TestIntegration_NewAgent_Stream(t *testing.T) {
 	t.Logf("Streamed (%d events): %s", eventCount, fullContent)
 }
 
-// TestIntegration_NewAgent_WithMemory 验证多轮对话 + 记忆功能
+// TestIntegration_NewAgent_WithMemory 验证多轮对话 + 记忆功能。
+// v6.0.1：此前对「第二轮未记住名字」仅 t.Logf 记录，永远绿灯、掩盖了
+// 会话历史只写不读的真实缺陷；现改为硬断言。
 func TestIntegration_NewAgent_WithMemory(t *testing.T) {
-	apiKey := getOpenAIKey(t)
-
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: apiKey,
-		Model:  "gpt-4o-mini",
-	})
+	provider, err := ap.NewOpenAIProvider(openAIConfigFromEnv(t))
 	if err != nil {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
@@ -160,7 +168,7 @@ func TestIntegration_NewAgent_WithMemory(t *testing.T) {
 	}
 	t.Logf("Turn 1: %s", resp1.Content)
 
-	// 第二轮：问用户名，验证记忆是否生效
+	// 第二轮：问用户名，验证记忆是否生效（硬断言）
 	resp2, err := agent.Run(ctx, ap.UserMessage("What is my name?"))
 	if err != nil {
 		t.Fatalf("second Run() error = %v", err)
@@ -169,7 +177,7 @@ func TestIntegration_NewAgent_WithMemory(t *testing.T) {
 		t.Error("expected non-empty response for second turn")
 	}
 	if !contains(resp2.Content, "Alice") {
-		t.Logf("Note: response did not mention 'Alice': %s", resp2.Content)
+		t.Errorf("多轮记忆失效：第二轮应答未包含 Alice, got: %q", resp2.Content)
 	}
 	t.Logf("Turn 2: %s", resp2.Content)
 }
@@ -177,12 +185,8 @@ func TestIntegration_NewAgent_WithMemory(t *testing.T) {
 // TestIntegration_NewSession_Ask 验证 ap.NewSession 多轮对话便利 API
 func TestIntegration_NewSession_Ask(t *testing.T) {
 	t.Parallel()
-	apiKey := getOpenAIKey(t)
 
-	provider, err := ap.NewOpenAIProvider(ap.Config{
-		APIKey: apiKey,
-		Model:  "gpt-4o-mini",
-	})
+	provider, err := ap.NewOpenAIProvider(openAIConfigFromEnv(t))
 	if err != nil {
 		t.Fatalf("NewOpenAIProvider() error = %v", err)
 	}
