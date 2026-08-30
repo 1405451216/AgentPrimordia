@@ -105,13 +105,10 @@ func (a *ReActAgent) saveMemory(ctx context.Context, msg Message) {
 	}
 	ep := &memory.Episode{
 		ID:        a.idGen.next(),
-		SessionID: a.config.SessionID,
+		SessionID: a.resolveSessionID(msg),
 		Role:      string(msg.Role),
 		Content:   msg.Content,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-	}
-	if ep.SessionID == "" {
-		ep.SessionID = a.config.Name
 	}
 
 	// 非阻塞提交到异步写入队列

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -366,6 +367,27 @@ func (s *InMemoryStore) List(ctx context.Context, opts *ListOptions) ([]*Episode
 			continue
 		}
 		results = append(results, e)
+	}
+	// 与 SQLiteStore.List 语义对齐：按 created_at 排序（RFC3339 字典序=时间序，
+	// 同秒内以 ID 字典序稳定兜底），Ascending=false 为倒序（最新在前）。
+	order := opts.Ascending
+	sort.SliceStable(results, func(i, j int) bool {
+		if results[i].CreatedAt != results[j].CreatedAt {
+			if order {
+				return results[i].CreatedAt < results[j].CreatedAt
+			}
+			return results[i].CreatedAt > results[j].CreatedAt
+		}
+		if order {
+			return results[i].ID < results[j].ID
+		}
+		return results[i].ID > results[j].ID
+	})
+	if opts.Offset > 0 {
+		if opts.Offset >= len(results) {
+			return nil, nil
+		}
+		results = results[opts.Offset:]
 	}
 	if opts.Limit > 0 && len(results) > opts.Limit {
 		results = results[:opts.Limit]

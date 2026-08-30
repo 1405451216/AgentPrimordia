@@ -135,6 +135,10 @@ type ReActAgent struct {
 	// currentRequestID 当前运行的请求 ID，用于可观测性关联
 	currentRequestID string
 
+	// memSessionID 本次运行解析出的记忆会话 ID（reactLoopEngine 入口设置，
+	// runMu 保护下运行期共享），供 saveMemory 对无 Metadata 的 assistant 消息回退使用。
+	memSessionID string
+
 	// hookCtx 用于 fireHook 调用，绑定到当前运行的 context
 	// 确保 agent 取消时 hook 也能被取消
 	hookCtx context.Context

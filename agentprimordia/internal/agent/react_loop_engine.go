@@ -188,6 +188,15 @@ func (a *ReActAgent) reactLoopEngine(ctx context.Context, input Message, cfg loo
 	if systemPrompt != "" {
 		history = append(history, SystemMessage(systemPrompt))
 	}
+	// v6.0.1：回读本会话历史消息注入（修复多轮对话记忆失效——此前只写不读）。
+	// 会话 ID 在入口处解析一次并共享给 saveMemory，保证写入/回读同桶。
+	a.memSessionID = a.resolveSessionID(input)
+	if prior, herr := a.loadSessionHistory(ctx, a.memSessionID); herr != nil {
+		a.logger.Warn("回读会话历史失败，跳过注入", "error", herr)
+	} else if len(prior) > 0 {
+		history = append(history, prior...)
+		a.logger.Debug("注入会话历史", "count", len(prior))
+	}
 	history = append(history, input)
 	a.saveMemory(ctx, input)
 
