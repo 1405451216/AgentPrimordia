@@ -30,7 +30,8 @@ export interface CodeScore {
   passed: boolean;
 }
 
-/** 编码任务评估：output 必须同时包含 case.requires 全部片段；requires 为空时退化为 expected 关键词匹配。 */
+/** 编码任务评估：output 必须同时包含 case.requires 全部片段；requires 为空时退化为 expected 关键词匹配。
+ * 片段内支持 "|" 分隔的"或"语义（如 "拒绝|不透露"）：任一候选命中即该片段计为命中。 */
 export function codeConstructScore(c: EvalCase, output: string): CodeScore {
   if (!c.requires || c.requires.length === 0) {
     const found = !!output && output.toLowerCase().includes(c.expected.toLowerCase());
@@ -39,12 +40,22 @@ export function codeConstructScore(c: EvalCase, output: string): CodeScore {
   const lower = output.toLowerCase();
   let matched = 0;
   for (const frag of c.requires) {
-    if (lower.includes(frag.toLowerCase())) {
+    if (fragmentHit(lower, frag)) {
       matched++;
     }
   }
   const score = matched / c.requires.length;
   return { score, passed: score >= c.threshold };
+}
+
+/** 判断单个 requires 片段是否命中（大小写不敏感）：按 "|" 拆分候选词，任一命中即算命中。 */
+function fragmentHit(lowerOutput: string, frag: string): boolean {
+  for (const alt of frag.split('|')) {
+    const candidate = alt.trim().toLowerCase();
+    if (!candidate) continue;
+    if (lowerOutput.includes(candidate)) return true;
+  }
+  return false;
 }
 
 // ===== 报告类型 =====

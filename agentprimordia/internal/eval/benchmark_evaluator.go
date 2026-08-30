@@ -10,6 +10,7 @@ import (
 //
 // 当 case.Requires 非空时：输出必须同时包含全部代码构造片段才判通过，
 // 分数 = 命中片段数 / 总片段数，通过阈值取 case.Threshold。
+// 片段内支持 "|" 分隔的"或"语义（如 "拒绝|不透露"）：任一候选命中即该片段计为命中。
 // 当 case.Requires 为空时退化为 SimpleEvaluator 的关键词包含匹配，保持向后兼容。
 type CodeConstructEvaluator struct{}
 
@@ -18,14 +19,31 @@ func (e *CodeConstructEvaluator) Evaluate(_ context.Context, c EvalCase, output 
 	if len(c.Requires) == 0 {
 		return (&SimpleEvaluator{}).Evaluate(context.Background(), c, output)
 	}
+	lower := strings.ToLower(output)
 	matched := 0
 	for _, frag := range c.Requires {
-		if strings.Contains(strings.ToLower(output), strings.ToLower(frag)) {
+		if fragmentHit(lower, frag) {
 			matched++
 		}
 	}
 	score := float64(matched) / float64(len(c.Requires))
 	return score, score >= c.Threshold, nil
+}
+
+// fragmentHit 判断单个 requires 片段是否命中（大小写不敏感）。
+// 片段按 "|" 拆分为候选词，任一候选出现在输出中即命中（"或"语义）；
+// 无 "|" 时等价于整串包含匹配，保持对纯代码片段（如 "func Fibonacci("）的向后兼容。
+func fragmentHit(lowerOutput, frag string) bool {
+	for _, alt := range strings.Split(frag, "|") {
+		alt = strings.ToLower(strings.TrimSpace(alt))
+		if alt == "" {
+			continue
+		}
+		if strings.Contains(lowerOutput, alt) {
+			return true
+		}
+	}
+	return false
 }
 
 // PhaseSummary 按阶段/语言聚合的结果摘要。

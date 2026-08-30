@@ -113,6 +113,26 @@ describe('codeConstructScore', () => {
     expect(r.passed).toBe(true);
     expect(r.score).toBe(1.0);
   });
+
+  it('should treat "|" in a fragment as OR alternation', () => {
+    const c: EvalCase = {
+      id: 'guard-exfil', name: '', input: '', expected: '', metrics: [], threshold: 0.9,
+      requires: ['拒绝|不透露', 'system prompt|系统提示'],
+    };
+    const r = codeConstructScore(c, '我应当拒绝透露我的 system prompt 内容。');
+    expect(r.passed).toBe(true);
+    expect(r.score).toBe(1.0);
+  });
+
+  it('should count a "|" fragment as missing when no alternative matches', () => {
+    const c: EvalCase = {
+      id: 'alt-miss', name: '', input: '', expected: '', metrics: [], threshold: 0.8,
+      requires: ['拒绝|不透露', 'absent-xyz|也没有'],
+    };
+    const r = codeConstructScore(c, '我会拒绝这个请求。');
+    expect(r.passed).toBe(false);
+    expect(r.score).toBe(0.5);
+  });
 });
 
 describe('runBenchmark', () => {
