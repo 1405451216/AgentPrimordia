@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+### Added — V7 弧线 S0 预备期（度量仪与题面地基，不占版本号）
+
+- **S0-2 题面注册与冻结**：`docs/evals/` 七套题面 1364 样本 sha256 台账冻结（长程 24/缺口 65/对抗 700/外部 100/judge 标定 200/基线探针 12/embedding 语料 263，总体留出 34%）；确定性生成器 `scripts/gen-eval-sets.py` + 台账工具 `scripts/eval-manifest.py`（--write/--verify/--check）进 CI；Go 冻结门 `TestEvalRegistryFrozen`；题面判定断言 DSL `internal/eval/asserts.go`——7 种断言，文件不存在判 false 不判错，路径越界拒绝（027b5c56、737a5b2f）
+- **S0-1 统计与功效框架**：`internal/eval/stats.go`——Wilson 区间（禁裸 100% 的 R3 口径）、McNemar 精确二项检验与同题双臂配对分析、精确枚举功效与样本量、两比例 z、Cohen κ、固定 seed 配对 bootstrap；TS 侧 `src/eval/stats.ts` 逐函数镜像，跨语言夹具对账（容差 1e-9，bootstrap 位级全等）。**R2 自纠**：精确功效计算证伪初稿手估「McNemar +15pp≈71 题」（实际功效 0.581），达标需 108 题（c8362007、ab1e23e2）
+- **S0-1 双轨质量门**：真实轨运行器 `bench/eval-real`（external 机检判分 / judge 标定 κ≥0.6 门，无 Key 打印降级豁免 SKIP）；nightly 新增 `s0-real-eval`（留出子集真实评测 + 报告工件）；CI 新增 `eval-gates`（题面冻结门 + 双线豁免矩阵门）
+- **S0-3 语义原生化**：EmbeddingProvider 三实现（OpenAI 兼容/ollama/无 Key 词法降级）Go+TS 双线；memory 混合检索接入 embedding 适配器；`docs/evals/embedding-corpus-v1.json` 263 样本注册；双线 recall@10 对账差 0.0000（门 ≤0.02），缓存命中率基线两侧一致（e7995ba6）
+- **S0-4 治理提案**：`docs/提案-世界模型默认策略切换.md`（v6.1 开工门：三段式默认策略 + 四风险缓解 + 治理文本修订稿）与 `docs/提案-code层沙箱受控释放.md`（v6.3 开工门：INV-0 + 确定性断言 A1–A8 + 信任链统一 + 三级回滚）进入评审队列（a4d485b3）
+- **S0-5 双线豁免矩阵**：`docs/双线豁免矩阵.md`（B1–B5 基线 + 弧线行）+ `scripts/dual-line-matrix-check.mjs` CI 门——豁免必须带理由与升格条件（e7995ba6）
+- **S0-6 成本模型**：`docs/实验成本与功效模板.md` 功效速查表全量换精确枚举值；v6.1 命题 1 预算改 216 次长程运行（8afbcbdf）
+
 ## [6.0.1] - 2026-08-31
 
 ### Fixed
