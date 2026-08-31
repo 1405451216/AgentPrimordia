@@ -24,7 +24,7 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 - `google.golang.org/grpc` + `google.golang.org/protobuf` + 间接依赖 `google.golang.org/genproto/googleapis/rpc` — **仅限 `internal/agent/a2a/` 及其子包，以及 `internal/agent/cluster/`（`grpc_bus.go`，跨节点消息复用 A2A gRPC 基础设施，见 V3.1 计划 3.2）与 `internal/agent/transport/`（`grpc.go`）** 使用；另允许 `pkg/a2a.go` 作为公共 API re-export 层引用 grpc 选项类型（§4.2 规定的 pkg 导出职责，v4.0-3 评审已确认）。用于实现 Agent2Agent 协议与跨节点传输（gRPC + protobuf 是该协议的事实标准）。
 - `go.etcd.io/etcd/client/v3` — etcd 客户端（G2-3 分布式检查点后端）。**仅限 `internal/persist/` 与 `internal/agent/cluster/` 下带 `etcd` build tag 的文件** 使用（persist 为检查点后端，cluster 为分布式 KV/服务发现）。etcd 是分布式强一致协调的行业标准协议，其客户端无 Go 标准库等价实现，符合 §2.2 硬性需求豁免。
 - `github.com/redis/go-redis/v9` — Redis 客户端（G2-3 分布式检查点后端）。**仅限 `internal/persist/` 下带 `redis` build tag 的文件** 使用。Redis 线协议客户端属行业标准实现，无法用标准库合理复现，符合 §2.2 硬性需求豁免。
-- `github.com/tetratelabs/wazero` — 纯 Go（CGO-free）WebAssembly 运行时（G3-3 WASM 执行）。**仅限工作区根 `wasm/` 模块与主模块内 `wasm/` 包**（`agentprimordia/wasm/`）使用。WASM 运行时无标准库等价实现，wazero 为 CGO-free 纯 Go 实现，符合 §2.2 硬性需求豁免。
+- `github.com/tetratelabs/wazero` — 纯 Go（CGO-free）WebAssembly 运行时（G3-3 WASM 执行）。**仅限工作区根 `wasm/` 模块与主模块内 `wasm/` 包**（`agentprimordia/wasm/`）使用。WASM 运行时无标准库等价实现，wazero 为 CGO-free 纯 Go 实现，符合 §2.2 硬性需求豁免。该依赖同时是 code 层「沙箱受控释放」（§2.3）的隔离底座：除上述两处外任何包不得 import wazero（CI 断言 A1 强制）。
 - `github.com/jackc/pgx/v5` + `pgvector/` 模块（`agentprimordia/pgvector`，go.mod `replace => ../pgvector`）— PostgreSQL/pgvector 向量存储（`internal/memory/pgvector_store.go`）。pgx 为 PostgreSQL 事实标准驱动，无标准库等价实现，符合 §2.2 硬性需求豁免。**边界：pgx 仅由 pgvector 模块直接 require，内部代码不得直接 import pgx**。
 
 ### 2.2 依赖扩展的审批流程
@@ -37,7 +37,20 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 
 依赖的真实使用边界以 `go mod why -m <package>` 输出为准；如发现某依赖被白名单外的包引用，应立即调整或回滚。
 
-> **审批记录（2026-07-09）**：经维护者确认，新增 `go.etcd.io/etcd/client/v3`、`github.com/redis/go-redis/v9`、`github.com/tetratelabs/wazero` 三项白名单外依赖（分别对应 G2-3 分布式检查点、G3-3 WASM 执行所需）。三项均属「行业标准协议/运行时、无法用 Go 标准库复现」的硬性需求豁免，使用边界见上 §2.1。对应的 `etcd_checkpoint.go` / `redis_checkpoint.go` 经 build tag 门控，`wazero` 仅限 `wasm/` 模块，不污染默认构建。
+> **审批记录（2026-07-09）**：经维护者确认，新增 `go.etcd.io/etcd/client/v3`、`github.com/redis/go-redis/v9`、`github.com/tetratelabs/wazero` 三项白名单外依赖（分别对应 G2-3 分布式检查点、G3-3 WASM 执行所需）。三项均属「行业标准协议/运行时、无法用 Go 标准库复现」的硬性需求豁免，使用边界见上 §2.1。
+
+### 2.3 code 层安全边界（宿主永久拒绝 + 沙箱受控释放）
+
+- INV-0：宿主进程运行期零写入、零编译、零加载任何 agent 生成的代码；
+  agent 生成代码唯一合法执行位置是 wazero WASM 沙箱（agentprimordia/wasm/、
+  工作区根 wasm/ 模块），且必须经签名验证与对抗测试后方可注册为工具。
+- 宿主边界由确定性断言 A1–A8 保证（定义见 docs/提案-code层沙箱受控释放.md §二），
+  断言测试全部进 CI、失败即红；本边界属于确定性安全不变式，允许 100%/0 容忍
+  （V7 路线图 §一 R3）。
+- learning 反馈通道的 code 层拒绝（internal/agent/learning/feedback.go ScopeCode）
+  保留不变：feedback 通道 code 层仍走人工代码评审，沙箱释放不改变该通道语义。
+- 本条的任何修订属安全承诺变更，须维护者书面批准（流程见
+  docs/提案-code层沙箱受控释放.md §七）。对应的 `etcd_checkpoint.go` / `redis_checkpoint.go` 经 build tag 门控，`wazero` 仅限 `wasm/` 模块，不污染默认构建。
 
 ## 3. 代码规范
 
@@ -47,6 +60,7 @@ AgentPrimordia 是从 CodeCast 生产验证的 Agent 架构中提炼出的 **通
 - **错误处理**: 使用 `pkg/errors.go` 中定义的错误变量
 - **中文注释**: 代码注释使用中文
 - **代码风格**: 与现有代码保持一致（参考 internal/agent/、internal/pool/）
+- **确定性安全不变式**: 安全边界断言（宿主零写入零加载、签名前置、导入段白名单等，见 §2.3）必须以确定性测试固化并全量进 CI；此类断言允许 100%/0 容忍（V7 路线图 R3），禁止以抽样统计口径改写
 
 ## 4. 模块边界
 
@@ -117,6 +131,11 @@ pgvector/           — pgvector 向量存储扩展
 - **`ecosystem/` 与 `internal/` 解耦**：`ecosystem/plugins/*`、`ecosystem/examples/*`、`ecosystem/templates/*` 应仅通过 `pkg/` 公共 API 与核心交互，不直接 import `internal/*`。
   - **当前状态**：部分示例与插件仍直接依赖 `internal/*`，属于已知的技术债务，需逐步迁移至公共 API。
 - **`operator/`、`pgvector/`**：独立模块，与 `internal/` 通过 `pkg/` 或 CRD 解耦。
+- **code 层生成工具通道（v6.3 起）**：agent 生成工具的生成/彩排/注册链路位于
+  internal/tools/lifecycle/（生命周期框架）与 agentprimordia/wasm/（沙箱执行），
+  依赖方向同上层规则；生成工件（WASM 字节码+清单）是数据不是代码——宿主编译
+  与加载边界由 §2.3 INV-0 与断言 A1–A8 强制。TS 侧仅协议对等（签名/工具包格式/
+  注册客户端），沙箱执行 Go-only（docs/双线豁免矩阵.md B4/#3 豁免）。
 
 ## 5. 测试要求
 

@@ -55,13 +55,13 @@ func TestWASM_RuntimeExecution(t *testing.T) {
 	defer sandbox.Close()
 
 	adapter := NewWASMToolAdapter(sandbox)
-	err := adapter.RegisterTool(context.Background(), ToolMetadata{
+	err := adapter.RegisterTool(context.Background(), signedFor(t, ToolMetadata{
 		Name:        "calculator",
 		Description: "A WASM calculator",
 		Parameters:  json.RawMessage(`{"type":"object"}`),
 		ExecuteFunc: "tool_execute",
 		Version:     "1.0.0",
-	}, validTestWASM())
+	}, validTestWASM()), validTestWASM())
 	if err != nil {
 		t.Fatalf("注册 WASM 工具失败: %v", err)
 	}
@@ -81,13 +81,13 @@ func TestWASM_ToolRegistryIntegration(t *testing.T) {
 	defer sandbox.Close()
 
 	adapter := NewWASMToolAdapter(sandbox)
-	err := adapter.RegisterTool(context.Background(), ToolMetadata{
+	err := adapter.RegisterTool(context.Background(), signedFor(t, ToolMetadata{
 		Name:        "wasm-tool",
 		Description: "WASM runtime tool",
 		Parameters:  json.RawMessage(`{"type":"object","properties":{"x":{"type":"number"}}}`),
 		ExecuteFunc: "tool_execute",
 		Version:     "1.0.0",
-	}, validTestWASM())
+	}, validTestWASM()), validTestWASM())
 	if err != nil {
 		t.Fatalf("注册失败: %v", err)
 	}
@@ -137,10 +137,10 @@ func TestWASM_InvalidModule(t *testing.T) {
 	sandbox := NewSandbox(DefaultSandboxConfig())
 	defer sandbox.Close()
 	adapter := NewWASMToolAdapter(sandbox)
-	err := adapter.RegisterTool(context.Background(), ToolMetadata{
+	err := adapter.RegisterTool(context.Background(), signedFor(t, ToolMetadata{
 		Name:        "bad",
 		ExecuteFunc: "x",
-	}, []byte("not wasm"))
+	}, []byte("not wasm")), []byte("not wasm"))
 	if err == nil {
 		t.Error("无效 WASM 字节码注册应失败")
 	}

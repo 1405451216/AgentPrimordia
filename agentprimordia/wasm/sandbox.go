@@ -39,9 +39,23 @@ type Sandbox struct {
 }
 
 // NewSandbox 创建 WASM 沙箱。
+//
+// INV-0 断言 A4/A5（提案-code层沙箱受控释放.md §2.2）：
+//   - WithCloseOnContextDone(true)：解释器逐指令检查 ctx 取消——
+//     MaxExecutionTime 才能真实终止无限循环（零值配置兜底默认开启）；
+//   - WithMemoryLimitPages：零值配置兜底 256 页（16MB）。
 func NewSandbox(config SandboxConfig) *Sandbox {
 	ctx := context.Background()
-	r := wazero.NewRuntime(ctx)
+	if config.MaxMemoryPages <= 0 {
+		config.MaxMemoryPages = 256
+	}
+	if config.MaxExecutionTime <= 0 {
+		config.MaxExecutionTime = 30 * time.Second
+	}
+	rc := wazero.NewRuntimeConfig().
+		WithMemoryLimitPages(uint32(config.MaxMemoryPages)).
+		WithCloseOnContextDone(true)
+	r := wazero.NewRuntimeWithConfig(ctx, rc)
 	return &Sandbox{
 		config:  config,
 		runtime: r,
@@ -49,7 +63,7 @@ func NewSandbox(config SandboxConfig) *Sandbox {
 	}
 }
 
-// Load 加载并编译 WASM 模块。
+// Load 加载并编译 WASM 模块（强制导入段白名单——INV-0 断言 A7）。
 func (s *Sandbox) Load(name string, wasmBytes []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -59,8 +73,45 @@ func (s *Sandbox) Load(name string, wasmBytes []byte) error {
 	if err != nil {
 		return fmt.Errorf("compile module %s: %w", name, err)
 	}
+	// INV-0 断言 A7：导入段白名单——编译后枚举 ImportedFunctions 逐条比对；
+	// 未显式批准的宿主函数（含未启用 WASI 时的 wasi_snapshot_preview1）即拒绝。
+	if err := s.checkImportWhitelist(compiled); err != nil {
+		return fmt.Errorf("module %s import whitelist: %w", name, err)
+	}
 	s.modules[name] = compiled
 	return nil
+}
+
+// checkImportWhitelist 导入段白名单校验（须持锁；A7 确定性可穷尽——
+// 导入段是二进制静态可枚举结构，逐条比对）。
+func (s *Sandbox) checkImportWhitelist(compiled wazero.CompiledModule) error {
+	approved := make(map[string]bool, len(s.config.AllowedImports))
+	for _, mod := range s.config.AllowedImports {
+		approved[mod] = true
+	}
+	for _, imp := range compiled.ImportedFunctions() {
+		modName, fnName, _ := imp.Import()
+		if !approved[modName] {
+			return fmt.Errorf("未批准的宿主导入 %s.%s（批准集 %v）", modName, fnName, s.config.AllowedImports)
+		}
+	}
+	return nil
+}
+
+// ImportedFunctions 枚举已加载模块的导入段（审计面）。
+func (s *Sandbox) ImportedFunctions(name string) ([]string, error) {
+	s.mu.RLock()
+	compiled, ok := s.modules[name]
+	s.mu.RUnlock()
+	if !ok {
+		return nil, fmt.Errorf("module %s not found", name)
+	}
+	var out []string
+	for _, imp := range compiled.ImportedFunctions() {
+		modName, fnName, _ := imp.Import()
+		out = append(out, modName+"."+fnName)
+	}
+	return out, nil
 }
 
 // Execute 执行 WASM 模块的导出函数。
@@ -72,6 +123,13 @@ func (s *Sandbox) Execute(ctx context.Context, moduleName, funcName string, args
 		return 0, fmt.Errorf("module %s not found", moduleName)
 	}
 
+	// INV-0 断言 A4/A5：执行面强制 MaxExecutionTime（零值配置已在
+	// NewSandbox 兜底 30s）——调用方透传的 ctx 不得绕过 CPU 配额。
+	if s.config.MaxExecutionTime > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.config.MaxExecutionTime)
+		defer cancel()
+	}
 	mod, err := s.runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName(moduleName))
 	if err != nil {
 		return 0, fmt.Errorf("instantiate %s: %w", moduleName, err)

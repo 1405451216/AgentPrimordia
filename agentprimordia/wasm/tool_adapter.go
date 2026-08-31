@@ -20,6 +20,10 @@ type ToolMetadata struct {
 	ExecuteFunc string `json:"execute_func"`
 	// Version 模块版本
 	Version string `json:"version"`
+	// Signature 模块签名字节（INV-0/A6：注册前置——缺签即拒）
+	Signature []byte `json:"signature,omitempty"`
+	// PublicKey 签名方公钥（ed25519；与 Signature 成对必填）
+	PublicKey []byte `json:"public_key,omitempty"`
 }
 
 // WASMToolAdapter 将 WASM 模块适配为 tools.Tool 接口
@@ -80,6 +84,16 @@ func (a *WASMToolAdapter) RegisterTool(ctx context.Context, meta ToolMetadata, w
 	}
 	if meta.ExecuteFunc == "" {
 		return fmt.Errorf("wasm: execute_func is required")
+	}
+
+	// INV-0 断言 A6（提案-code层沙箱受控释放.md §2.2）：签名前置——
+	// 任何工具进入注册表前，其字节码必须通过签名验证；缺签/验签失败
+	// 一律拒绝（确定性可穷尽：篡改任一字节即失败）。
+	if len(meta.Signature) == 0 || len(meta.PublicKey) == 0 {
+		return fmt.Errorf("wasm: tool %q 注册被拒绝：缺少签名或公钥（A6 签名前置）", meta.Name)
+	}
+	if err := VerifySignature(wasmBytes, meta.Signature, meta.PublicKey); err != nil {
+		return fmt.Errorf("wasm: tool %q 注册被拒绝：验签失败（A6）: %w", meta.Name, err)
 	}
 
 	a.mu.Lock()

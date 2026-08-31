@@ -68,6 +68,22 @@ func TestKeyFingerprint(t *testing.T) {
 	}
 }
 
+// signedFor A6 签名前置的测试助手：为模块生成 ed25519 签名并回填元数据。
+func signedFor(t *testing.T, meta ToolMetadata, wasmBytes []byte) ToolMetadata {
+	t.Helper()
+	priv, _, err := GenerateKeyPair()
+	if err != nil {
+		t.Fatalf("GenerateKeyPair: %v", err)
+	}
+	sig, pub, err := SignWASM(wasmBytes, priv)
+	if err != nil {
+		t.Fatalf("SignWASM: %v", err)
+	}
+	meta.Signature = sig
+	meta.PublicKey = pub
+	return meta
+}
+
 func TestWASMToolAdapterRegisterAndList(t *testing.T) {
 	sandbox := NewSandbox(DefaultSandboxConfig())
 	defer sandbox.Close()
@@ -85,8 +101,8 @@ func TestWASMToolAdapterRegisterAndList(t *testing.T) {
 		Version:     "1.0.0",
 	}
 
-	// 使用无效 WASM 字节码，预期失败
-	err := adapter.RegisterTool(context.Background(), meta, []byte("invalid wasm"))
+	// 使用无效 WASM 字节码（已签名通过 A6，失败发生在 Load 编译段）
+	err := adapter.RegisterTool(context.Background(), signedFor(t, meta, []byte("invalid wasm")), []byte("invalid wasm"))
 	if err == nil {
 		// 如果沙箱接受空字节码，注册应该成功
 		tools := adapter.ListTools()

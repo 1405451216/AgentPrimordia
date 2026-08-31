@@ -63,6 +63,11 @@ func NewRuntime(parent context.Context, cfg Config) (*Runtime, error) {
 	}, nil
 }
 
+// Config 返回运行时生效配置（INV-0 断言 A4 审计面：零值兜底后的实际值）。
+func (r *Runtime) Config() Config {
+	return r.config
+}
+
 // Close 关闭运行时
 func (r *Runtime) Close(ctx context.Context) error {
 	return r.ctx.Close(ctx)
