@@ -26,6 +26,7 @@ Commands:
   marketplace  manage agent templates
   autonomy     long-horizon autonomous goal execution
   skill        manage evolved skills (list/add/remove/verify)
+  live            常驻长活模式（自唤醒/闲时自调度/崩溃自愈）
   a2a          A2A protocol interop (interop-check)
   realtime     realtime multimodal session (voice)
   create-edge-agent  create an Edge Agent project
@@ -70,6 +71,8 @@ func main() {
 		err = runMarketplace(args)
 	case "autonomy":
 		err = runAutonomy(args)
+	case "live":
+		err = runLive(args)
 	case "skill":
 		err = runSkill(args)
 	case "a2a":
