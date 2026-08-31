@@ -11,6 +11,7 @@
 
 - **v6.1 世界模型内核切片三——state-checkpoint 协议（续知而非重放，提案 E7–E10）**：`worldmodel/snapshot.go` Snapshot/Restore 快照层（节点按 ID 升序确定性序列化；Restore 结构校验——重复节点 ID/悬挂边/悬挂轨迹引用显式报错且不改动现有状态，覆盖式替换图/计划/轨迹）；`persist.AgentState.WorldState`（json.RawMessage 透传，persist 层不感知世界模型结构）；`SQLiteCheckpointStore` 补 `world_state` 列（沿用 plan 列幂等迁移，旧库/旧检查点双向兼容；etcd/redis 后端整体 JSON 序列化自动透传）；agent 接线——saveCheckpoint 嵌入快照（tracker 未注入时 no-op）、resumeFromState/ReplayFailure 恢复路径一次性载入世界状态（历史消息不再重放给 tracker）。端到端续知测试：崩溃前工具观察经失败记录恢复到全新 agent 的空 tracker，工具未重放而事实在场；快照损坏时告警并退化为 v6.0 重放语义，恢复不阻塞主流程（ce24fc24）
 
+- **v6.1 收尾——状态断言一致性门 + 治理文本落地 + 双线对等（矩阵 #1）**：①CI 状态断言一致性门 `internal/agent/worldmodel_consistency_test.go`——回放器纯函数从消息序列推导世界事实（含 E7 有损形态的孤儿观察通道），与状态图逐条对账（方向性包含：回放事实 ⊆ 图事实），负向对照证明门有检出能力；②提案 §三治理文本四处落地——AGENTS.md §4.1 worldmodel 行 + §5 一致性门条款、版本规范.md 实验性清单 worldmodel + 破坏性变更流程第 6 条（默认策略翻转预登记表）、安全态势.md「世界模型与护栏边界」、internal/AGENTS.md 包表 worldmodel 行；③TS 侧移植 `src/agent/worldmodel/`（graph/backdiff/rehearsal/tracker，FNV-1a64 用 BigInt 逐位模拟 uint64）——Go 权威夹具 `testdata/worldmodel_fixtures.json`（AP_WRITE_WORLD_FIXTURE=1 再生 + 黄金门防漂移）跨语言对账：NodeID 位级、ComparePaths 四形态、Rehearse 中文文案逐字、Snapshot JSON 双线直接互换；双线豁免矩阵 #1 更新为对等落地
 ### Added — V7 弧线 S0 预备期（度量仪与题面地基，不占版本号）
 
 - **S0-2 题面注册与冻结**：`docs/evals/` 七套题面 1364 样本 sha256 台账冻结（长程 24/缺口 65/对抗 700/外部 100/judge 标定 200/基线探针 12/embedding 语料 263，总体留出 34%）；确定性生成器 `scripts/gen-eval-sets.py` + 台账工具 `scripts/eval-manifest.py`（--write/--verify/--check）进 CI；Go 冻结门 `TestEvalRegistryFrozen`；题面判定断言 DSL `internal/eval/asserts.go`——7 种断言，文件不存在判 false 不判错，路径越界拒绝（027b5c56、737a5b2f）

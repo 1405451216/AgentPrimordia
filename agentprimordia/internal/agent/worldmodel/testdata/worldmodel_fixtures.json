@@ -1,0 +1,256 @@
+{
+  "nodeID": [
+    {
+      "kind": "tool_call",
+      "summary": "read_file {\"path\":\"a.txt\"}",
+      "id": "tool_call:144c60e881bc185d"
+    },
+    {
+      "kind": "tool_call",
+      "summary": "  read_file \t {\"path\":\"a.txt\"} ",
+      "id": "tool_call:144c60e881bc185d"
+    },
+    {
+      "kind": "observation",
+      "summary": "观察：文件已写入",
+      "id": "observation:f46921cf82c7a68b"
+    },
+    {
+      "kind": "observation",
+      "summary": "read_file {\"path\":\"a.txt\"}",
+      "id": "observation:595a60d69b49b0e"
+    },
+    {
+      "kind": "hypothesis",
+      "summary": "假设：缓存命中导致结果一致",
+      "id": "hypothesis:21a7f6ce7a8af3f8"
+    }
+  ],
+  "comparePaths": [
+    {
+      "planned": [
+        "a",
+        "b",
+        "c"
+      ],
+      "actual": [
+        "a",
+        "b",
+        "c"
+      ],
+      "diff": {
+        "DivergedAt": "",
+        "PlannedButSkipped": null,
+        "ExecutedButUnplanned": null
+      }
+    },
+    {
+      "planned": [
+        "a",
+        "b",
+        "c"
+      ],
+      "actual": [
+        "a",
+        "c",
+        "b"
+      ],
+      "diff": {
+        "DivergedAt": "b",
+        "PlannedButSkipped": null,
+        "ExecutedButUnplanned": null
+      }
+    },
+    {
+      "planned": [
+        "a"
+      ],
+      "actual": [
+        "a",
+        "x"
+      ],
+      "diff": {
+        "DivergedAt": "x",
+        "PlannedButSkipped": null,
+        "ExecutedButUnplanned": [
+          "x"
+        ]
+      }
+    },
+    {
+      "planned": [
+        "a",
+        "b",
+        "c"
+      ],
+      "actual": [
+        "a"
+      ],
+      "diff": {
+        "DivergedAt": "b",
+        "PlannedButSkipped": [
+          "b",
+          "c"
+        ],
+        "ExecutedButUnplanned": null
+      }
+    }
+  ],
+  "rehearse": [
+    {
+      "plan": {
+        "Goal": "通过计划",
+        "Steps": [
+          {
+            "ID": "s1",
+            "Summary": "第一步",
+            "DependsOn": [
+              "observation:f5895ba42aaab54b"
+            ]
+          }
+        ]
+      },
+      "graph_nodes": [
+        {
+          "ID": "observation:f5895ba42aaab54b",
+          "Kind": "observation",
+          "Summary": "图上既有节点",
+          "CreatedAtTurn": 0,
+          "Edges": null
+        }
+      ],
+      "pass": true,
+      "missing": null
+    },
+    {
+      "plan": {
+        "Goal": "缺陷计划",
+        "Steps": [
+          {
+            "ID": "s1",
+            "Summary": "第一步",
+            "DependsOn": [
+              "幽灵节点"
+            ]
+          },
+          {
+            "ID": "s1",
+            "Summary": "第一步重复 ID",
+            "DependsOn": null
+          },
+          {
+            "ID": "s2",
+            "Summary": "自依赖",
+            "DependsOn": [
+              "s2"
+            ]
+          },
+          {
+            "ID": "s3",
+            "Summary": "前向依赖",
+            "DependsOn": [
+              "s4"
+            ]
+          },
+          {
+            "ID": "s4",
+            "Summary": "第四步",
+            "DependsOn": null
+          }
+        ]
+      },
+      "graph_nodes": null,
+      "pass": false,
+      "missing": [
+        "步骤 s1 缺少可执行前提：幽灵节点（既非计划内前序步骤，也不在状态图中）",
+        "步骤 s1（第 2 位）与第 1 位步骤 ID 重复，重复步骤不参与预演",
+        "步骤 s2 依赖自身（自依赖不可满足）",
+        "步骤 s3 依赖其后的步骤 s4（顺序倒置，当前序位不可能已执行）"
+      ]
+    }
+  ],
+  "snapshot": {
+    "nodes": [
+      {
+        "ID": "hypothesis:672a1571c8f799c0",
+        "Kind": "hypothesis",
+        "Summary": "假设：文件存在",
+        "CreatedAtTurn": 1,
+        "Edges": null
+      },
+      {
+        "ID": "observation:6d63f2c6cd2584dd",
+        "Kind": "observation",
+        "Summary": "被裁历史",
+        "CreatedAtTurn": 0,
+        "Edges": null
+      },
+      {
+        "ID": "observation:e9b7241586b2c25e",
+        "Kind": "observation",
+        "Summary": "内容A",
+        "CreatedAtTurn": 1,
+        "Edges": null
+      },
+      {
+        "ID": "plan:24b4fc7ae1fa1070",
+        "Kind": "plan",
+        "Summary": "整理",
+        "CreatedAtTurn": 1,
+        "Edges": [
+          {
+            "To": "tool_call:5e5499093c38c79f",
+            "Kind": "plan"
+          }
+        ]
+      },
+      {
+        "ID": "task:402338f2cd2732fa",
+        "Kind": "task",
+        "Summary": "整理任务",
+        "CreatedAtTurn": 1,
+        "Edges": [
+          {
+            "To": "plan:24b4fc7ae1fa1070",
+            "Kind": "plan"
+          },
+          {
+            "To": "hypothesis:672a1571c8f799c0",
+            "Kind": "hypothesis"
+          },
+          {
+            "To": "observation:6d63f2c6cd2584dd",
+            "Kind": "context"
+          }
+        ]
+      },
+      {
+        "ID": "tool_call:5e5499093c38c79f",
+        "Kind": "tool_call",
+        "Summary": "read a",
+        "CreatedAtTurn": 1,
+        "Edges": [
+          {
+            "To": "observation:e9b7241586b2c25e",
+            "Kind": "cause"
+          }
+        ]
+      }
+    ],
+    "plan": {
+      "Goal": "整理",
+      "Steps": [
+        {
+          "ID": "tool_call:5e5499093c38c79f",
+          "Summary": "read a",
+          "DependsOn": null
+        }
+      ]
+    },
+    "has_plan": true,
+    "last_task_id": "task:402338f2cd2732fa",
+    "plan_traj": [
+      "tool_call:5e5499093c38c79f"
+    ]
+  }
+}

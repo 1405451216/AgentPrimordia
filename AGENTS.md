@@ -63,6 +63,7 @@ internal/
 │   ├── a2a/        — Agent2Agent 协议实现（JSON-RPC / SSE / 任务管理）
 │   ├── planning/   — 任务规划器
 │   ├── reflection/ — Agent 自反思能力
+│   ├── worldmodel/ — 世界模型（实体/关系/因果算子状态图；v6.1 起经 WithWorldModel() opt-in，v7.0 翻默认——见 docs/提案-世界模型默认策略切换.md）
 │   └── tool_learning/ — 工具学习/自动发现
 ├── concurrency/    — 文件锁等并发原语
 ├── config/         — 配置热加载
@@ -124,6 +125,7 @@ pgvector/           — pgvector 向量存储扩展
 - Shell/Web 工具测试用 `httptest.Server` 或模拟，不需要真实网络
 - Memory 测试用 `WithInMemory()` 创建内存数据库
 - MockLLM 用于 agent/pool 层测试；DemoLLM 用于示例应用
+- 世界模型（internal/agent/worldmodel/）状态更新必须带断言一致性测试：同一任务轨迹上，状态图断言与消息序列回放结果逐条对账，不一致即测试失败（V7 路线图 §三随行项；回放断言准确率验收口径见 V7 §三命题 2；门落点 internal/agent/worldmodel_consistency_test.go）
 
 ## 6. 提交粒度
 
