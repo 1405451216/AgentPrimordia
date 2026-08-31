@@ -1186,10 +1186,10 @@
    ]
   }
  ],
- "freeze_commit": "PENDING-FREEZE-COMMIT",
- "generated_at": "",
+ "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
+ "generated_at": "2026-08-31T13:46:06+08:00",
  "generated_by": "scripts/gen-eval-sets.py",
- "git_head_at_manifest_write": "d3ef1c51e29d76d68ce17ca0b3c0433d85895d70",
+ "git_head_at_manifest_write": "027b5c56542783dab601558eb99ced10b0458277",
  "policy": {
   "governance": "docs/V7路线图.md §一 R4",
   "holdout_min_rate": 0.3,
