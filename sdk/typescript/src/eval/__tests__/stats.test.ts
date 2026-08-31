@@ -28,6 +28,7 @@ import {
   sampleSizeMcNemar,
   cohenKappa,
   pairedBootstrapCI,
+  goFormatFixed,
 } from '../stats.js';
 import type { PairedOutcome } from '../stats.js';
 
@@ -293,5 +294,38 @@ describe('stats — 边界语义（与 Go stats_test.go 同语义）', () => {
     expect(ciJson['lower95']).toBe(ci.lower);
     expect(ciJson['upper95']).toBe(ci.upper);
     expect(ciJson['seed']).toBe(7);
+  });
+});
+
+describe('goFormatFixed（Go %.3f 位级镜像：平局舍到偶）', () => {
+  // 刻意覆盖二进制可精确表示的平局值与非平局值——与 stats_fixtures.json format_rate 同源
+  it.each([
+    ['0.062', 1 / 16],   // 0.0625 平局：62 偶，保持
+    ['0.938', 15 / 16],  // 0.9375 平局：937 奇，进位到 938
+    ['0.188', 3 / 16],   // 0.1875 平局：187 奇，进位到 188
+    ['0.125', 1 / 8],    // 非平局（千分位整除）
+    ['0.008', 1 / 128],  // 非平局进位
+    ['0.900', 0.9],
+    ['1.000', 1],
+    ['0.000', 0],
+  ])('goFormatFixed(%p, 3) = %p', (want, x) => {
+    expect(goFormatFixed(x as number, 3)).toBe(want);
+  });
+
+  it('负数与特殊值对齐 Go 口径', () => {
+    expect(goFormatFixed(-0.25, 3)).toBe('-0.250');
+    expect(goFormatFixed(NaN, 3)).toBe('NaN');
+    expect(goFormatFixed(Infinity, 3)).toBe('+Inf');
+  });
+
+  it('formatRate 与夹具 format_rate 逐字符一致（含平局值）', () => {
+    const fx = JSON.parse(readFileSync(FIXTURES_PATH, 'utf-8')) as {
+      format_rate: { s: number; n: number; want: string }[];
+    };
+    expect(fx.format_rate.length).toBeGreaterThan(0);
+    for (const c of fx.format_rate) {
+      const got = formatRate(reportRate(c.s, c.n));
+      expect(got).toBe(c.want);
+    }
   });
 });

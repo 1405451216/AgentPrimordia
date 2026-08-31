@@ -292,9 +292,53 @@ export function reportRate(successes: number, trials: number): RatePoint {
   return new RatePoint(successes, trials, successes / trials, lower, upper);
 }
 
+/**
+ * Go fmt %.3f 的位级镜像：对双精度浮点的二进制精确值做十进制正确舍入，
+ * 平局（二进制可精确表示的 0.xxx5）舍到偶——Go strconv 是 ties-to-even，
+ * JS toFixed 是 ties-away（1/16=0.0625 → Go '0.062' vs toFixed '0.063'），
+ * 双线文案必须逐字符一致，故不用 toFixed。
+ */
+export function goFormatFixed(x: number, prec: number): string {
+  if (Number.isNaN(x)) return 'NaN';
+  if (x === Infinity) return '+Inf';
+  if (x === -Infinity) return '-Inf';
+  const neg = x < 0 || Object.is(x, -0);
+  const ax = Math.abs(x);
+  // 双精度精确分解 ax = m * 2^e（m 为 53 位整数）
+  const buf = new DataView(new ArrayBuffer(8));
+  buf.setFloat64(0, ax);
+  const bits = buf.getBigUint64(0);
+  const expBits = Number((bits >> 52n) & 0x7ffn);
+  const frac = bits & ((1n << 52n) - 1n);
+  let m: bigint; let e: number;
+  if (expBits === 0) {
+    m = frac; e = -1074; // 次正规
+  } else {
+    m = frac | (1n << 52n); e = expBits - 1075;
+  }
+  const scale = 10n ** BigInt(prec);
+  let q: bigint; let r = 0n; let den = 0n;
+  if (e >= 0) {
+    q = m * scale << BigInt(e); // 精确整数，无余数
+  } else {
+    den = 1n << BigInt(-e);
+    const num = m * scale;
+    q = num / den;
+    r = num - q * den;
+  }
+  if (e < 0) {
+    const twice = r * 2n;
+    if (twice > den) q += 1n;
+    else if (twice === den && (q % 2n) === 1n) q += 1n; // 平局舍到偶
+  }
+  let s = q.toString().padStart(prec + 1, '0');
+  if (prec > 0) s = s.slice(0, -prec) + '.' + s.slice(-prec);
+  return (neg ? '-' : '') + s;
+}
+
 /** 评审可读口径，与 Go RatePoint.String() 同文案："0.900 (Wilson95 下界 0.826, n=100)"。 */
 export function formatRate(r: RatePoint): string {
-  return r.point.toFixed(3) + ' (Wilson95 下界 ' + r.wilsonLower.toFixed(3) + ', n=' + r.trials + ')';
+  return goFormatFixed(r.point, 3) + ' (Wilson95 下界 ' + goFormatFixed(r.wilsonLower, 3) + ', n=' + r.trials + ')';
 }
 
 // ===== McNemar 精确二项检验（同题双臂配对） =====

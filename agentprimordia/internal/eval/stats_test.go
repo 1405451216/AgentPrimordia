@@ -377,6 +377,14 @@ type statsFixture struct {
 	PowerMcN []fxPower    `json:"mcnemar_power"`
 	Boot     []fxBoot     `json:"bootstrap"`
 	Quantile []fxQuantile `json:"normal_quantile"`
+	FormatRt []fxFormat   `json:"format_rate"`
+}
+
+// fxFormat 文案格式化对账：锁 %.3f 的平局舍入口径（ties-to-even）。
+type fxFormat struct {
+	S    int    `json:"s"`
+	N    int    `json:"n"`
+	Want string `json:"want"`
 }
 
 // TestStatsFixturesAgainstTS 读 testdata/stats_fixtures.json，逐项校验 Go 实现与夹具一致。
@@ -428,6 +436,16 @@ func TestStatsFixturesAgainstTS(t *testing.T) {
 		x, err := NormalQuantile(c.P)
 		if err != nil || !almost(x, c.X, 1e-9) {
 			t.Errorf("Φ⁻¹(%v) 不一致: %v vs %v", c.P, x, c.X)
+		}
+	}
+	for _, c := range f.FormatRt {
+		rp, err := ReportRate(c.S, c.N)
+		if err != nil {
+			t.Errorf("format_rate %d/%d 构造失败: %v", c.S, c.N, err)
+			continue
+		}
+		if got := rp.String(); got != c.Want {
+			t.Errorf("format_rate %d/%d 文案不一致: %q vs %q", c.S, c.N, got, c.Want)
 		}
 	}
 }
@@ -496,6 +514,14 @@ func TestWriteStatsFixtures(t *testing.T) {
 			t.Fatal(err)
 		}
 		f.Quantile = append(f.Quantile, fxQuantile{P: p, X: x})
+	}
+	// 文案对账：刻意覆盖二进制可精确表示的平局值（1/16=0.0625、15/16=0.9375）与非平局值（1/8、1/128），锁定 %.3f 平局舍到偶的双线一致口径
+	for _, c := range [][2]int{{1, 16}, {15, 16}, {1, 8}, {1, 128}, {3, 16}, {90, 100}} {
+		rp, err := ReportRate(c[0], c[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.FormatRt = append(f.FormatRt, fxFormat{S: c[0], N: c[1], Want: rp.String()})
 	}
 	if err := os.MkdirAll("testdata", 0o755); err != nil {
 		t.Fatal(err)
