@@ -100,6 +100,12 @@ func FileSHA256(path string) (string, error) {
 // 返回违规描述列表（空 = 冻结完好），供 CI 门与验收前置检查使用。
 func (r *EvalRegistry) VerifyFrozen(dir string) []string {
 	var violations []string
+	// R4 防回退：冻结台账必须登记冻结 commit——PENDING 占位 = 登记未完成，
+	// 计划书的题面引用 @commit 将无从对账（e7995ba6 重算台账时曾把 d0491cbe 的登记冲回占位符）。
+	if r.FreezeCommit == "" || r.FreezeCommit == "PENDING-FREEZE-COMMIT" {
+		violations = append(violations,
+			"台账 freeze_commit 未登记（空或 PENDING 占位）——R4 要求题面以独立 commit 冻结并在台账登记哈希")
+	}
 	root := filepath.Clean(dir)
 	for _, f := range r.Files {
 		abs, ok := resolveRegistered(root, f.File)

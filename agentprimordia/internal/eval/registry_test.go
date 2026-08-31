@@ -134,6 +134,32 @@ func TestVerifyFrozenDetectsDrift(t *testing.T) {
 	t.Logf("检出漂移: %s", v[0])
 }
 
+// TestVerifyFrozenRequiresFreezeCommit R4 防回退回归门：freeze_commit 未登记（空或 PENDING 占位）
+// 必须报违规——e7995ba6 重算台账曾把 d0491cbe 登记的冻结 commit 冲回占位符而无人拦截。
+func TestVerifyFrozenRequiresFreezeCommit(t *testing.T) {
+	reg, err := LoadRegistry(DefaultEvalsDir())
+	if err != nil {
+		t.Skipf("题面目录不可见: %v", err)
+	}
+	for _, bad := range []string{"", "PENDING-FREEZE-COMMIT"} {
+		r2 := *reg
+		r2.FreezeCommit = bad
+		v := r2.VerifyFrozen(DefaultEvalsDir())
+		found := false
+		for _, x := range v {
+			if strings.Contains(x, "freeze_commit") {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("freeze_commit=%q 应报违规，得 %v", bad, v)
+		}
+	}
+	if reg.FreezeCommit == "" || reg.FreezeCommit == "PENDING-FREEZE-COMMIT" {
+		t.Errorf("工作区台账 freeze_commit 处于未登记状态 %q——登记已回退", reg.FreezeCommit)
+	}
+}
+
 func TestLoadSetHoldoutPartition(t *testing.T) {
 	reg, err := LoadRegistry(DefaultEvalsDir())
 	if err != nil {

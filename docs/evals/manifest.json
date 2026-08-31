@@ -1463,7 +1463,7 @@
    ]
   }
  ],
- "freeze_commit": "PENDING-FREEZE-COMMIT",
+ "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
  "generated_at": "2026-08-31T13:46:23+08:00",
  "generated_by": "scripts/gen-eval-sets.py",
  "git_head_at_manifest_write": "d0491cbe110b120f8acba3d168230e8ba00e4e51",

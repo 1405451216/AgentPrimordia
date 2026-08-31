@@ -128,6 +128,18 @@ def main():
         return
 
     head = git("rev-parse", "HEAD")
+    # R4 防回退：已登记的冻结 commit 不得因重算台账被冲回占位符
+    #（e7995ba6 事故：追加 embedding 语料时 --write 未显式传参，d0491cbe 的登记被冲掉）。
+    # 规则：显式传 --freeze-commit 才可变更；否则保留既有非 PENDING 值。
+    old_freeze = "PENDING-FREEZE-COMMIT"
+    if os.path.exists(MANIFEST):
+        with open(MANIFEST, encoding="utf-8") as f:
+            old_freeze = json.load(f).get("freeze_commit") or "PENDING-FREEZE-COMMIT"
+    freeze_commit = args.freeze_commit or old_freeze
+    if freeze_commit != old_freeze:
+        print(f"⚠️ freeze_commit 显式变更：{old_freeze[:12]} → {freeze_commit[:12]}（确认题面确有新版本再执行）")
+    elif old_freeze != "PENDING-FREEZE-COMMIT":
+        print(f"ℹ️ freeze_commit 保留既有登记 {old_freeze[:12]}")
     manifest = {
         "schema": "ap-eval-registry/v1",
         "generated_by": GENERATOR,
@@ -139,7 +151,7 @@ def main():
         },
         "generated_at": git("log", "-1", "--format=%cI", "--", "docs/evals"),
         "git_head_at_manifest_write": head,
-        "freeze_commit": args.freeze_commit or "PENDING-FREEZE-COMMIT",
+        "freeze_commit": freeze_commit,
         "files": entries,
     }
     with open(MANIFEST, "w", encoding="utf-8") as f:
