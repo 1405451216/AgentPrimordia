@@ -31,6 +31,10 @@ REGISTRY = {
         "judge 标定集（客观标签的 good/bad 输出对）", "S0-1 judge κ 标定", "标签一致性/Cohen κ"),
     "baseline-probe-v1.json": (
         "基线摸底小集（长程集可见子集抽样，供效应量假设）", "各实验计划书", "引用长程集判定"),
+    "embedding-corpus-v1.json": (
+        "S0-3 真实 corpus 双线召回基准（真实文档 chunk + 标题术语规则推出的 gold 查询；"
+        "visible/holdout 子集各自自含）", "S0-3（CI 回归跑 visible 子集，终验跑 holdout 子集）",
+        "recall@10：lexical 臂对实测底档阈值，语义臂 ≥0.95（端点就位时）"),
 }
 
 

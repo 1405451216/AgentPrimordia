@@ -6,6 +6,7 @@
 package memory
 
 import (
+	"context"
 	"math"
 	"strings"
 	"sync"
@@ -57,10 +58,34 @@ type HybridDoc struct {
 type HybridRetriever struct {
 	mu   sync.RWMutex
 	docs []HybridDoc
+	// embedder 可选语义嵌入 Provider（S0-3 接线）。nil 时向量通道退回
+	// textPseudoVec 降级位（见其注释）——现有默认行为零变更（铁律 7）。
+	embedder EmbeddingProvider
 }
 
-// NewHybridRetriever 创建检索器
+// NewHybridRetriever 创建检索器（默认无嵌入 Provider，向量通道走降级位）
 func NewHybridRetriever() *HybridRetriever { return &HybridRetriever{} }
+
+// SetEmbeddingProvider 注入语义嵌入 Provider（S0-3：6.x 仅新增，不注入则维持降级位）。
+// 注入后语义/混合通道的查询侧用 Provider 生成向量，与 HybridDoc.Vector 做余弦——
+// 调用方必须用同一 Provider 生成文档向量后写入 HybridDoc.Vector，否则量纲不匹配。
+// 单次查询嵌入失败时该次查询退回 textPseudoVec 降级位（检索不因嵌入后端抖动而失败）。
+func (r *HybridRetriever) SetEmbeddingProvider(p EmbeddingProvider) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.embedder = p
+}
+
+// retrieveQueryVector 计算查询向量：注入 Provider 时优先真实语义嵌入，
+// 失败/未注入时退回降级位。调用方须在文档读锁外调用（Provider 可能走 HTTP）。
+func (r *HybridRetriever) retrieveQueryVector(query string) []float64 {
+	if r.embedder != nil {
+		if vecs, err := r.embedder.Embed(context.Background(), []string{query}); err == nil && len(vecs) == 1 {
+			return float32ToFloat64(vecs[0])
+		}
+	}
+	return textPseudoVec(query) // 无 key 降级位（见 textPseudoVec 注释）
+}
 
 // Add 写入文档
 func (r *HybridRetriever) Add(d HybridDoc) {
@@ -73,23 +98,26 @@ func (r *HybridRetriever) Add(d HybridDoc) {
 // 关键词通道：词集包含计分；向量通道：余弦相似度；混合：两路归一化后 0.5/0.5 融合。
 func (r *HybridRetriever) Retrieve(query string, topK int) []HybridDoc {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
+	docs := r.docs
+	r.mu.RUnlock()
 	kind := ClassifyQuery(query)
+	// 查询向量在锁外计算：注入的 Provider 可能走 HTTP，不能占用文档读锁
+	qvec := r.retrieveQueryVector(query)
 	qw := wordSet(query)
 	type scored struct {
 		doc HybridDoc
 		s   float64
 	}
 	var out []scored
-	for _, d := range r.docs {
+	for _, d := range docs {
 		var s float64
 		switch kind {
 		case QueryKeyword:
 			s = keywordScore(qw, d.Text)
 		case QuerySemantic:
-			s = cosineSlices(d.Vector, textPseudoVec(query))
+			s = cosineSlices(d.Vector, qvec)
 		case QueryHybrid:
-			s = 0.5*keywordScore(qw, d.Text) + 0.5*cosineSlices(d.Vector, textPseudoVec(query))
+			s = 0.5*keywordScore(qw, d.Text) + 0.5*cosineSlices(d.Vector, qvec)
 		}
 		if s > 0 {
 			out = append(out, scored{d, s})
@@ -106,11 +134,11 @@ func (r *HybridRetriever) Retrieve(query string, topK int) []HybridDoc {
 	if len(out) > topK {
 		out = out[:topK]
 	}
-	docs := make([]HybridDoc, len(out))
+	result := make([]HybridDoc, len(out))
 	for i, o := range out {
-		docs[i] = o.doc
+		result[i] = o.doc
 	}
-	return docs
+	return result
 }
 
 func keywordScore(qw map[string]bool, text string) float64 {
@@ -150,8 +178,13 @@ func cosineSlices(a, b []float64) float64 {
 	return dot / (math.Sqrt(na) * math.Sqrt(nb))
 }
 
-// textPseudoVec 确定性文本伪向量：字符级哈希到 64 维（CJK 友好，无需分词；
-// 真实部署替换为 embedding 输出）
+// textPseudoVec 确定性文本伪向量：字符级哈希到 64 维（CJK 友好，无需分词）。
+//
+// S0-3 降级说明：这是「无 key 降级位」——仅在未注入 EmbeddingProvider 时兜底使用
+// （HybridRetriever.SetEmbeddingProvider / RAGStore 构造参数；跨包实现见
+// internal/llm.EmbeddingProvider 经 AsRAGEmbedder 适配）。词面统计而非语义嵌入，
+// 其结果不得计入任何语义检索验收数字（docs/V7路线图.md §二 S0-3）。
+// 生产语义路径应注入真实 Provider；真实部署替换为 embedding 输出的历史 TODO 就此关闭。
 func textPseudoVec(s string) []float64 {
 	v := make([]float64, 64)
 	for _, r := range strings.ToLower(s) {
@@ -219,6 +252,15 @@ func (t *TransferIndex) Recall(taskDescription string, threshold float64, topK i
 	out := make([]TransferEntry, len(hits))
 	for i, h := range hits {
 		out[i] = h.e
+	}
+	return out
+}
+
+// float32ToFloat64 float32 向量转 float64（Provider 接口口径 → 检索余弦口径）。
+func float32ToFloat64(v []float32) []float64 {
+	out := make([]float64, len(v))
+	for i, x := range v {
+		out[i] = float64(x)
 	}
 	return out
 }

@@ -1,0 +1,2293 @@
+[
+ {
+  "holdout": false,
+  "id": "ec-ch-0001",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n> 主文档：面向三类读者——**只用框架的开发者**读第一部分即可动手；**为框架贡献代码的工程师**加读第二、三部分；遇到问题直接查第四部分 FAQ。\n>\n> 手册内所有命令与行为均经实际验证（2026-08-27，go1.26.6）。CLI 内部实现细节深潜见 `AP-CLI开发手册.md`；图文版入门三连见 `docs/getting-started/`。\n>\n> English edition: `AP-开发手册-EN.md`（逐节对应 / section-by-section mirror）.",
+  "title": "第四部分 · 常见问题（FAQ） > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0002",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n1. 环境准备\n| 要求 | 说明 |\n|---|---|\n| Go ≥ 1.26 | 工具链在 go.mod 锁定 1.26.6，toolchain 指令会自动拉取 |\n| git | monorepo 以 go.work 组织：根目录 5 个模块（agentprimordia 主模块、pgvector、operator、gateway、wasm），克隆即用无需额外 setup |\n| LLM API Key | 任选：OpenAI / Anthropic / Gemini / Ollama(本地免Key) / Azure / DeepSeek / GLM / Cohere / Mistral / Qwen |\n\n规模预期：主模块 134 包、实现约 13 万行——首次构建下载依赖需要几分钟，之后走本地缓存。",
+  "title": "第四部分 · 常见问题（FAQ） > 1. 环境准备",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0003",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n2. 构建 ap 与测试环境\n```\nmake build            # 或: cd agentprimordia && go build -o \"$(go env GOPATH)/bin/ap\" ./cmd/ap\nmake test-short       # 快速全量回归；完整门禁还有 test-race / test-integration\n```\n\n常用 Makefile 目标：build · test · test-race · test-short · test-integration · test-distributed-backends · cover · cover-html · cover-check · api-diff · api-extract · cover-trend · deprecation-check · benchmark。\n\n> ⚠ 跨目录调用：不要用 go run 绝对路径/cmd/ap——模块外执行报 go.mod file not found。先 build 出二进制再运行。",
+  "title": "第四部分 · 常见问题（FAQ） > 2. 构建 ap 与测试环境",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0004",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n3. 五分钟跑通第一个 Agent\n```\nap init myagent --template quickstart   # 可加 --dry-run 预览；共 7 模板 × agent/plugin/provider 三类型\ncd myagent\nexport AP_LLM_API_KEY=sk-xxx             # 或写进 .ap.yaml（环境变量优先）\nexport AP_LLM_MODEL=gpt-4o               # 不设则用 yaml 默认值\nap run                                   # 自动 build → 注入配置 → 启动；改源码自动重建重启（热重载）\n```\n\n**生成的工程只有 4 个文件**，逐个读一遍是理解框架的最快路径：",
+  "title": "第四部分 · 常见问题（FAQ） > 3. 五分钟跑通第一个 Agent",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0005",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n3. 五分钟跑通第一个 Agent\n| 文件 | 内容 |\n|------|------|\n| main.go | 公共 API 最小样例：ConfigFromEnv 读配置 → 缺 Key 即 Fatal 提示 → NewOpenAIProvider(cfg) 建 Provider → 启动 ReAct 循环。改 system prompt 就是你的第一个定制 Agent |\n| .ap.yaml | 项目配置：llm(provider/model/api_key)、memory(backend, path)、agent(max_turns, system_prompt)，全量字段见下 |\n| go.mod / .gitignore | 依赖声明与忽略规则 |\n```\n# .ap.yaml 全量字段（生成器默认值）\ntemplate: quickstart\nllm:\n  provider: openai       # openai | anthropic | gemini | ollama | azure | deepseek | qwen\n  model: gpt-4o\n  # api_key: \"sk-xxx\"    # 建议用环境变量 AP_LLM_API_KEY，不落盘\nmemory:\n  backend: sqlite        # sqlite | memory\n  path: ./data/memory.db\nagent:\n  max_turns: 20\n  system_prompt: \"you are a helpful assistant\"\n```",
+  "title": "第四部分 · 常见问题（FAQ） > 3. 五分钟跑通第一个 Agent",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0006",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n4. 日常开发循环\n- 改完代码保存即可：ap run 内置 watchAndRun 监听源码变更，自动重建重启；\n- 调试循环：ap loop trace / inspect / resume 观测与恢复 ReAct 执行轨迹；\n- 环境体检：ap doctor 四项检查（Go 版本 / 项目配置 / API Key / 依赖）；\n- 补全脚本：ap completion 生成 shell 补全。",
+  "title": "第四部分 · 常见问题（FAQ） > 4. 日常开发循环",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0007",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n5. 核心概念速览（每个 1 分钟）\n| 概念 | 一句话 |\n|------|--------|\n| ReAct Loop | Agent 引擎：LLM 思考→调工具→观察→循环到产出答案；每轮受 max_turns 约束 |\n| Tool | Agent 能力单元：20+ 内置工具，带作用域权限（FilesScope/ShellScope），执行前统一校验 |\n| Memory | 对话记忆与知识检索：SQLite(FTS5+向量) / 内存 / RAG(Hybrid Fusion) / 向量库(HNSW) |\n| Pool | 多 Agent 并发调度、会话管理、重试 |\n| Orchestration | Pipeline / Handoff / DAG / GroupChat / Debate / MapReduce 编排模式 |\n| Guardrail | 输入输出护栏**默认接入 ReAct 主循环**：注入检测/PII/主题过滤/敏感工具拦截，命中即 block+审计 |\n| Checkpoint | 断点续跑：SQLite 默认；etcd/Redis 后端由 build tag 门控编译 |\n| Stability 分级 | 公共 API 四级承诺 Stable/Experimental/Deprecated/Internal，决定升级成本 |",
+  "title": "第四部分 · 常见问题（FAQ） > 5. 核心概念速览（每个 1 分钟）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0008",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n6. Monorepo 布局与分层纪律\n```\n/\n├── agentprimordia/        # 主模块（134 包）+ operator K8s 子模块\n│   ├── cmd/ap/            # CLI 本体\n│   ├── pkg/               # 公共 API 唯一对外面（类型别名 re-export + 少量构造器）\n│   ├── internal/          # 30 个子包（见 §7 速查卡）\n│   ├── ecosystem/         # examples / plugins / templates（只准经 pkg 访问核心）\n│   └── bench/             # eval-ci / llm-bench / soak / suite / self-bootstrap / results\n├── pgvector/              # 独立向量扩展模块（internal 不得直接 import pgx）\n├── gateway/ wasm/         # 独立部署单元 / WASM 执行（wazero，CGO-free）\n└── sdk/                   # python / rust / typescript 多语言 SDK（非 Go 模块）\n```\n\n**分层规则（实测 134 包零违规，grep 可复核）**：",
+  "title": "第四部分 · 常见问题（FAQ） > 6. Monorepo 布局与分层纪律",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0009",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n6. Monorepo 布局与分层纪律\n| 层 | 包 | 禁止反向引用 |\n|----|-----|--------------|\n| 顶层 | agent/（含 a2a/planning/reflection/skills/autonomy 等 12 子包） | — |\n| 核心 | llm/ memory/ persist/ tools/ | 不得 import agent/pool/orchestration/debugger/admin |\n| 编排 | pool/ | 处于 tools 下层，可引用 tools/agent 及横向层 |\n| 横向 | orchestration debugger metrics otel guardrail security audit eval governance 等 | 可消费上层能力，不得被核心层引用 |",
+  "title": "第四部分 · 常见问题（FAQ） > 6. Monorepo 布局与分层纪律",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0010",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n7. 子系统速查卡\n| 子系统 | 要点 | 最常用入口 |\n|--------|------|------------|\n| llm | 多家 Provider 同一接口；缓存三级（内存/SQLite/增强）；批处理 | NewOpenAIProvider(cfg) |\n| memory | SQLite 默认（FTS5 全文 + 向量列）；RAG 支持 Hybrid Fusion 重排 | WithInMemory() / NewSQLiteStore(path) / NewRAGStore(mem, embedder) |\n| tools | Registry 三入口 Register / RegisterMultiple / RegisterPlugin；executor 统一分发；Scope 权限前置校验 | Registry.Register(tool) |\n| guardrail | 规则可插拔：injection / pii(Trie 加速) / topic / output / sensitive_tool；命中写审计事件 | hook 挂 Agent 构造项 |\n| security | ACL、沙箱、密钥管理（env/memory/vault 三后端 + AES-GCM 加密抽象） | secrets 抽象 |\n| marketplace | 插件远程协议：Manifest + cosign(ECDSA P-256) 验签不过拒装 | ap marketplace install |\n| persist | Checkpoint 多后端：SQLite 默认；etcd/redis 带 build tag | NewSQLiteCheckpointStore(dsn)；Save / Load(agentID) / List(sessionID) |\n| eval | 基准集单一权威 JSON；季度自举 RunQuarterly vs base 对照 + CompareQuarters 回归门 | ap test |\n| observability | trace→指标→审计全链路关联；otel 导出桥 | — |",
+  "title": "第四部分 · 常见问题（FAQ） > 7. 子系统速查卡",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0011",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n8. 多语言 SDK 与跨语言一致性\nAP 的对外能力不止 Go 一条路：`sdk/` 下提供 typescript / python / rust 三套 SDK，**Go 是唯一权威实现面**，其余语言经同一份契约与基准对齐。\n\n### 8.1 TypeScript SDK（sdk/typescript，@agentprimordia/sdk v6.0.0）\n\n- 构建 `npm run build`（tsup，ESM）；类型检查 `npm run typecheck`；API 面检查 `npm run api-check`（api-extractor）；\n- 测试 `npm run test`（vitest，111 个测试文件；另有 coverage / affected / bench 变体）；文档站 vitepress；\n- `src/` 域与 Go internal 同构映射：agent / a2a / cluster / eval / governance / marketplace / …（二十余域，一域一目录）；\n- 版本联动：Go 四方 bump 中的一项就是 TS package.json + lockfile——Go 侧升版时 TS 必须同步。\n\n### 8.2 跨语言一致性双线机制\n\n`scripts/cross-language-api-check.mjs` 是守门人，流程：",
+  "title": "第四部分 · 常见问题（FAQ） > 8. 多语言 SDK 与跨语言一致性",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0012",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n8. 多语言 SDK 与跨语言一致性\n1. 运行 Go 侧 api-extract 生成最新 api-contract.json；\n2. 读取 cross-language-spec.json 中声明的 Go↔TS 类型/函数等价关系；\n3. 校验每个 Go 符号存在于契约、每个 TS 对应实现在源码中存在；发现漂移 **CI 直接失败**。\n\n基准集同理单一权威：评测用例的权威 JSON 在 Go 侧维护，TS 侧**再生成**而非手改——历史上 v5.1 扩容 60→160 条时 TS 未同步导致双线测试失败，此后该教训固化为流程：扩基准必须同步再生成 TS 集。\n\n> ⚠ 给贡献者：改任何 pkg 导出面或基准集结构时，把「跑一次 cross-language-api-check + 再生成 TS 基准」加进你的 checklist，否则 CI 的最后一环会替你补课。",
+  "title": "第四部分 · 常见问题（FAQ） > 8. 多语言 SDK 与跨语言一致性",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0013",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n9. 依赖白名单（硬约束）\n新增第三方依赖需满足『行业标准协议且无法用标准库复现』的豁免条件（见根 AGENTS.md §2.2）。当前白名单及边界：\n\n| 依赖 | 允许范围 |\n|------|----------|\n| modernc.org/sqlite | memory / llm(cache_sqlite) / persist(sqlite_checkpoint) / tools(builtin database) |\n| gopkg.in/yaml.v3 | config / governance / cmd/ap 脚手架 |\n| grpc + protobuf + genproto/rpc | 仅 agent/a2a、agent/cluster(grpc_bus)、agent/transport(grpc) |\n| etcd client v3 | 仅 persist/ 与 agent/cluster/（etcd build tag） |\n| go-redis v9 | 仅 persist/（redis build tag） |\n| wazero | 仅 wasm/ 模块 |\n| pgx v5 | 仅 pgvector/ 模块间接 require，internal 直接 import 即违规 |\n\nCLI 层连 cobra 都不用——手写 switch 是纪律的一部分，贡献时请保持。",
+  "title": "第四部分 · 常见问题（FAQ） > 9. 依赖白名单（硬约束）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0014",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n10. Recipe A：开发你自己的 Agent 应用\n```\nap init my-bot --template with-tools      # 需要文件/shell/web 选 with-tools\n#   multi-agent → 多智能体协作     agent-with-rag → 知识库问答\n#   agent-with-cache → 结果缓存省钱 agent-with-metrics → Prometheus 指标\n#   basic → 最小骨架               quickstart → 新手推荐\n```\n\n然后只改两处：main.go 的 system_prompt 与注册的工具集；.ap.yaml 的模型与记忆后端。运行调试走第 4 节循环。",
+  "title": "第四部分 · 常见问题（FAQ） > 10. Recipe A：开发你自己的 Agent 应用",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0015",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n11. Recipe B：实现一个自定义内置工具\n三步（docs/cookbook/自定义工具.md 有完整图文版）：\n\n1. 在 internal/tools/builtin/ 新建 <name>.go，实现 internal/tools.Tool 接口（名称/描述/schema/Execute）；参照 builtin/text_splitter.go 的最简形态——结构体字段即参数、JSON tag 即入参契约；\n2. 若带文件/命令副作用，必须接 Scope 校验（参照 filesystem_safety_test.go、shell_scope_test.go 既有模式）；\n3. TDD：先写 _test.go（外部依赖一律 httptest / t.TempDir() / MockLLM），过 go test ./internal/tools/...。\n\n注册走 Registry.Register（批量 RegisterMultiple；动态插件走 RegisterPlugin → marketplace 验签链路）。",
+  "title": "第四部分 · 常见问题（FAQ） > 11. Recipe B：实现一个自定义内置工具",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0016",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n12. Recipe C：接入一家新的 LLM Provider\n框架把流程做成模板复制——internal/llm/provider_template.go（build tag ignore_template 保证永不参与编译）：\n```\ncp provider_template.go yourname_provider.go\n# 全局替换 Template → YourName，依次实现四个方法：Complete() → Stream() → CallTools() → Info()\n# 删除警告注释块；模板的 NewTemplateProvider 刻意返回错误防误用，你的才是真逻辑\ngo test -run TestTemplate ./internal/llm/\n```\n\n完成后：在 .ap.yaml provider 枚举处登记、补对照测试；若公开到 pkg 层会触发契约漂移门——按 §16 四方 bump。",
+  "title": "第四部分 · 常见问题（FAQ） > 12. Recipe C：接入一家新的 LLM Provider",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0017",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n13. Recipe D：切换/组合记忆后端\n```\nstore, _ := memory.WithInMemory()                     // 测试专用内存 SQLite\nstore, _ := memory.NewSQLiteStore(\"./data/mem.db\")    // 生产默认（FTS5+向量）\nrag := memory.NewRAGStore(store, embedder)            // 叠加 RAG（Hybrid Fusion）\nvec := memory.NewVectorStoreWithHNSW(dim, cfg)        // 大规模向量检索\n```\n\n.ap.yaml 侧对应 memory.backend= sqlite | memory；更多后端在代码层组合。",
+  "title": "第四部分 · 常见问题（FAQ） > 13. Recipe D：切换/组合记忆后端",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0018",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n14. Recipe E：多 Agent 与跨节点协作\n- 单机编排：ExecutionEngine.Run(mode OrchestratorMode, steps, edges []DAGEdge)——DAG 用 edges 表达；pipeline / debate / mapreduce 有独立实现文件，handoff / groupchat 属 collaboration 协作模式族（collaboration*.go）；pkg/debate.go、pkg/adapters.go 已导出常用形态；\n- 协议互联：A2A（JSON-RPC/SSE/gRPC 三传输），自带互操作自检 ap a2a interop-check；\n- 集群：ap cluster init/join/status/leave/scale（gRPC 总线复用 A2A 设施）；\n- 长任务自治：ap autonomy run/resume/status（带 HITL 断点）。",
+  "title": "第四部分 · 常见问题（FAQ） > 14. Recipe E：多 Agent 与跨节点协作",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0019",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n15. 测试纪律（强制 TDD）\n| 约定 | 做法 |\n|------|------|\n| 红-绿-重构 | 先 _test.go 再实现；提交粒度=单 Task 独立可编译过测 |\n| 隔离手段 | MockLLM（agent/pool 层）、DemoLLM（示例）、httptest.Server（网络）、t.TempDir()（磁盘）、WithInMemory()（存储） |\n| 并发正确性 | 共享状态必上锁；核心包 -race 必须绿（CI 矩阵含 race） |\n| 中文注释 | 注释语种随仓库惯例；错误处理统一走 pkg/errors.go 错误变量 |\n| 分布式后端 | etcd/redis 测试单独 make test-distributed-backends，不入默认套件 |",
+  "title": "第四部分 · 常见问题（FAQ） > 15. 测试纪律（强制 TDD）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0020",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n16. 质量门与提交规范（CI 会拦什么）\n| 门 | 行为 |\n|----|------|\n| 测试矩阵（ci.yml） | OS×Go 版本矩阵跑 build+race；Windows 无 race 回退；MockLLM 集成测试 |\n| 覆盖率分层门 | Phase 7.2 分层门 + Tier3 软门（放行但留痕） |\n| 弃用检查 | deprecation-check.sh + ci.yml：Deprecated 注解必须有去向计划 |\n| 变更日志 | [Unreleased] 段缺失即拦 |\n| 安全扫描 | govulncheck；supply-chain.yml 出 Syft SBOM + cosign 镜像签名 |\n| 契约漂移 | api-diff.sh + TestAPIContractNoDrift：pkg 导出面变更未重锁基线即拦 |\n| 版本一致性 | version-check.sh：源码 Version 与发布流水不符即拦 |\n\n提交信息：feat:/fix:/refactor: 单 Task 单提交；改 pkg 导出面或 buildGoMod 模板需四方 bump（VERSION、pkg/agent.go、TS package.json、Helm values）并刷新契约基线。",
+  "title": "第四部分 · 常见问题（FAQ） > 16. 质量门与提交规范（CI 会拦什么）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0021",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n17. 发布流程速览\n```\ngit tag vX.Y.0 && push          # tag-release.yml / release.yml 接管\n#   version 四方同步 → Makefile ldflags 注入 main.Version → cosign 签名 → SBOM 归档\n#   季度: make benchmark 跑 RunQuarterly 自举对比，结果落盘 bench/results/\n```",
+  "title": "第四部分 · 常见问题（FAQ） > 17. 发布流程速览",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0022",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n18. 环境与脚手架\n`Q1` go run 绝对路径/cmd/ap 报 go.mod file not found？\ngo run 只在模块上下文有效。先构建二进制（§2），之后任意目录可用。\n\n`Q2` init 生成的项目构建报 directory prefix does not contain modules listed in go.work？\n你在 monorepo 目录树内生成了项目，仓库根 go.work 未包含新模块。绕法：GOWORK=off go build ./... 或 go work use ./myagent。（修复方向已列入 CLI 文档坑位表：init 应自动检测 workspace。）\n\n`Q3` 框架目录外生成的项目 tidy 报 malformed module path: missing dot in first path element？\nstandalone 场景默认无 replace（语义化导入版本限制 + v0.0.0 占位）。按 init 尾部提示补 replace agentprimordia => <框架源码绝对路径>；用到向量存储还需 replace agentprimordia/pgvector => <源码>/pgvector。详见 版本规范.md。\n\n`Q4` 为什么不能像普通开源库一样 go get？\n框架尚未启用主版本后缀发布路线（SIV 限制），决策记录在 版本规范.md。想走 GOPROXY 直装需先按该文档规划模块路径演进。",
+  "title": "第四部分 · 常见问题（FAQ） > 18. 环境与脚手架",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0023",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n19. 运行与行为\n`Q5` 启动立即退出提示 set AP_LLM_API_KEY？\n生成的 main.go 显式检查 cfg.APIKey == \"\" 即 Fatal——刻意设计。设置环境变量优先于 .ap.yaml 落盘。\n\n`Q6` 记忆存在哪？重启会丢吗？\n默认 ./data/memory.db（SQLite 含 FTS5 全文与向量列，持久）；backend: memory 则进程内易失。RAG/向量检索叠加其上。\n\n`Q7` Agent 死循环 / token 消耗大？\n调低 .ap.yaml 的 agent.max_turns（默认 20）；为 Provider 开缓存（agent-with-cache 模板 / llm cache_enhanced 支持语义命中）；ap loop trace 定位循环点。\n\n`Q8` Shell/Web 工具有危险吗？\nshell 默认白名单模式（黑名单仅兜底且注释自标『不推荐』）；http/web/api 三客户端在 Transport.DialContext 建立 TCP 连接时实时校验目标 IP，Loopback / Private / LinkLocal(169.254 段) 单播与组播地址一律拒连并返回 internal/private address 错误；文件操作经 FilesScope 路径越界校验；护栏命中自动 block + 审计留痕。",
+  "title": "第四部分 · 常见问题（FAQ） > 19. 运行与行为",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0024",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n19. 运行与行为\n`Q9` -short 里 TestSoak_Studio 失败了？\n已知误报模式：退化门按前后半段吞吐对比判定，本机并发负载抖动即可触发（实测 584 请求 0 错误仍 FAIL）。规避 SOAK_CI_MODE=1 或跳过该包；彻底修复方向见 CLI 文档坑位表②。",
+  "title": "第四部分 · 常见问题（FAQ） > 19. 运行与行为",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0025",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n20. 贡献与发布\n`Q10` PR 被 CI 拦：CHANGELOG / Deprecation / coverage？\n三条独立门：改动必须落入 CHANGELOG [Unreleased]；Deprecated API 必须给出替代与时间表；覆盖率跌破所在层阈值（Tier3 软门放行但留痕）。\n\n`Q11` 依赖可以随便加吗？\n不可以。白名单见 §9；新增需满足行业标准协议豁免并在 PR 说明理由。生态代码只能经 pkg/ 访问核心（实测 ecosystem→internal 零真实 import）。\n\n`Q12` 想跑分布式测试为什么总是空跑？\netcd/redis 后端测试由 build tag 门控且不在常规套件：make test-distributed-backends，需本机起对应服务。",
+  "title": "第四部分 · 常见问题（FAQ） > 20. 贡献与发布",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0026",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n附录 A · ap 命令速查\n| 命令 | 用途 |\n|------|------|\n| init / run / debug | 脚手架 / 构建运行热重载 / 调试服务 |\n| loop trace·inspect·resume | ReAct 工程化观测与断点续跑 |\n| test | 评估套件入口 |\n| config validate | .ap.yaml 校验 |\n| mcp / plugin | MCP server 与插件管理 |\n| cluster init·join·status·leave·scale | 多节点集群生命周期 |\n| marketplace search·install·publish·run·list | 模板市场（cosign 验签安装） |\n| autonomy run·list·resume·status | 长周期自治目标 |\n| skill list·add·remove·verify | 演化技能管理 |\n| a2a interop-check | 协议互通自检 |\n| realtime（voice） | 实时多模态会话 |\n| create-edge-agent | 边缘 Agent 工程 |\n| doctor / completion / version | 四项体检 / 补全脚本 / 版本号 |",
+  "title": "第四部分 · 常见问题（FAQ） > 附录 A · ap 命令速查",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0027",
+  "source": "agentprimordia/docs/AP-开发手册.md",
+  "text": "第四部分 · 常见问题（FAQ）\n附录 B · 关键路径索引\n```\ndocs/AP-CLI开发手册.md      # CLI 内部实现深潜（坑位表更细）\ndocs/getting-started/*.md       # installation / quickstart / first-agent 图文教程\ndocs/cookbook/自定义工具.md custom-provider.md customer-support.md …   # 实战配方\ndocs/guide/ReAct循环.md orchestration.md security.md deployment.md     # 专题指南\ndocs/版本规范.md              # API 兼容承诺与 replace 策略依据\ndocs/供应链安全.md   # SBOM / cosign 供应链安全说明\nagentprimordia/internal/AGENTS.md  # 30 个子包职责总表\nbench/results/                  # 季度基准与回归报告存证\n```\n---\n*维护者注：本文档基于 2026-08-27 代码实测编写；所有结论可用 grep/编译器复验。发现漂移请在 PR 同步更新对应章节。*",
+  "title": "第四部分 · 常见问题（FAQ） > 附录 B · 关键路径索引",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0028",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n> 适用对象：使用与维护 `ap` 的所有开发者——先用第 2 节上手，再按需深入。\n> 所有行为描述均经实际代码审读与端到端验证（2026-08-27，go1.26.6）。",
+  "title": "ap CLI 开发文档 > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0029",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n1. 概述\n`ap` 是 AgentPrimordia 框架的官方 CLI，覆盖项目脚手架、运行调试、工具管理到集群运维的完整生命周期。实现上遵守仓库『标准库优先』纪律：\n\n- 零第三方 CLI 框架（无 cobra/urfave-cli），命令分发为 `main.go` 内的手写 switch；\n- 一级命令约 18 个（init/run/debug/loop/test/config/mcp/plugin/cluster/marketplace/autonomy/skill/a2a/realtime/create-edge-agent/doctor/completion/version）；\n- 实现约 6.1k 行 / 测试 2.2k 行，共 120 个测试函数，-short 全绿。",
+  "title": "ap CLI 开发文档 > 1. 概述",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0030",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n2. 快速上手（新手指南）\n> 目标：从零到跑起第一个 Agent 约 5 分钟。前置条件：Go ≥ 1.26、本机可访问框架源码目录。\n\n```bash\n# ① 安装 ap（在框架源码目录内构建）\ncd agentprimordia\ngo build -o \"$(go env GOPATH)/bin/ap\" ./cmd/ap\n\n# ② 生成项目（拿不准产物可加 --dry-run 预览）\n`ap init myagent --template quickstart`    # 另有 basic/with-tools/multi-agent 等 7 模板 × agent/plugin/provider 三类型\ncd myagent\n\n# ③ 配置 LLM：环境变量优先于 .ap.yaml 的 llm 段\nexport AP_LLM_API_KEY=sk-xxx\nexport AP_LLM_MODEL=gpt-4o        # OpenAI/Anthropic/Gemini/GLM/Ollama 等 Provider 均内置\n\n# ④ 运行：自动 go build + 注入配置 + 启动；改源码自动重建重启（热重载）\n`ap run`\n```\n\n生成的工程只有四个文件：`main.go`（ConfigFromEnv → Provider → ReAct 最小闭环）、`.ap.yaml`（项目配置）、`go.mod`、`.gitignore`。先通读 `main.go` 全文——它就是框架公共 API 的最小用法样例，改 prompt 即得到你自己的第一个 Agent。\n\n第一次没跑起来？按顺序排查：",
+  "title": "ap CLI 开发文档 > 2. 快速上手（新手指南）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0031",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n2. 快速上手（新手指南）\n1. `ap doctor` —— 四项体检（Go 版本 / 项目配置 / API Key / 依赖）；\n2. 本文第 9 节坑位表 —— 重点两条：在 monorepo 目录树内生成后构建报 *directory prefix does not contain modules listed in go.work* 时，加 GOWORK=off 前缀或执行 go work use ./myagent；tidy 报 malformed module path 时，在 go.mod 补一行 `replace agentprimordia => <框架源码目录>`。\n\n进阶路线：插件开发用 `ap init x --type plugin`，自定义 LLM 用 --type provider，外部工具生态接 `ap mcp`，多实例部署看 `ap cluster`，协议互通自检用 `ap a2a interop-check`。\n\n更系统的入门教程：docs/getting-started/（installation / quickstart / first-agent）、docs/guide/ReAct循环.md；实战配方见 docs/cookbook/。",
+  "title": "ap CLI 开发文档 > 2. 快速上手（新手指南）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0032",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n3. 代码结构\n位于 `agentprimordia/cmd/ap/`，包名 main，约定一个命令一个文件、入口函数 `runXxx(args []string) error`：",
+  "title": "ap CLI 开发文档 > 3. 代码结构",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0033",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n3. 代码结构\n| 文件 | 入口 | 子处理器示例 |\n|------|------|--------------|\n| main.go | main() + 命令 switch（98 行） | usage 常量文本 |\n| init.go | runInit | 模板选择、目录写出 |\n| scaffold.go | generate 系列 | buildGoMod / findFrameworkRoot（go.mod 生成核心） |\n| run.go | runRun | appendConfigEnv / watchAndRun（热重载） |\n| loop.go | runLoop | runLoopTrace / runLoopInspect / runLoopResume |\n| cluster.go | runCluster | Init / Join / Status / Leave / Scale |\n| marketplace.go | runMarketplace | Search / Install / Publish / Run / List |\n| skill.go | runSkill | List / Add / Remove / Verify |\n| plugin.go 与 mcp.go | runPlugin / runMCP | 插件与 MCP server 管理 |\n| a2a.go | runA2A | runA2AInteropCheck 协议互通自检 |\n| autonomy.go | runAutonomy | Run / List / Resume / Status |\n| realtime.go | runRealtime | runRealtimeVoice |\n| config.go / debug.go / doctor.go | 各自 runXxx | 配置校验 / 调试服务 / 四项体检 |\n| completion.go | runCompletion | shell 补全脚本生成 |\n\n新增命令时需同步更新 main.go 顶部的 usage 常量文本块。",
+  "title": "ap CLI 开发文档 > 3. 代码结构",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0034",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n4. 构建与版本注入\n- 本地运行：go build ./cmd/ap；var Version 缺省值 dev。\n- 发布版本由根 Makefile 注入：LDFLAGS=-ldflags=\"-X main.Version=$(VERSION)\"，与 scripts/version-check.sh 联动校验。\n- 注意：go run 绝对路径/cmd/ap 在模块外会报 go.mod file not found——跨目录使用请先 go build -o /tmp/ap-bin ./cmd/ap 再执行二进制。",
+  "title": "ap CLI 开发文档 > 4. 构建与版本注入",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0035",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n5. 新增子命令 SOP\n1. 新建 cmd/ap/<cmd>.go，实现 func run<Cmd>(args []string) error；\n2. 参数解析沿用手写 flag 循环惯例，不引入新第三方依赖；\n3. 在 main.go switch 中注册 case；\n4. 更新 usage 常量与 ap <cmd> --help 输出；\n5. 如涉脚手架产物，补对应 <cmd>_test.go（参考 scaffold_test.go 边界用例风格）；\n6. 运行 go test ./cmd/ap/... -short 与 go vet ./...；\n7. 必要时同步 completion.go 补全词条。提交粒度遵循仓库规范：feat: ap xxx，单命令单提交。",
+  "title": "ap CLI 开发文档 > 5. 新增子命令 SOP",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0036",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n6. 脚手架系统（init/generate）\n### 6.1 能力矩阵\n\nap init <name> 支持 7 个模板 × 3 种类型；模板：quickstart / basic（默认）/ with-tools / multi-agent / agent-with-cache / agent-with-rag / agent-with-metrics；类型：agent（默认）/ plugin / provider；全局旗标：--template --type --dry-run --interactive。\n\n### 6.2 go.mod 生成双分支（scaffold.go buildGoMod）\n\n1. 框架内探测：findFrameworkRoot 从项目父目录向上最多 6 层寻找声明 module agentprimordia 的 go.mod；命中则 emit 相对路径 replace，并检测兄弟目录 pgvector/go.mod 连带补 require + replace agentprimordia/pgvector（规避 pgvector replace 不具传递性导致的独立子项目断链，commit 891f683d）。\n2. standalone：未找到时仅写 require agentprimordia v0.0.0 占位并打印提示——受 Go 语义化导入版本限制，框架必须本地 replace 后才可 tidy（版本规范.md 有模块消费限制说明）。\n\n### 6.3 ap run 行为链",
+  "title": "ap CLI 开发文档 > 6. 脚手架系统（init/generate）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0037",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n6. 脚手架系统（init/generate）\ngo build -o <binaryName> . → appendConfigEnv 读取 .ap.yaml 的 llm 段注入环境变量（已存在环境变量 > .ap.yaml）→ 启动二进制 → watchAndRun 监听源码变更自动重建重启。",
+  "title": "ap CLI 开发文档 > 6. 脚手架系统（init/generate）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0038",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n7. 测试约定\n- 关键断言点：gomod_template_test.go（Standalone / InRepoWithPgvector / GoModInRepo / GoModVersion 四场景）、scaffold_test.go（Basic / ProjectName / UnknownTemplate / EmptyName）、plugin_test.go / interactive_test.go / mcp_test.go 等；\n- 测试一律 t.TempDir() 隔离，不写工作区真实路径；\n- 运行：go test ./cmd/ap/... -short -count=1。",
+  "title": "ap CLI 开发文档 > 7. 测试约定",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0039",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n8. 端到端验证 SOP（发布前必跑）\n```bash\ncd agentprimordia && go build -o /tmp/ap-bin ./cmd/ap || exit 9\nTMP=$(mktemp -d); cd \"$TMP\"\n/tmp/ap-bin init demo --template quickstart\ncd demo && go mod tidy && GOWORK=off go build ./...   # 树内生成须脱离 workspace 判定，见第 9 节①\ncd .. && rm -rf \"$TMP\" /tmp/ap-bin                    # 清理现场\n```\n\n实测基线（2026-08-27）：框架内生成 → 双 replace 正确 → tidy PASS；GOWORK=off 下 build PASS。",
+  "title": "ap CLI 开发文档 > 8. 端到端验证 SOP（发布前必跑）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0040",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n9. 已知问题与坑位\n| # | 现象 | 根因 | 当前绕法 / 修复方向 |\n|---|------|------|---------------------|\n| ① | monorepo 树内 init 生成的项目 go build 报 directory prefix does not contain modules listed in go.work | 仓库根 go.work 只列 5 个已有模块，新生成模块不在 use 列表 | 绕法：GOWORK=off 或 go work use ./demo。修复方向：init 检测 workspace 上下文后自动追加 use 并提示 |\n| ② | 框架目录外生成的项目 go mod tidy 失败：malformed module path | standalone 分支无 replace 可写（语义化导入版本限制，v0.0.0 占位） | 按 init 提示手动添加 replace agentprimordia => <框架源码目录>。修复方向：提示提升到 Next steps 首行 |\n| ③ | 开发约束：修改 buildGoMod 模板或 bump 版本会被现有门拦下 | gomod_template_test.go 四场景、TestAPIContractNoDrift、version-check.sh 联动守卫 | 改模板先补四场景断言；改 pkg 导出面需四方 bump（VERSION、pkg/agent.go、TS package.json、Helm values） |",
+  "title": "ap CLI 开发文档 > 9. 已知问题与坑位",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0041",
+  "source": "agentprimordia/docs/AP-CLI开发手册.md",
+  "text": "ap CLI 开发文档\n10. 相关文档\n- docs/版本规范.md —— 模块消费限制与语义化导入版本约束（脚手架 replace 策略依据）\n- docs/getting-started/ —— installation / quickstart / first-agent（图文入门三连）\n- docs/供应链安全.md —— cosign/SBOM 供应链安全\n- scripts/api-diff.sh 与契约漂移门 —— 公共 API 变更检查\n- 架构图：docs/ap-architecture.svg",
+  "title": "ap CLI 开发文档 > 10. 相关文档",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0042",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n版本号规则\nAgentPrimordia 遵循 [语义化版本 2.0.0](https://semver.org/lang/zh-CN/) 规范：\n\n- **主版本号（MAJOR）**：不兼容的 API 变更\n- **次版本号（MINOR）**：向后兼容的功能新增\n- **修订号（PATCH）**：向后兼容的问题修复\n\n当前版本：`6.0.1`（定义于 `pkg/agent.go`，git tag 管理）\n\n> 版本演化路线以 `../../docs/路线图.md`（仓库根 docs/ 目录）为权威（v3.3→v4.0），能力实况以 `../../docs/能力清单.md` 为准。\n> git tag 曾长期脱节（仅 v0.7.0），已在本文件维护规则中强制\"发布即打 tag\"。",
+  "title": "AgentPrimordia 版本兼容性承诺 > 版本号规则",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0043",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n版本信息单一事实来源\n> **重要**：本文件是版本信息的权威参考。其他文档（README、RELEASE-NOTES、ROADMAP）中的版本描述应与本文件保持一致。\n\n| 组件 | 当前版本 | 版本定义位置 |\n|------|----------|----------------|\n| Go SDK | v6.0.1 | `pkg/agent.go` + git tag |\n| TypeScript SDK | v6.0.1 | `../../sdk/typescript/package.json`（仓库根 sdk/ 目录） |\n| Python 客户端 | v2.0.0 | `../../sdk/python/pyproject.toml` |\n| Rust 客户端 | v2.0.0 | `../../sdk/rust/Cargo.toml` |\n| CLI | v6.0.1 | `cmd/ap/main.go`（`var Version`，发布经 ldflags 注入） |\n| K8s Operator | v2.0.0 | operator 模块无版本字段（镜像 tag 见 deploy/helm values.yaml） |\n\n### 版本发布纪律",
+  "title": "AgentPrimordia 版本兼容性承诺 > 版本信息单一事实来源",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0044",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n版本信息单一事实来源\n1. 每次发布必须更新 `docs/CHANGELOG.md`\n2. 每次发布必须打 git tag（格式：`v{MAJOR}.{MINOR}.{PATCH}`）\n3. 功能合并后应及时 bump 版本号，避免“功能已达 v3.1 但版本号仍为 v2.0”的脱节\n4. RELEASE-NOTES 为面向用户的摘要，CHANGELOG 为完整技术记录\n5. **tag 自动化（v4.0-5）**：`.github/workflows/tag-release.yml` 在合并到 `main` 后\n   读取 `pkg/agent.go` 的 `const Version`，与最高既有 tag 对比，版本更高则自动打 tag\n   并触发 `release.yml` 发布流程。**因此每次发布只需 bump `const Version` 即可自动完成**\n6. `pkg/version_gate_test.go` 强制校验版本格式合法且与 版本规范.md 一致（漂移即失败）",
+  "title": "AgentPrimordia 版本兼容性承诺 > 版本信息单一事实来源",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0045",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n模块消费与语义化导入版本限制（v6.0 记录）\nGo 语义化导入版本（SIV）规则：**无 `/vN` 后缀的模块路径，require 版本不允许 ≥ v2**\n（`go mod tidy` 直接报 `invalid version`）。框架模块路径为 `agentprimordia`，\n因此 v2.0.0+ 的 git tag **无法被 GOPROXY 直接 require**——tag-release 流水线虽会\n索引代理，下游实际消费需走本地 replace。这是历史模块命名遗留，非本版引入。\n\n当前合规的消费方式（`ap init` / `ap plugin create` 已内置）：\n\n```\nrequire (\n\tagentprimordia v0.0.0            // SIV 合法占位；replace 场景版本号不参与解析\n\tagentprimordia/pgvector v0.0.0\n)\n\nreplace agentprimordia => ../..            // 指向框架模块根\nreplace agentprimordia/pgvector => ../../pgvector\n```\n\n> 注意 replace 不具传递性：任何独立子模块经 pkg → internal/memory → pgvector\n> 引用链消费框架时，必须自行声明上述 require+replace，否则 tidy 断链。",
+  "title": "AgentPrimordia 版本兼容性承诺 > 模块消费与语义化导入版本限制（v6.0 记录）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0046",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n模块消费与语义化导入版本限制（v6.0 记录）\n未来若需真正的代理分发，二选一：① 迁移模块路径为 `agentprimordia/v6`\n（全量 import 改写，破坏性）；② 回落发布 v1.x 维护标签。决策留待社区需求出现。",
+  "title": "AgentPrimordia 版本兼容性承诺 > 模块消费与语义化导入版本限制（v6.0 记录）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0047",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n兼容性承诺\n### 稳定 API（Stable）\n\n以下 API 在同一主版本号内保证向后兼容，变更时仅扩展不破坏。\n**稳定性标注的唯一事实来源是 `pkg/` 源文件顶部的 `// Stability: Stable` 注释**；\n本清单与 `pkg/deprecation_residual_test.go` / `pkg/stability_compliance_test.go`\n共同保证\"清单与实际导出一致\"（漂移即失败）。",
+  "title": "AgentPrimordia 版本兼容性承诺 > 兼容性承诺",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0048",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n兼容性承诺\n| 模块文件 | 核心 API | 说明 |\n|---------|---------|------|\n| `pkg/a2a.go` | `NewA2AGRPCServer()` / `NewA2AGRPCClient()` / `A2AService` | Agent2Agent gRPC 协议（v4.0-3 转正：默认传输，生产验证） |\n| `pkg/agent.go` | `NewAgent()`、`Agent` 接口 | Agent 创建主入口 + `Run()` / `WithXxx()` 链式 API |\n| `pkg/adapters.go` | `AgentAdapter` / `LLMAdapter` / `MemoryAdapter` 等 | 适配器主接口与实现（高阶组合如 MultiAgentAdapter 为 Experimental 子集） |\n| `pkg/pool.go` | `NewPool()` | 任务池创建与调度 |\n| `pkg/tools.go` | `Tool` / `ToolRegistry` / `NewRegistry()` | 工具注册与执行（MCP/插件等 Experimental 子集除外） |\n| `pkg/llm.go` | `Provider` 接口、`NewOpenAIProvider()` 等 | LLM 提供者抽象（缓存等 Experimental 子集除外） |\n| `pkg/memory.go` | `Memory` 接口、`WithInMemory()` 等 | 记忆存储抽象（VectorStore 等 Experimental 子集除外） |\n| `pkg/persist.go` | `CheckpointStore` / `SQLiteCheckpointStore` | 状态检查点持久化 |\n| `pkg/pipeline.go` | `NewPipeline()` / `Handoff` / `GroupChat` | 编排模式（Pipeline / Handoff / Parallel / GroupChat） |\n| `pkg/llm.go`（Stable 子集） | `NewCircuitBreaker()` / `NewRetrier()` | 断路器与重试策略（位于 llm.go） |\n| `pkg/agent.go` | `NewHealthChecker()` | 健康检查（位于 agent.go） |\n| `pkg/metrics.go` | `NewMetrics()` / `PrometheusHandler` | 指标收集 |\n| `pkg/events.go` | `Bus` / `Event` | 内部事件总线 |\n| `pkg/hooks.go` | `HookManager` / `HookPoint` | 生命周期钩子 |\n| `pkg/options.go` | `WithTimeout()` 等 | 函数式选项 |\n| `pkg/errors.go` | `CodeError` / `WithCode()` / `GetErrorCode()` | 错误码与 sentinel 错误 |\n| `pkg/guardrail.go` | `NewGuardrailEngine()` 等 | Guardrail 引擎、规则、报告 |\n| `pkg/security.go` | `ACL` / `Sandbox` | ACL 与沙箱安全防护 |\n| `pkg/governance.go` | `TenantManager` / `QuotaManager` | 多租户治理与配额限流 |\n| `pkg/logger.go` | `NewLogger()` / `Logger` | 结构化日志 |\n| `pkg/chaos.go` | `NewChaosEngine()` 等 | 混沌工程框架 |\n| `pkg/cluster.go` | `ClusterManager` / `KVStore` | 分布式集群协调 |\n| `pkg/otel.go`（Stable 子集） | `WithTelemetry()` 相关 | OpenTelemetry 桥接（Experimental 子集除外） |\n| `pkg/strategy.go` | `Strategy` / `Registry` / `Verifier` / 三策略构造器 / 计划级 checkpoint / `ABCompare` | v5.2-v5.5 认知内核（策略驱动引擎 / 组织智能）；v6.0-1 经 stability 双门转正 |",
+  "title": "AgentPrimordia 版本兼容性承诺 > 兼容性承诺",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0049",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n兼容性承诺\n> **评审记录（v4.0-3）**：以上 Stable 模块的清单由 `stability_compliance_test.go` 自动比对，\n> 新增 Stable 标注必须同步更新本表，否则测试失败（见 §\"稳定清单一致性验证\"）。\n\n### 实验性 API（Experimental）\n\n标记为 `Experimental` 的 API 可能在次版本号更新时发生不兼容变更：\n\n- `pkg/` 中标注 `Experimental` 的类型和函数（planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 模块）\n- `internal/agent/a2a/` — Agent2Agent 协议内部实现（公共 API 经 `pkg/a2a.go` 导出，v4.0-3 转正为 Stable）\n- `internal/orchestration/` — 编排模式内部实现（公共 API 经 `pkg/pipeline.go` 导出，Stable）\n- `operator/` — Kubernetes Operator\n- `pkg/` 中标注 `Experimental` 的混合模块子集（如 llm.go 的缓存、tools.go 的 MCP / 插件 / 数据处理、memory.go 的 VectorStore、otel.go 的桥接实现）",
+  "title": "AgentPrimordia 版本兼容性承诺 > 兼容性承诺",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0050",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n兼容性承诺\n> **v4.0-3 评审记录**：\n> - **转正**：`pkg/a2a.go`（gRPC 传输，自 v1.x 为默认且生产验证，JSON-RPC 已在 v4.0-1 移除）\n> - **保持 Experimental**：planning / reflection / supervisor / debate / learning / tool_learning / wasm / marketplace / soak / debugger 模块，API 仍随使用场景演进\n> - **混合模块**：llm.go / tools.go / memory.go / otel.go / adapters.go 标注为\"混合\"（核心 Stable + 子集 Experimental），子集转正需逐一评审\n\n### 内部 API（Internal）\n\n`internal/` 下所有包均为内部实现，**不提供兼容性承诺**：\n\n- 路径、类型签名、行为可能随时变更\n- 外部代码（`ecosystem/`、用户代码）应仅通过 `pkg/` 公共 API 访问\n- 如需 `internal/` 中未导出的能力，请提交 Issue 请求导出",
+  "title": "AgentPrimordia 版本兼容性承诺 > 兼容性承诺",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0051",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n废弃策略\n1. 废弃的 API 使用 Go 标准 `Deprecated` 注释标记\n2. 废弃 API 至少保留 **2 个次版本号** 的过渡期\n3. 仅在主版本号升级时移除废弃 API\n4. 废弃 API 的迁移指南记录在 `ecosystem/docs/migration/`\n\n### 当前废弃列表\n\n（无——v4.0.0 已清理全部超期废弃 API）\n\n> **已移除记录**：\n> - `NewReActAgent()` — 已于 v3.x 移除，使用 `NewAgent()`（v4.0.0 正式清理文档残留）\n> - `RegisterPProf()` — 已于 v4.0.0 移除，使用 `RegisterPProfSecure()` / `RegisterPProfStrict()`\n> - `A2AServer()` / `A2AClient()` / `A2AServerOption` / `A2AClientOption` / `A2AJSONRPC*`（JSON-RPC 传输）— 已于 v4.0.0 移除，使用 `NewA2AGRPCServer()` / `NewA2AGRPCClient()`",
+  "title": "AgentPrimordia 版本兼容性承诺 > 废弃策略",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0052",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n模块迁移历史\n| 版本 | 变更 | 影响 |\n|------|------|------|\n| v0.7 → v0.8 | `orchestration/` 从 `internal/agent/` 迁移到 `internal/orchestration/` | 仅影响 `internal/` 路径，`pkg/` API 不受影响 |\n| v0.8 → v0.9 | `ReActConfig` 字段式配置迁移到 Functional Options | `NewReActAgent()` 标记废弃，`NewAgent()` 为推荐入口 |\n| v2.x → v3.0 | `ecosystem/` 全部改为通过 `pkg/` 公共 API 交互 | 消除 `internal/*` 直接依赖 |",
+  "title": "AgentPrimordia 版本兼容性承诺 > 模块迁移历史",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0053",
+  "source": "agentprimordia/docs/版本规范.md",
+  "text": "AgentPrimordia 版本兼容性承诺\n破坏性变更流程\n引入破坏性变更时必须：\n\n1. 在 PR 中说明变更理由和影响范围\n2. 更新 `pkg/agent.go` 中的版本号\n3. 更新本文档的废弃列表和迁移历史\n4. 在 `ecosystem/docs/migration/` 中提供迁移指南\n5. 确保所有 `pkg/` 导出类型和函数的兼容性测试通过",
+  "title": "AgentPrimordia 版本兼容性承诺 > 破坏性变更流程",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0054",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\n> **⚠️ 历史页面（2026-08-09 标注）**：本文档为 Phase 1-5 历史实施记录，**仅作追溯用途**，\n> 不再反映当前完成度。当前状态请以 `../../docs/路线图.md`（v3.3→v4.0 实证版，唯一权威路线图）\n> 与 `../../docs/能力清单.md`（能力实况）为准。评估报告见\n> `docs/项目评估-2026-08-09.md`。\n\n> **版本体系说明（2026-08-03 对齐）**：本文档的 Phase 1-5 为**历史实施记录**，与当前版本体系并存。\n> **版本路线以 `../../docs/路线图.md`（v3.3→v4.0 实证版）为唯一权威**；能力实况以 `../../docs/能力清单.md` 为准。\n> Phase 遗留事项（如协程池集成、插件远程注册中心）已并入 ROADMAP v3.4/v3.9 对应版本。\n\n> 本文档汇总 5 个核心阶段的实施状态、关键决策与遗留事项。\n> 历史 Task 拆分见 Git 历史（`docs/plans/` 目录已随 2026-08-09 文档清理移除）。",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0055",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\n阶段总览\n| 阶段 | 主题 | 状态 | Task 完成度 | 关键交付物 |\n|------|------|------|------------|-----------|\n| **Phase 1** | 性能攻坚（perf-v5） | ✅ 已完成 | 14 / 14 | BufferPool / TokenCache / JSON Pool / pprof 端点 / 热点优化 -40% ~ -75% |\n| **Phase 2** | 安全合规闭环 | ✅ 已完成 | 7 / 7 | guardrail（PII/注入/主题）+ audit（审计日志/HTTP 报告）+ security（ACL/Sandbox） |\n| **Phase 3** | 架构演进 | 🟡 进行中 | 5 / 8 | A2A gRPC ✅ / 拦截器链 ✅ / gRPC 默认化 ✅ / 包拆分（部分）/ 协程池集成（待） |\n| **Phase 4** | 可观测性 + Operator | ✅ 已完成 | 10 / 10 | 分布式追踪 / Metrics Adapter / PDB / HPA Behavior / 滚动升级 / 结构化日志 |\n| **Phase 5** | 生态与社区 | 🟡 起步 | 1 / 12 | CLI 插件管理（install/list/create/remove/search/update）✅ |\n\n**合计**：37 / 51 个 Task 完成（约 73%）\n\n---",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > 阶段总览",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0056",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\nPhase 3 待办（剩余 3 个 Task）\n### Task 1-3：包拆分重构\n\n`internal/agent/` 已拆出以下子包：\n\n```\ninternal/agent/\n├── a2a/             ✅ A2A 协议（gRPC + JSON-RPC + 拦截器 + Trace Propagation）\n├── planning/        ✅ 任务规划\n├── reflection/      ✅ Agent 自反思\n├── tool_learning/   ✅ 工具学习 / 自动发现\n├── collaboration/   ✅ 多 Agent 协作\n├── eval/            ✅ 评估\n├── lifecycle/       ✅ Agent 生命周期\n├── transport/       ✅ 传输层\n├── discovery/       ✅ 服务发现\n├── bus/             ✅ 事件总线\n├── session/         ✅ 会话管理\n├── trace/           ✅ 追踪\n├── visualize/       ✅ 可视化\n└── multimodal/      ✅ 多模态\n```\n\n**遗留**：`react_loop.go`、`react_loop_core.go`、`react_loop_tools.go` 等零散文件仍在 `internal/agent/` 根目录，未完全迁出到 `react/` 子包。\n\n### Task 4-5：GoroutinePool 集成",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > Phase 3 待办（剩余 3 个 Task）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0057",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\nPhase 3 待办（剩余 3 个 Task）\n- ✅ `internal/concurrency/pool.go` 已实现动态协程池\n- ⬜ `internal/pool/dispatcher.go` 仍使用固定 worker 模式，未接入 GoroutinePool\n- ⬜ PoolStats 指标未导出到 Prometheus\n\n### Task 6：LLM 批处理\n\n- ✅ `internal/llm/batch.go` BatchProcessor 已实现\n- ⬜ 未与 Pool 调度器集成（多 Agent 并发请求场景下无法自动合并批次）\n\n---",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > Phase 3 待办（剩余 3 个 Task）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0058",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\nPhase 5 待办（剩余 11 个 Task）\n### Task 1（已完成 80%）\n\n`ap plugin` 子命令覆盖 install / list / create / remove / search / update，\n本地 `ecosystem/plugins/registry.json` 注册表已包含 6 个官方插件（http/sql/git/json/email/kv）。\n\n**遗留**：`install` 流程尚未集成：\n- **Task 2**：远程插件注册中心（当前 search 只查本地 JSON）\n- **Task 3**：cosign 签名验证（当前 install 不校验签名）\n\n### Task 4-12（待启动）",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > Phase 5 待办（剩余 11 个 Task）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0059",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\nPhase 5 待办（剩余 11 个 Task）\n| Task | 主题 | 优先级 |\n|------|------|--------|\n| 4 | 插件沙箱（基于 ScopePolicy） | 中 |\n| 5 | 多租户隔离（Memory 分区 + Pool 配额） | 高 |\n| 6 | 多模式认证（API Key / Bearer / mTLS） | 中 |\n| 7 | Edge Runtime 兼容层补全 | 低 |\n| 8 | React Hooks（useAgent / useReActLoop） | 中 |\n| 9 | VS Code 扩展（Agent Inspector Webview） | 低 |\n| 10 | 插件开发模板（脚手架 + 文档生成） | 中 |\n| 11 | 文档站点（自动构建 + 部署） | 低 |\n| 12 | 社区 CI（govulncheck + Trivy + Cosign 全自动） | 高 |\n\n---",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > Phase 5 待办（剩余 11 个 Task）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0060",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\n关键技术决策（Phase 3-5 期间）\n### 1. A2A gRPC 成为默认（Phase 3 Task 7）\n\n- **Decision**：保留 JSON-RPC 类型为 Deprecated 别名，不直接重定向到 gRPC，避免破坏旧示例代码。\n- **Trade-off**：pkg 公共 API 表面多了一倍，但通过 `Deprecated:` 注解引导用户迁移。\n- **后续**：v2.0 移除所有 JSON-RPC 公共 API。\n\n### 2. 结构化日志统一字段（Phase 4 Task 10）\n\n- **Decision**：所有模块使用 `internal/logger.Field*` 常量作为 slog 的 key，避免散落的字符串字面量。\n- **机制**：`logger.FromContext(ctx, l)` 自动注入 trace-id / span-id（来自 W3C Trace Context）。\n- **影响**：替换 `internal/tools/executor.go` 中全部 `log.Printf` 调用（6 处）；清零生产代码的 `log.Printf` 使用。\n\n### 3. CLI 插件搜索走本地 JSON（Phase 5 Task 1）",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > 关键技术决策（Phase 3-5 期间）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0061",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\n关键技术决策（Phase 3-5 期间）\n- **Decision**：`ap plugin search` 只查 `ecosystem/plugins/registry.json`（项目级）/ `$HOME/.agentprimordia/plugins/registry.json`（用户级），不引入远程 HTTP 请求。\n- **理由**：避免 CLI 强依赖网络；远程注册中心留待 Task 2 单独实现（可独立于本地缓存）。\n- **后续**：Task 2 完成后 `search` 会自动尝试远程 → 本地降级。\n\n---",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > 关键技术决策（Phase 3-5 期间）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0062",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\n验证状态\n```bash\n# 主项目（agentprimordia/）\ngo build ./...                            # ✅ 全部模块编译通过\ngo vet ./...                              # ✅ 无警告\ngo test -count=1 ./internal/...           # ✅ 全绿\ngo test -count=1 ./cmd/ap/                # ✅ 全绿（含新 plugin search/update 17 个测试）\ngo test -count=1 ./internal/logger/...    # ✅ 24/24\n\n# K8s Operator（agentprimordia/operator/）\nGOWORK=off go test -count=1 ./...         # ✅ 全绿（含 Phase 4 Task 6-9 新增测试）\n```\n\n---",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > 验证状态",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0063",
+  "source": "agentprimordia/docs/项目状态.md",
+  "text": "AgentPrimordia 实施进度总览（截至 2026-07-06）\n下一步建议\n1. **完成 Phase 3 残留**（包拆分 + GoroutinePool 集成 + LLM Batch 与 Pool 对接），约 2-3 周\n2. **Phase 5 Task 2-3**（远程注册中心 + cosign 签名），约 1-2 周（解锁安全的 `plugin install`）\n3. **Phase 5 Task 5**（多租户隔离），约 2-3 周（解锁企业版 SaaS 场景）\n4. **Phase 5 Task 12**（社区 CI），约 1 周（解锁外部贡献者）",
+  "title": "AgentPrimordia 实施进度总览（截至 2026-07-06） > 下一步建议",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0064",
+  "source": "agentprimordia/docs/供应链安全.md",
+  "text": "Supply Chain Security（供应链安全）\n概述\nAgentPrimordia 遵循 [SLSA](https://slsa.dev/) 框架和 [Supply Chain Levels for Software Artifacts](https://slsa.dev/spec/v1.0/levels) 的要求，确保从源代码到容器镜像的每个环节可追溯、可验证。",
+  "title": "Supply Chain Security（供应链安全） > 概述",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0065",
+  "source": "agentprimordia/docs/供应链安全.md",
+  "text": "Supply Chain Security（供应链安全）\nSBOM（Software Bill of Materials）\n### 什么是 SBOM？\n\nSBOM 是软件组件清单，列出构成软件的所有依赖项、库及其版本信息。AgentPrimordia 使用 [CycloneDX](https://cyclonedx.org/) 格式。\n\n### 生成 SBOM\n\n```bash\n# 本地生成\n./scripts/generate-sbom.sh sbom.json cyclonedx-json\n\n# 指定输出格式\n./scripts/generate-sbom.sh sbom.spdx spdx-json\n```\n\n### 依赖工具\n\n- [Syft](https://github.com/anchore/syft) — SBOM 生成器\n\n```bash\n# macOS\nbrew install syft\n\n# Linux\ncurl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin\n```",
+  "title": "Supply Chain Security（供应链安全） > SBOM（Software Bill of Materials）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0066",
+  "source": "agentprimordia/docs/供应链安全.md",
+  "text": "Supply Chain Security（供应链安全）\n容器镜像签名（Cosign）\n### 使用方式\n\n```bash\n# Keyless 签名（推荐，使用 Fulcio + Rekor）\n./scripts/cosign-sign.sh ghcr.io/agentprimordia/app:latest\n\n# 密钥签名\nCOSIGN_PRIVATE_KEY=$(cat cosign.key) ./scripts/cosign-sign.sh ghcr.io/agentprimordia/app:latest\n```\n\n### 验证签名\n\n```bash\ncosign verify ghcr.io/agentprimordia/app:latest\n```\n\n### 依赖工具\n\n- [Cosign](https://github.com/sigstore/cosign) — 容器镜像签名\n\n```bash\n# macOS\nbrew install cosign\n\n# Linux\ncurl -sL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 -o cosign\nchmod +x cosign && mv cosign /usr/local/bin/\n```",
+  "title": "Supply Chain Security（供应链安全） > 容器镜像签名（Cosign）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0067",
+  "source": "agentprimordia/docs/供应链安全.md",
+  "text": "Supply Chain Security（供应链安全）\nCI/CD 集成\n### GitHub Actions Workflow\n\n`.github/workflows/supply-chain.yml` 包含三个阶段：\n\n| 阶段 | 说明 |\n|------|------|\n| **SBOM** | 使用 Syft 生成 CycloneDX SBOM 并上传为 artifact |\n| **Build & Sign** | 构建容器镜像，使用 Cosign keyless 签名 |\n| **Vulnerability Scan** | 使用 Trivy 扫描依赖漏洞 |\n\n### 触发条件\n\n- 推送到 `main` 或 `release/*` 分支\n- 针对 `main` 的 Pull Request\n- 手动触发（`workflow_dispatch`）",
+  "title": "Supply Chain Security（供应链安全） > CI/CD 集成",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0068",
+  "source": "agentprimordia/docs/供应链安全.md",
+  "text": "Supply Chain Security（供应链安全）\n安全标签说明\nDockerfile.sbomlabel 中使用的 OCI 标签：\n\n| 标签 | 说明 |\n|------|------|\n| `org.opencontainers.image.title` | 镜像名称 |\n| `org.opencontainers.image.version` | 版本号 |\n| `org.opencontainers.image.revision` | Git commit SHA |\n| `com.agentprimordia.sbom` | SBOM 文件路径 |\n| `com.agentprimordia.sbom.format` | SBOM 格式 |",
+  "title": "Supply Chain Security（供应链安全） > 安全标签说明",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0069",
+  "source": "agentprimordia/docs/供应链安全.md",
+  "text": "Supply Chain Security（供应链安全）\n合规标准\n- [SLSA v1.0](https://slsa.dev/spec/v1.0/levels) — 供应链完整性框架\n- [CycloneDX v1.6](https://cyclonedx.org/specification/overview/) — SBOM 标准格式\n- [OCI Image Spec](https://github.com/opencontainers/image-spec) — 容器镜像标签规范",
+  "title": "Supply Chain Security（供应链安全） > 合规标准",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0070",
+  "source": "agentprimordia/docs/安全态势.md",
+  "text": "安全态势报告（v4.6 安全与治理）\n一、租户隔离（v4.6-1）\n| 层级 | 机制 | 证据 |\n|------|------|------|\n| 过滤器级 | `TenantScoped` 按 `Metadata[\"tenant_id\"]` 过滤/校验，拒绝入审计 | `internal/memory/tenant.go`（Add :126-141、TenantAuditSink） |\n| **物理分库** | `PhysicalTenantStore` 每租户独立 SQLite 文件，绕过 metadata 也无法跨租户读取 | `internal/memory/physical_tenant.go` + 双租户隔离测试 |\n\n验收：双租户物理隔离测试 ✅（`TestPhysicalTenant_Isolation`：A 的 episode 在 B 的库里 Get 不存在）。",
+  "title": "安全态势报告（v4.6 安全与治理） > 一、租户隔离（v4.6-1）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0071",
+  "source": "agentprimordia/docs/安全态势.md",
+  "text": "安全态势报告（v4.6 安全与治理）\n二、审计（v4.6-2）\n- `audit.Logger`：Log / Query（按 Actor/Action/Resource/时间范围）/ GenerateReport / **ExportJSON**（全链路导出）\n- ReAct 循环关键路径审计：agent.start/stop、llm.call、guardrail.block/sanitize（`react_loop_core.go` + `react_loop_blocks.go`）\n- 租户拒绝、密钥轮换、guardrail 命中均有审计事件\n\n验收：一次完整目标执行可全链路导出 ✅（`ExportJSON` 按 Actor 过滤导出）。",
+  "title": "安全态势报告（v4.6 安全与治理） > 二、审计（v4.6-2）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0072",
+  "source": "agentprimordia/docs/安全态势.md",
+  "text": "安全态势报告（v4.6 安全与治理）\n三、输入输出护栏（v4.6-3）\n- PII 脱敏管线：`guardrail/sanitizer.go` + `pii.go`（Trie 模式库）\n- 注入检测：`guardrail/injection_rule.go`；输出端接入 ReAct 循环（`guardrailSanitizeOutput`）\n- **敏感工具审计**：`SensitiveToolRule`（Blocked→拦截 / AuditOnly→审计标记）\n- 语音/视觉护栏：`AudioGuardrail` / `VisionGuardrail`（v4.3）\n\n验收：注入样例 PII 不落日志 ✅（脱敏输出路径 + 审计事件不含原文）。",
+  "title": "安全态势报告（v4.6 安全与治理） > 三、输入输出护栏（v4.6-3）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0073",
+  "source": "agentprimordia/docs/安全态势.md",
+  "text": "安全态势报告（v4.6 安全与治理）\n四、密钥管理（v4.6-4）\n- `SecretsManager`：AES-GCM 加密 + Env/Vault 双后端 + TTL 缓存\n- **轮换**：`RotateSecret`（Vault metadata DELETE 使旧版本失效）+ 审计记录（`TestVaultBackend_RotateSecret`）",
+  "title": "安全态势报告（v4.6 安全与治理） > 四、密钥管理（v4.6-4）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0074",
+  "source": "agentprimordia/docs/安全态势.md",
+  "text": "安全态势报告（v4.6 安全与治理）\n五、供应链（v4.6-5）\n| 门 | 实现 | CI |\n|----|------|----|\n| 漏洞扫描 | govulncheck | ci.yml `security` job（:177） |\n| 依赖扫描 | Socket scan | ci.yml（:204） |\n| 容器扫描 | Trivy | ci.yml（:217） |\n| SBOM | `scripts/generate-sbom.sh` | release 流程 |\n| 签名 | `scripts/cosign-sign.sh`（ECDSA P-256） | release 流程 |\n| 插件/技能/模板验签 | `marketplace.VerifyCosignSignature` / `skills.SignSkillManifest` | 安装路径强制 |",
+  "title": "安全态势报告（v4.6 安全与治理） > 五、供应链（v4.6-5）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0075",
+  "source": "agentprimordia/docs/安全态势.md",
+  "text": "安全态势报告（v4.6 安全与治理）\n六、残余风险与后续（v5.0 前）\n- 物理分库默认不启用（需显式 `NewPhysicalTenantStore(SQLiteTenantFactory(dir))`）；默认仍过滤器级\n- Vault 后端生产化配置样例见 `docs/密钥审计.md`\n- 迁移指南与破坏性变更见 v5.0 主版本流程（`ecosystem/docs/migration/`）",
+  "title": "安全态势报告（v4.6 安全与治理） > 六、残余风险与后续（v5.0 前）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0076",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n**Module**: `internal/security` — VaultBackend (HashiCorp Vault KV v2)\n**Date**: 2026-07-31\n**Coverage**: 90.6% of statements\n\n---",
+  "title": "Vault Backend Security Audit Report > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0077",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n1. Token Management\n### Findings\n\n| ID | Severity | Description |\n|----|----------|-------------|\n| TM-01 | Low | Token is transmitted via `X-Vault-Token` HTTP header on every request. This is standard Vault behaviour but requires TLS to prevent interception. |\n| TM-02 | Info | Token is stored in `VaultBackend.token` field (unexported). It is never included in error messages or audit log entries. |\n| TM-03 | Info | Audit log records capture action, key, success/failure, and error text — but never the token value. Verified by `TestVaultBackend_TokenNotLogged`. |\n\n### Recommendations",
+  "title": "Vault Backend Security Audit Report > 1. Token Management",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0078",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n1. Token Management\n- Rotate tokens on a regular schedule using `RotateSecret`.\n- Prefer Vault AppRole authentication for production workloads to avoid long-lived tokens.\n- Consider wrapping tokens with Vault's `wrap_ttl` for initial distribution.\n\n---",
+  "title": "Vault Backend Security Audit Report > 1. Token Management",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0079",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n2. Transport Security\n### Findings\n\n| ID | Severity | Description |\n|----|----------|-------------|\n| TS-01 | Medium | `NewVaultBackend` accepts `http://` addresses without warning. In production, all Vault traffic must use HTTPS to protect token and secret payloads. |\n| TS-02 | Info | The default HTTP client timeout is 10 seconds, which prevents indefinite hangs but may need tuning for high-latency networks. |\n\n### Recommendations\n\n- Add a startup warning when `Address` does not start with `https://`.\n- In production deployments, enforce HTTPS via environment policy or admission webhooks.\n- Document that `http://` is only acceptable for local development (`localhost`).\n\n---",
+  "title": "Vault Backend Security Audit Report > 2. Transport Security",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0080",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n3. Audit Log Completeness\n### Findings\n\n| ID | Severity | Description |\n|----|----------|-------------|\n| AL-01 | Info | Every `GetSecret`, `SetSecret`, `RotateSecret`, `ListSecrets`, and `DeleteSecret` call records an audit entry with action, key, timestamp, success flag, and optional error. |\n| AL-02 | Info | Audit log uses a `sync.Mutex` for thread safety. Concurrent access test (`TestAuditLog_ConcurrentAccess`) verified correctness with 50 goroutines x 20 operations. |\n| AL-03 | Low | Audit entries do not include the caller's IP address or identity. This is acceptable for in-process use but may need extension for multi-tenant deployments. |\n\n### Recommendations",
+  "title": "Vault Backend Security Audit Report > 3. Audit Log Completeness",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0081",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n3. Audit Log Completeness\n- Extend `AuditEntry` with optional `CallerID` and `SourceIP` fields for multi-tenant scenarios.\n- Consider exporting audit entries to an external SIEM system via a callback hook.\n\n---",
+  "title": "Vault Backend Security Audit Report > 3. Audit Log Completeness",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0082",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n4. Input Validation\n### Findings\n\n| ID | Severity | Description |\n|----|----------|-------------|\n| IV-01 | Medium | `secretPath()` concatenates prefix and key without sanitising path traversal sequences (`..`). A key like `../../../etc/passwd` would produce a path that escapes the intended prefix. Verified by `TestVaultBackend_InputSanitization`. |\n| IV-02 | Low | `SetSecret` rejects empty values (`ErrSecretEmpty`) but does not validate key names for special characters. |\n| IV-03 | Info | HTTP response bodies are limited to 1024 bytes when reading error responses, preventing excessive memory consumption. |\n\n### Recommendations",
+  "title": "Vault Backend Security Audit Report > 4. Input Validation",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0083",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\n4. Input Validation\n- Add `path.Clean()` and a prefix-check in `secretPath()` to reject keys that escape the mount point:\n  ```go\n  cleaned := path.Clean(v.prefix + \"/\" + key)\n  if !strings.HasPrefix(cleaned, v.prefix) {\n      return fmt.Errorf(\"vault: key %q escapes prefix\", key)\n  }\n  ```\n- Validate key names against a whitelist pattern (e.g. `^[a-zA-Z0-9_./-]+$`).\n\n---",
+  "title": "Vault Backend Security Audit Report > 4. Input Validation",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0084",
+  "source": "agentprimordia/docs/密钥审计.md",
+  "text": "Vault Backend Security Audit Report\nSummary\n| Category | Critical | High | Medium | Low | Info |\n|----------|----------|------|--------|-----|------|\n| Token Management | 0 | 0 | 0 | 1 | 2 |\n| Transport Security | 0 | 0 | 1 | 0 | 1 |\n| Audit Log | 0 | 0 | 0 | 1 | 2 |\n| Input Validation | 0 | 0 | 1 | 1 | 1 |\n\n**Overall Risk**: Low — No critical or high-severity issues found. Two medium-severity findings (HTTP acceptance and path traversal) should be addressed before production hardening.",
+  "title": "Vault Backend Security Audit Report > Summary",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0085",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n> 通用 AI Agent 开发框架 — 轻量、并发原生、生产验证\n> **Go + TypeScript 双语言 SDK，100% 功能对等**\n\n[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/AgentPrimordia/agentprimordia)\n[![Go Version](https://img.shields.io/badge/go-1.26+-00ADD8E.svg)](https://golang.org)\n[![TypeScript](https://img.shields.io/badge/TypeScript-100%25%20Go%20Parity-3178C6.svg)](../../sdk/typescript/)\n\n---",
+  "title": "AgentPrimordia > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0086",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n框架概览\nAgentPrimordia（AP）是一个用 Go 语言编写、同时提供 TypeScript SDK 的生产级 AI Agent 开发框架。它提供完整的工具来构建、部署和管理智能 Agent 系统，核心能力覆盖从单 Agent ReAct 循环到多 Agent DAG 编排的全链路场景。\n\n### 核心特性",
+  "title": "AgentPrimordia > 框架概览",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0087",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n框架概览\n- **ReAct Loop 引擎** — Reasoning + Acting 循环，20+ 生命周期钩子，支持检查点恢复\n- **多模式编排** — Pipeline / Handoff / Parallel / DAG / GroupChat / A2A\n- **A2A 协议** — gRPC（唯一传输，v4.0.0 移除 JSON-RPC 兼容层）+ 开放互操作（`pkg/a2a_interop.go`）\n- **工具系统** — FileSystem / Shell / Web / Knowledge / Database / CodeExecution / API 内置工具，MCP 协议集成，插件扩展（含 `ap plugin search/update`）\n- **三层记忆** — SQLite FTS5 + Vector Store + RAG Pipeline 混合检索（支持 RRF 融合）\n- **10+ 内置 LLM Provider** — OpenAI / Anthropic / Gemini / Ollama / Azure / Qwen / GLM / Mistral / Cohere / DeepSeek / 多模态 / Resilient 弹性包装器\n- **并发调度** — Pool 信号量调度，会话隔离，自动扩缩容\n- **安全防护** — ACL / Sandbox / Guardrails / PII 检测 / 路径遍历防护 + symlink 逃逸防护\n- **可观测性** — Prometheus Metrics / OpenTelemetry / Grafana Dashboard / pprof 性能分析 + 结构化日志（统一 `logger.Field*` 字段 + trace-id 注入）\n- **K8s Operator** — AgentDeployment CRD 声明式部署 + HPA（Behavior 精细化扩缩容）+ PDB（PodDisruptionBudget）+ 滚动升级（preStop hook）+ 自定义 Metrics Adapter\n- **TypeScript SDK** — 100% Go 功能对等，24+ 模块全覆盖\n- **长期自治（v3.3）** — 目标驱动自主规划/执行/校验/重规划，崩溃恢复 + 幂等保护（`ap autonomy`）\n- **技能进化（v3.4）** — 运行中习得/验证/沉淀可复用技能，语义匹配自动调用（`ap skill`）\n- **协议互操作（v3.5）** — 对齐开放 Agent2Agent 协议，跨生态任务委托 + 符合性报告（`ap a2a interop-check`）\n- **多模态实时（v3.6）** — 语音/视觉实时双向流 + 打断，ASR/TTS 可插拔（`ap realtime`）\n- **CLI 工具** — `ap init / run / debug / loop / test / mcp / plugin / autonomy / skill / a2a / realtime / doctor / config / completion`",
+  "title": "AgentPrimordia > 框架概览",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0088",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n框架概览\n### v1.0.0 亮点\n\n- **开发者体验重构** — `ap.NewAgent()` 简化入口，3 行创建带记忆 / RAG / Hook 的 Agent\n- **`WithRAGMemory()` 一步 RAG** — 自动完成 EmbeddingAdapter + RAGStore + RAGProvider 组装\n- **`ap loop` 工程化子命令** — `trace`（执行追踪）/ `inspect`（状态检查）/ `resume`（检查点恢复）\n- **RAG RRF 融合** — Reciprocal Rank Fusion 混合检索算法，支持运行时切换 Linear / RRF 模式\n- **性能优化** — BufferPool（bytes.Buffer 复用）、TokenCache、JSON Pool、pprof 端点\n- **供应链安全** — govulncheck + npm audit + Trivy + cosign 签名 + SBOM 生成\n- **PGO 性能调优** — Profile-Guided Optimization 指南\n- **Fuzz 测试** — Sandbox / RAG / 工具执行器安全模糊测试",
+  "title": "AgentPrimordia > 框架概览",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0089",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n快速开始\n### 安装\n\n```bash\n# 安装 CLI 工具\ngo install github.com/AgentPrimordia/agentprimordia/cmd/ap@latest\n\n# 创建新项目\nap init my-agent --template quickstart\ncd my-agent\n\n# 运行\nap run\n```\n\n### 5 行代码创建 Agent\n\n=== \"Go\"\n\n```go\n    package main\n\nimport (\n        \"context\"\n        \"fmt\"\n        \"os\"\n        ap \"agentprimordia/pkg\"\n    )\n\nfunc main() {\n        agent := ap.NewAgent(\"HelloAgent\", \"你是一个智能助手\",\n            ap.NewOpenAIProvider(ap.Config{\n                APIKey: os.Getenv(\"OPENAI_API_KEY\"),\n                Model:  \"gpt-4o\",\n            }),\n            ap.WithMaxTurns(10),\n        )\n\nresp, _ := agent.Run(context.Background(), ap.UserMessage(\"你好\"))\n        fmt.Println(resp.Content)\n    }\n    ```",
+  "title": "AgentPrimordia > 快速开始",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0090",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n快速开始\n=== \"TypeScript\"\n\n```bash\n    npm install @agentprimordia/sdk\n    ```\n\n```typescript\n    import { ReActAgent, OpenAIProvider, ToolRegistry } from '@agentprimordia/sdk';\n\nconst agent = new ReActAgent({\n      name: 'HelloAgent',\n      model: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY!, model: 'gpt-4o' }),\n      toolkit: new ToolRegistry(),\n      maxTurns: 10,\n      systemPrompt: '你是一个智能助手',\n    });\n\nconst resp = await agent.run('你好');\n    console.log(resp.content);\n    ```\n\n### 链式 API — 工具 + 记忆 + RAG 一步到位\n\n=== \"Go\"",
+  "title": "AgentPrimordia > 快速开始",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0091",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n快速开始\n```go\n    agent := ap.NewAgent(\"assistant\", \"你是助手\", provider, ap.WithMaxTurns(10)).\n        WithToolkit(toolkit).\n        WithMemory(mem).\n        WithRAG(ragProvider)\n    ```\n\n=== \"TypeScript\"\n\n```typescript\n    const agent = new ReActAgent({\n      name: 'assistant',\n      model: provider,\n      toolkit: registry,\n      maxTurns: 10,\n      systemPrompt: '你是助手',\n      memory,\n    });\n    ```",
+  "title": "AgentPrimordia > 快速开始",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0092",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n性能对比\n| 指标 | AgentPrimordia (Go) | LangGraph (Python) | 提升 |\n|------|---------------------|-------------------|------|\n| 启动时间 | 0.12s | 2.8s | **23x** |\n| 内存占用 | 45MB | 320MB | **7x** |\n| 并发吞吐 | 852 req/s | 98 req/s | **8.7x** |\n| 部署体积 | 15MB | 280MB | **18x** |\n\n详细性能报告：[Go vs TypeScript 基准对比](benchmarks/Go与TypeScript对比.md)",
+  "title": "AgentPrimordia > 性能对比",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0093",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n架构\n```\n┌──────────────────────────────────────────────────────────┐\n│                    Your Application                       │\n├──────────────────────────────────────────────────────────┤\n│                   AgentPrimordia Framework                 │\n│                                                            │\n│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌──────────────┐  │\n│  │ ReActLoop │ │   Pool   │ │  DAG   │ │  Pipeline    │  │\n│  │ (Engine) │ │(Dispatch)│ │(Graph) │ │(Sequential)  │  │\n│  └────┬─────┘ └────┬─────┘ └───┬────┘ └──────┬───────┘  │\n│       └────────────┼───────────┼──────────────┘          │\n│              ┌──────┴──────┐                               │\n│              │ Tool System │                               │\n│              │ ┌─────────┐ │                               │\n│              │ │Built-in │ │  MCP  │  Plugin │             │\n│              │ │FS/Shell/│ │  Client│  System │             │\n│              │ │Web/Know │ │  Reg.  │         │             │\n│              │ └─────────┘ │        │         │             │\n│              └─────────────┘        │         │             │\n│                                    │         │             │\n│  ┌─────────────────────────────────────────────────────┐  │\n│  │                  LLM Layer                          │  │\n│  │  OpenAI │ Anthropic │ Gemini │ Ollama │ Azure │ ...│  │\n│  │              ResilientProvider                       │  │\n│  └─────────────────────────────────────────────────────┘  │\n│                                                            │\n│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐  │\n│  │ Memory   │ │ EventBus │ │ Metrics  │ │ Guardrails │  │\n│  │SQLite+FTS│ │(Pub/Sub) │ │OTel/Prom │ │ACL/Sandbox │  │\n│  │ +Vector  │ │          │ │ +pprof   │ │  PII检测   │  │\n│  │ +RAG(RRF)│ │          │ │          │ │            │  │\n│  └──────────┘ └──────────┘ └──────────┘ └────────────┘  │\n└──────────────────────────────────────────────────────────┘\n```",
+  "title": "AgentPrimordia > 架构",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0094",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\nCLI 命令\n```bash\nap init my-agent              # 创建项目 (--template basic|with-tools|multi-agent|agent-with-cache|agent-with-rag|agent-with-metrics|quickstart)\nap run                        # 编译运行 (--watch 监视模式)\nap debug                      # 调试服务器 (http://localhost:6060)\nap loop trace                 # 查看 Agent 执行追踪\nap loop inspect               # 查看 Agent 当前状态\nap loop resume                # 从检查点恢复运行\nap test                       # 运行 eval 测试套件\nap mcp list                   # 列出 MCP Server\nap mcp add fs --command npx --args \"@mcp/server-filesystem,/tmp\"\nap plugin install github.com/user/ap-plugin-xxx  # 安装插件（go get + 写 .ap.yaml）\nap plugin list                                  # 列出已安装插件\nap plugin search database                       # 在本地 registry.json 中按关键词搜索\nap plugin update                                # 更新全部已安装插件（go get -u + mod tidy）\nap doctor                                       # 健康检查\nap completion bash                              # 生成 Shell 补全脚本\n```",
+  "title": "AgentPrimordia > CLI 命令",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0095",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\nA2A 协议（默认 gRPC）\n自 v1.x 起 **gRPC 是 A2A 的默认且唯一传输**（序列化延迟更低、消息体积更小、内建拦截器链）。\nJSON-RPC over HTTP 兼容层已于 **v4.0.0 移除**（见 版本规范.md「已移除记录」）；\n开放 Agent2Agent 协议互操作（JSON-RPC over HTTP/SSE 承载开放协议）见 `pkg/a2a_interop.go`。\n\n=== \"Go（推荐 gRPC）\"\n\n```go\n    service := ap.NewA2AService(card, taskManager)\n    srv  := ap.NewA2AGRPCServer(service,\n        ap.WithGRPCLogger(slog.Default()),\n        ap.ChainUnaryInterceptors(\n            ap.RecoveryInterceptor(),\n            ap.LoggingInterceptor(ap.A2AInterceptorConfig{...}),\n            ap.MetricsInterceptor(metrics),\n        ),\n    )\n    cli, _ := ap.NewA2AGRPCClient(\"localhost:50051\")\n    resp, _ := cli.GetAgentCard(ctx, &ap.A2AGetAgentCardRequest{})\n    ```",
+  "title": "AgentPrimordia > A2A 协议（默认 gRPC）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0096",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\nA2A 协议（默认 gRPC）\n=== \"Go（gRPC Server，推荐）\"\n\n```go\n    // 推荐：gRPC 传输（v1.x 起为默认）\n    srv := ap.NewA2AGRPCServer(service)\n    ```",
+  "title": "AgentPrimordia > A2A 协议（默认 gRPC）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0097",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n文档导览\n| 类别 | 内容 |\n|------|------|\n| **快速开始** | [安装](getting-started/安装指南.md) · [入门](getting-started/五分钟入门.md) · [第一个Agent](getting-started/第一个Agent.md) |\n| **核心概念** | [Agent架构](concepts/Agent架构.md) · [ReAct循环](concepts/ReAct循环.md) · [工具系统](concepts/工具系统.md) · [记忆系统](concepts/记忆系统.md) · [RAG](concepts/RAG检索增强.md) · [编排](concepts/多Agent编排.md) · [A2A](concepts/A2A通信.md) · [护栏](concepts/安全护栏.md) |\n| **使用指南** | [创建Agent](guides/创建Agent.md) · [添加工具](guides/添加工具.md) · [并发调度](guides/并发调度.md) · [流式输出](guides/流式输出.md) · [多模态](guides/多模态.md) · [部署](guides/部署到生产.md) |\n| **API参考** | [Agent](api/Agent-API.md) · [LLM](api/LLM-API.md) · [Tools](api/Tools-API.md) · [Memory](api/Memory-API.md) · [Pool](api/Pool-API.md) · [A2A](api/A2A-API.md) |\n| **进阶主题** | [性能优化](advanced/性能优化.md) · [PGO调优](advanced/PGO调优.md) · [安全](advanced/安全最佳实践.md) · [供应链安全](advanced/供应链安全.md) · [Debugger](advanced/调试器.md) · [Metrics](advanced/指标.md) · [OTel](advanced/OpenTelemetry.md) |\n| **基准测试** | [Go vs TypeScript](benchmarks/Go与TypeScript对比.md) · [性能对比](benchmarks/性能对比-2026.md) |\n| **实施进度** | [STATUS 总览](项目状态.md) · [VERSIONING](版本规范.md) · [路线图](../../docs/路线图.md) |",
+  "title": "AgentPrimordia > 文档导览",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0098",
+  "source": "agentprimordia/docs/index.md",
+  "text": "AgentPrimordia\n社区\n- [GitHub Discussions](https://github.com/AgentPrimordia/agentprimordia/discussions)\n- [贡献指南](https://github.com/AgentPrimordia/agentprimordia/blob/main/CONTRIBUTING.md)\n- [TypeScript SDK 文档](../../sdk/typescript/README.md)",
+  "title": "AgentPrimordia > 社区",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0099",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n> Primary document for three audiences — **framework users** only need Part I to get productive; **contributors** should also read Parts II–III; when something breaks, go straight to the FAQ (Part IV).\n>\n> Every command and behavior below was verified against the actual codebase (2026-08-27, go1.26.6). For a deep dive into CLI internals see `AP-CLI开发手册.md`; illustrated beginner tutorials live under `docs/getting-started/`. Chinese edition: `AP-开发手册.md`.",
+  "title": "Part IV · FAQ > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0100",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n1. Prerequisites\n| Requirement | Notes |\n|---|---|\n| Go ≥ 1.26 | Toolchain pinned to 1.26.6 in go.mod; the `toolchain` directive downloads it automatically |\n| git | The monorepo is organized via go.work: 5 modules at the root (`agentprimordia` main module, pgvector, operator, gateway, wasm) — clone and go |\n| LLM API Key | Pick any: OpenAI / Anthropic / Gemini / Ollama (local, no key) / Azure / DeepSeek / GLM / Cohere / Mistral / Qwen |\n\nScale expectation: main module has 134 packages, ~130k lines of implementation — the first build spends a few minutes downloading dependencies, then hits the local cache.",
+  "title": "Part IV · FAQ > 1. Prerequisites",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0101",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n2. Build ap and the test environment\n```\nmake build            # or: cd agentprimordia && go build -o \"$(go env GOPATH)/bin/ap\" ./cmd/ap\nmake test-short       # fast full regression; full gates also include test-race / test-integration\n```\n\nCommon Makefile targets: build · test · test-race · test-short · test-integration · test-distributed-backends · cover · cover-html · cover-check · api-diff · api-extract · cover-trend · deprecation-check · benchmark.\n\n> ⚠ Cross-directory invocation: never run `go run /abs/path/cmd/ap` from outside a module — you will get *go.mod file not found*. Build a binary first, then run it.",
+  "title": "Part IV · FAQ > 2. Build ap and the test environment",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0102",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n3. First agent in five minutes\n```\nap init myagent --template quickstart   # add --dry-run to preview output; 7 templates × agent/plugin/provider types\ncd myagent\nexport AP_LLM_API_KEY=sk-xxx             # or put it into .ap.yaml (env var wins)\nexport AP_LLM_MODEL=gpt-4o               # falls back to the yaml default\nap run                                   # auto build → inject config → start; edits rebuild & restart automatically (hot reload)\n```\n\n**The generated project is just 4 files** — reading them all is the fastest way to understand the framework:",
+  "title": "Part IV · FAQ > 3. First agent in five minutes",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0103",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n3. First agent in five minutes\n| File | Contents |\n|------|----------|\n| main.go | Minimal public-API sample: ConfigFromEnv reads config → Fatal hint if key missing → NewOpenAIProvider(cfg) → start the ReAct loop. Changing the system prompt gives you your first custom agent |\n| .ap.yaml | Project config: llm(provider/model/api_key), memory(backend, path), agent(max_turns, system_prompt); full fields below |\n| go.mod / .gitignore | Dependency declaration and ignore rules |\n```\n# Full .ap.yaml fields (generator defaults)\ntemplate: quickstart\nllm:\n  provider: openai       # openai | anthropic | gemini | ollama | azure | deepseek | qwen\n  model: gpt-4o\n  # api_key: \"sk-xxx\"    # prefer env var AP_LLM_API_KEY; keep secrets off disk\nmemory:\n  backend: sqlite        # sqlite | memory\n  path: ./data/memory.db\nagent:\n  max_turns: 20\n  system_prompt: \"you are a helpful assistant\"\n```",
+  "title": "Part IV · FAQ > 3. First agent in five minutes",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0104",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n4. Daily development loop\n- Save your code and let go: `ap run` ships watchAndRun which watches sources and rebuild/restarts automatically;\n- Loop debugging: `ap loop trace / inspect / resume` observe and resume ReAct execution traces;\n- Environment checkup: `ap doctor` runs four checks (Go version / project config / API key / dependencies);\n- Shell completion: `ap completion` emits completion scripts.",
+  "title": "Part IV · FAQ > 4. Daily development loop",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0105",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n5. Core concepts in one minute each\n| Concept | One-liner |\n|---------|-----------|\n| ReAct Loop | Agent engine: LLM thinks → calls tools → observes → loops until final answer; bounded by max_turns |\n| Tool | Capability unit: 20+ built-ins carrying scoped permissions (FilesScope/ShellScope), validated before every execution |\n| Memory | Conversation memory & knowledge retrieval: SQLite(FTS5+vector) / in-memory / RAG(Hybrid Fusion) / vector store(HNSW) |\n| Pool | Concurrent multi-agent scheduling, session management, retries |\n| Orchestration | Pipeline / Handoff / DAG / GroupChat / Debate / MapReduce composition patterns |\n| Guardrail | Input/output guardrails **wired into the ReAct loop by default**: injection detection / PII / topic filters / sensitive-tool interception; hits are blocked+audited |\n| Checkpoint | Resume-from-crash: SQLite by default; etcd/Redis backends compile behind build tags |\n| Stability tiers | Four public-API promises Stable/Experimental/Deprecated/Internal that define upgrade cost |",
+  "title": "Part IV · FAQ > 5. Core concepts in one minute each",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0106",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n6. Monorepo layout and layering discipline\n```\n/\n├── agentprimordia/        # main module (134 packages) + operator K8s submodule\n│   ├── cmd/ap/            # the CLI itself\n│   ├── pkg/               # the single public API surface (type aliases re-exported + few constructors)\n│   ├── internal/          # 30 sub-packages (see §7 cheat sheet)\n│   ├── ecosystem/         # examples / plugins / templates (must reach core only through pkg)\n│   └── bench/             # eval-ci / llm-bench / soak / suite / self-bootstrap / results\n├── pgvector/              # standalone vector extension module (internal must not import pgx directly)\n├── gateway/ wasm/         # standalone deployables / WASM execution (wazero, CGO-free)\n└── sdk/                   # python / rust / typescript SDKs (not Go modules)\n```",
+  "title": "Part IV · FAQ > 6. Monorepo layout and layering discipline",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0107",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n6. Monorepo layout and layering discipline\n**Layering rules (verified zero violations across 134 packages; re-runnable via grep)**:\n\n| Layer | Packages | Forbidden reverse imports |\n|-------|----------|---------------------------|\n| Top | agent/ (12 capability subpackages incl. a2a/planning/reflection/skills/autonomy) | — |\n| Core | llm/ memory/ persist/ tools/ | must not import agent/pool/orchestration/debugger/admin |\n| Orchestration | pool/ | sits below tools/; may reference tools/agent and horizontal layers |\n| Horizontal | orchestration debugger metrics otel guardrail security audit eval governance etc. | may consume upper layers; must not be referenced by core |",
+  "title": "Part IV · FAQ > 6. Monorepo layout and layering discipline",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0108",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n7. Subsystem cheat sheet\n| Subsystem | Highlights | Most common entry points |\n|-----------|------------|--------------------------|\n| llm | Many providers behind one interface; three cache tiers (memory/SQLite/enhanced); batching | NewOpenAIProvider(cfg) |\n| memory | SQLite default (FTS5 full-text + vector columns); RAG supports Hybrid Fusion reranking | WithInMemory() / NewSQLiteStore(path) / NewRAGStore(mem, embedder) |\n| tools | Registry triple entry Register / RegisterMultiple / RegisterPlugin; unified executor dispatch; Scope permission checks up front | Registry.Register(tool) |\n| guardrail | Pluggable rules: injection / pii(Trie-accelerated) / topic / output / sensitive_tool; hits are written to audit events | hook attached at Agent construction |\n| security | ACL, sandbox, secret management (env/memory/vault backends + AES-GCM encryption abstraction) | secrets abstraction |\n| marketplace | Remote plugin protocol: Manifest + cosign(ECDSA P-256) signature verification; reject on failure | ap marketplace install |\n| persist | Multi-backend checkpointing: SQLite default; etcd/redis behind build tags | NewSQLiteCheckpointStore(dsn); Save / Load(agentID) / List(sessionID) |\n| eval | Single authoritative JSON benchmark set; quarterly bootstrap RunQuarterly vs base + CompareQuarters regression gate | ap test |\n| observability | trace→metrics→audit full-chain correlation; otel export bridge | — |",
+  "title": "Part IV · FAQ > 7. Subsystem cheat sheet",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0109",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n8. Multi-language SDKs and cross-language consistency\nAP speaks more than Go: `sdk/` hosts typescript / python / rust SDKs, with **Go as the single authoritative implementation surface** — other languages align via one contract and one benchmark set.\n\n### 8.1 TypeScript SDK (sdk/typescript, @agentprimordia/sdk v6.0.0)",
+  "title": "Part IV · FAQ > 8. Multi-language SDKs and cross-language consistency",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0110",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n8. Multi-language SDKs and cross-language consistency\n- Build `npm run build` (tsup, ESM); typecheck `npm run typecheck`; API-surface check `npm run api-check` (api-extractor);\n- Tests `npm run test` (vitest, 111 test files; plus coverage / affected / bench variants); docs site on vitepress;\n- `src/` domains mirror Go internals: agent / a2a / cluster / eval / governance / marketplace / … (20+ domains, one directory each);\n- Version coupling: one of the four-way bumps is TS package.json + lockfile — bumping Go means bumping TS in the same change.\n\n### 8.2 Dual-line consistency mechanism\n\n`scripts/cross-language-api-check.mjs` is the gatekeeper:",
+  "title": "Part IV · FAQ > 8. Multi-language SDKs and cross-language consistency",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0111",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n8. Multi-language SDKs and cross-language consistency\n1. Run Go-side api-extract to produce fresh api-contract.json;\n2. Load Go↔TS type/function equivalence declarations from cross-language-spec.json;\n3. Verify every declared Go symbol exists in the contract and every TS counterpart exists in source; any drift **fails CI**.\n\nBenchmarks follow the same single-authority rule: the authoritative JSON lives on the Go side and the TS side is **regenerated**, never hand-edited — history proved it when v5.1 expanded 60→160 cases and an out-of-sync TS side broke dual-line tests; the lesson is now codified: expanding benchmarks requires regenerating the TS set.",
+  "title": "Part IV · FAQ > 8. Multi-language SDKs and cross-language consistency",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0112",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n8. Multi-language SDKs and cross-language consistency\n> ⚠ Contributors: whenever you touch pkg exports or benchmark-set structure, add 'run cross-language-api-check + regenerate TS benchmarks' to your checklist, otherwise CI will teach you the lesson for free.",
+  "title": "Part IV · FAQ > 8. Multi-language SDKs and cross-language consistency",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0113",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n9. Dependency whitelist (hard constraint)\nNew third-party deps require the exemption of 'industry-standard protocol impossible to reproduce with stdlib' (root AGENTS.md §2.2). Current whitelist and boundaries:",
+  "title": "Part IV · FAQ > 9. Dependency whitelist (hard constraint)",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0114",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n9. Dependency whitelist (hard constraint)\n| Dependency | Allowed scope |\n|------------|---------------|\n| modernc.org/sqlite | memory / llm(cache_sqlite) / persist(sqlite_checkpoint) / tools(builtin database) |\n| gopkg.in/yaml.v3 | config / governance / cmd/ap scaffolding |\n| grpc + protobuf + genproto/rpc | agent/a2a only, agent/cluster(grpc_bus), agent/transport(grpc) |\n| etcd client v3 | persist/ and agent/cluster/ only (etcd build tag) |\n| go-redis v9 | persist/ only (redis build tag) |\n| wazero | wasm/ module only |\n| pgx v5 | required indirectly by pgvector/ module only; direct import inside internal is a violation |\n\nEven the CLI skips cobra — the hand-written switch is part of the discipline; keep it that way.",
+  "title": "Part IV · FAQ > 9. Dependency whitelist (hard constraint)",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0115",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n10. Recipe A: Build your own agent application\n```\nap init my-bot --template with-tools      # pick with-tools when you need files/shell/web\n#   multi-agent → multi-agent collab      agent-with-rag → knowledge-base QA\n#   agent-with-cache → cached savings     agent-with-metrics → Prometheus metrics\n#   basic → minimal skeleton              quickstart → recommended for beginners\n```\n\nThen change exactly two things: system_prompt & registered toolset in main.go; model & memory backend in .ap.yaml. Iterate using the §4 loop.",
+  "title": "Part IV · FAQ > 10. Recipe A: Build your own agent application",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0116",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n11. Recipe B: Implement a custom built-in tool\nThree steps (full walkthrough in docs/cookbook/自定义工具.md):\n\n1. Create internal/tools/builtin/<name>.go implementing the internal/tools.Tool interface (name/description/schema/Execute); model it after builtin/text_splitter.go — struct fields are parameters, JSON tags are the input contract;\n2. Any file/command side effects MUST go through Scope validation (see existing patterns in filesystem_safety_test.go, shell_scope_test.go);\n3. TDD: write _test.go first (external deps always httptest / t.TempDir() / MockLLM), pass go test ./internal/tools/....\n\nRegister via Registry.Register (batch with RegisterMultiple; dynamic plugins use RegisterPlugin → marketplace verification chain).",
+  "title": "Part IV · FAQ > 11. Recipe B: Implement a custom built-in tool",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0117",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n12. Recipe C: Add a new LLM provider\nThe framework ships the flow as copy-paste template — internal/llm/provider_template.go (build tag ignore_template guarantees it never compiles):\n```\ncp provider_template.go yourname_provider.go\n# Replace Template → YourName everywhere, implement four methods in order: Complete() → Stream() → CallTools() → Info()\n# Remove the warning comment block; NewTemplateProvider deliberately returns an error against misuse — yours carries real logic\ngo test -run TestTemplate ./internal/llm/\n```\n\nThen: register in the .ap.yaml provider enum, add matching tests; exposing it at pkg level trips the contract-drift gate — do the four-way bump per §16.",
+  "title": "Part IV · FAQ > 12. Recipe C: Add a new LLM provider",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0118",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n13. Recipe D: Switch/combine memory backends\n```\nstore, _ := memory.WithInMemory()                     // in-memory SQLite for tests\nstore, _ := memory.NewSQLiteStore(\"./data/mem.db\")    // production default (FTS5+vector)\nrag := memory.NewRAGStore(store, embedder)            // layer RAG on top (Hybrid Fusion)\nvec := memory.NewVectorStoreWithHNSW(dim, cfg)        // large-scale vector search\n```\n\n.ap.yaml equivalent: memory.backend= sqlite | memory; further backends compose at code level.",
+  "title": "Part IV · FAQ > 13. Recipe D: Switch/combine memory backends",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0119",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n14. Recipe E: Multi-agent and cross-node collaboration\n- Single-host orchestration: ExecutionEngine.Run(mode OrchestratorMode, steps, edges []DAGEdge) — DAGs are expressed via edges; pipeline / debate / mapreduce have dedicated implementation files while handoff / groupchat belong to the collaboration mode family (collaboration*.go); common shapes already exported via pkg/debate.go and pkg/adapters.go;\n- Protocol interop: A2A (JSON-RPC/SSE/gRPC transports) with self-check `ap a2a interop-check`;\n- Cluster: `ap cluster init/join/status/leave/scale` (gRPC bus reuses A2A infrastructure);\n- Long-horizon autonomy: `ap autonomy run/resume/status` (HITL breakpoints included).",
+  "title": "Part IV · FAQ > 14. Recipe E: Multi-agent and cross-node collaboration",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0120",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n15. Testing discipline (TDD mandatory)\n| Rule | Practice |\n|------|----------|\n| Red-Green-Refactor | _test.go first, then implementation; one Task per commit, independently compilable & passing |\n| Isolation toolkit | MockLLM (agent/pool layers), DemoLLM (examples), httptest.Server (network), t.TempDir() (disk), WithInMemory() (storage) |\n| Concurrency correctness | Shared state always locked; -race must be green on core packages (CI matrix includes race) |\n| Comments | Follow repo convention; errors unified via pkg/errors.go sentinel variables |\n| Distributed backends | etcd/redis tests run separately via make test-distributed-backends, excluded from default suites |",
+  "title": "Part IV · FAQ > 15. Testing discipline (TDD mandatory)",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0121",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n16. Quality gates and commit standards (what CI blocks)\n| Gate | Behavior |\n|------|----------|\n| Test matrix (ci.yml) | OS×Go-version matrix running build+race; Windows no-race fallback; MockLLM integration tests |\n| Tiered coverage gate | Phase 7.2 tiered gates + Tier3 soft gate (allowed but recorded) |\n| Deprecation check | deprecation-check.sh + ci.yml: Deprecated annotations need a removal plan |\n| Changelog | Blocks if [Unreleased] section missing |\n| Security scan | govulncheck; supply-chain.yml produces Syft SBOM + cosign image signing |\n| Contract drift | api-diff.sh + TestAPIContractNoDrift: pkg export changes without baseline re-lock are blocked |\n| Version consistency | version-check.sh: source Version must match release pipeline |",
+  "title": "Part IV · FAQ > 16. Quality gates and commit standards (what CI blocks)",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0122",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n16. Quality gates and commit standards (what CI blocks)\nCommit messages: feat:/fix:/refactor:, one Task per commit; changing pkg exports or the buildGoMod template requires the four-way bump (VERSION, pkg/agent.go, TS package.json, Helm values) plus refreshed contract baselines.",
+  "title": "Part IV · FAQ > 16. Quality gates and commit standards (what CI blocks)",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0123",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n17. Release flow at a glance\n```\ngit tag vX.Y.0 && push          # tag-release.yml / release.yml take over\n#   four-way version sync → Makefile ldflags injects main.Version → cosign signing → SBOM archived\n#   quarterly: make benchmark runs RunQuarterly bootstrap comparison, recorded under bench/results/\n```",
+  "title": "Part IV · FAQ > 17. Release flow at a glance",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0124",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n18. Environment & scaffolding\n`Q1` `go run /abs/path/cmd/ap` fails with *go.mod file not found*?\n`go run` only works within module context. Build a binary first (§2); then it works from anywhere.\n\n`Q2` Scaffolded project build fails with *directory prefix does not contain modules listed in go.work*?\nYou generated the project inside the monorepo tree but the root go.work doesn't list the new module. Workarounds: `GOWORK=off go build ./...` or `go work use ./myagent`. (Fix direction tracked in the CLI doc pitfalls table: init should auto-detect workspace context.)",
+  "title": "Part IV · FAQ > 18. Environment & scaffolding",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0125",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n18. Environment & scaffolding\n`Q3` Project generated outside the framework tree fails tidy with *malformed module path: missing dot in first path element*?\nStandalone scaffolds carry no replace by default (semantic import versioning limit + v0.0.0 placeholder). Following init's trailing hint, add `replace agentprimordia => <absolute framework source path>`; for vector storage also `replace agentprimordia/pgvector => <source>/pgvector`. See 版本规范.md.\n\n`Q4` Why can't I just `go get` it like a normal library?\nThe framework hasn't adopted the major-version-suffix publishing route yet (SIV limitation) — decision recorded in 版本规范.md. GOPROXY-based installs require that module-path evolution first.",
+  "title": "Part IV · FAQ > 18. Environment & scaffolding",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0126",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n19. Runtime behavior\n`Q5` Process exits immediately asking to *set AP_LLM_API_KEY*?\nThe generated main.go explicitly Fatals when cfg.APIKey == \"\" — by design. Prefer env vars over committing keys into .ap.yaml.\n\n`Q6` Where is memory stored? Does it survive restarts?\nDefault ./data/memory.db (SQLite with FTS5 full-text and vector columns — persistent); backend: memory is in-process and volatile. RAG/vector retrieval layer on top.\n\n`Q7` Agent loops forever / token bill too high?\nLower agent.max_turns in .ap.yaml (default 20); enable provider caching (agent-with-cache template / llm cache_enhanced supports semantic hits); locate loops with `ap loop trace`.",
+  "title": "Part IV · FAQ > 19. Runtime behavior",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0127",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n19. Runtime behavior\n`Q8` Are shell/web tools dangerous?\nshell runs in allowlist mode by default (the blacklist exists only as fallback and its own comments label it 'not recommended'); http/web/api clients validate the target IP in real time at Transport.DialContext TCP setup — Loopback / Private / LinkLocal(169.254-range) unicast and multicast addresses are refused outright with an *internal/private address* error; file operations pass FilesScope path-escape validation; guardrail hits block + audit-log automatically.",
+  "title": "Part IV · FAQ > 19. Runtime behavior",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0128",
+  "source": "agentprimordia/docs/AP-开发手册-EN.md",
+  "text": "Part IV · FAQ\n19. Runtime behavior\n`Q9` TestSoak_Studio fails under -short?\nKnown false-positive pattern: the degradation gate compares first-half vs second-half throughput, so concurrent machine load alone can trip it (observed 584 requests / 0 errors still FAIL). Mitigate with SOAK_CI_MODE=1 or skip that package; the durable fix direction is item ② of the CLI doc pitfalls table.",
+  "title": "Part IV · FAQ > 19. Runtime behavior",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0129",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n前置条件\n- Go 1.26+（`go version` 确认）\n- 任意 LLM API Key（OpenAI / Anthropic / Ollama 等）",
+  "title": "AgentPrimordia 快速上手指南 > 前置条件",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0130",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n2. 创建第一个 Agent\n创建 `main.go`：\n\n```go\npackage main\n\nimport (\n\t\"context\"\n\t\"fmt\"\n\t\"log\"\n\nap \"agentprimordia/pkg\"\n)\n\nfunc main() {\n\t// 创建 LLM Provider（以 OpenAI 为例）\n\tprovider, err := ap.NewOpenAIProvider(ap.Config{\n\t\tAPIKey: \"sk-your-key-here\",\n\t\tModel:  \"gpt-4o\",\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\n// 创建 Agent\n\tagent, err := ap.NewAgent(\"my-first-agent\", \"You are a helpful assistant.\", provider,\n\t\tap.WithMaxTurns(10),\n\t)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\n// 运行对话\n\tresp, err := agent.Run(context.Background(), ap.UserMessage(\"Hello! What can you do?\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\nfmt.Println(\"Agent says:\", resp.Content)\n}\n```",
+  "title": "AgentPrimordia 快速上手指南 > 2. 创建第一个 Agent",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0131",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n3. 运行\n```bash\nexport OPENAI_API_KEY=\"sk-your-key-here\"\ngo run main.go\n```\n\n预期输出：\n```\nAgent says: Hello! I'm an AI assistant powered by AgentPrimordia. I can help you with...\n```",
+  "title": "AgentPrimordia 快速上手指南 > 3. 运行",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0132",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n4. 添加工具\n让 Agent 能调用工具：\n\n```go\nimport \"agentprimordia/pkg\"\n\n// 创建工具注册表\nregistry := ap.NewToolRegistry()\n\n// 注册内置文件系统工具\nregistry.Register(ap.NewFileSystem(\"/tmp/workspace\"))\n\n// 创建带工具的 Agent\nagent, _ := ap.NewAgent(\"tool-agent\", \"You can read and write files.\", provider,\n    ap.WithMaxTurns(10),\n    ap.WithToolkit(registry),\n)\n```",
+  "title": "AgentPrimordia 快速上手指南 > 4. 添加工具",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0133",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n5. 添加记忆\n让 Agent 记住对话历史：\n\n```go\n// 创建内存存储（生产环境用 SQLite）\nmem := ap.NewInMemoryStore()\n\nagent, _ := ap.NewAgent(\"memory-agent\", \"You have memory.\", provider,\n    ap.WithMemory(mem),\n)\n```",
+  "title": "AgentPrimordia 快速上手指南 > 5. 添加记忆",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0134",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n6. 流式输出\n```go\nch, _ := agent.StreamRun(ctx, ap.UserMessage(\"Tell me a story\"))\nfor event := range ch {\n    fmt.Print(event.Content) // 逐字输出\n}\n```",
+  "title": "AgentPrimordia 快速上手指南 > 6. 流式输出",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0135",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n7. 多 Agent 编排\n```go\n// Pipeline: Agent A → Agent B → Agent C（前一步输出作为下一步输入）\npipeline := ap.NewPipeline(\n    ap.PipelineStep{Name: \"research\", Agent: researchAgent},\n    ap.PipelineStep{Name: \"write\", Agent: writerAgent},\n)\nresult, _ := pipeline.Run(ctx, \"Write about Go concurrency\")\nfmt.Println(result.Final)\n```",
+  "title": "AgentPrimordia 快速上手指南 > 7. 多 Agent 编排",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0136",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n下一步\n- 📖 [API 文档](https://pkg.go.dev/agentprimordia/pkg)\n- 🧪 [示例代码](../agentprimordia/ecosystem/examples/)\n- 🏗️ [架构文档](架构图.md)\n- 🔧 [部署指南](部署指南.md)",
+  "title": "AgentPrimordia 快速上手指南 > 下一步",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0137",
+  "source": "docs/快速开始.md",
+  "text": "AgentPrimordia 快速上手指南\n8. 环境变量驱动真实 LLM（v4.1+）\n不写死 Provider 配置，用环境变量切换真实/本地模型：\n\n```go\nprovider, err := ap.ProviderFromEnv() // 读取 AP_LLM_PROVIDER / AP_LLM_MODEL / AP_LLM_API_KEY / AP_LLM_BASE_URL\n```\n\n```bash\nexport AP_LLM_PROVIDER=openai AP_LLM_MODEL=gpt-4o-mini AP_LLM_API_KEY=sk-...\n# 或本地免 key：AP_LLM_PROVIDER=ollama AP_LLM_MODEL=qwen3:0.6b\n```\n\n支持 openai / anthropic / gemini / ollama / qwen / glm。示例应用（autonomous-task / skill-evolution / realtime-voice）均已接入该开关，未设置时保持 mock（CI 可跑）。",
+  "title": "AgentPrimordia 快速上手指南 > 8. 环境变量驱动真实 LLM（v4.1+）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0138",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n1. 镜像构建\n### 生产镜像（Admin HTTP 服务）\n\n```bash\ncd agentprimordia\ndocker build -f Dockerfile.prod -t agentprimordia:prod .\n```\n\n`Dockerfile.prod` 多阶段构建 `cmd/admin`（Admin HTTP 服务）：\n- Stage 1：`golang:1.26-alpine`，`CGO_ENABLED=0`（纯 Go，无 CGO，modernc.org/sqlite 驱动）\n- Stage 2：`alpine:3.20` runtime，非 root 用户 `ap`，`EXPOSE 8080`\n\n> 现有 `Dockerfile`（无 `.prod` 后缀）是 **demo 镜像**（构建 `ecosystem/examples/*` 示例），**不用于生产**。\n\n### 运行\n\n```bash\ndocker run -d \\\n  --name ap-admin \\\n  -p 8080:8080 \\\n  -e ADMIN_TOKEN=<your-secret-token> \\\n  -e ADDR=:8080 \\\n  agentprimordia:prod\n```\n\n必填环境变量：\n| 变量 | 说明 | 默认 |\n|---|---|---|\n| `ADMIN_TOKEN` | Admin API 访问令牌（保护除 `/api/health` 外的所有端点） | **必填，不设会启动失败** |\n| `ADDR` | 监听地址 | `:8080` |",
+  "title": "AgentPrimordia 生产部署指南 > 1. 镜像构建",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0139",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n2. 健康检查\n容器 `HEALTHCHECK` 已配置 HTTP 探针：\n\n```\nGET /api/health   # 无需 token，返回 200\n```\n\nKubernetes 对应：\n\n```yaml\nlivenessProbe:\n  httpGet: { path: /api/health, port: 8080 }\n  initialDelaySeconds: 10\nreadinessProbe:\n  httpGet: { path: /api/health, port: 8080 }\n  initialDelaySeconds: 5\n```",
+  "title": "AgentPrimordia 生产部署指南 > 2. 健康检查",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0140",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n3. 可观测性\n### Prometheus 指标\n\n配置见 `agentprimordia/deploy/prometheus/prometheus.yml`，告警规则见 `alerts-agentprimordia.yaml`。\n\n### Grafana Dashboard\n\n`agentprimordia/deploy/grafana/` 下 7 个开箱即用面板：\n- `dashboard-agent.json` — Agent 运行指标\n- `dashboard-llm.json` — LLM 调用/成本\n- `dashboard-memory.json` — 记忆系统\n- `dashboard-orchestration.json` — 编排层\n- `dashboard-pool.json` — 并发池\n- `dashboard-cost.json` — 成本追踪\n\n### OpenTelemetry\n\n`internal/otel` 提供 OTel 集成，可对接 Jaeger/Tempo 等后端。",
+  "title": "AgentPrimordia 生产部署指南 > 3. 可观测性",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0141",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n4. 安全要点\n- **非 root 运行**：镜像用 `ap` 用户\n- **Admin API 鉴权**：除 `/api/health` 外所有端点需 `Bearer <ADMIN_TOKEN>`\n- **密钥管理**：`internal/security` 的 `SecretsManager` 支持 AES-GCM + 环境/Vault 多后端\n- **PII 防护**：`internal/guardrail` 的 Trie 匹配检测\n- **多租户**：`internal/governance` 提供租户隔离 + 配额限流\n- **依赖漏洞**：`govulncheck` 验证 0 漏洞（golang.org/x/net 已升级到 v0.55.0）",
+  "title": "AgentPrimordia 生产部署指南 > 4. 安全要点",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0142",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n5. 资源建议\n| 规模 | CPU | 内存 | 副本 |\n|---|---|---|---|\n| 小（单 agent） | 0.5 | 256Mi | 1 |\n| 中（多 agent + RAG） | 1-2 | 512Mi-1Gi | 2+ |\n| 大（生产多租户） | 2-4 | 1-2Gi | 3+（前置 LB） |\n\n> Agent 负载主要消耗在 LLM API 出站调用（I/O），CPU/内存压力相对可控。",
+  "title": "AgentPrimordia 生产部署指南 > 5. 资源建议",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0143",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n6. CI/质量门槛\n`.github/workflows/ci.yml` 的 `lint` job（golangci-lint v1.64 + 项目 `.golangci.yml`）是**必过门槛**。本地验证：\n\n```bash\ncd agentprimordia\ngolangci-lint run --timeout 5m\ngo build ./...\ngo test ./...\n```",
+  "title": "AgentPrimordia 生产部署指南 > 6. CI/质量门槛",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0144",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n7. 已知技术债\n- 仍有约 2500 处 `deadcode` 残余（不影响运行，增加审计/维护成本），按目录逐步清理中\n- `Dockerfile`（demo 版）保留用于示例，生产用 `Dockerfile.prod`",
+  "title": "AgentPrimordia 生产部署指南 > 7. 已知技术债",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0145",
+  "source": "docs/部署指南.md",
+  "text": "AgentPrimordia 生产部署指南\n8. 平台一体化部署（v5.0）\n| 形态 | 入口 | 覆盖能力 |\n|------|------|---------|\n| 开发一键 | `scripts/dev-platform.sh` | 全能力示例编译校验 + Studio（:8090） |\n| 开发/演示 Compose | `deploy/compose/` | 单机全能力 + 可选 etcd/redis |\n| 生产 Helm | `deploy/helm/agentprimordia/` | autonomy/skills/a2a/realtime/studio（镜像 tag v6.0.0，version-sync 门校验） |\n| 生产 Terraform | `deploy/terraform/` | VPC/节点/存储 |\n| 单机 systemd | `deploy/autonomous-agent.service` | 自治 Agent 常驻 |\n| Operator | `operator/` | AgentDeployment CRD |\n\n完整案例与检查清单见 [企业参考部署指南](../agentprimordia/docs/guides/企业部署.md)。",
+  "title": "AgentPrimordia 生产部署指南 > 8. 平台一体化部署（v5.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0146",
+  "source": "docs/实验成本与功效模板.md",
+  "text": "实验成本与功效模板（S0-6）\n> **定位**：V7 弧线新规 R2（功效先行）的执行模板。任何验收实验（A/B、消融、标定）开工前按本模板写计划书；验收只认计划书注册过的分析口径。",
+  "title": "实验成本与功效模板（S0-6） > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0147",
+  "source": "docs/实验成本与功效模板.md",
+  "text": "实验成本与功效模板（S0-6）\n计划书模板（每题一份，放 `docs/evals/plans/<题集>-<版本>.md`）\n```\n# 实验计划书：<命题一句话>\n- 版本 / 命题编号：v6.1 命题 1\n- 题面引用：docs/evals/long-horizon-v1.json @commit <hash>，留出子集 = holdout:true 的任务\n- 双臂：A（基线）= ReAct 默认策略；B（处理）= WithWorldModel\n- 主指标：任务成功率（rubric 判定，二值）；次指标：token 成本、轮数\n- 效应量假设：+15pp（来自 S0-2 基线摸底实测 0/12 起测点 + 保守增量）\n- 功效计算：α=0.05（双侧）、power=0.80、配对设计（同题双臂，McNemar 精确检验）\n  → 期望不一致率估计 30% → n≈71 题（向上取整到留出题数），不足则全留出集 + 允许整集重复采样\n- 多重比较：双臂单主指标，无校正；次指标仅描述性报告不做门槛\n- 采样协议：每题双臂各 1 次采样（temperature=0 确定性解码）；非确定性 Provider 记运行 seed\n- 成本估算：n×2 臂 × 平均 180 calls × 1.2k tok/call ≈ 3.1M token（旗舰价目）≈ <金额>，走 B4 预算\n- 停止规则：实验中途不得换题面/换指标；失败走降级豁免记进度表\n- 判定：主指标 p<0.05 且点估计 ≥ +15pp → 命题达成；否则记工程地板交付\n```",
+  "title": "实验成本与功效模板（S0-6） > 计划书模板（每题一份，放 `docs/evals/plans/<题集>-<版本>.md`）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0148",
+  "source": "docs/实验成本与功效模板.md",
+  "text": "实验成本与功效模板（S0-6）\n统计口径规范（配 `internal/eval/stats.go`）\n| 场景 | 检验 | 备注 |\n|------|------|------|\n| 同题双臂成功率 | McNemar 精确二项检验 | 配对设计样本量远小于两独立比例检验 |\n| 双臂均值类（成本/token） | 配对 bootstrap 95% CI | 不假设正态 |\n| 比率类指标（复用率/拦截率/准确率） | Wilson 95% 下界 | **禁裸 100% 宣称**（R3）；`x/n，Wilson 下界` 成对报告 |\n| 确定性不变式（签名/CAS/预算强制/覆盖度） | 全量通过 | 允许 100%/0——代码保证可穷尽测试 |\n| 独立臂大效应（+20pp 级） | 两比例 z 检验 + 功效表 | 仅在无法配对时使用 |\n\n### 功效速查表（α=0.05，power=0.80，双侧）\n\n| 设计 | 效应量 | 每组 n |\n|------|--------|--------|\n| 独立两比例（p₀=0.5） | +15pp | ~166 |\n| 独立两比例（p₀=0.5） | +20pp | ~94 |\n| 独立两比例（p₀=0.5） | +30pp | ~42 |\n| 配对 McNemar（不一致率 30%） | +15pp 观测 | ~71 题 |\n| 配对 McNemar（不一致率 40%） | +20pp 观测 | ~46 题 |\n\n> 结论：**能配对必配对**——同题双臂把样本需求砍半以上，这是研究弧线 token 预算可行性的第一杠杆。",
+  "title": "实验成本与功效模板（S0-6） > 统计口径规范（配 `internal/eval/stats.go`）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0149",
+  "source": "docs/实验成本与功效模板.md",
+  "text": "实验成本与功效模板（S0-6）\n预算分级\n| 级别 | 用途 | 规模 | 效力 |\n|------|------|------|------|\n| 探索级 | 开发期调参/冒烟 | ≤20 题 × 1 采样 | 不可用于验收（计划书须声明） |\n| 里程碑级 | 版本验收 | 计划书注册的功效 n | 唯一合法验收口径 |\n| 回归级 | nightly 例行 | 留出集全量 × 1 | 趋势监控与残余风险对账 |",
+  "title": "实验成本与功效模板（S0-6） > 预算分级",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0150",
+  "source": "docs/实验成本与功效模板.md",
+  "text": "实验成本与功效模板（S0-6）\n成本模型（弧线级粗算，计划书细算）\n- 主实验预估：v6.1 A/B ~3M tok × 双臂重复余量；v6.2 影子评测 3 域 × ~5k 轨迹；v6.3 缺口集 50×2 臂；v6.4 主动臂 14 天长活 + A/B；v6.5 联邦对照。**量级：弧线合计数十亿 token（v6.2 蒸馏模型接管部分回归评测后边际递减）**。\n- 每条计划书必须含金额估算并对照 A1/A2/B4 预算告警线；超支即触发铁律 8 裁剪评审而非静默缩水样本。",
+  "title": "实验成本与功效模板（S0-6） > 成本模型（弧线级粗算，计划书细算）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0151",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n> **文档定位**：本文件为 AgentPrimordia 唯一的路线图权威文档，基于 2026-08-03 全项目实证审计重写\n> （三方取证：Go 核心循环、能力组件集成度、TS 线现状 + 规划文档对账）。\n>\n> **最后更新**：2026 年 8 月 28 日\n> **当前版本**：Go SDK v6.0.0（`pkg/agent.go`）/ TypeScript SDK v6.0.0（`sdk/typescript/package.json`）\n> **覆盖范围**：完整版本路线 = 历史轨迹（v0.1.0 → v3.2.0，见 §二.六）+ 实证版本路线（v3.3 → v4.0，见 §三）+ 均衡混排弧线（v4.1 → v5.0，见 §三.五）+ 优化→大成弧线（v5.1 → v6.0，已全部 ✅ 核心完成并于 2026-08-21 发布 v6.0.0，详细进度表见 [`V6路线图.md`](V6路线图.md)）+ 认知跃迁弧线（v6.1 → v7.0「具模 → 内化 → 开源 → 长活 → 结社 → 大成」，定稿开工 2026-08-31，见 [`V7路线图.md`](V7路线图.md)）。\n> **重要**：旧版\"v2.1-v3.0 全部完成\"叙事与代码实况不符，已废弃，见下文对账。\n> **并行路线档案**：另一条 v3.3–v3.6 平行路线（长期自治 / 技能进化 / 协议互操作 / 多模态实时）的历史实现与任务清单见 [`V4路线图.md`](V4路线图.md)，其代码已于 2026-08 合入 main（autonomy / skills / realtime / a2a interop 模块），作为能力补充保留。\n\n---",
+  "title": "AgentPrimordia 演化路线图 > ",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0152",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n一、现状对账：声称 vs 实况（2026-08-03 实证审计）\n| 声称已完成 | 代码实况 | 差距 |\n|-----------|---------|------|\n| ReAct 引擎接口化拆分（react.Engine） | 新状态机存在但未接管主路径，`Run` 仍走旧 `reactLoopEngine`（`react_bridge.go:15` 仅 getter） | 🔴 功能悬空 |\n| 评测体系系统化（eval/matrix） | CI 只跑单元自测（`bench/eval-ci/run_eval.sh:25`），真实数据集仅 5 条 smoke（`eval_cases.json`）；官方基准自认 Skipped（`docs/benchmarks/官方基准.md:269`） | 🔴 无真实评测 |\n| OTel 桥接 | 仅 `pkg/otel.go:9` re-export，无运行时接线 | 🔴 孤立组件 |\n| Studio 可视化 | 四面板全 demo 数据（`studio/web/README.md:26`），真实引擎注入点未接线 | 🟠 外壳 |\n| Agent 市场 | 内存 map 注册表（`internal/agent/marketplace/template.go:145`），无远程协议 | 🟠 外壳 |\n| 双语言对齐 15 套件/45 用例 | TS 全量实现；Go 侧仅 4 个测试函数（`pkg/cross_language_test.go`）覆盖 3 套件 | 🟠 单向对齐 |\n| v2.1-v3.0 全完成 / 版本 3.2.0 | git tag 仅 v0.7.0；`项目状态.md` 显示 Phase 3 仅 5/8 | 🔴 状态不可信 |",
+  "title": "AgentPrimordia 演化路线图 > 一、现状对账：声称 vs 实况（2026-08-03 实证审计）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0153",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n一、现状对账：声称 vs 实况（2026-08-03 实证审计）\n**核心引擎实测缺口**（`internal/agent/` 逐文件取证）：\n\n- executePlan 子任务失败 fast-fail 整体中断且无重试（`react_plan_executor.go:73-80`），checkpoint 不存 plan/子任务状态\n- memory 只写不读：loop 的 `MemoryStore` 接口仅 `Add/UpdateSummary`，无 `Search`（`react_loop.go:40-44`）\n- 子任务上下文全量继承完整历史，100 条滑动窗口无压缩（`react_persist.go:205`）\n- tool 执行无重试、并行 tool goroutine 无 recover、无输入端护栏、security 沙箱未接入 loop\n- TS 线真实 LLM 集成测试为 0（全部 mock fetch）；guardrail 有实现但未接入 TS agent 循环\n\n---",
+  "title": "AgentPrimordia 演化路线图 > 一、现状对账：声称 vs 实况（2026-08-03 实证审计）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0154",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n二、核心命题\n> AP 的问题不是缺能力，而是\"声称的完成度\"与\"可运行的可信度\"之间的鸿沟。\n> 最优路线 = 把\"声称的能力\"变成\"可证明的能力\"：**先可信 → 再可证 → 然后才能谈一体化、省 token、生态**。",
+  "title": "AgentPrimordia 演化路线图 > 二、核心命题",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0155",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n二.五、已验证为已存在的能力（无需重复建设）\n| 能力 | 实况证据 | 状态 |\n|------|---------|------|\n| checkpoint 断点续跑 | 每轮 `saveCheckpoint`（`react_persist.go:167`）+ `ResumeFromCheckpoint`（`react_lifecycle.go:92`） | ✅ 已接入（缺 plan 级） |\n| 成本预算拦截 | CostTracker 执行中检查（`react_loop_core.go:107`），MaxTotalCostUSD/MaxTokensPerCall | ✅ 已接入 |\n| 多模型路由 | `internal/llm/model_router.go`（Cost/Quality/Balanced 策略） | ✅ 已存在 |\n| LLM 请求批量 | `internal/llm/batch.go` + `internal/pool/llm_batch_integration_test.go` | ✅ 已对接 Pool |\n| tool_learning 跨会话回注 | `react_loop_tools.go:113-128` 真实替换参数建议，跨会话成功率聚合 | ✅ 已接入（缺流程修正） |\n| metrics 真实上报 | `react_lifecycle.go:36-57` 每轮 RecordTokenUsage 到 Prometheus | ✅ 已接入 |\n| orchestration 完整实现 | Pipeline/Handoff/DAG/GroupChat/Debate + e2e 测试 + pkg 暴露 | ✅ 已产品化 |\n| debugger / admin | 真实 HTTP 服务（`internal/debugger/http.go`、`internal/admin/handler.go`） | ✅ 已产品化 |\n| chaos 注入引擎 | `internal/chaos/real_injector_linux.go`（tc netem / iptables）+ LLM 故障注入 | ✅ 真实可用 |\n| MCP 双向 | client（stdio JSON-RPC）+ server + adapter + registry | ✅ 已存在 |\n| TS 上下文压缩 | `KeepLastNStrategy`/`TokenBudgetStrategy`（`request-id.ts:31-75`） | ✅ 比 Go 更先进 |\n| TS checkpoint-resume | `react-loop.ts:450` resumeFromCheckpoint + 每轮 saveCheckpoint | ✅ 已接入 |\n\n---",
+  "title": "AgentPrimordia 演化路线图 > 二.五、已验证为已存在的能力（无需重复建设）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0156",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n二.六、版本历史轨迹（v0.1.0 → v3.2.0）\n> 以下为 2026-05-29 至 2026-07-31 的历史版本轨迹，基于 `CHANGELOG.md` 记录整理。\n> **注意**：历史版本的部分\"完成\"声明在 2026-08-03 实证审计中被发现与代码实况不符（见 §一对账），\n> 本表作为**轨迹记录**保留，完成度以 §三 实证路线为准。\n\n### 1. 孵化期（v0.1.0 → v0.8.0）— 从零到核心引擎",
+  "title": "AgentPrimordia 演化路线图 > 二.六、版本历史轨迹（v0.1.0 → v3.2.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0157",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n二.六、版本历史轨迹（v0.1.0 → v3.2.0）\n| 版本 | 日期 | 主题 | 关键内容 |\n|------|------|------|---------|\n| **v0.1.0** | 2026-05-29 | 核心骨架 | ReActLoop 引擎 / AgentPool / 内置工具集 / Memory(SQLite FTS5+RAG+向量) / OpenAI/Anthropic/Azure/Gemini/Ollama Provider / ResilientProvider / FileLock / Scope 权限 / Checkpoint / A2A / 编排(Pipeline/Handoff/Parallel) / MCP / 示例应用 / TS SDK 雏形 |\n| **v0.2.0** | 2026-05-29 | 消息总线+编排 | 统一 LocalMessageBus / DAG 工作流(条件边+循环检测) / HTTP 传输 / 服务发现 / Session 分组 / Cohere+Mistral Provider / Admin REST API / 四模块基准 / 统一 Agent 接口 |\n| **v0.3.0** | 2026-05-30 | 微内核架构 | `*Capable` 能力接口 + `WithXxx` 链式 API / PluginLoader / Provider 模板 / CostTracker / 多模态内容 / ecosystem 目录建立 |\n| **v0.4.0** | 2026-06-01 | 协议式微内核 | 12 个 Capable 接口 / ReActConfig 14 字段 Deprecated / Stability 标注起步 |\n| **v0.5.0** | 2026-06-02 | SemVer 策略 | 4 级 Stability 标注 / 阶梯覆盖率网关(T1≥80/T2≥65/T3≥50) / go.work 多模块 |\n| **v0.6.0** | 2026-06-03 | 工程化 | pre-commit hook / Agent 模板系统 / Operator CRD 增强 / Tier3 软门 |\n| **v0.7.0** | 2026-06-05 | 公共 API 稳定 | `// Stability:` 标注 / SemVer 策略 spec / 协议式微内核正式化 / CI 多平台矩阵+安全扫描 |\n| **1.0.0** | 2026-06-30 | 首个稳定版 | 全局版本统一 v1.0.0 / API 稳定性承诺 / API 参考文档重写 / perf-v11(BufferPool/TokenCache/pprof/Fuzz) |\n| **v0.8.0** | 2026-07-07 | 生态扩展 | MCP Go Server+TS Client / A2A 工具租赁 / pgvector 独立模块 / K8s LLM 扩缩容 / WASM 运行时+Edge Gateway |",
+  "title": "AgentPrimordia 演化路线图 > 二.六、版本历史轨迹（v0.1.0 → v3.2.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0158",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n二.六、版本历史轨迹（v0.1.0 → v3.2.0）\n### 2. v2.x 生产化（2026-07-18 起，旧叙事 21/21）\n\n| 版本 | 主题 | 关键内容 |\n|------|------|---------|\n| **v2.0.0** | 生产就绪 | 多租户隔离 / SecretsManager(AES-GCM+Vault) / A2A gRPC / 语义缓存 / MapReduce / SLO-SLI / 24h Soak / ToT-MCTS 规划器 / 流式 RAG / Agent Mesh / Pool 优先级队列 / Studio 可视化 / VSCode+Browser 扩展 |\n| **v2.1** | 技术债清理+安全加固 | 2500+ 行死代码清理 / pprof 鉴权 / Linux CI `-race` / governance 覆盖率 / 12 个 `*Capable` |\n| **v2.2** | 性能优化+成本控制 | ACL O(1) / Pool 事件背压 / LLM 批量合并 / RRF 调优 / 高并发压测 / panic→error |\n| **v2.3** | 架构改进+配置统一 | 统一配置框架 / pgvector 后端 / TS 行为对齐套件 / SecretsManager Vault 后端 |\n| **v2.4** | 可观测性深化 | gRPC trace 传播 / eBPF 系统级追踪 |\n| **v2.5** | 分布式安全+Mesh | Agent Mesh mTLS / gRPC 熔断+限流联动 |",
+  "title": "AgentPrimordia 演化路线图 > 二.六、版本历史轨迹（v0.1.0 → v3.2.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0159",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n二.六、版本历史轨迹（v0.1.0 → v3.2.0）\n### 3. v3.0 → v3.2 框架化（2026-07-20 起）\n\n| 版本 | 日期 | 主题 | 关键内容 |\n|------|------|------|---------|\n| **v3.0.0** | 2026-07-20 | 八大方向框架 | 混沌工程 / WASM 工具 / 分布式集群 / Agent 市场 / Edge 模板 / 隐私混合推理 / CRDT 协作 / 自适应学习 |\n| **v3.1.0** | 2026-07-26 | From Framework to Production | etcd 服务发现 / gRPC 跨节点总线 / WASM 真实执行 / LLM 知识蒸馏 / 混沌真实注入 / WebGPU 模型连接 / CRDT 同步服务器 / CLI 集群/市场/Edge / Studio 四面板 / 6 基准套件 |\n| **v3.2.0** | 2026-07-31 | 架构解耦+双语言对齐 | ReAct 循环接口化 / WebGPU 可插拔后端 / 可视化编辑器异步编排 / Bun 适配器强化 / 跨语言规范 15 套件 / CRDT 持久化 / Agent 市场协议 |\n\n---",
+  "title": "AgentPrimordia 演化路线图 > 二.六、版本历史轨迹（v0.1.0 → v3.2.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0160",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n### v3.3 — 可信化（对账与接线）\n\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | 逐项对账\"声称完成\"清单，产出能力实况清单（真实可用/部分/仅存在） | 能力清单 100% 有代码证据 |\n| 2 | 修复版本叙事矛盾：git tag / STATUS / VERSIONING / ROADMAP 四方对齐 | 文档互不矛盾，tag 与 `pkg.Version` 一致 |\n| 3 | `react.Engine` 接管主路径，或明确废弃回退 ✅（2026-08-03 已决策：废弃降级） | 主路径单一、可测试 |\n| 4 | otel 接入 metrics 真实上报（ReAct loop → OTel）✅（2026-08-03：WithTelemetry 接线完成） | OTLP 导出有真实数据 |\n\n### v3.4 — 一体化不塌（Harness 可靠性）",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0161",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | executePlan：子任务失败重试/降级 + plan 级 checkpoint（恢复续跑整计划）✅（2026-08-03：子任务重试 + plan 级 checkpoint，`react_plan_executor.go`，commit 10ee524） | 5 子任务 pipeline 中途故障可续跑，恢复率 100% |\n| 2 | 子任务上下文隔离 + 摘要压缩（替代全量继承 + 滑动窗口）✅（2026-08-03：前置结果摘要注入，commit d82f1bf） | 长任务 context 不爆，规模翻倍成功率不降 |\n| 3 | memory 回读注入：`MemoryStore` 增加 `Search`，长期记忆进循环 ✅（2026-08-03：每轮/每子任务注入召回，commit 311f98c） | 跨 session 记忆可召回 |\n| 4 | tool 执行重试 + 并行 goroutine recover + 输入端护栏 ✅（2026-08-03：`WithInputGuard` + `react_loop_engine.go:17` 入口检查，commit eed88e2） | 混沌注入下无击穿 |\n| 5 | TS 同步 guardrail-in-loop ✅（2026-08-03：`ReActConfig.guardrail` + 输入端 `react-loop.ts:231` / 逐轮输出端 `turn-executor.ts:183`，8 用例 `react-guardrail.test.ts`） | TS 与 Go 行为对齐 |\n| 6 | 失败重放与诊断工具 ✅（2026-08-03：Go `persist/failure.go` FailureStore/Diagnose + `react_failure.go` 失败捕获/ReplayFailure + debugger `/api/failures` HTTP API（commit 7afb62d/f470696/9e13abd）；TS `agent/failure.ts` + react-loop 失败落盘/`replayFailure`（commit 1771dd3）） | 任意失败可一键重放定位 |\n\n### v3.5 — 可证（评估与可观测闭环）",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0162",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | eval 从 5 条 smoke 升级为真实 harness 基准集（编码任务数据集） ✅（2026-08-04：`benchmark_cases.json` 60 条真实任务，Go embed `benchmark_cases.go` + TS 生成镜像 `benchmark-cases.ts`；`CodeConstructEvaluator`/`BenchmarkRunner` 双线 11+11 用例，commit f066fcc） | 基准集 ≥50 条真实任务 |\n| 2 | 真实 LLM 跑分（复用 nightly integration job），成功率/成本/耗时/恢复率作为版本门禁 ✅（2026-08-04：`eval/llm_bench.go` LLMBenchAgent+RunLLMBench+恢复率；CLI `bench/llm-bench` 基线门禁分数只升不降；nightly `llm-benchmark` job + release 附基准报告，commit 5462d07） | 每版发布附基准报告，分数只升不降 |\n| 3 | 补 Go 侧跨语言 11 套件（当前 4/15） ✅（2026-08-04：`pkg/cross_language_suites_test.go` 新增 11 套件；chaos Validate/Pipeline 空阶段/注入正则/maxTurns=50 等双线对齐；45 用例双线全绿，commit 1e56397） | 45 用例双线全量覆盖 |\n| 4 | trace → 指标 → 审计全链路闭环 ✅（2026-08-04：`internal/observability` CorrelationStore 以 trace_id 聚合 span/审计/指标 + `/traces` HTTP API；audit.Event.TraceID；agent ObservabilityCapable 全链注入，单请求同键回溯测试 3 用例，commit 51e8c2c） | 单请求可全链路回溯 |\n| 5 | 混沌注入常态化（harness 上跑 chaos-e2e） ✅（2026-08-04：`chaos/harness.go` FaultInjectingProvider+RunHarnessChaos 基线vs故障对比；常规确定性 5 用例 + e2e 真实基准集 baseline 1.0→0.5 下降 50% 可量化，commit d71ac7d） | 注入故障下成功率下降可量化 |\n\n### v3.6 — 自适应（自愈与从经验学习）",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0163",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | 自愈：plan 失败自动换路径、子任务级重试策略 ✅（2026-08-04：`executePlanWithSelfHealing` replan/降级 runLoop（skipPlan 防递归）+ 子任务重试注入失败反馈换方案；`stats.PlanRecoveries`；commit 23a3a47） | 故障恢复不依赖人工 |\n| 2 | tool_learning 从\"参数建议\"升级\"流程修正\"（`react_loop_tools.go:113-128` 扩展） ✅（2026-08-04：`SuggestProcessCorrection` 检测高频失败模式（≥2 次）自动规避/替代参数；`stats.ProcessCorrections`；commit 67f407d） | 失败模式被自动规避 |\n| 3 | 跨任务记忆真正注入（基于 v3.4 memory 回读） ✅（2026-08-04：`tryMemorySolution` fast-path 复用 solved 记忆（0 轮推理）+ `saveSolutionMemory` 完成任务自动存解；commit c68c882） | 相似任务第二次显著更快 |\n| 4 | AP 用 AP 开发 AP（自举） ✅（2026-08-04：`internal/self_bootstrap` ImprovingProvider+RunBootstrap 多轮自举 + CLI `bench/self-bootstrap`；真实基准集曲线 0.333→0.667→1.0；commit 0e3e3ec） | 成功率曲线可见上升 |\n\n### v3.7 — 双线产品化",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0164",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | TS 补官方 OpenTelemetry SDK、checkpoint 持久化、guardrail-in-loop ✅（2026-08-04：`OfficialOTelBridge` 委托 @opentelemetry/api + 可选 peer 依赖；checkpoint/guardrail 已于 v3.4 对齐；commit 10fc7ad） | TS 与 Go 治理能力对齐 |\n| 2 | 双线真实 LLM 集成测试建立基线 ✅（2026-08-04：TS `bench/llm-bench` 报告结构对齐 Go + 集成基线测试 + nightly `ts-llm-benchmark` job；commit b4c4013） | 双线同一套基准分数可比 |\n| 3 | 跨语言 spec 45 用例双线全量 ✅（2026-08-04：cross-language-api-check 门全绿，Go/TS 0 缺失，符号搜索改 Node fs 跨平台；45 用例双线全绿；commit 73f5b2d） | cross-language-api-check 门全绿 |\n| 4 | React Hooks（useAgent / useReActLoop）补全 ✅（2026-08-04：`react/kit.ts` 零样板 useAgent/useReActLoop/useRemoteAgent + `./react` 子路径导出；commit 68e8fd8） | 前端接入零样板 |",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0165",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n### v3.8 — 规模化（多智能体大任务）\n\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | 多 Agent 分工做单 Agent 做不了的大任务（Go 编排 + TS 前端） ✅（2026-08-04：`internal/multi_agent.Swarm` 专业 Specialist 路由+泛化兜底；规模 1/2/4/8 成功率不降且优于单 Agent；commit 7e95b49） | 任务规模×N 成功率不降 |\n| 2 | Pool × harness 多任务并发执行 ✅（2026-08-04：Pool SetModel/SetAgentFactory 跑 harness 基准任务；concurrency=4 吞吐 speedup≥2.5×，并发 8×16 全成功；commit 3e07fef） | 并发吞吐线性扩展 |\n| 3 | WASM 工具生态 ✅（2026-08-04：`WASMToolAdapter.AsTool` 桥进 tools.Registry；手构有效 WASM 模块 wazero 真实执行；commit c9b2b0c） | 自定义工具运行时可用 |\n\n### v3.9 — 生态与开发者体验",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0166",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | marketplace 真实注册表 + 远程协议 + cosign 签名（Phase 5 Task 2-3） ✅（2026-08-04：`internal/marketplace` Manifest 远程协议 + ECDSA P-256 验签 + Installer；`ap plugin install <url>` 远程安装；commit 555683c） | 插件 install 可远程 + 验签 |\n| 2 | Studio 接真实引擎（替换 demo 数据） ✅（2026-08-04：`debugger/studio.ts` StudioBridge 接真实 agent runs 到 Inspector + `OTelBridgeLike` 结构接口；commit da7a238） | 四面板显示真实运行 |\n| 3 | 文档站自动构建 + VS Code Agent Inspector + 插件脚手架 ✅（2026-08-04：ci.yml 新增 docs-build job 自动构建 vitepress 文档站并修复死链；VS Code Inspector（agents-view + dag-visualizer）与插件脚手架 `ap plugin create` 已有完整实现与测试；commit 6736c44） | 第三方按文档零门槛接入 |\n| 4 | MCP 深度集成 ✅（2026-08-04：工具名命名空间前缀隔离多 server 同名工具（Go `SetToolPrefix`/`ToolPrefix` 配置 + TS `toolPrefix`）；`resolveMCPCommand` 支持 npx/npm 等 Windows .cmd 解析；测试 Go 5 + TS 5；commit b587593） | 主流 MCP server 开箱即用 |\n\n### v4.0 — 稳定化",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0167",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三、版本路线（v3.3 → v4.0）\n| # | 任务 | 验收标准 |\n|---|------|---------|\n| 1 | 废弃 API 清理（`NewReActAgent` / `RegisterPProf`，VERSIONING 承诺） ✅（2026-08-04：移除 `RegisterPProf` 与 A2A JSON-RPC 全部超期导出；`NewReActAgent` 已无实现；新增迁移指南 v4-deprecations.md + 跨平台 deprecation 门（Go 测试 + 强化 bash 脚本）；commit b63aa54） | 迁移指南就绪，deprecation 检查 0 残留 |\n| 2 | 契约基线锁定（api-contract 漂移门） ✅（2026-08-04：`scripts/api-extract/main_test.go` 新增 TestAPIContractNoDrift 本地漂移门（Windows 可跑），与 CI contract-baseline 双保险；漂移即失败含负向验证；commit c40ed42） | 漂移即失败 |\n| 3 | 兼容性承诺收紧：评审稳定 API 清单，实验性 API 转正/降级并记录 ✅（2026-08-04：版本规范.md 稳定清单按实际 21 个 Stable/混合模块重写；`pkg/a2a.go` gRPC 转正；新增 `pkg/stability_compliance_test.go` 双向比对门；commit 5d6488c） | 稳定 API 列表与实际导出一致 |\n| 4 | 性能大版本（基准对比全量刷新） ✅（2026-08-04：新增 `bench/suite/p95_latency_test.go` 关键路径 P50/P95/P99 延迟分布；新建 2026-Q4.json 基线；bench-regression-check 切新基线 + P95 回归门；实测 AgentRun P95 10.8µs / ToolCall 11.0µs / MemorySearch 46.3µs；commit bec048c） | 关键路径 P95 达标 |\n| 5 | 发布纪律固化（tag 自动化 CI） ✅（2026-08-04：新增 `.github/workflows/tag-release.yml` 合并 main 自动打 tag；`pkg/version_gate_test.go` 版本一致性门；版本 bump 4.0.0 全线对齐；commit 2229ece） | 每次发布自动打 tag |",
+  "title": "AgentPrimordia 演化路线图 > 三、版本路线（v3.3 → v4.0）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0168",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n三.五、v4.1 → v5.0 均衡混排弧线（✅ 已完成 2026-08-09）\n> 方向：均衡混排——奇数版本=能力深化，偶数版本=工程稳定，逐版本推进到 v5.0 平台里程碑。全部 10 版本已完成（进度与代码证据见 V5路线图.md 进度跟踪表）。\n> 详细实施计划（含 v4.1 全量任务表）：[`V5路线图.md`](V5路线图.md)。\n\n| 版本 | 性质 | 主题 | 本质跃迁 |\n|------|------|------|---------|\n| v4.1 | 深化 | 真实接线 | demo → 真实服务可运行 |\n| v4.2 | 稳定 | 稳定与规模化 | 真实接线系统不塌 |\n| v4.3 | 深化 | 多模态真实化 | 文字 → 语音/视觉真实交互 |\n| v4.4 | 稳定 | 开发者平台 | 可嵌入 → 第三方可低成本接入 |\n| v4.5 | 深化 | 分布式自治 | 单机 → 集群自治 |\n| v4.6 | 稳定 | 安全与治理 | 纵深防御 → 强隔离可审计 |\n| v4.7 | 深化 | 双语言深度对齐 | TS 对齐 Go → 双 SDK 同等能力 |\n| v4.8 | 稳定 | 生态运营 | 能力存在 → 有人用 |\n| v4.9 | 深化 | 性能与成本 | 功能正确 → 又快又省 |\n| v5.0 | 稳定 | 平台里程碑 | 框架 → 平台（主版本） |\n\n---",
+  "title": "AgentPrimordia 演化路线图 > 三.五、v4.1 → v5.0 均衡混排弧线（✅ 已完成 2026-08-09）",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0169",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n四、贯穿主线\n> **从\"声称\"到\"证明\"，再到\"规模\"**：v3.3 让项目可信，v3.4 让一体化不塌，v3.5 让省 token 变成数字，\n> v3.6 让 AP 自己成长，v3.7-v3.9 双线 + 生态放大价值，v4.0 收官稳定。",
+  "title": "AgentPrimordia 演化路线图 > 四、贯穿主线",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0170",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n五、版本里程碑速查\n### 完整版本总览\n\n| 版本 | 主题 | 主线 |\n|------|------|------|\n| v0.1 → v0.8 | 孵化期 | 核心引擎 + 微内核架构 |\n| 1.0.0 | 首个稳定版 | API 稳定承诺 |\n| v2.0 → v2.5 | 生产化 | 生产就绪 + 技术债清理 + 性能/可观测/安全 |\n| v3.0 → v3.2 | 框架化 | 八大方向 + 真实后端 + 双语言对齐 |\n| v3.3 | 可信化 | 对账 + 接线 |\n| v3.4 | 一体化不塌 | Harness 可靠性 + 重放 |\n| v3.5 | 可证 | 评估基准 + 可观测闭环 |\n| v3.6 | 自适应 | 自愈 + 从失败学习 |\n| v3.7 | 双线产品化 | TS 治理补齐 + Hooks |\n| v3.8 | 规模化 | 多 Agent 大任务 |\n| v3.9 | 生态 | 市场 + Studio + 文档站 |\n| v4.0 | 稳定化 | 契约锁定 + 兼容性收紧 + 性能大版 |\n| v4.1 → v5.0 | 均衡混排弧线 | 真实化/规模化/平台化（✅ 已完成，见 V5路线图.md） |\n| v5.1 → v6.0 | 优化→大成弧线 | 持续进化的认知内核（✅ 已完成，见 V6路线图.md） |\n| v6.1 → v7.0 | 认知跃迁弧线 | 世界模型/权重学习/开放工具/常驻生命/智能社会（定稿开工，见 V7路线图.md） |\n\n### 时间线（v0.1.0 → v5.0）",
+  "title": "AgentPrimordia 演化路线图 > 五、版本里程碑速查",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0171",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n五、版本里程碑速查\n```\nv0.1.0 ─ v0.8.0 孵化期（核心引擎 + 微内核，2026-05-29 ~ 07-07）\n   └─ 1.0.0 首个稳定版（06-30）\n        └─ v2.0.0 生产就绪（07-18）\n             ├── v2.1 ✅ 技术债+安全（P0×5+P1×2）\n             ├── v2.2 ✅ 性能+成本（P1×3+P2×3）\n             ├── v2.3 ✅ 架构+配置（P1×2+P2×2）\n             ├── v2.4 ✅ 可观测（P1×1+P2×1）\n             └── v2.5 ✅ Mesh 强化（P2×2）\n                  └─ v3.0.0 八大方向框架（07-20）\n                       ├── v3.1.0 真实后端（07-26）\n                       ├── v3.2.0 双语言对齐（07-31）\n                       └── v3.3 → v4.0 实证路线（08-03 ~ 08-05）✅ 全 35 项\n└── v4.1 → v5.0 均衡混排弧线（08-09 ~ 08-10）✅ 全 10 版本\n```\n\n---",
+  "title": "AgentPrimordia 演化路线图 > 五、版本里程碑速查",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0172",
+  "source": "docs/路线图.md",
+  "text": "AgentPrimordia 演化路线图\n六、路线图维护规则\n1. 每次版本发布后更新对应任务状态；状态勾选前必须通过代码实况验证（附文件:行号证据）\n2. 本文件为唯一权威路线文档，`项目状态.md` / `版本规范.md` / `CHANGELOG.md` 与其保持一致\n3. 新增能力按\"能力实况清单\"流程：先登记 → 接线 → 评测 → 才可标记完成\n4. 所有\"已完成\"声明须附验证位置，防止回归\"声称完成\"陷阱\n5. 本弧线版本状态以 docs/V5路线图.md 进度跟踪表为准，每版本完成须在 ROADMAP.md 更新状态并附代码证据（文件:行号）",
+  "title": "AgentPrimordia 演化路线图 > 六、路线图维护规则",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0173",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n1. System Architecture\n```mermaid\ngraph TB\n    subgraph CLI[\"CLI - cmd/ap\"]\n        Init[\"ap init\"]\n        Run[\"ap run\"]\n        Debug[\"ap debug\"]\n        Test[\"ap test\"]\n        MCP[\"ap mcp\"]\n    end\n\nsubgraph Core[\"Go Engine - internal/\"]\n        subgraph AgentLayer[\"Agent Layer - internal/agent\"]\n            RA[\"ReActAgent\"]\n            RL[\"ReAct Loop\"]\n            Hooks[\"Hook System\"]\n            RAG[\"RAG Provider\"]\n        end\n\nsubgraph LLMLayer[\"LLM Layer - internal/llm\"]\n            P[\"Provider Interface\"]\n            OAI[\"OpenAI\"]\n            ANT[\"Anthropic\"]\n            AZ[\"Azure\"]\n            GEM[\"Gemini\"]\n            OLL[\"Ollama\"]\n            RES[\"ResilientProvider\"]\n        end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 1. System Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0174",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n1. System Architecture\nsubgraph MemoryLayer[\"Memory Layer - internal/memory\"]\n            MI[\"Memory Interface\"]\n            SQL[\"SQLite\"]\n            MIL[\"Milvus\"]\n            QDR[\"Qdrant\"]\n        end\n\nsubgraph ToolLayer[\"Tool Layer - internal/tools\"]\n            TI[\"Tool Interface\"]\n            FS[\"Filesystem\"]\n            API[\"API Call\"]\n            CMD[\"Shell\"]\n            MCP_T[\"MCP Tools\"]\n        end\n\nsubgraph OrchLayer[\"Orchestration - internal/orchestration\"]\n            ORC[\"Orchestrator\"]\n            SEQ[\"Sequential\"]\n            PAR[\"Parallel\"]\n            DAG[\"DAG\"]\n        end\n    end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 1. System Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0175",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n1. System Architecture\nsubgraph Operator[\"K8s Operator\"]\n        CRD[\"AgentDeployment CRD\"]\n        CTRL[\"Controller\"]\n        CM[\"ConfigMap\"]\n        DEP[\"Deployment\"]\n    end\n\nsubgraph SDK[\"TypeScript SDK\"]\n        TSRA[\"ReActAgent\"]\n        TSP[\"OpenAI / Resilient\"]\n        TSM[\"InMemory / Vector / SQLite\"]\n        TST[\"ToolRegistry\"]\n        TSPool[\"AgentPool\"]\n    end\n\nCLI --> AgentLayer\n    AgentLayer --> LLMLayer\n    AgentLayer --> MemoryLayer\n    AgentLayer --> ToolLayer\n    OrchLayer --> AgentLayer\n    Operator --> Core\n    SDK --> TSP\n    SDK --> TSM\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 1. System Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0176",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n2. ReAct Loop Execution Flow\n```mermaid\nflowchart TD\n    Start([Initialize ReActAgent]) --> Think[Call LLM with tools + memory context]\n    Think --> Parse[Parse LLM Response]\n\nParse --> CheckTool{Has tool_calls?}",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 2. ReAct Loop Execution Flow",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0177",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n2. ReAct Loop Execution Flow\nCheckTool -- Yes --> SelectTool[Select Tool from Registry]\n    SelectTool --> CheckPerm{Permission granted?}\n    CheckPerm -- Yes --> ExecTool[Execute Tool in Sandbox]\n    CheckPerm -- No --> Deny[Return permission denied]\n    ExecTool --> Observe[Observe Result]\n    Deny --> Observe\n    Observe --> Record[Record Episode to Memory]\n    Record --> Hook[Fire afterTool Hook]\n    Hook --> CheckFail{Consecutive failures?}\n    CheckFail -- Below threshold --> Think\n    CheckFail -- At threshold --> ExitFail([Exit: too many failures])\n\nCheckTool -- No --> CheckDone{Max turns reached?}\n    CheckDone -- No --> Think\n    CheckDone -- Yes --> Complete([Return final response])\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 2. ReAct Loop Execution Flow",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0178",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n3. Core Data Structures\n```mermaid\nclassDiagram\n    class ReActAgent {\n        +Provider provider\n        +MemoryStore memory\n        +ToolRegistry tools\n        +HookManager hooks\n        +int maxTurns\n        +int consecutiveFailures\n        +run(input) Response\n        +stream(input) Channel~StreamEvent~\n    }\n\nclass Provider {\n        <<interface>>\n        +Complete(req) CompletionResponse\n        +Stream(req) Channel~Chunk~\n        +CallTools(req) ToolCallResponse\n        +Embeddings(texts) Embeddings\n    }\n\nclass MemoryStore {\n        <<interface>>\n        +Add(episode) void\n        +Get(id) Episode\n        +Search(query, opts) Episode list\n        +Delete(id) void\n    }",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 3. Core Data Structures",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0179",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n3. Core Data Structures\nclass Tool {\n        <<interface>>\n        +Name() string\n        +Description() string\n        +Parameters() Schema\n        +Execute(input) Result\n    }\n\nclass AgentDeployment {\n        +string Name\n        +AgentDeploymentSpec Spec\n        +AgentDeploymentStatus Status\n    }\n\nclass AgentDeploymentSpec {\n        +int32 Replicas\n        +AgentTemplateSpec Template\n    }\n\nclass AgentTemplateSpec {\n        +string Provider\n        +string Model\n        +string Image\n        +int32 MaxTurns\n        +string SystemPrompt\n        +ResourceSpec Resources\n    }",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 3. Core Data Structures",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0180",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n3. Core Data Structures\nReActAgent --> Provider : uses\n    ReActAgent --> MemoryStore : uses\n    ReActAgent --> Tool : registers\n    AgentDeployment --> AgentDeploymentSpec : has\n    AgentDeploymentSpec --> AgentTemplateSpec : contains\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 3. Core Data Structures",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0181",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n4. Kubernetes Operator Reconciliation\n```mermaid\nsequenceDiagram\n    participant K8s as Kubernetes API\n    participant CTRL as Controller\n    participant CM as ConfigMap\n    participant DEP as Deployment\n    participant CRD as AgentDeployment CRD\n\nK8s->>CTRL: Watch AgentDeployment changes\n    CTRL->>CRD: Get current state",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 4. Kubernetes Operator Reconciliation",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0182",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n4. Kubernetes Operator Reconciliation\nalt Deletion timestamp set\n        CTRL->>CRD: Remove finalizer\n        CTRL->>K8s: Update CRD\n    else No finalizer\n        CTRL->>CRD: Add finalizer\n        CTRL->>K8s: Update CRD\n    else Normal reconciliation\n        CTRL->>CM: Ensure ConfigMap with ap.yaml\n        CTRL->>DEP: Ensure Deployment with agent + metrics containers\n        CTRL->>DEP: Get deployment status\n        CTRL->>CRD: Update status (ActiveReplicas, CompletedTasks, ErrorRate)\n    end\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 4. Kubernetes Operator Reconciliation",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0183",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n5. Resilient Provider Pattern\n```mermaid\nstateDiagram-v2\n    [*] --> Closed\n    Closed --> Open : failures >= threshold\n    Open --> HalfOpen : recoverAfter elapsed\n    HalfOpen --> Closed : probe succeeds\n    HalfOpen --> Open : probe fails\n\nstate Closed {\n        [*] --> Execute\n        Execute --> Retry : error + retries left\n        Retry --> Execute : backoff elapsed\n        Execute --> Fallback : error + no retries\n        Execute --> Success : ok\n    }\n\nstate HalfOpen {\n        [*] --> Probe\n        Probe --> AllowFirst : halfOpenProbe=false\n        Probe --> Reject : halfOpenProbe=true\n    }\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 5. Resilient Provider Pattern",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0184",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n6. Multi-Agent Orchestration Modes\n```mermaid\ngraph LR\n    subgraph Sequential[\"Sequential Mode\"]\n        S1[\"Step 1\"] --> S2[\"Step 2\"] --> S3[\"Step 3\"]\n    end\n\nsubgraph Parallel[\"Parallel Mode\"]\n        P1[\"Step 1\"]\n        P2[\"Step 2\"]\n        P3[\"Step 3\"]\n    end\n\nsubgraph DAGMode[\"DAG Mode\"]\n        D1[\"Step 1\"] --> D3[\"Step 3\"]\n        D2[\"Step 2\"] --> D3\n        D1 --> D4[\"Step 4\"]\n        D2 --> D4\n    end\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 6. Multi-Agent Orchestration Modes",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0185",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\n```mermaid\ngraph TB\n    subgraph TSApp[\"TypeScript Application\"]\n        TSI[\"import { ReActAgent, ... } from '@agentprimordia/sdk'\"]\n    end\n\nsubgraph TSSDK[\"sdk/typescript/src/ — 24 Modules (100% Go Parity)\"]\n        subgraph TSAgent[\"agent/ — 12 files\"]\n            TSRA[\"ReActAgent\"]\n            TSCA[\"CapabilityAgent\"]\n            TSSE[\"Session\"]\n            TSHITL[\"HITLManager\"]\n            TSCOST[\"CostTracker\"]\n        end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0186",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\nsubgraph TSLLM[\"llm/ — 9 files\"]\n            TSOAI[\"OpenAIProvider\"]\n            TSANT[\"AnthropicProvider\"]\n            TSGEM[\"GeminiProvider\"]\n            TSOLL[\"OllamaProvider\"]\n            TSDS[\"DeepSeek / Qwen / GLM / Mistral / Cohere / Azure\"]\n            TSRES[\"ResilientProvider\"]\n            TSMM[\"MultimodalAdapter\"]\n            TSCACHE[\"InMemoryCache / CachedProvider\"]\n        end\n\nsubgraph TSTools[\"tools/ — 7 files\"]\n            TSREG[\"ToolRegistry\"]\n            TSFS[\"FileSystemTool\"]\n            TSSH[\"ShellTool\"]\n            TSPLUGIN[\"PluginLoader\"]\n            TSDOC[\"PDF / DOCX / JSON / CSV Loaders\"]\n        end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0187",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\nsubgraph TSMem[\"memory/ — 5 files\"]\n            TSIN[\"InMemoryStore\"]\n            TSSQL[\"SqliteStore (FTS5)\"]\n            TSVEC[\"VectorStore / HNSW\"]\n            TSRAG[\"RAGStore / RAGPipeline\"]\n            TSMIL[\"MilvusProvider / QdrantProvider\"]\n        end\n\nsubgraph TSInfra[\"Infrastructure — Phase 24\"]\n            TSAUDIT[\"AuditLogger\"]\n            TSADMIN[\"AdminHandler (Bearer Token + Web UI)\"]\n            TSDBG[\"Inspector / DebugServer\"]\n            TSPERSIST[\"SQLiteCheckpointStore\"]\n            TSHEALTH[\"HealthServer (/healthz /readyz /livez)\"]\n        end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0188",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\nsubgraph TSComm[\"Communication\"]\n            TSA2A[\"A2ABus / HTTPTransport / TCPTransport\"]\n            TSMCP[\"MCPClient / MCPRegistry / MCPAdapter\"]\n        end\n\nsubgraph TSSec[\"Security\"]\n            TSACL[\"ACL / Sandbox\"]\n            TSGUARD[\"PIIDetector / InjectionDetector / GuardrailEngine\"]\n        end\n\nsubgraph TSObs[\"Observability\"]\n            TSMET[\"MetricsCollector / PrometheusExporter\"]\n            TSOTEL[\"OTelTracer / OTLPExporter\"]\n        end\n    end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0189",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\nsubgraph GoFW[\"Go Framework — agentprimordia/internal/\"]\n        GOAGENT[\"agent/\"]\n        GOLLM[\"llm/\"]\n        GOTOOLS[\"tools/\"]\n        GOMEM[\"memory/\"]\n        GOINFRA[\"audit/ admin/ debugger/ persist/ health/\"]\n        GONOTE[\"✅ Every Go module has a 1:1 TypeScript counterpart\"]\n    end\n\nTSI --> TSAgent\n    TSAgent --> TSLLM\n    TSAgent --> TSTools\n    TSAgent --> TSMem\n    TSAgent --> TSComm\n    TSSec -.-> TSAgent\n    TSObs -.-> TSAgent\n    TSInfra -.-> TSAgent\n\nTSAgent -.->|\"1:1 parity\"| GOAGENT\n    TSLLM -.->|\"1:1 parity\"| GOLLM\n    TSTools -.->|\"1:1 parity\"| GOTOOLS\n    TSMem -.->|\"1:1 parity\"| GOMEM\n    TSInfra -.->|\"1:1 parity\"| GOINFRA\n```\n\n### Go ↔ TypeScript Module Mapping",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": true,
+  "id": "ec-ch-0190",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\n```mermaid\ngraph LR\n    subgraph GoModules[\"Go internal/\"]\n        G1[\"agent/\"]\n        G2[\"llm/\"]\n        G3[\"tools/\"]\n        G4[\"memory/\"]\n        G5[\"orchestration/\"]\n        G6[\"pool/\"]\n        G7[\"agent/a2a/\"]\n        G8[\"security/ + guardrail/\"]\n        G9[\"metrics/ + otel/\"]\n        G10[\"resilience/\"]\n        G11[\"prompt/\"]\n        G12[\"audit/\"]\n        G13[\"admin/\"]\n        G14[\"debugger/\"]\n        G15[\"persist/\"]\n        G16[\"health/\"]\n    end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0191",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\nsubgraph TSModules[\"TS src/\"]\n        T1[\"agent/\"]\n        T2[\"llm/\"]\n        T3[\"tools/\"]\n        T4[\"memory/\"]\n        T5[\"orchestration/\"]\n        T6[\"pool/\"]\n        T7[\"a2a/\"]\n        T8[\"security/\"]\n        T9[\"metrics/\"]\n        T10[\"resilience/\"]\n        T11[\"prompt/\"]\n        T12[\"audit/\"]\n        T13[\"admin/\"]\n        T14[\"debugger/\"]\n        T15[\"persist/\"]\n        T16[\"health/\"]\n    end",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0192",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\n7. TypeScript SDK — Go Parity Architecture\nG1 -.->|\"✅\"| T1\n    G2 -.->|\"✅\"| T2\n    G3 -.->|\"✅\"| T3\n    G4 -.->|\"✅\"| T4\n    G5 -.->|\"✅\"| T5\n    G6 -.->|\"✅\"| T6\n    G7 -.->|\"✅\"| T7\n    G8 -.->|\"✅\"| T8\n    G9 -.->|\"✅\"| T9\n    G10 -.->|\"✅\"| T10\n    G11 -.->|\"✅\"| T11\n    G12 -.->|\"✅\"| T12\n    G13 -.->|\"✅\"| T13\n    G14 -.->|\"✅\"| T14\n    G15 -.->|\"✅\"| T15\n    G16 -.->|\"✅\"| T16\n```\n\n---",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > 7. TypeScript SDK — Go Parity Architecture",
+  "type": "chunk"
+ },
+ {
+  "holdout": false,
+  "id": "ec-ch-0193",
+  "source": "docs/架构图.md",
+  "text": "AgentPrimordia Architecture Diagrams - Mermaid Format\nUsage Instructions\n### Preview in Markdown\n- **VS Code**: Install \"Markdown Preview Mermaid Support\" extension\n- **GitHub/Gitee**: Auto-render in .md files\n- **Typora**: Native Mermaid support\n\n### Export to Image\n```bash\nnpm install -g @mermaid-js/mermaid-cli\nmmdc -i 架构图.md -o architecture.png -w 2400 -H 1800\n```",
+  "title": "AgentPrimordia Architecture Diagrams - Mermaid Format > Usage Instructions",
+  "type": "chunk"
+ },
+ {
+  "gold": [
+   "ec-ch-0188",
+   "ec-ch-0189",
+   "ec-ch-0190"
+  ],
+  "holdout": true,
+  "id": "ec-q-0001",
+  "term": "parity",
+  "text": "how to configure parity",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0160"
+  ],
+  "holdout": true,
+  "id": "ec-q-0002",
+  "term": "版本路线",
+  "text": "如何使用 版本路线",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0141",
+   "ec-ch-0142",
+   "ec-ch-0143",
+   "ec-ch-0144",
+   "ec-ch-0145"
+  ],
+  "holdout": false,
+  "id": "ec-q-0003",
+  "term": "生产部署指南",
+  "text": "生产部署指南 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0064",
+   "ec-ch-0065",
+   "ec-ch-0066",
+   "ec-ch-0067"
+  ],
+  "holdout": false,
+  "id": "ec-q-0004",
+  "term": "chain",
+  "text": "how to configure chain",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0111",
+   "ec-ch-0112",
+   "ec-ch-0184"
+  ],
+  "holdout": false,
+  "id": "ec-q-0005",
+  "term": "multi",
+  "text": "what does multi do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0058",
+   "ec-ch-0059",
+   "ec-ch-0060"
+  ],
+  "holdout": true,
+  "id": "ec-q-0006",
+  "term": "phase",
+  "text": "phase usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0068",
+   "ec-ch-0069"
+  ],
+  "holdout": true,
+  "id": "ec-q-0007",
+  "term": "supply",
+  "text": "how to configure supply",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0071",
+   "ec-ch-0072",
+   "ec-ch-0073",
+   "ec-ch-0074",
+   "ec-ch-0075"
+  ],
+  "holdout": false,
+  "id": "ec-q-0008",
+  "term": "安全与治理",
+  "text": "介绍 安全与治理 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0111",
+   "ec-ch-0112"
+  ],
+  "holdout": false,
+  "id": "ec-q-0009",
+  "term": "cross",
+  "text": "cross usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0146",
+   "ec-ch-0147"
+  ],
+  "holdout": false,
+  "id": "ec-q-0010",
+  "term": "实验成本与功效模",
+  "text": "如何使用 实验成本与功效模",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0109",
+   "ec-ch-0110"
+  ],
+  "holdout": true,
+  "id": "ec-q-0011",
+  "term": "consistency",
+  "text": "what does consistency do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0178",
+   "ec-ch-0179",
+   "ec-ch-0180"
+  ],
+  "holdout": true,
+  "id": "ec-q-0012",
+  "term": "core",
+  "text": "core usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0106",
+   "ec-ch-0107"
+  ],
+  "holdout": false,
+  "id": "ec-q-0013",
+  "term": "monorepo",
+  "text": "how to configure monorepo",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0056",
+   "ec-ch-0057"
+  ],
+  "holdout": false,
+  "id": "ec-q-0014",
+  "term": "task",
+  "text": "what does task do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0047"
+  ],
+  "holdout": false,
+  "id": "ec-q-0015",
+  "term": "兼容性承诺",
+  "text": "兼容性承诺 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0058",
+   "ec-ch-0059"
+  ],
+  "holdout": true,
+  "id": "ec-q-0016",
+  "term": "剩余",
+  "text": "介绍 剩余 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0158",
+   "ec-ch-0159"
+  ],
+  "holdout": true,
+  "id": "ec-q-0017",
+  "term": "版本历史轨迹",
+  "text": "版本历史轨迹 的配置方法是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0126",
+   "ec-ch-0127"
+  ],
+  "holdout": false,
+  "id": "ec-q-0018",
+  "term": "behavior",
+  "text": "behavior usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0101",
+   "ec-ch-0124",
+   "ec-ch-0125"
+  ],
+  "holdout": false,
+  "id": "ec-q-0019",
+  "term": "environment",
+  "text": "how to configure environment",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0123",
+   "ec-ch-0176",
+   "ec-ch-0177"
+  ],
+  "holdout": false,
+  "id": "ec-q-0020",
+  "term": "flow",
+  "text": "what does flow do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0128"
+  ],
+  "holdout": true,
+  "id": "ec-q-0021",
+  "term": "runtime",
+  "text": "runtime usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0089",
+   "ec-ch-0090"
+  ],
+  "holdout": true,
+  "id": "ec-q-0022",
+  "term": "快速开始",
+  "text": "如何使用 快速开始",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0086",
+   "ec-ch-0087"
+  ],
+  "holdout": false,
+  "id": "ec-q-0023",
+  "term": "框架概览",
+  "text": "框架概览 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0095",
+   "ec-ch-0096"
+  ],
+  "holdout": false,
+  "id": "ec-q-0024",
+  "term": "a2a",
+  "text": "a2a usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0121",
+   "ec-ch-0122"
+  ],
+  "holdout": false,
+  "id": "ec-q-0025",
+  "term": "blocks",
+  "text": "how to configure blocks",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0080"
+  ],
+  "holdout": true,
+  "id": "ec-q-0026",
+  "term": "completeness",
+  "text": "what does completeness do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0078"
+  ],
+  "holdout": true,
+  "id": "ec-q-0027",
+  "term": "management",
+  "text": "management usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0102",
+   "ec-ch-0103"
+  ],
+  "holdout": false,
+  "id": "ec-q-0028",
+  "term": "minutes",
+  "text": "how to configure minutes",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0181",
+   "ec-ch-0182"
+  ],
+  "holdout": false,
+  "id": "ec-q-0029",
+  "term": "operator",
+  "text": "what does operator do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0176",
+   "ec-ch-0177"
+  ],
+  "holdout": false,
+  "id": "ec-q-0030",
+  "term": "react",
+  "text": "react usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0039"
+  ],
+  "holdout": true,
+  "id": "ec-q-0031",
+  "term": "sop",
+  "text": "how to configure sop",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0019",
+   "ec-ch-0120"
+  ],
+  "holdout": true,
+  "id": "ec-q-0032",
+  "term": "tdd",
+  "text": "what does tdd do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0077"
+  ],
+  "holdout": false,
+  "id": "ec-q-0033",
+  "term": "token",
+  "text": "token usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0082",
+   "ec-ch-0083"
+  ],
+  "holdout": false,
+  "id": "ec-q-0034",
+  "term": "validation",
+  "text": "how to configure validation",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0113",
+   "ec-ch-0114"
+  ],
+  "holdout": false,
+  "id": "ec-q-0035",
+  "term": "whitelist",
+  "text": "what does whitelist do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0060"
+  ],
+  "holdout": true,
+  "id": "ec-q-0036",
+  "term": "关键技术决策",
+  "text": "介绍 关键技术决策 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0008",
+   "ec-ch-0009"
+  ],
+  "holdout": true,
+  "id": "ec-q-0037",
+  "term": "布局与分层纪律",
+  "text": "布局与分层纪律 的配置方法是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0031"
+  ],
+  "holdout": false,
+  "id": "ec-q-0038",
+  "term": "快速上手",
+  "text": "如何使用 快速上手",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0061"
+  ],
+  "holdout": false,
+  "id": "ec-q-0039",
+  "term": "期间",
+  "text": "期间 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0043",
+   "ec-ch-0044"
+  ],
+  "holdout": false,
+  "id": "ec-q-0040",
+  "term": "来源",
+  "text": "介绍 来源 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0029"
+  ],
+  "holdout": true,
+  "id": "ec-q-0041",
+  "term": "概述",
+  "text": "概述 的配置方法是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0170"
+  ],
+  "holdout": true,
+  "id": "ec-q-0042",
+  "term": "版本里程碑速查",
+  "text": "如何使用 版本里程碑速查",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0152",
+   "ec-ch-0153"
+  ],
+  "holdout": false,
+  "id": "ec-q-0043",
+  "term": "现状对账",
+  "text": "现状对账 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0036",
+   "ec-ch-0037"
+  ],
+  "holdout": false,
+  "id": "ec-q-0044",
+  "term": "脚手架系统",
+  "text": "介绍 脚手架系统 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0045",
+   "ec-ch-0046"
+  ],
+  "holdout": false,
+  "id": "ec-q-0045",
+  "term": "记录",
+  "text": "记录 的配置方法是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0118"
+  ],
+  "holdout": true,
+  "id": "ec-q-0046",
+  "term": "backends",
+  "text": "how to configure backends",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0108"
+  ],
+  "holdout": true,
+  "id": "ec-q-0047",
+  "term": "cheat",
+  "text": "what does cheat do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0105"
+  ],
+  "holdout": false,
+  "id": "ec-q-0048",
+  "term": "concepts",
+  "text": "concepts usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0066"
+  ],
+  "holdout": false,
+  "id": "ec-q-0049",
+  "term": "cosign",
+  "text": "how to configure cosign",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0116"
+  ],
+  "holdout": false,
+  "id": "ec-q-0050",
+  "term": "custom",
+  "text": "what does custom do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0148"
+  ],
+  "holdout": true,
+  "id": "ec-q-0051",
+  "term": "eval",
+  "text": "eval usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0120"
+  ],
+  "holdout": true,
+  "id": "ec-q-0052",
+  "term": "mandatory",
+  "text": "how to configure mandatory",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0065"
+  ],
+  "holdout": false,
+  "id": "ec-q-0053",
+  "term": "materials",
+  "text": "what does materials do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0184"
+  ],
+  "holdout": false,
+  "id": "ec-q-0054",
+  "term": "modes",
+  "text": "modes usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0117"
+  ],
+  "holdout": false,
+  "id": "ec-q-0055",
+  "term": "new",
+  "text": "how to configure new",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0119"
+  ],
+  "holdout": true,
+  "id": "ec-q-0056",
+  "term": "node",
+  "text": "what does node do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0100"
+  ],
+  "holdout": true,
+  "id": "ec-q-0057",
+  "term": "prerequisites",
+  "text": "prerequisites usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0123"
+  ],
+  "holdout": false,
+  "id": "ec-q-0058",
+  "term": "release",
+  "text": "how to configure release",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0183"
+  ],
+  "holdout": false,
+  "id": "ec-q-0059",
+  "term": "resilient",
+  "text": "what does resilient do",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0084"
+  ],
+  "holdout": false,
+  "id": "ec-q-0060",
+  "term": "summary",
+  "text": "summary usage and examples",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0079"
+  ],
+  "holdout": true,
+  "id": "ec-q-0061",
+  "term": "transport",
+  "text": "how to configure transport",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0018"
+  ],
+  "holdout": true,
+  "id": "ec-q-0062",
+  "term": "与跨节点协作",
+  "text": "如何使用 与跨节点协作",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0074"
+  ],
+  "holdout": false,
+  "id": "ec-q-0063",
+  "term": "供应链",
+  "text": "供应链 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0013"
+  ],
+  "holdout": false,
+  "id": "ec-q-0064",
+  "term": "依赖白名单",
+  "text": "介绍 依赖白名单 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0027"
+  ],
+  "holdout": false,
+  "id": "ec-q-0065",
+  "term": "关键路径索引",
+  "text": "关键路径索引 的配置方法是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0130"
+  ],
+  "holdout": true,
+  "id": "ec-q-0066",
+  "term": "创建第一个",
+  "text": "如何使用 创建第一个",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0129"
+  ],
+  "holdout": true,
+  "id": "ec-q-0067",
+  "term": "前置条件",
+  "text": "前置条件 的工作机制是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0021"
+  ],
+  "holdout": false,
+  "id": "ec-q-0068",
+  "term": "发布流程速览",
+  "text": "介绍 发布流程速览 的用法与注意事项",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0094"
+  ],
+  "holdout": false,
+  "id": "ec-q-0069",
+  "term": "命令",
+  "text": "命令 的配置方法是什么",
+  "type": "query"
+ },
+ {
+  "gold": [
+   "ec-ch-0026"
+  ],
+  "holdout": false,
+  "id": "ec-q-0070",
+  "term": "命令速查",
+  "text": "如何使用 命令速查",
+  "type": "query"
+ }
+]

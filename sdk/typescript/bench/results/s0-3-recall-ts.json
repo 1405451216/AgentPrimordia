@@ -1,0 +1,34 @@
+{
+  "arm": "lexical-fallback",
+  "semantic": false,
+  "corpus": "docs/evals/embedding-corpus-v1.json",
+  "query_scope": "visible-only",
+  "seeds": [
+    7,
+    8,
+    9
+  ],
+  "topK": 10,
+  "chunks": 136,
+  "queries": 42,
+  "tiers": [
+    {
+      "seed": 7,
+      "recall_at_10": 0.6253968253968254
+    },
+    {
+      "seed": 8,
+      "recall_at_10": 0.6253968253968254
+    },
+    {
+      "seed": 9,
+      "recall_at_10": 0.6253968253968254
+    }
+  ],
+  "mean_recall_at_10": 0.6253968253968254,
+  "cache_baseline": {
+    "hits": 42,
+    "misses": 42,
+    "hit_rate": 0.5
+  }
+}
