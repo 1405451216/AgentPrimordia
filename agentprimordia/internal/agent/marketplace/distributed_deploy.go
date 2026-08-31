@@ -424,10 +424,10 @@ func (dd *DistributedDeployer) syncDeploymentState(rec *DeploymentRecord) {
 //	provider := marketplace.NewClusterAdapter(mgr)
 //	dd := marketplace.NewDistributedDeployer(deployer, provider, cfg)
 type ClusterAdapter struct {
-	hashRing   HashRingProvider
-	state      StateProvider
+	hashRing    HashRingProvider
+	state       StateProvider
 	localNodeID string
-	isLeaderFn func() bool
+	isLeaderFn  func() bool
 	listNodesFn func() []ClusterNode
 }
 

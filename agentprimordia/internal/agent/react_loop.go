@@ -129,8 +129,8 @@ type ReActAgent struct {
 	// 热路径原子计数器（避免每 turn 加锁，Task 3.5 优化）
 	atomicTurn     atomic.Int64
 	atomicMessages atomic.Int64
-	hitlMgr *HITLManager
-	idGen   idCounter // 实例级 ID 生成器，消除全局可变状态
+	hitlMgr        *HITLManager
+	idGen          idCounter // 实例级 ID 生成器，消除全局可变状态
 
 	// currentRequestID 当前运行的请求 ID，用于可观测性关联
 	currentRequestID string
@@ -223,7 +223,7 @@ type loopConfig struct {
 // R1.2：新增 planner/reflector/toolLearner 字段，连接 G1-1/G1-2/G1-3 闭环。
 type capabilityCache struct {
 	requestID        string
-	traceID          string                         // v3.5-4：本次请求的分布式追踪 ID（关联键）
+	traceID          string                          // v3.5-4：本次请求的分布式追踪 ID（关联键）
 	observability    *observability.CorrelationStore // v3.5-4：全链路关联存储
 	tracer           Tracer
 	costTracker      *CostTracker
@@ -250,9 +250,9 @@ type capabilityCache struct {
 	toolLearner tool_learning.ToolLearner // G1-3 ToolLearning 接入
 
 	// v3.0：自适应学习能力
-distiller       *learning.KnowledgeDistiller // 知识蒸馏器
-evolver         *learning.CapabilityEvolver // 能力进化器
-feedbackLearner *learning.FeedbackLearner   // 反馈学习器
+	distiller       *learning.KnowledgeDistiller // 知识蒸馏器
+	evolver         *learning.CapabilityEvolver  // 能力进化器
+	feedbackLearner *learning.FeedbackLearner    // 反馈学习器
 }
 
 // resolveCapabilities 一次性查找所有能力并填充到 capabilityCache。

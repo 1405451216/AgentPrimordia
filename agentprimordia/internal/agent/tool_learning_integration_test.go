@@ -55,18 +55,18 @@ func (m *toolLearningMock) Run(_ context.Context, _ Message) (*Response, error) 
 func (m *toolLearningMock) StreamRun(_ context.Context, _ Message) (<-chan StreamEvent, error) {
 	return nil, errors.New("not used")
 }
-func (m *toolLearningMock) Stop()                                     {}
-func (m *toolLearningMock) Stats() AgentStats                         { return AgentStats{} }
-func (m *toolLearningMock) Name() string                             { return "tool-learning-mock" }
+func (m *toolLearningMock) Stop()             {}
+func (m *toolLearningMock) Stats() AgentStats { return AgentStats{} }
+func (m *toolLearningMock) Name() string      { return "tool-learning-mock" }
 
 // countingTool 统计执行次数的 Tool（验证规避后不执行）。
 type countingTool struct {
 	calls atomic.Int64
 }
 
-func (c *countingTool) Name() string                     { return "counting_tool" }
-func (c *countingTool) Description() string              { return "counts calls" }
-func (c *countingTool) Parameters() json.RawMessage      { return nil }
+func (c *countingTool) Name() string                { return "counting_tool" }
+func (c *countingTool) Description() string         { return "counts calls" }
+func (c *countingTool) Parameters() json.RawMessage { return nil }
 func (c *countingTool) Execute(_ context.Context, _ json.RawMessage) (*tools.Result, error) {
 	c.calls.Add(1)
 	return &tools.Result{Content: "ok"}, nil
@@ -92,7 +92,6 @@ func TestToolLearning_ProcessCorrection_Skip(t *testing.T) {
 
 	a := newReActAgent(ReActConfig{Name: "tl-skip", MaxTurns: 5, ToolLearningConfidenceThreshold: 0.7})
 	a.self = &toolLearningMock{learner: learner, toolkit: newToolRegistryWith(tool)}
-	
 
 	tc := &ToolCall{ID: "c1", Name: "counting_tool", Args: `{"x":"1"}`}
 	result, err, _ := a.executeSingleTool(context.Background(), tc, 0, loopConfig{}, nil, &NoopSpan{})
@@ -119,7 +118,6 @@ func TestToolLearning_ProcessCorrection_Alternative(t *testing.T) {
 
 	a := newReActAgent(ReActConfig{Name: "tl-alt", MaxTurns: 5, ToolLearningConfidenceThreshold: 0.7})
 	a.self = &toolLearningMock{learner: learner, toolkit: newToolRegistryWith(tool)}
-	
 
 	tc := &ToolCall{ID: "c2", Name: "counting_tool", Args: `{"x":"dangerous"}`}
 	result, err, _ := a.executeSingleTool(context.Background(), tc, 0, loopConfig{}, nil, &NoopSpan{})
@@ -147,7 +145,6 @@ func TestToolLearning_ProcessCorrection_LowConfidence(t *testing.T) {
 
 	a := newReActAgent(ReActConfig{Name: "tl-low", MaxTurns: 5, ToolLearningConfidenceThreshold: 0.7})
 	a.self = &toolLearningMock{learner: learner, toolkit: newToolRegistryWith(tool)}
-	
 
 	tc := &ToolCall{ID: "c3", Name: "counting_tool", Args: `{"x":"1"}`}
 	_, err, _ := a.executeSingleTool(context.Background(), tc, 0, loopConfig{}, nil, &NoopSpan{})

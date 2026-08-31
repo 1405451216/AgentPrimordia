@@ -110,9 +110,9 @@ func TestTokenBudget_ToolCallsCounted(t *testing.T) {
 		{
 			Role: core.RoleAssistant,
 			ToolCalls: []core.ToolCall{{
-				ID:        "call1",
-				Name:      "big_tool",
-				Args:     string(bigArgs),
+				ID:   "call1",
+				Name: "big_tool",
+				Args: string(bigArgs),
 			}},
 		},
 	}

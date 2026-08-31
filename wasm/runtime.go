@@ -201,11 +201,11 @@ func (r *Runtime) GetConfig() Config {
 // 自包含实现（不依赖 internal/tools，避免跨模块 internal 限制），
 // 由 agent 包在装配时桥接到具体 Tool 接口。
 type WASMTool struct {
-	name       string
+	name        string
 	description string
-	runtime    *Runtime
-	moduleName string
-	funcName   string
+	runtime     *Runtime
+	moduleName  string
+	funcName    string
 }
 
 // NewWASMTool 创建 WASM 工具包装。

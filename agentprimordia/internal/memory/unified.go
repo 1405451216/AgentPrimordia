@@ -47,9 +47,9 @@ func CollectionNameForSession(sessionID string) string {
 //     避免"记忆写成功但向量写失败"的孤儿数据；
 //  3. 保持对底层 Memory / VectorStore 的透明转发。
 type UnifiedMemory struct {
-	mem  Memory
-	vec  VectorStore
-	mu   sync.Mutex // 保护 AddWithVector 的补偿窗口（防止并发交错删除）
+	mem Memory
+	vec VectorStore
+	mu  sync.Mutex // 保护 AddWithVector 的补偿窗口（防止并发交错删除）
 }
 
 // NewUnifiedMemory 用底层 Memory + VectorStore 组装统一存储。

@@ -380,18 +380,18 @@ func NewDeployer(registry *TemplateRegistry) *Deployer {
 
 // DeployConfig 部署配置
 type DeployConfig struct {
-	TemplateID   string
+	TemplateID       string
 	ProviderOverride string
-	ModelOverride   string
+	ModelOverride    string
 	MaxTurnsOverride int
 	ConfigOverride   json.RawMessage
 }
 
 // DeployResult 部署结果
 type DeployResult struct {
-	Success     bool   `json:"success"`
-	TemplateID  string `json:"template_id"`
-	Message     string `json:"message"`
+	Success    bool   `json:"success"`
+	TemplateID string `json:"template_id"`
+	Message    string `json:"message"`
 	// AgentConfig 生成的 Agent 配置（JSON）
 	AgentConfig json.RawMessage `json:"agent_config,omitempty"`
 }

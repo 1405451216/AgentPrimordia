@@ -126,12 +126,12 @@ func (n *RemoteNode) Ping(ctx context.Context) error {
 //   - Broadcast: 本地广播 + 远程广播
 //   - 通过 HTTP 在节点间通信，可扩展为 gRPC
 type RemoteMessageBus struct {
-	local     bus.MessageBus
-	mu        sync.RWMutex
-	nodes     map[string]*RemoteNode // 远程节点列表（nodeID -> RemoteNode）
-	logger    *slog.Logger
-	stats     RemoteBusStats
-	state     *DistributedState // 可选：关联分布式状态用于同步
+	local  bus.MessageBus
+	mu     sync.RWMutex
+	nodes  map[string]*RemoteNode // 远程节点列表（nodeID -> RemoteNode）
+	logger *slog.Logger
+	stats  RemoteBusStats
+	state  *DistributedState // 可选：关联分布式状态用于同步
 }
 
 // RemoteBusStats 远程消息总线统计（内部使用，含 atomic 字段，禁止值拷贝）
@@ -243,7 +243,7 @@ func (b *RemoteMessageBus) Send(ctx context.Context, msg *bus.BusMessage) (*bus.
 
 	// 并行尝试所有远程节点
 	type result struct {
-		node *RemoteNode
+		node  *RemoteNode
 		reply *bus.BusMessage
 		err   error
 	}
@@ -459,8 +459,8 @@ func (b *RemoteMessageBus) PingHandler() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
-			"status":      "ok",
-			"node_count":  nodeCount,
+			"status":       "ok",
+			"node_count":   nodeCount,
 			"local_agents": len(b.local.ListAgents()),
 		})
 	}

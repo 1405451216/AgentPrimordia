@@ -42,10 +42,10 @@ var ErrGoalNotPaused = errors.New("autonomy: 目标未处于暂停态")
 
 // Replanner 校验与再计划引擎
 type Replanner struct {
-	mu       sync.Mutex
-	cfg      ReplannerConfig
-	count    int
-	history  []ReplanRecord
+	mu      sync.Mutex
+	cfg     ReplannerConfig
+	count   int
+	history []ReplanRecord
 }
 
 // NewReplanner 创建重规划器

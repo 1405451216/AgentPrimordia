@@ -74,9 +74,9 @@ type LLMFaultProxy struct {
 	running  bool
 
 	// 统计
-	totalRequests  atomic.Int64
-	faultInjected  atomic.Int64
-	passedThrough  atomic.Int64
+	totalRequests atomic.Int64
+	faultInjected atomic.Int64
+	passedThrough atomic.Int64
 }
 
 // NewLLMFaultProxy 创建 LLM 故障注入代理

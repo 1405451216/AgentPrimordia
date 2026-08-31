@@ -41,7 +41,7 @@ const (
 	StatusRunning   ExperimentStatus = "running"
 	StatusCompleted ExperimentStatus = "completed"
 	StatusAborted   ExperimentStatus = "aborted"
-	StatusFailed   ExperimentStatus = "failed"
+	StatusFailed    ExperimentStatus = "failed"
 )
 
 // Experiment 混沌实验定义
@@ -184,7 +184,7 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 
 	result := &ExperimentResult{
 		Experiment: exp,
-		Status:    StatusPending,
+		Status:     StatusPending,
 	}
 
 	// 设置默认持续时间
@@ -240,9 +240,9 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 	var cleanups []CleanupFunc
 	for _, fault := range exp.Faults {
 		fr := FaultResult{
-			FaultType:  fault.Type(),
+			FaultType:   fault.Type(),
 			Description: fault.Description(),
-			InjectTime: time.Now(),
+			InjectTime:  time.Now(),
 		}
 
 		cleanup, err := fault.Inject(expCtx)
@@ -315,9 +315,9 @@ func (e *ChaosEngine) Run(ctx context.Context, exp Experiment) (*ExperimentResul
 	if exp.SteadyState != nil {
 		// 等待短暂时间让系统稳定
 		select {
-	case <-time.After(2 * time.Second):
-	case <-expCtx.Done():
-	}
+		case <-time.After(2 * time.Second):
+		case <-expCtx.Done():
+		}
 
 		post, err := exp.SteadyState.Check(expCtx)
 		if err != nil {

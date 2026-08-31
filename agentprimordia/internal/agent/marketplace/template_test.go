@@ -24,10 +24,10 @@ func TestAgentTemplateValidate(t *testing.T) {
 
 func TestAgentTemplateValidateMissingFields(t *testing.T) {
 	tmpl := &AgentTemplate{
-		ID:          "",
-		Name:        "",
-		Version:     "",
-		Author:      "",
+		ID:           "",
+		Name:         "",
+		Version:      "",
+		Author:       "",
 		SystemPrompt: "",
 	}
 
@@ -231,18 +231,18 @@ func TestTemplateRegistryTopByDownloads(t *testing.T) {
 func TestDeployerDeploy(t *testing.T) {
 	reg := NewTemplateRegistry()
 	tmpl := &AgentTemplate{
-		ID:             "deploy-test",
-		Name:           "Deploy Test",
-		Version:        "1.0.0",
-		Author:         "test",
-		Category:       "chat",
-		SystemPrompt:   "You are a helpful assistant.",
+		ID:              "deploy-test",
+		Name:            "Deploy Test",
+		Version:         "1.0.0",
+		Author:          "test",
+		Category:        "chat",
+		SystemPrompt:    "You are a helpful assistant.",
 		DefaultProvider: "openai",
 		DefaultModel:    "gpt-4",
 		MaxTurns:        10,
-		Tools:          []string{"search", "code_exec"},
+		Tools:           []string{"search", "code_exec"},
 		MemoryStrategy:  "conversation",
-		Temperature:    0.7,
+		Temperature:     0.7,
 	}
 	_ = reg.Register(tmpl)
 
@@ -296,14 +296,14 @@ func TestDeployerDeployNotFound(t *testing.T) {
 func TestDeployerDeployWithOverride(t *testing.T) {
 	reg := NewTemplateRegistry()
 	tmpl := &AgentTemplate{
-		ID:             "override-test",
-		Name:           "Override Test",
-		Version:        "1.0.0",
-		Author:         "test",
-		SystemPrompt:   "test",
+		ID:              "override-test",
+		Name:            "Override Test",
+		Version:         "1.0.0",
+		Author:          "test",
+		SystemPrompt:    "test",
 		DefaultProvider: "openai",
 		DefaultModel:    "gpt-4",
-		Temperature:    0.7,
+		Temperature:     0.7,
 	}
 	_ = reg.Register(tmpl)
 

@@ -21,9 +21,9 @@ func (m *memoryCapableMock) Run(_ context.Context, _ Message) (*Response, error)
 func (m *memoryCapableMock) StreamRun(_ context.Context, _ Message) (<-chan StreamEvent, error) {
 	return nil, errors.New("not used")
 }
-func (m *memoryCapableMock) Stop()                                     {}
-func (m *memoryCapableMock) Stats() AgentStats                         { return AgentStats{} }
-func (m *memoryCapableMock) Name() string                             { return "memory-capable-mock" }
+func (m *memoryCapableMock) Stop()             {}
+func (m *memoryCapableMock) Stats() AgentStats { return AgentStats{} }
+func (m *memoryCapableMock) Name() string      { return "memory-capable-mock" }
 
 // TestMemoryReadback_FastPath 验证相似任务第二次命中已解记忆（0 轮推理，显著更快）。
 func TestMemoryReadback_FastPath(t *testing.T) {

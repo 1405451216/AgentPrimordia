@@ -158,8 +158,8 @@ func TestSoak_MixedTraffic(t *testing.T) {
 	before := runtime.NumGoroutine()
 
 	runner := soak.NewRunner(soak.RunnerConfig{
-		Duration: duration,
-		Pattern:  soak.ConstantPattern(rps),
+		Duration:         duration,
+		Pattern:          soak.ConstantPattern(rps),
 		SamplingInterval: 2 * time.Second,
 		RequestFn: func(ctx context.Context) (*soak.Response, error) {
 			start := time.Now()

@@ -75,12 +75,12 @@ Examples:
 
 // clusterConfig 集群配置文件结构
 type clusterConfig struct {
-	NodeID       string   `json:"node_id"`
-	ListenAddr   string   `json:"listen_addr"`
-	BootstrapNodes []string `json:"bootstrap_nodes,omitempty"`
-	HeartbeatInterval string `json:"heartbeat_interval,omitempty"`
-	HeartbeatTimeout  string `json:"heartbeat_timeout,omitempty"`
-	CreatedAt    string   `json:"created_at"`
+	NodeID            string   `json:"node_id"`
+	ListenAddr        string   `json:"listen_addr"`
+	BootstrapNodes    []string `json:"bootstrap_nodes,omitempty"`
+	HeartbeatInterval string   `json:"heartbeat_interval,omitempty"`
+	HeartbeatTimeout  string   `json:"heartbeat_timeout,omitempty"`
+	CreatedAt         string   `json:"created_at"`
 }
 
 const defaultClusterConfigPath = ".ap-cluster.json"

@@ -15,12 +15,12 @@ import (
 func newTestInteropServer(t *testing.T) (*httptest.Server, OpenAgentCard) {
 	t.Helper()
 	card := OpenAgentCard{
-		Name:        "interop-test",
-		Description: "integration test agent",
-		URL:         "http://test",
-		Version:     "1.0.0",
-		Capabilities: OpenCapabilities{Streaming: true},
-		Skills:       []OpenSkillDecl{{ID: "s1", Name: "echo"}},
+		Name:               "interop-test",
+		Description:        "integration test agent",
+		URL:                "http://test",
+		Version:            "1.0.0",
+		Capabilities:       OpenCapabilities{Streaming: true},
+		Skills:             []OpenSkillDecl{{ID: "s1", Name: "echo"}},
 		DefaultInputModes:  []string{"text"},
 		DefaultOutputModes: []string{"text"},
 	}

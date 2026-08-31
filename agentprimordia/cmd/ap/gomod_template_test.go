@@ -1,10 +1,10 @@
 // gomod_template_test.go — ap init/plugin 脚手架 go.mod 生成策略测试。
 //
 // v6.0 复测发现的问题（本组测试锁定修复行为）：
-//   1. 模板硬编码 go 1.23 / agentprimordia v1.0.0，落后框架实际要求（go 1.26）与版本（v6.0.0）
-//   2. 根模块的 replace agentprimordia/pgvector => ../pgvector 不具传递性——
-//      生成的独立子项目 import pkg → internal/memory → pgvector 链路无法解析，
-//      go mod tidy 直接失败（workspace 模式掩盖了该问题，独立构建必现）
+//  1. 模板硬编码 go 1.23 / agentprimordia v1.0.0，落后框架实际要求（go 1.26）与版本（v6.0.0）
+//  2. 根模块的 replace agentprimordia/pgvector => ../pgvector 不具传递性——
+//     生成的独立子项目 import pkg → internal/memory → pgvector 链路无法解析，
+//     go mod tidy 直接失败（workspace 模式掩盖了该问题，独立构建必现）
 //
 // 生成策略：
 //   - 从项目目录向上探测框架模块（go.mod 声明 module agentprimordia）：

@@ -18,12 +18,12 @@ type CleanupConfig struct {
 
 // CleanupManager 会话超时与清理管理器
 type CleanupManager struct {
-	cfg      CleanupConfig
-	hub      *RealtimeHub
-	mu       sync.Mutex
+	cfg        CleanupConfig
+	hub        *RealtimeHub
+	mu         sync.Mutex
 	lastActive map[string]time.Time
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	cancel     context.CancelFunc
+	wg         sync.WaitGroup
 }
 
 // NewCleanupManager 创建清理管理器

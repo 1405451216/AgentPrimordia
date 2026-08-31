@@ -100,10 +100,10 @@ func evalGoalPlan(output string, required []string) (float64, bool) {
 
 // SkillAcquisitionCase 技能习得跑分用例：任务描述 + 成功工具调用轨迹。
 type SkillAcquisitionCase struct {
-	ID         string   `json:"id"`
-	Task       string   `json:"task"`
-	ToolCalls  []string `json:"tool_calls"` // 工具名序列
-	MinSteps   int      `json:"min_steps"`  // 提炼技能最少步骤数
+	ID        string   `json:"id"`
+	Task      string   `json:"task"`
+	ToolCalls []string `json:"tool_calls"` // 工具名序列
+	MinSteps  int      `json:"min_steps"`  // 提炼技能最少步骤数
 }
 
 // RunSkillAcquisitionBench 真实 LLM 技能习得成功率跑分：

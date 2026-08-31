@@ -19,10 +19,10 @@ const llmBenchSystemPrompt = "你是一个严谨的软件工程 Agent。请针�
 // 把基准用例输入交给真实 Provider 生成输出，并累计 token 用量与调用次数。
 // 实现 EvalAgent 接口（Run），供 BenchmarkRunner 与 RunLLMBench 复用。
 type LLMBenchAgent struct {
-	provider llm.Provider
-	model    string
-	system   string
-	timeout  time.Duration
+	provider  llm.Provider
+	model     string
+	system    string
+	timeout   time.Duration
 	maxTokens int
 
 	mu    sync.Mutex
@@ -134,24 +134,24 @@ type LLMBenchCaseResult struct {
 
 // LLMBenchResult 真实 LLM 跑分报告。
 type LLMBenchResult struct {
-	Version          string              `json:"version"`
-	Model            string              `json:"model"`
-	Provider         string              `json:"provider"`
-	Total            int                 `json:"total"`
-	Passed           int                 `json:"passed"`
-	Failed           int                 `json:"failed"`
-	PassRate         float64             `json:"pass_rate"`
-	CostUSD          float64             `json:"cost_usd"`
-	LatencyMs        int64               `json:"latency_ms"`
-	AvgLatencyMs     int64               `json:"avg_latency_ms"`
-	PromptTokens     int                 `json:"prompt_tokens"`
-	CompletionTokens int                 `json:"completion_tokens"`
-	TotalTokens      int                 `json:"total_tokens"`
-	RecoveryRate     float64             `json:"recovery_rate"`
-	Threshold        float64             `json:"threshold"`
-	Baseline         float64             `json:"baseline"`
-	MeetsGate        bool                `json:"meets_gate"`
-	Generated        string              `json:"generated"`
+	Version          string               `json:"version"`
+	Model            string               `json:"model"`
+	Provider         string               `json:"provider"`
+	Total            int                  `json:"total"`
+	Passed           int                  `json:"passed"`
+	Failed           int                  `json:"failed"`
+	PassRate         float64              `json:"pass_rate"`
+	CostUSD          float64              `json:"cost_usd"`
+	LatencyMs        int64                `json:"latency_ms"`
+	AvgLatencyMs     int64                `json:"avg_latency_ms"`
+	PromptTokens     int                  `json:"prompt_tokens"`
+	CompletionTokens int                  `json:"completion_tokens"`
+	TotalTokens      int                  `json:"total_tokens"`
+	RecoveryRate     float64              `json:"recovery_rate"`
+	Threshold        float64              `json:"threshold"`
+	Baseline         float64              `json:"baseline"`
+	MeetsGate        bool                 `json:"meets_gate"`
+	Generated        string               `json:"generated"`
 	Cases            []LLMBenchCaseResult `json:"cases"`
 }
 

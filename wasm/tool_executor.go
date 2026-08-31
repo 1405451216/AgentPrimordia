@@ -40,10 +40,10 @@ type ToolExecutor struct {
 
 // toolRegistration 已注册工具信息
 type toolRegistration struct {
-	name        string
-	moduleName  string
-	executeFunc string
-	wasmBytes   []byte
+	name         string
+	moduleName   string
+	executeFunc  string
+	wasmBytes    []byte
 	registeredAt time.Time
 }
 

@@ -33,16 +33,16 @@ type Interaction struct {
 
 // KnowledgeItem 蒸馏出的知识项
 type KnowledgeItem struct {
-	ID          string `json:"id"`
-	Category    string `json:"category"`    // "fact"/"skill"/"preference"/"pattern"
-	Pattern     string `json:"pattern"`     // 提取的模式/规则
-	Context     string `json:"context"`    // 适用上下文
-	Confidence  float64 `json:"confidence"` // 置信度 0-1
-	Source      string `json:"source"`     // 来源交互 ID
-	TimesUsed   int     `json:"times_used"`
-	TimesCorrect int   `json:"times_correct"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	Category     string    `json:"category"`   // "fact"/"skill"/"preference"/"pattern"
+	Pattern      string    `json:"pattern"`    // 提取的模式/规则
+	Context      string    `json:"context"`    // 适用上下文
+	Confidence   float64   `json:"confidence"` // 置信度 0-1
+	Source       string    `json:"source"`     // 来源交互 ID
+	TimesUsed    int       `json:"times_used"`
+	TimesCorrect int       `json:"times_correct"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // KnowledgeDistiller 知识蒸馏器
@@ -55,8 +55,8 @@ type KnowledgeDistiller struct {
 
 // DistillerStats 蒸馏统计（内部使用，含 atomic 字段，禁止值拷贝）
 type DistillerStats struct {
-	TotalInteractions  atomic.Int64
-	TotalDistilled     atomic.Int64
+	TotalInteractions   atomic.Int64
+	TotalDistilled      atomic.Int64
 	TotalKnowledgeItems atomic.Int64
 }
 
@@ -197,14 +197,14 @@ func (d *KnowledgeDistiller) extractPreferences(inter Interaction) []KnowledgeIt
 		strings.Contains(feedbackLower, "correct") ||
 		strings.Contains(feedbackLower, "right") {
 		items = append(items, KnowledgeItem{
-			ID:         fmt.Sprintf("pref_pos_%s", inter.ID),
-			Category:   "preference",
-			Pattern:    "user prefers this type of response",
-			Confidence: 0.85,
-			Source:     inter.ID,
+			ID:           fmt.Sprintf("pref_pos_%s", inter.ID),
+			Category:     "preference",
+			Pattern:      "user prefers this type of response",
+			Confidence:   0.85,
+			Source:       inter.ID,
 			TimesCorrect: 1,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
 		})
 	}
 
@@ -214,14 +214,14 @@ func (d *KnowledgeDistiller) extractPreferences(inter Interaction) []KnowledgeIt
 		strings.Contains(feedbackLower, "incorrect") ||
 		strings.Contains(feedbackLower, "no") {
 		items = append(items, KnowledgeItem{
-			ID:         fmt.Sprintf("pref_neg_%s", inter.ID),
-			Category:   "preference",
-			Pattern:    "user dislikes this type of response",
-			Confidence: 0.85,
-			Source:     inter.ID,
+			ID:           fmt.Sprintf("pref_neg_%s", inter.ID),
+			Category:     "preference",
+			Pattern:      "user dislikes this type of response",
+			Confidence:   0.85,
+			Source:       inter.ID,
 			TimesCorrect: 0,
-			CreatedAt:  time.Now(),
-			UpdatedAt:  time.Now(),
+			CreatedAt:    time.Now(),
+			UpdatedAt:    time.Now(),
 		})
 	}
 
@@ -304,16 +304,16 @@ func splitSentences(text string) []string {
 type Capability struct {
 	Name        string  `json:"name"`
 	Description string  `json:"description"`
-	Score       float64 `json:"score"`       // 当前评分 0-1
+	Score       float64 `json:"score"` // 当前评分 0-1
 	TimesTested int     `json:"times_tested"`
 	TimesPassed int     `json:"times_passed"`
 }
 
 // CapabilityEvolver 能力进化器
 type CapabilityEvolver struct {
-	mu       sync.RWMutex
+	mu           sync.RWMutex
 	capabilities map[string]*Capability
-	logger   *slog.Logger
+	logger       *slog.Logger
 }
 
 // NewCapabilityEvolver 创建能力进化器
@@ -403,11 +403,11 @@ func (e *CapabilityEvolver) ListCapabilities() []Capability {
 
 // FeedbackEntry 反馈条目
 type FeedbackEntry struct {
-	ID          string `json:"id"`
-	UserInput   string `json:"user_input"`
-	AgentOutput string `json:"agent_output"`
-	Feedback    string `json:"feedback"`
-	Rating      int    `json:"rating"` // -1 负面, 0 中性, 1 正面
+	ID          string    `json:"id"`
+	UserInput   string    `json:"user_input"`
+	AgentOutput string    `json:"agent_output"`
+	Feedback    string    `json:"feedback"`
+	Rating      int       `json:"rating"` // -1 负面, 0 中性, 1 正面
 	Timestamp   time.Time `json:"timestamp"`
 }
 
@@ -420,10 +420,10 @@ type PreferenceModel struct {
 
 // FeedbackLearner 反馈学习器
 type FeedbackLearner struct {
-	mu           sync.RWMutex
-	feedback     []FeedbackEntry
-	preferences  PreferenceModel
-	logger       *slog.Logger
+	mu          sync.RWMutex
+	feedback    []FeedbackEntry
+	preferences PreferenceModel
+	logger      *slog.Logger
 }
 
 // NewFeedbackLearner 创建反馈学习器

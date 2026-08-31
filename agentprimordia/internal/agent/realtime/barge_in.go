@@ -20,9 +20,9 @@ type BargeInEvent struct {
 
 // BargeInHandler 打断处理器：speaking 中用户插入 → 立即响应
 type BargeInHandler struct {
-	mu       sync.Mutex
-	hub      *RealtimeHub
-	events   []BargeInEvent
+	mu        sync.Mutex
+	hub       *RealtimeHub
+	events    []BargeInEvent
 	onBargeIn func(BargeInEvent)
 }
 

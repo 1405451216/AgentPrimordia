@@ -23,9 +23,9 @@ func (m *mockCoreAgent) StreamRun(_ context.Context, _ core.Message) (<-chan cor
 	return nil, nil
 }
 
-func (m *mockCoreAgent) Stop()            {}
+func (m *mockCoreAgent) Stop()                  {}
 func (m *mockCoreAgent) Stats() core.AgentStats { return core.AgentStats{} }
-func (m *mockCoreAgent) Name() string     { return "mock" }
+func (m *mockCoreAgent) Name() string           { return "mock" }
 
 func TestCoreAgentAdapter_Run_Success(t *testing.T) {
 	mock := &mockCoreAgent{

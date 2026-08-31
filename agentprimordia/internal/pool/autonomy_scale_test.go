@@ -72,7 +72,7 @@ func (a *goalRunAgent) StreamRun(ctx context.Context, input agent.Message) (<-ch
 	return ch, err
 }
 
-func (a *goalRunAgent) Stop()     {}
+func (a *goalRunAgent) Stop()                   {}
 func (a *goalRunAgent) Stats() agent.AgentStats { return agent.AgentStats{} }
 func (a *goalRunAgent) Name() string            { return "goal-run" }
 

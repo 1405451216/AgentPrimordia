@@ -45,12 +45,12 @@ func TestKnowledgeDistillerWithFeedback(t *testing.T) {
 	distiller := NewKnowledgeDistiller()
 
 	interaction := Interaction{
-		ID:           "test-2",
-		UserInput:    "Tell me about Go",
-		AgentOutput:  "Go is a programming language. It is compiled.",
-		Feedback:     "Great answer, very helpful!",
-		Success:      true,
-		Timestamp:    time.Now(),
+		ID:          "test-2",
+		UserInput:   "Tell me about Go",
+		AgentOutput: "Go is a programming language. It is compiled.",
+		Feedback:    "Great answer, very helpful!",
+		Success:     true,
+		Timestamp:   time.Now(),
 	}
 
 	items, err := distiller.Distill(context.Background(), interaction)
@@ -74,11 +74,11 @@ func TestKnowledgeDistillerSearch(t *testing.T) {
 	distiller := NewKnowledgeDistiller()
 
 	interaction := Interaction{
-		ID:           "search-test",
-		UserInput:    "What is AI?",
-		AgentOutput:  "AI is artificial intelligence. It is a field of computer science.",
-		Success:      true,
-		Timestamp:    time.Now(),
+		ID:          "search-test",
+		UserInput:   "What is AI?",
+		AgentOutput: "AI is artificial intelligence. It is a field of computer science.",
+		Success:     true,
+		Timestamp:   time.Now(),
 	}
 
 	_, _ = distiller.Distill(context.Background(), interaction)
@@ -100,11 +100,11 @@ func TestKnowledgeDistillerGetKnowledge(t *testing.T) {
 	distiller := NewKnowledgeDistiller()
 
 	interaction := Interaction{
-		ID:           "get-test",
-		UserInput:    "What is 1+1?",
-		AgentOutput:  "1+1 equals 2. This is a basic math fact.",
-		Success:      true,
-		Timestamp:    time.Now(),
+		ID:          "get-test",
+		UserInput:   "What is 1+1?",
+		AgentOutput: "1+1 equals 2. This is a basic math fact.",
+		Success:     true,
+		Timestamp:   time.Now(),
 	}
 
 	items, _ := distiller.Distill(context.Background(), interaction)
@@ -133,11 +133,11 @@ func TestKnowledgeDistillerStats(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		_, _ = distiller.Distill(context.Background(), Interaction{
-			ID:           "stat-" + string(rune('0'+i)),
-			UserInput:    "What is X?",
-			AgentOutput:  "X is a variable. It is commonly used in math.",
-			Success:      true,
-			Timestamp:    time.Now(),
+			ID:          "stat-" + string(rune('0'+i)),
+			UserInput:   "What is X?",
+			AgentOutput: "X is a variable. It is commonly used in math.",
+			Success:     true,
+			Timestamp:   time.Now(),
 		})
 	}
 

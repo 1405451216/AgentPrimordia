@@ -6,11 +6,13 @@
 //   - Zero dependencies: Go stdlib only, compiles to WASI P1
 //
 // Build:
-//   GOOS=wasip1 GOARCH=wasm go build -o gateway.wasm .
+//
+//	GOOS=wasip1 GOARCH=wasm go build -o gateway.wasm .
 //
 // Environment:
-//   GATEWAY_UPSTREAM     = http://agent-backend:8080  (default)
-//   GATEWAY_KV_NAMESPACE = sessionAffinity             (Workers KV binding)
+//
+//	GATEWAY_UPSTREAM     = http://agent-backend:8080  (default)
+//	GATEWAY_KV_NAMESPACE = sessionAffinity             (Workers KV binding)
 package gateway
 
 import (
@@ -26,12 +28,12 @@ import (
 
 // backend tracks the liveness and stats of a backend Pod.
 type backend struct {
-	URL           string    `json:"url"`
-	Healthy       bool      `json:"healthy"`
-	LastChecked   time.Time `json:"last_checked"`
-	SuccessCount  int64     `json:"success_count"`
-	FailureCount  int64     `json:"failure_count"`
-	ResponseTime  time.Duration `json:"response_time_ms"`
+	URL          string        `json:"url"`
+	Healthy      bool          `json:"healthy"`
+	LastChecked  time.Time     `json:"last_checked"`
+	SuccessCount int64         `json:"success_count"`
+	FailureCount int64         `json:"failure_count"`
+	ResponseTime time.Duration `json:"response_time_ms"`
 }
 
 // newBackend 创建一个健康的后端
@@ -182,12 +184,12 @@ func (h *Handler) GetHealthyBackends() []*backend {
 	for _, b := range h.backends {
 		if b.Healthy {
 			out = append(out, &backend{
-				URL:       b.URL,
-				Healthy:   b.Healthy,
-				LastChecked: b.LastChecked,
+				URL:          b.URL,
+				Healthy:      b.Healthy,
+				LastChecked:  b.LastChecked,
 				SuccessCount: b.SuccessCount,
 				FailureCount: b.FailureCount,
-				ResponseTime:  b.ResponseTime,
+				ResponseTime: b.ResponseTime,
 			})
 		}
 	}

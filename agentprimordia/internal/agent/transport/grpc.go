@@ -43,7 +43,8 @@ func (m *grpcRawMessage) Unmarshal(data []byte) error {
 	return nil
 }
 func (m *grpcRawMessage) ProtoMessage() {}
-func (m *grpcRawMessage) Reset() { m.data = nil }
+func (m *grpcRawMessage) Reset()        { m.data = nil }
+
 // String 实现旧式 proto.Message v1 接口（Reset/String/ProtoMessage），
 // 新版 protobuf 经 protoadapt 自动适配为 MessageV2（与 cluster rawMessage 一致）
 func (m *grpcRawMessage) String() string { return string(m.data) }

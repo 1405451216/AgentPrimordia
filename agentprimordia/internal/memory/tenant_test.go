@@ -516,8 +516,8 @@ func ids(eps []*Episode) []string {
 
 // fakeAuditSink 记录型审计出口（测试替身）
 type fakeAuditSink struct {
-	mu       sync.Mutex
-	records  []string // "tenantID|resource"
+	mu      sync.Mutex
+	records []string // "tenantID|resource"
 }
 
 func (f *fakeAuditSink) RecordDenied(_ context.Context, tenantID, resource string) {

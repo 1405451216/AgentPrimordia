@@ -3,11 +3,11 @@ package debugger
 
 import (
 	"context"
-	"path/filepath"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"

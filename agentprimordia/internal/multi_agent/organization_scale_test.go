@@ -12,8 +12,8 @@ import (
 )
 
 type scaleAgent struct {
-	name       string
-	goodAt     map[string]bool // 胜任域集合
+	name   string
+	goodAt map[string]bool // 胜任域集合
 }
 
 func (s *scaleAgent) Name() string { return s.name }

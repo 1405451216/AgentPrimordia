@@ -24,7 +24,7 @@ type DegradationThreshold struct {
 // DefaultDegradationThreshold 默认退化检测阈值
 func DefaultDegradationThreshold() *DegradationThreshold {
 	return &DegradationThreshold{
-		LatencyChangePercent:    50.0, // 延迟增加 50% 以上
+		LatencyChangePercent:    50.0,  // 延迟增加 50% 以上
 		ErrorRateChangePercent:  100.0, // 错误率翻倍
 		ThroughputChangePercent: 30.0,  // 吞吐量下降 30%
 	}
@@ -32,13 +32,13 @@ func DefaultDegradationThreshold() *DegradationThreshold {
 
 // DegradationReport 退化分析报告
 type DegradationReport struct {
-	HasDegradation           bool
-	LatencyTrend             Trend
-	LatencyChangePercent     float64
-	ErrorRateTrend           Trend
-	ErrorRateChangePercent   float64
-	ThroughputTrend           Trend
-	ThroughputChangePercent  float64
+	HasDegradation          bool
+	LatencyTrend            Trend
+	LatencyChangePercent    float64
+	ErrorRateTrend          Trend
+	ErrorRateChangePercent  float64
+	ThroughputTrend         Trend
+	ThroughputChangePercent float64
 	// 前半段 vs 后半段对比
 	FirstHalfAvgLatency     float64 // 毫秒
 	SecondHalfAvgLatency    float64 // 毫秒

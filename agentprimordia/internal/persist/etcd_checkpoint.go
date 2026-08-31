@@ -29,8 +29,8 @@ type EtcdCheckpointStore struct {
 
 	// v6.x（评估报告 Issue #6）：每个 agentID 复用同一个 lease，
 	// 避免每次 Save 都 Grant 新租约导致旧租约堆积到 TTL 才过期。
-	leaseMu  sync.Mutex
-	leases   map[string]clientv3.LeaseID
+	leaseMu sync.Mutex
+	leases  map[string]clientv3.LeaseID
 }
 
 // NewEtcdCheckpointStore 创建 etcd 后端。

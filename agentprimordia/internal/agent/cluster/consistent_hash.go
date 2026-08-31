@@ -12,11 +12,11 @@ import (
 // 用于将 Agent/任务分片到不同节点。
 // 支持虚拟节点以平衡负载分布。
 type ConsistentHash struct {
-	mu          sync.RWMutex
-	replicas    int                 // 每个节点的虚拟节点数
-	ring        []uint32            // 排序的哈希环
-	hashMap     map[uint32]string   // 哈希值 -> 节点ID
-	nodeSet     map[string]bool     // 节点ID集合
+	mu       sync.RWMutex
+	replicas int               // 每个节点的虚拟节点数
+	ring     []uint32          // 排序的哈希环
+	hashMap  map[uint32]string // 哈希值 -> 节点ID
+	nodeSet  map[string]bool   // 节点ID集合
 }
 
 // NewConsistentHash 创建一致性哈希环

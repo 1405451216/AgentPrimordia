@@ -6,7 +6,9 @@
 //   - 无退化（HasDegradation=false，前后半段对比）
 //
 // 运行（注意：30 分钟需 -timeout 覆盖 go test 默认 10m 超时）：
-//   SOAK_STUDIO_DURATION=30m SOAK_STUDIO_RPS=50 go test -timeout 40m -run TestSoak_Studio -v ./bench/soak/
+//
+//	SOAK_STUDIO_DURATION=30m SOAK_STUDIO_RPS=50 go test -timeout 40m -run TestSoak_Studio -v ./bench/soak/
+//
 // CI 冒烟默认 60s。
 package soak
 
@@ -18,8 +20,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
-	"sync/atomic"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 

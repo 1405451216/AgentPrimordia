@@ -169,9 +169,9 @@ func TestRunLLMBench_Recovery(t *testing.T) {
 	// 第二个用例：首轮给出 "Hi"（不含 Hello）→ 失败；第二轮给出 "Hello!" → 恢复
 	p := &mockBenchProvider{responses: []string{
 		"func Fibonacci(n int) int { return n }", // 缺 if n < 0 → 失败
-		goodFib,                                   // 恢复
-		"Hi there!",                               // 缺 Hello → 失败
-		"Hello there!",                            // 恢复
+		goodFib,                                  // 恢复
+		"Hi there!",                              // 缺 Hello → 失败
+		"Hello there!",                           // 恢复
 	}}
 	a := NewLLMBenchAgent(p, "mock-model")
 	cfg := LLMBenchConfig{Version: "v3.5.0", Model: "mock-model", ProviderName: "mock", Retries: 1, Threshold: 0.0}

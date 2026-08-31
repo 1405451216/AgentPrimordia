@@ -31,27 +31,27 @@ type CapabilityAgent struct {
 	inner *ReActAgent
 
 	// 可选能力字段，非 nil 即表示已启用
-	memory      MemoryStore
-	rag         *RAGConfig
-	hitl        *HITLConfig
-	hooks       Hooks
-	tracer      Tracer
-	costTracker *CostTracker
-	ctxWindow   ContextWindowStrategy
-	eventPub    EventPublisher
-	metrics     MetricsRecorder
-	checkpoint  persist.CheckpointStore
+	memory       MemoryStore
+	rag          *RAGConfig
+	hitl         *HITLConfig
+	hooks        Hooks
+	tracer       Tracer
+	costTracker  *CostTracker
+	ctxWindow    ContextWindowStrategy
+	eventPub     EventPublisher
+	metrics      MetricsRecorder
+	checkpoint   persist.CheckpointStore
 	failureStore persist.FailureStore
-	summarizer  memory.SummaryExtractor
-	fileScope   []string
-	cache       llm.LLMCache
-	toolkit     *tools.Registry
-	planner     planning.Planner
-	reflector   reflection.Reflector
-	toolLearner tool_learning.ToolLearner
-	outputGuard OutputGuard
-	inputGuard  InputGuard
-	auditLogger AuditLogger
+	summarizer   memory.SummaryExtractor
+	fileScope    []string
+	cache        llm.LLMCache
+	toolkit      *tools.Registry
+	planner      planning.Planner
+	reflector    reflection.Reflector
+	toolLearner  tool_learning.ToolLearner
+	outputGuard  OutputGuard
+	inputGuard   InputGuard
+	auditLogger  AuditLogger
 	// v3.5-4：全链路关联存储（trace → 指标 → 审计 闭环）
 	observability *observability.CorrelationStore
 

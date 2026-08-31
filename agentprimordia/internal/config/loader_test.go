@@ -8,10 +8,10 @@ import (
 )
 
 type testConfig struct {
-	Name     string `yaml:"name" env:"NAME" flag:"name"`
-	Port     int    `yaml:"port" env:"PORT" flag:"port"`
-	Verbose  bool   `yaml:"verbose" env:"VERBOSE" flag:"verbose"`
-	Tags     []string `yaml:"tags" env:"TAGS"`
+	Name    string   `yaml:"name" env:"NAME" flag:"name"`
+	Port    int      `yaml:"port" env:"PORT" flag:"port"`
+	Verbose bool     `yaml:"verbose" env:"VERBOSE" flag:"verbose"`
+	Tags    []string `yaml:"tags" env:"TAGS"`
 }
 
 func TestLoader_LoadYAML(t *testing.T) {

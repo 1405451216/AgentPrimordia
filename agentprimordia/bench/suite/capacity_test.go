@@ -144,9 +144,9 @@ func TestCapacity_WASM_LatencyTarget(t *testing.T) {
 // 确保分片路由本身不成为瓶颈。
 func TestCapacity_ClusterShard_LookupLatency(t *testing.T) {
 	const (
-		nodeCount      = 3
-		lookupTarget   = 1 * time.Millisecond // 分片查找应 < 1ms
-		iterations     = 10000
+		nodeCount    = 3
+		lookupTarget = 1 * time.Millisecond // 分片查找应 < 1ms
+		iterations   = 10000
 	)
 
 	// 使用 pkg 暴露的集群能力（若可用），否则跳过

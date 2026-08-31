@@ -47,7 +47,7 @@ func NewAnthropicProvider(cfg Config) (*AnthropicProvider, error) {
 	}
 
 	return &AnthropicProvider{
-		config:       cfg,
+		config: cfg,
 		// perf-v5 Task 6：共享 transport（连接池复用 + HTTP/2），
 		// 统一由 BaseProvider 持有。
 		BaseProvider: NewBaseProvider(defaultTimeout),

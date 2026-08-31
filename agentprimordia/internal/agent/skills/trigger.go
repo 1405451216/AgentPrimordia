@@ -24,10 +24,10 @@ type TriggerConfig struct {
 
 // Trigger 习得触发器
 type Trigger struct {
-	cfg         TriggerConfig
-	taskCounts  map[string]int
-	successRate float64
-	totalTasks  int
+	cfg          TriggerConfig
+	taskCounts   map[string]int
+	successRate  float64
+	totalTasks   int
 	successTasks int
 }
 

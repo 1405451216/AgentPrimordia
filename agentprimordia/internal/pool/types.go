@@ -29,7 +29,6 @@ type TaskConfig struct {
 	Metadata   map[string]string `json:"metadata,omitempty"`
 }
 
-
 type TaskResult struct {
 	TaskID   string          `json:"task_id"`
 	Task     TaskConfig      `json:"task"`

@@ -49,7 +49,7 @@ type A2AClient struct {
 	bearerToken string
 	logger      *slog.Logger
 	// nextID JSON-RPC 请求 ID 计数器：并发调用共享，必须原子递增（-race 实测发现）
-	nextID      atomic.Int64
+	nextID atomic.Int64
 }
 
 // defaultA2AHTTPTimeout 是 A2A 客户端默认的总request timeout。

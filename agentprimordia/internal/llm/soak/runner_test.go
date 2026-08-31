@@ -167,7 +167,7 @@ func TestDegradationStable(t *testing.T) {
 	samples := make([]Sample, 10)
 	for i := range samples {
 		samples[i] = Sample{
-			Requests:   100,
+			Requests:    100,
 			Errors:      1,
 			AvgLatency:  50 * time.Millisecond,
 			Throughput:  100,
@@ -186,7 +186,7 @@ func TestDegradationLatency(t *testing.T) {
 	// 前半段：50ms 延迟
 	for i := 0; i < 5; i++ {
 		samples[i] = Sample{
-			Requests:   100,
+			Requests:    100,
 			Errors:      0,
 			AvgLatency:  50 * time.Millisecond,
 			Throughput:  100,
@@ -196,7 +196,7 @@ func TestDegradationLatency(t *testing.T) {
 	// 后半段：200ms 延迟（退化 300%）
 	for i := 5; i < 10; i++ {
 		samples[i] = Sample{
-			Requests:   100,
+			Requests:    100,
 			Errors:      0,
 			AvgLatency:  200 * time.Millisecond,
 			Throughput:  100,
@@ -218,7 +218,7 @@ func TestDegradationErrorRate(t *testing.T) {
 	// 前半段：1% 错误率
 	for i := 0; i < 5; i++ {
 		samples[i] = Sample{
-			Requests:   100,
+			Requests:    100,
 			Errors:      1,
 			AvgLatency:  50 * time.Millisecond,
 			Throughput:  100,
@@ -228,7 +228,7 @@ func TestDegradationErrorRate(t *testing.T) {
 	// 后半段：50% 错误率（退化）
 	for i := 5; i < 10; i++ {
 		samples[i] = Sample{
-			Requests:   100,
+			Requests:    100,
 			Errors:      50,
 			AvgLatency:  50 * time.Millisecond,
 			Throughput:  100,
@@ -250,9 +250,9 @@ func TestFormatReport(t *testing.T) {
 		StartTime:      time.Now(),
 		EndTime:        time.Now().Add(1 * time.Second),
 		Duration:       1 * time.Second,
-		TotalRequests:   100,
-		TotalErrors:     5,
-		TotalLatencyNs:  5000000000,
+		TotalRequests:  100,
+		TotalErrors:    5,
+		TotalLatencyNs: 5000000000,
 	}
 
 	report := FormatReport(result)

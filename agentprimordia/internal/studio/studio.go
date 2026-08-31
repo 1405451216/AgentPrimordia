@@ -81,8 +81,8 @@ type LearningStats struct {
 
 // CapabilityHistoryPoint 能力分数时间点。
 type CapabilityHistoryPoint struct {
-	Score     float64 `json:"score"`
-	RecordedAt string `json:"recordedAt"`
+	Score      float64 `json:"score"`
+	RecordedAt string  `json:"recordedAt"`
 }
 
 // CapabilityHistory 单个能力的历史分数序列。
@@ -102,11 +102,11 @@ type Capability struct {
 
 // PipelineStats 蒸馏管道统计。
 type PipelineStats struct {
-	TotalProcessed      int    `json:"totalProcessed"`
-	TotalFactsWritten   int    `json:"totalFactsWritten"`
-	TotalPatternsWritten int   `json:"totalPatternsWritten"`
-	TotalRAGQueries     int    `json:"totalRAGQueries"`
-	LastProcessTime     string `json:"lastProcessTime"`
+	TotalProcessed       int    `json:"totalProcessed"`
+	TotalFactsWritten    int    `json:"totalFactsWritten"`
+	TotalPatternsWritten int    `json:"totalPatternsWritten"`
+	TotalRAGQueries      int    `json:"totalRAGQueries"`
+	LastProcessTime      string `json:"lastProcessTime"`
 }
 
 // AgentTemplate 市场模板。

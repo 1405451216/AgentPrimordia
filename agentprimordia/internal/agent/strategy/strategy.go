@@ -31,9 +31,9 @@ type Task struct {
 
 // Result 策略执行结果
 type Result struct {
-	Output       string             // 最终输出
-	Turns        int                // 实际消耗轮数
-	Usage        llm.Usage          // token 用量
+	Output       string              // 最终输出
+	Turns        int                 // 实际消耗轮数
+	Usage        llm.Usage           // token 用量
 	Verification *VerificationReport // 验证报告（未验证为 nil）
 }
 

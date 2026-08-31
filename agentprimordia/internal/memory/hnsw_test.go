@@ -140,7 +140,7 @@ func TestHNSW_Compact(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		v := make([]float32, 8)
 		v[0] = float32(i + 1)
-		v[1] = float32(i + 1) * 0.1
+		v[1] = float32(i+1) * 0.1
 		idx.Insert(context.Background(), fmt.Sprintf("vec-%d", i), v, nil)
 	}
 

@@ -48,11 +48,11 @@ func TestSoakChaosRunner_BasicRun(t *testing.T) {
 		},
 		Experiments: []Experiment{
 			{
-				Name:       "test-fault",
-				Hypothesis: "system should survive",
-				Faults:     []Fault{&mockSoakFault{name: "test"}},
+				Name:        "test-fault",
+				Hypothesis:  "system should survive",
+				Faults:      []Fault{&mockSoakFault{name: "test"}},
 				SteadyState: &mockSoakSteadyState{met: true},
-				Duration:   100 * time.Millisecond,
+				Duration:    100 * time.Millisecond,
 			},
 		},
 	})

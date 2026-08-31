@@ -10,7 +10,7 @@ import (
 
 // mockCheckpointStore 模拟检查点存储
 type mockCheckpointStore struct {
-	mu         sync.Mutex
+	mu          sync.Mutex
 	checkpoints map[string]*Checkpoint
 }
 

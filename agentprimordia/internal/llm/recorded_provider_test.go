@@ -15,11 +15,6 @@ import (
 	"testing"
 )
 
-// newScriptedSource 构造一个按脚本顺序返回的源 Provider（模拟真实 Provider）
-func newScriptedSource(responses []string) Provider {
-	return NewMockLLM(nil)
-}
-
 func TestRecordedProvider_RecordAndReplayComplete(t *testing.T) {
 	ctx := context.Background()
 

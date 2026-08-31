@@ -53,11 +53,11 @@ type AudioStreamConfig struct {
 
 // AudioStream 音频流处理器：chunk 缓冲 + 静音检测 + 格式协商
 type AudioStream struct {
-	mu       sync.Mutex
-	cfg      AudioStreamConfig
-	buffer   []AudioChunk
-	seqNum   int
-	format   AudioFormat
+	mu     sync.Mutex
+	cfg    AudioStreamConfig
+	buffer []AudioChunk
+	seqNum int
+	format AudioFormat
 }
 
 // NewAudioStream 创建音频流处理器

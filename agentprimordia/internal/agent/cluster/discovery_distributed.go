@@ -290,7 +290,7 @@ type DistributedDiscovery struct {
 	// 本地缓存的 Agent 信息（从 KV 存储同步）
 	cache map[string]*discovery.AgentInfo
 	// 心跳停止
-	stopCh chan struct{}
+	stopCh  chan struct{}
 	running bool
 }
 
@@ -317,7 +317,7 @@ func NewDistributedDiscovery(cfg DistributedDiscoveryConfig) *DistributedDiscove
 
 	return &DistributedDiscovery{
 		kv:        cfg.KVStore,
-		localID:  cfg.NodeID,
+		localID:   cfg.NodeID,
 		logger:    slog.Default(),
 		heartbeat: cfg.HeartbeatInterval,
 		cache:     make(map[string]*discovery.AgentInfo),

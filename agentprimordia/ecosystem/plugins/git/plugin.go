@@ -161,8 +161,8 @@ func (t *GitTool) Execute(ctx context.Context, input json.RawMessage) (*ap.ToolR
 	output, err := cmd.CombinedOutput()
 
 	result := map[string]any{
-		"action":   action,
-		"output":   strings.TrimSpace(string(output)),
+		"action":    action,
+		"output":    strings.TrimSpace(string(output)),
 		"exit_code": cmd.ProcessState.ExitCode(),
 	}
 	if err != nil && cmd.ProcessState.ExitCode() != 0 {

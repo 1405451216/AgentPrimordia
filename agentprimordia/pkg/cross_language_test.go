@@ -27,9 +27,9 @@ type crossLanguageSpec struct {
 }
 
 type testSuiteSpec struct {
-	Name        string           `json:"name"`
-	Description string           `json:"description"`
-	Cases       []testCaseSpec   `json:"cases"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Cases       []testCaseSpec `json:"cases"`
 }
 
 type testCaseSpec struct {

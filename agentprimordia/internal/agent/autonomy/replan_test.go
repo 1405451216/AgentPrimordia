@@ -31,8 +31,8 @@ func TestReplanTrigger(t *testing.T) {
 	}
 
 	rp := NewReplanner(ReplannerConfig{
-		Planner:      planner,
-		MaxReplans:   3,
+		Planner:    planner,
+		MaxReplans: 3,
 	})
 
 	goal := NewAgentGoal("测试重规划", GoalConfig{})

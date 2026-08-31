@@ -103,12 +103,12 @@ func TestGoldenTask(t *testing.T) {
 func TestGoldenErrorCodes(t *testing.T) {
 	// 标准错误码值对齐开放规范
 	cases := map[OpenErrorCode]int{
-		OpenErrParseError:      -32700,
-		OpenErrInvalidRequest:  -32600,
-		OpenErrMethodNotFound:  -32601,
-		OpenErrInvalidParams:   -32602,
-		OpenErrInternal:        -32603,
-		OpenErrTaskNotFound:    -32001,
+		OpenErrParseError:     -32700,
+		OpenErrInvalidRequest: -32600,
+		OpenErrMethodNotFound: -32601,
+		OpenErrInvalidParams:  -32602,
+		OpenErrInternal:       -32603,
+		OpenErrTaskNotFound:   -32001,
 	}
 	for code, want := range cases {
 		if int(code) != want {

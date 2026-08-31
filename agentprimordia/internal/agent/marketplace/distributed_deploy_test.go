@@ -126,9 +126,9 @@ type mockLoadReporter struct {
 	capacity int
 }
 
-func (r *mockLoadReporter) QueueDepth() int    { return r.depth }
-func (r *mockLoadReporter) ActiveAgents() int  { return r.active }
-func (r *mockLoadReporter) MaxCapacity() int   { return r.capacity }
+func (r *mockLoadReporter) QueueDepth() int   { return r.depth }
+func (r *mockLoadReporter) ActiveAgents() int { return r.active }
+func (r *mockLoadReporter) MaxCapacity() int  { return r.capacity }
 
 // ===== 测试用例 =====
 

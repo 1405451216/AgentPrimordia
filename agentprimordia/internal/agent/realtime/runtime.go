@@ -44,13 +44,13 @@ type RuntimeConfig struct {
 
 // Runtime 实时运行时：装配 Hub + 感知模块 + 事件总线 + 清理器
 type Runtime struct {
-	mu       sync.RWMutex
-	cfg      RuntimeConfig
-	Hub      *RealtimeHub
-	Events   *EventBus
-	Cleanup  *CleanupManager
-	BargeIn  *BargeInHandler
-	streams  map[string]*sessionStreams
+	mu      sync.RWMutex
+	cfg     RuntimeConfig
+	Hub     *RealtimeHub
+	Events  *EventBus
+	Cleanup *CleanupManager
+	BargeIn *BargeInHandler
+	streams map[string]*sessionStreams
 	// transcripts 每会话转写文本累积（v4.1 集成3：关闭时生成摘要入 memory）
 	transcripts map[string][]string
 	// memSinkErrs 会话摘要记忆写入失败次数
@@ -96,11 +96,11 @@ func NewRuntime(cfg RuntimeConfig) *Runtime {
 	})
 
 	rt := &Runtime{
-		cfg:     cfg,
-		Hub:     hub,
-		Events:  events,
-		BargeIn: NewBargeInHandler(hub),
-		streams:    make(map[string]*sessionStreams),
+		cfg:         cfg,
+		Hub:         hub,
+		Events:      events,
+		BargeIn:     NewBargeInHandler(hub),
+		streams:     make(map[string]*sessionStreams),
 		transcripts: make(map[string][]string),
 	}
 	rt.Cleanup = NewCleanupManager(hub, CleanupConfig{IdleTimeout: cfg.IdleTimeout})

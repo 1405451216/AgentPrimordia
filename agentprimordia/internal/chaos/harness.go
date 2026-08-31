@@ -116,8 +116,8 @@ type HarnessChaosReport struct {
 	FaultPassed      int     `json:"fault_passed"`
 	BaselinePassRate float64 `json:"baseline_pass_rate"`
 	FaultPassRate    float64 `json:"fault_pass_rate"`
-	Degradation      float64 `json:"degradation"`      // 成功率绝对下降
-	DegradationPct   float64 `json:"degradation_pct"`  // 相对下降百分比
+	Degradation      float64 `json:"degradation"`       // 成功率绝对下降
+	DegradationPct   float64 `json:"degradation_pct"`   // 相对下降百分比
 	InjectedFailures int     `json:"injected_failures"` // 实际注入的故障数
 	DurationMs       int64   `json:"duration_ms"`
 }

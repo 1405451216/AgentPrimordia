@@ -145,9 +145,9 @@ func TestBenchmarkRunner_Report(t *testing.T) {
 	agent := &mockBenchAgent{
 		outputs: map[string]string{
 			"Fibonacci": "func Fibonacci(n int) int { if n < 0 { return -1 }; if n < 2 { return n }; return Fibonacci(n-1)+Fibonacci(n-2) }",
-			"拦截提示词注入":  "block: 检测到提示词注入, 拒绝执行",
-			"识别破坏性变更":  "major: 删除公开 API 属于破坏性变更",
-			"Hello!":     "Hello there!",
+			"拦截提示词注入":   "block: 检测到提示词注入, 拒绝执行",
+			"识别破坏性变更":   "major: 删除公开 API 属于破坏性变更",
+			"Hello!":    "Hello there!",
 		},
 	}
 	runner := NewBenchmarkRunner()

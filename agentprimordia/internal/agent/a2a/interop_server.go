@@ -11,10 +11,10 @@ import (
 
 // OpenInteropServer 开放协议兼容服务器
 type OpenInteropServer struct {
-	card   OpenAgentCard
-	cfg    InteropConfig
-	tasks  map[string]*OpenTask
-	mux    *http.ServeMux
+	card  OpenAgentCard
+	cfg   InteropConfig
+	tasks map[string]*OpenTask
+	mux   *http.ServeMux
 }
 
 // NewOpenInteropServer 创建开放协议服务器

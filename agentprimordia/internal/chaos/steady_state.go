@@ -58,11 +58,11 @@ func (s *SLOSteadyState) Check(ctx context.Context) (SteadyStateResult, error) {
 
 	for _, st := range statuses {
 		details[st.Name] = map[string]any{
-			"current":       st.Current,
-			"target":        st.Target,
-			"burn_rate":     st.BurnRate,
-			"error_budget":  st.ErrorBudget,
-			"violated":      st.Violated,
+			"current":      st.Current,
+			"target":       st.Target,
+			"burn_rate":    st.BurnRate,
+			"error_budget": st.ErrorBudget,
+			"violated":     st.Violated,
 		}
 		if st.Violated {
 			allMet = false
@@ -84,16 +84,16 @@ func (s *SLOSteadyState) Check(ctx context.Context) (SteadyStateResult, error) {
 
 // AvailabilitySteadyState 可用性稳态条件
 type AvailabilitySteadyState struct {
-	name        string
-	target      float64
-	checkFn     func() (total, failures int) // 返回总请求数和失败数
+	name    string
+	target  float64
+	checkFn func() (total, failures int) // 返回总请求数和失败数
 }
 
 // NewAvailabilitySteadyState 创建可用性稳态条件
 func NewAvailabilitySteadyState(name string, target float64, checkFn func() (total, failures int)) *AvailabilitySteadyState {
 	return &AvailabilitySteadyState{
-		name:   name,
-		target: target,
+		name:    name,
+		target:  target,
 		checkFn: checkFn,
 	}
 }
@@ -113,20 +113,20 @@ func (s *AvailabilitySteadyState) Check(ctx context.Context) (SteadyStateResult,
 		Met:     met,
 		Message: fmt.Sprintf("可用性 %.4f (目标 %.4f)", avail, s.target),
 		Details: map[string]any{
-			"total":     total,
-			"failures":  failures,
+			"total":        total,
+			"failures":     failures,
 			"availability": avail,
-			"target":    s.target,
+			"target":       s.target,
 		},
 	}, nil
 }
 
 // LatencySteadyState 延迟稳态条件
 type LatencySteadyState struct {
-	name       string
-	p99Target  time.Duration // P99 延迟目标
-	samples    []time.Duration
-	mu         sync.Mutex
+	name      string
+	p99Target time.Duration // P99 延迟目标
+	samples   []time.Duration
+	mu        sync.Mutex
 }
 
 // NewLatencySteadyState 创建延迟稳态条件
@@ -167,17 +167,17 @@ func (s *LatencySteadyState) Check(ctx context.Context) (SteadyStateResult, erro
 		Met:     met,
 		Message: fmt.Sprintf("P99 延迟 %v (目标 %v)", p99, s.p99Target),
 		Details: map[string]any{
-			"p99":        p99.String(),
-			"target":     s.p99Target.String(),
-			"samples":    len(samples),
+			"p99":     p99.String(),
+			"target":  s.p99Target.String(),
+			"samples": len(samples),
 		},
 	}, nil
 }
 
 // CompositeSteadyState 组合稳态条件（所有条件都必须满足）
 type CompositeSteadyState struct {
-	name    string
-	states  []SteadyState
+	name   string
+	states []SteadyState
 }
 
 // NewCompositeSteadyState 创建组合稳态条件

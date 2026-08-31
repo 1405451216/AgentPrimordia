@@ -4,12 +4,12 @@
 // 季度改进曲线制度」。验收：季度报告——成功率/缺陷检出率曲线持续上升（对照 base 模型）。
 //
 // 制度三件套：
-//   1. RunQuarterly：一次季度测量 = 自举组（共享记忆 + ImprovingProvider 经验积累）
-//      vs base 对照组（能力冻结、每轮全新记忆——即「不学习的 base 模型」）。
-//      两组用同一任务集、同一评估器，差异纯粹来自学习机制。
-//   2. CompareQuarters / ValidateRecord：季度回归门——本期较上期退化超过容差、
-//      曲线不升、或跑不赢 base，任一命中即失败（不达标不出季报）。
-//   3. Save/LoadQuarterlyRecord：JSON 落盘 bench/results/，跨季度可追溯。
+//  1. RunQuarterly：一次季度测量 = 自举组（共享记忆 + ImprovingProvider 经验积累）
+//     vs base 对照组（能力冻结、每轮全新记忆——即「不学习的 base 模型」）。
+//     两组用同一任务集、同一评估器，差异纯粹来自学习机制。
+//  2. CompareQuarters / ValidateRecord：季度回归门——本期较上期退化超过容差、
+//     曲线不升、或跑不赢 base，任一命中即失败（不达标不出季报）。
+//  3. Save/LoadQuarterlyRecord：JSON 落盘 bench/results/，跨季度可追溯。
 //
 // 季度节奏：AP_WRITE_QUARTERLY_BENCH=1 go test ./internal/self_bootstrap/ 刷新记录并提交。
 package self_bootstrap

@@ -35,12 +35,12 @@ type AgentState struct {
 
 // CheckpointPlan Plan 执行的持久化进度，用于断点续跑整个计划。
 type CheckpointPlan struct {
-	Subtasks     []CheckpointSubTask `json:"subtasks"`
-	Completed    []string            `json:"completed"`
-	Results      map[string]string   `json:"results"`
-	TotalTools   int                 `json:"total_tools"`
-	LLMLatencyNs int64               `json:"llm_latency_ns"`
-	ToolLatencyNs int64              `json:"tool_latency_ns"`
+	Subtasks      []CheckpointSubTask `json:"subtasks"`
+	Completed     []string            `json:"completed"`
+	Results       map[string]string   `json:"results"`
+	TotalTools    int                 `json:"total_tools"`
+	LLMLatencyNs  int64               `json:"llm_latency_ns"`
+	ToolLatencyNs int64               `json:"tool_latency_ns"`
 }
 
 // CheckpointSubTask Plan 子任务的持久化表示。

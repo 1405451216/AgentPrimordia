@@ -214,9 +214,9 @@ func TestDistributedStateMerge(t *testing.T) {
 func TestClusterManagerStartStop(t *testing.T) {
 	disc := discovery.NewLocalDiscovery()
 	mgr := NewClusterManager(ClusterConfig{
-		NodeID:     "test-node-1",
-		ListenAddr: ":18080",
-		Discovery:  disc,
+		NodeID:            "test-node-1",
+		ListenAddr:        ":18080",
+		Discovery:         disc,
 		HeartbeatInterval: 1 * time.Second,
 		HeartbeatTimeout:  3 * time.Second,
 		ElectionTimeout:   2 * time.Second,
@@ -248,9 +248,9 @@ func TestClusterManagerStartStop(t *testing.T) {
 func TestClusterManagerLeaderElection(t *testing.T) {
 	disc := discovery.NewLocalDiscovery()
 	mgr := NewClusterManager(ClusterConfig{
-		NodeID:     "solo-node",
-		ListenAddr: ":18081",
-		Discovery:  disc,
+		NodeID:            "solo-node",
+		ListenAddr:        ":18081",
+		Discovery:         disc,
 		HeartbeatInterval: 100 * time.Millisecond,
 		HeartbeatTimeout:  300 * time.Millisecond,
 		ElectionTimeout:   200 * time.Millisecond,
@@ -495,19 +495,19 @@ func TestClusterManagerFencingSplitBrain(t *testing.T) {
 	sharedKV := NewMemKVStore()
 
 	cfgA := ClusterConfig{
-		NodeID:     "node-A",
-		ListenAddr: ":19081",
-		Discovery:  discovery.NewLocalDiscovery(),
-		StateStore: sharedKV, // 两节点共享同一 KV
+		NodeID:            "node-A",
+		ListenAddr:        ":19081",
+		Discovery:         discovery.NewLocalDiscovery(),
+		StateStore:        sharedKV, // 两节点共享同一 KV
 		HeartbeatInterval: 50 * time.Millisecond,
 		HeartbeatTimeout:  200 * time.Millisecond,
 		ElectionTimeout:   100 * time.Millisecond,
 	}
 	cfgB := ClusterConfig{
-		NodeID:     "node-B",
-		ListenAddr: ":19082",
-		Discovery:  discovery.NewLocalDiscovery(),
-		StateStore: sharedKV, // 两节点共享同一 KV
+		NodeID:            "node-B",
+		ListenAddr:        ":19082",
+		Discovery:         discovery.NewLocalDiscovery(),
+		StateStore:        sharedKV, // 两节点共享同一 KV
 		HeartbeatInterval: 50 * time.Millisecond,
 		HeartbeatTimeout:  200 * time.Millisecond,
 		ElectionTimeout:   100 * time.Millisecond,
@@ -561,19 +561,19 @@ func TestClusterManagerFencingTakeover(t *testing.T) {
 	sharedKV := NewMemKVStore()
 
 	cfgA := ClusterConfig{
-		NodeID:     "node-A",
-		ListenAddr: ":19181",
-		Discovery:  discovery.NewLocalDiscovery(),
-		StateStore: sharedKV,
+		NodeID:            "node-A",
+		ListenAddr:        ":19181",
+		Discovery:         discovery.NewLocalDiscovery(),
+		StateStore:        sharedKV,
 		HeartbeatInterval: 50 * time.Millisecond,
 		HeartbeatTimeout:  200 * time.Millisecond,
 		ElectionTimeout:   100 * time.Millisecond,
 	}
 	cfgB := ClusterConfig{
-		NodeID:     "node-B",
-		ListenAddr: ":19182",
-		Discovery:  discovery.NewLocalDiscovery(),
-		StateStore: sharedKV,
+		NodeID:            "node-B",
+		ListenAddr:        ":19182",
+		Discovery:         discovery.NewLocalDiscovery(),
+		StateStore:        sharedKV,
 		HeartbeatInterval: 50 * time.Millisecond,
 		HeartbeatTimeout:  200 * time.Millisecond,
 		ElectionTimeout:   100 * time.Millisecond,

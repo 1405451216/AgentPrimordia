@@ -41,12 +41,12 @@ var ErrNotApproved = errors.New("learning: 建议未经人工批准")
 
 // Outcome 任务结果
 type Outcome struct {
-	Domain           string // 能力域
-	Success          bool
-	Turns            int    // 消耗轮数
-	FailureSignature string // 失败签名（失败时必填）
-	ErrorText        string // 原始错误（入失败库）
-	Input            string // 用户输入（入失败库）
+	Domain            string // 能力域
+	Success           bool
+	Turns             int    // 消耗轮数
+	FailureSignature  string // 失败签名（失败时必填）
+	ErrorText         string // 原始错误（入失败库）
+	Input             string // 用户输入（入失败库）
 	TrajectorySummary string // 成功轨迹摘要（高轮数成功触发技能合成建议）
 }
 
@@ -80,13 +80,13 @@ func (f skillSynthAdapter) Synthesize(ctx context.Context, name, traj string) (s
 
 // FeedbackLoop 结果反馈回路
 type FeedbackLoop struct {
-	mu        sync.Mutex
-	model     *memory.SelfModel
-	failures  FailureRecorder
-	synth     SkillSynthesizer
-	pending   map[string]*Suggestion
-	approved  map[string]bool
-	appliedN  int
+	mu            sync.Mutex
+	model         *memory.SelfModel
+	failures      FailureRecorder
+	synth         SkillSynthesizer
+	pending       map[string]*Suggestion
+	approved      map[string]bool
+	appliedN      int
 	lastTraj      string // 最近一次成功轨迹摘要
 	lastTrajTurns int
 	applier       func(Suggestion) error
@@ -152,7 +152,7 @@ func (f *FeedbackLoop) Suggest(domain, signature string) []Suggestion {
 		}
 		if fp.Mitigation != "" {
 			add(Suggestion{
-				ID: fmt.Sprintf("sg-prompt-%s-%d", fp.Signature, now.UnixNano()),
+				ID:     fmt.Sprintf("sg-prompt-%s-%d", fp.Signature, now.UnixNano()),
 				Domain: domain, Scope: ScopePrompt,
 				Description: fmt.Sprintf("失败模式 %q 已有缓解手段：%s。建议注入系统提示规避。", fp.Signature, fp.Mitigation),
 				Payload:     map[string]string{"append": "注意规避：" + fp.Mitigation},
@@ -165,7 +165,7 @@ func (f *FeedbackLoop) Suggest(domain, signature string) []Suggestion {
 	for _, w := range f.model.WeakDomains(3, 50) {
 		if w.Domain == domain {
 			add(Suggestion{
-				ID: fmt.Sprintf("sg-config-%s-%d", w.Domain, now.UnixNano()),
+				ID:     fmt.Sprintf("sg-config-%s-%d", w.Domain, now.UnixNano()),
 				Domain: w.Domain, Scope: ScopeConfig,
 				Description: fmt.Sprintf("能力域 %q 成功率 %.0f%%，建议提高 MaxTurns/MaxCorrections 预算。", w.Domain, w.SuccessRate()*100),
 				Payload:     map[string]string{"max_turns": "16", "max_corrections": "3"},

@@ -21,10 +21,10 @@ type SandboxConfig struct {
 // DefaultSandboxConfig 返回默认沙箱配置
 func DefaultSandboxConfig() SandboxConfig {
 	return SandboxConfig{
-		MaxMemoryPages:   16,            // 1MB (16 * 64KB)
+		MaxMemoryPages:   16, // 1MB (16 * 64KB)
 		MaxExecutionTime: 5 * time.Second,
 		MaxFuel:          1_000_000_000, // 10亿 fuel
-		AllowedImports:   []string{},     // 默认不允许 WASI imports
+		AllowedImports:   []string{},    // 默认不允许 WASI imports
 		EnableSIMD:       false,
 	}
 }

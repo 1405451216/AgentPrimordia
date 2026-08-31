@@ -41,7 +41,7 @@ type SimpleVectorStore struct {
 	// v6.x（评估报告 Issue #12）：HNSW 惰性删除不回收内存，
 	// 设置删除僵尸阈值自动触发 Compact()，长跑进程内存不再单调增长。
 	// 0 表示禁用自动压缩（调用方手动 Compact）。
-	hnswDeleteThreshold int
+	hnswDeleteThreshold        int
 	hnswDeletesSinceCompaction int
 }
 

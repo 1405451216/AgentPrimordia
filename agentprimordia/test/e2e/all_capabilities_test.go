@@ -2,8 +2,9 @@
 //
 // 一条链路验证四跃迁能力（autonomy / skills / realtime / a2a）+
 // Studio 真实接线协同工作（全部 mock 驱动，CI 可跑）：
-//   自治目标完成 → 技能习得入库 → 实时语音会话（流式）→ 视觉帧分析
-//   → A2A 跨协议委托 → Studio 面板读到真实数据
+//
+//	自治目标完成 → 技能习得入库 → 实时语音会话（流式）→ 视觉帧分析
+//	→ A2A 跨协议委托 → Studio 面板读到真实数据
 package e2e
 
 import (
@@ -91,7 +92,7 @@ func TestE2E_AllCapabilities(t *testing.T) {
 
 	// 3. realtime：流式语音会话 + 视觉帧分析
 	rtrt := realtime.NewRuntime(realtime.RuntimeConfig{
-		React: &streamBridge{chunks: []string{"你好", "，链路"}},
+		React:      &streamBridge{chunks: []string{"你好", "，链路"}},
 		Multimodal: &visionProvider{desc: "画面中有服务器"},
 	})
 	rtrt.OpenSession("e2e-voice")
@@ -193,4 +194,3 @@ type visionProvider struct {
 func (p *visionProvider) AnalyzeFrame(_ context.Context, _ realtime.VideoFrame) (string, error) {
 	return p.desc, nil
 }
-

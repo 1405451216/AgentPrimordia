@@ -168,4 +168,3 @@ func BenchmarkP95MemorySearch(b *testing.B) {
 	}
 	c.report(b)
 }
-

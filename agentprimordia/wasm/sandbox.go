@@ -13,11 +13,11 @@ import (
 
 // SandboxConfig WASM 沙箱配置。
 type SandboxConfig struct {
-	MaxMemoryPages  int
+	MaxMemoryPages   int
 	MaxExecutionTime time.Duration
-	MaxFuel         uint64
-	AllowedImports  []string
-	EnableDebug     bool
+	MaxFuel          uint64
+	AllowedImports   []string
+	EnableDebug      bool
 }
 
 // DefaultSandboxConfig 返回默认配置。
@@ -227,4 +227,3 @@ func (s *Sandbox) WithFuel(ctx context.Context) context.Context {
 	}
 	return ctx
 }
-

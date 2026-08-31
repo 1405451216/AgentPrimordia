@@ -12,7 +12,7 @@ func TestOpenAgentCardJSON(t *testing.T) {
 		URL:         "http://localhost:8080",
 		Version:     "1.0.0",
 		Capabilities: OpenCapabilities{
-			Streaming:       true,
+			Streaming:         true,
 			PushNotifications: false,
 		},
 		Skills: []OpenSkillDecl{

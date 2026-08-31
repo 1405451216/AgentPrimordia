@@ -109,13 +109,13 @@ type SoakChaosResult struct {
 
 // SoakSample 采样点
 type SoakSample struct {
-	Timestamp    time.Time
-	Requests     int64
-	Errors       int64
-	AvgLatency   time.Duration
-	P99Latency   time.Duration
-	ChaosActive  bool
-	ChaosName    string
+	Timestamp   time.Time
+	Requests    int64
+	Errors      int64
+	AvgLatency  time.Duration
+	P99Latency  time.Duration
+	ChaosActive bool
+	ChaosName   string
 }
 
 // AvgLatencyMs 平均延迟（毫秒）

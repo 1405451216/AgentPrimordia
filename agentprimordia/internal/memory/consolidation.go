@@ -47,16 +47,16 @@ func (c *ConsolidationConfig) fillDefaults() {
 
 // SemanticExperience 固化产物：一条语义经验
 type SemanticExperience struct {
-	ID        string    `json:"id"`
-	Summary   string    `json:"summary"`          // 蒸馏后的通用经验
-	SourceIDs []string  `json:"source_ids"`       // 来源情景记忆 ID
-	Importance float64  `json:"importance"`       // 继承簇内最高重要性
-	CreatedAt time.Time `json:"created_at"`
+	ID         string    `json:"id"`
+	Summary    string    `json:"summary"`    // 蒸馏后的通用经验
+	SourceIDs  []string  `json:"source_ids"` // 来源情景记忆 ID
+	Importance float64   `json:"importance"` // 继承簇内最高重要性
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 // Consolidator 记忆固化器
 type Consolidator struct {
-	mu sync.Mutex
+	mu  sync.Mutex
 	cfg ConsolidationConfig
 
 	// episodic 情景记忆池（id → 内容）

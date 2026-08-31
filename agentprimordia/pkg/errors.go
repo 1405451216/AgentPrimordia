@@ -225,16 +225,16 @@ var errorCodeMapping = map[error]string{
 	ErrScopeOverlap:        "CON_002",
 
 	// --- Governance 错误 ---
-	ErrQuotaExceeded:  "GOV_001",
-	ErrPolicyDenied:   "GOV_002",
-	ErrOutputTooLong:  "GOV_003",
+	ErrQuotaExceeded: "GOV_001",
+	ErrPolicyDenied:  "GOV_002",
+	ErrOutputTooLong: "GOV_003",
 
 	// --- Guardrail 错误 ---
 	ErrInputBlocked:  "GRD_001",
 	ErrOutputBlocked: "GRD_002",
 
 	// --- Orchestration 错误 ---
-	ErrNoAgentAvailable:    "ORC_001",
+	ErrNoAgentAvailable:     "ORC_001",
 	ErrHandoffLimitExceeded: "ORC_002",
 
 	// --- A2A 错误 ---

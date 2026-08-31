@@ -45,9 +45,9 @@ func (m *selfHealMock) Run(_ context.Context, _ Message) (*Response, error) {
 func (m *selfHealMock) StreamRun(_ context.Context, _ Message) (<-chan StreamEvent, error) {
 	return nil, errors.New("not used")
 }
-func (m *selfHealMock) Stop()                                     {}
-func (m *selfHealMock) Stats() AgentStats                         { return AgentStats{} }
-func (m *selfHealMock) Name() string                             { return "self-heal-mock" }
+func (m *selfHealMock) Stop()             {}
+func (m *selfHealMock) Stats() AgentStats { return AgentStats{} }
+func (m *selfHealMock) Name() string      { return "self-heal-mock" }
 
 // ===== TestPlanSubtaskRetry_FeedbackHint =====
 // 验证子任务重试会携带失败反馈（换方案提示）。

@@ -21,11 +21,11 @@ import (
 
 // capture 记录测试 server 收到的请求
 type capture struct {
-	mu    sync.Mutex
-	auth  string
+	mu     sync.Mutex
+	auth   string
 	method string
-	path  string
-	body  string
+	path   string
+	body   string
 }
 
 func (c *capture) record(r *http.Request) {

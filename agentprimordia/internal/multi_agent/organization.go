@@ -38,8 +38,8 @@ type Entry struct {
 
 // Blackboard 共享记忆黑板（并发安全）
 type Blackboard struct {
-	mu     sync.RWMutex
-	seq    int64
+	mu      sync.RWMutex
+	seq     int64
 	entries []Entry
 	claims  map[string]string // taskID → 持有人
 }

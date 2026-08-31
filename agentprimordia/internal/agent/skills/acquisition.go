@@ -61,13 +61,13 @@ type TrajectoryMemorySink interface {
 
 // Acquisition 技能习得流水线
 type Acquisition struct {
-	distiller    SkillDistiller
-	trajectories []Trajectory
-	validator    *Validator
-	guardrail    SkillGuardrail
-	metrics      AcquisitionMetrics
+	distiller      SkillDistiller
+	trajectories   []Trajectory
+	validator      *Validator
+	guardrail      SkillGuardrail
+	metrics        AcquisitionMetrics
 	trajectorySink TrajectoryMemorySink
-	sinkErrCount  atomic.Int64
+	sinkErrCount   atomic.Int64
 }
 
 // NewAcquisition 创建习得流水线

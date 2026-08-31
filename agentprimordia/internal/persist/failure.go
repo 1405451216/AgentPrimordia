@@ -26,9 +26,9 @@ type FailureRecord struct {
 	ID        string      `json:"id"`
 	AgentID   string      `json:"agent_id"`
 	SessionID string      `json:"session_id"`
-	Phase     string      `json:"phase"`               // run | plan
-	Error     string      `json:"error"`               // 失败错误信息
-	Turn      int         `json:"turn"`                // 失败时已执行的轮次
+	Phase     string      `json:"phase"`                // run | plan
+	Error     string      `json:"error"`                // 失败错误信息
+	Turn      int         `json:"turn"`                 // 失败时已执行的轮次
 	SubTaskID string      `json:"subtask_id,omitempty"` // plan 阶段失败的子任务 ID
 	Input     string      `json:"input,omitempty"`      // 触发本次运行的用户输入
 	State     *AgentState `json:"state,omitempty"`      // 失败时的检查点快照（可重放）

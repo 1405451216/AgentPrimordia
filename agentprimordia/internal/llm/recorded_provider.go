@@ -47,8 +47,7 @@ type Recording struct {
 	Model   string          `json:"model"`
 	Entries []RecordedEntry `json:"entries"`
 
-	mu      sync.Mutex `json:"-"`
-	cursor  int        `json:"-"` // 顺序回退游标
+	cursor  int `json:"-"` // 顺序回退游标（读写由 ReplayProvider 的 mu 保护）
 	usedFPs map[int]bool
 }
 

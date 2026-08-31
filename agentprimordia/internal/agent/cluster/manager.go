@@ -35,8 +35,8 @@ import (
 type NodeRole string
 
 const (
-	RoleFollower NodeRole = "follower"
-	RoleLeader   NodeRole = "leader"
+	RoleFollower  NodeRole = "follower"
+	RoleLeader    NodeRole = "leader"
 	RoleCandidate NodeRole = "candidate"
 )
 
@@ -51,14 +51,14 @@ const (
 
 // NodeInfo 节点信息
 type NodeInfo struct {
-	ID          string            `json:"id"`
-	Address     string            `json:"address"`
-	Role        NodeRole          `json:"role"`
-	Status      NodeStatus        `json:"status"`
-	Capabilities []string         `json:"capabilities,omitempty"`
-	Metadata    map[string]string `json:"metadata,omitempty"`
-	JoinTime    time.Time         `json:"join_time"`
-	LastSeen    time.Time         `json:"last_seen"`
+	ID           string            `json:"id"`
+	Address      string            `json:"address"`
+	Role         NodeRole          `json:"role"`
+	Status       NodeStatus        `json:"status"`
+	Capabilities []string          `json:"capabilities,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+	JoinTime     time.Time         `json:"join_time"`
+	LastSeen     time.Time         `json:"last_seen"`
 }
 
 // electionKey 共享领导者租约在 KV 中的键
@@ -99,28 +99,28 @@ func ClusterConfigWithDefaults(cfg ClusterConfig) ClusterConfig {
 
 // ClusterManager 集群管理器
 type ClusterManager struct {
-	config  ClusterConfig
+	config ClusterConfig
 	logger *slog.Logger
 
-	mu      sync.RWMutex
+	mu        sync.RWMutex
 	localNode *NodeInfo
-	nodes   map[string]*NodeInfo // 节点缓存
+	nodes     map[string]*NodeInfo // 节点缓存
 
 	// 领导者选举
-	leaderID  atomic.Value // string
-	term      atomic.Int64
-	votedFor  atomic.Value // string
-	role      atomic.Value // NodeRole
+	leaderID atomic.Value // string
+	term     atomic.Int64
+	votedFor atomic.Value // string
+	role     atomic.Value // NodeRole
 
 	// 一致性哈希
-	hashRing  *ConsistentHash
+	hashRing *ConsistentHash
 
 	// 分布式状态
-	state     *DistributedState
+	state *DistributedState
 
 	// 运行控制
-	stopCh    chan struct{}
-	running   atomic.Bool
+	stopCh  chan struct{}
+	running atomic.Bool
 }
 
 // NewClusterManager 创建集群管理器
@@ -426,9 +426,12 @@ func (m *ClusterManager) electionLoop(ctx context.Context) {
 //     继续写状态覆盖新 Leader。
 //
 //   - 新实现：唯一权威事实源是共享租约 _leader_lease 的原子 CAS。
-//     * 租约值编码为 `nodeID|term=N`（fencing token = term）；
-//     * 抢占/续约都通过 CompareAndSwap 原子完成，保证任意时刻只有一个持有者；
-//     * 续约失败（CAS 被拒）说明租约被他人接管，立即降级为 Follower。
+//
+//   - 租约值编码为 `nodeID|term=N`（fencing token = term）；
+//
+//   - 抢占/续约都通过 CompareAndSwap 原子完成，保证任意时刻只有一个持有者；
+//
+//   - 续约失败（CAS 被拒）说明租约被他人接管，立即降级为 Follower。
 //
 // StateStore 为空时退化为纯本地行为（仅单节点场景可用，各节点不会互相认可）。
 func (m *ClusterManager) checkLeadership(ctx context.Context) {

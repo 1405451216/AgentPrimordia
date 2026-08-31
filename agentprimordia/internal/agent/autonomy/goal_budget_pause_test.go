@@ -18,7 +18,7 @@ import (
 func newTestGoal(t *testing.T, budget float64) *AgentGoal {
 	t.Helper()
 	g := NewAgentGoal("budget-pause-test", GoalConfig{
-		Priority: PriorityNormal,
+		Priority:   PriorityNormal,
 		MaxRetries: 2,
 	})
 	if err := g.TransitionTo(GoalPlanned); err != nil {

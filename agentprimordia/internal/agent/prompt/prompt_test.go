@@ -101,4 +101,3 @@ func TestPromptTemplate_EmptyTemplate(t *testing.T) {
 		t.Errorf("empty template should render empty string, got %q", result)
 	}
 }
-

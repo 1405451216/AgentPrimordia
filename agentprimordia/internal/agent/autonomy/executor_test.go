@@ -190,9 +190,9 @@ func TestExecutorStepFailure(t *testing.T) {
 
 // failOnceExecutor 第一次调用失败，后续成功
 type failOnceExecutor struct {
-	failIDs  map[string]bool
-	failed   map[string]bool
-	mu       sync.Mutex
+	failIDs map[string]bool
+	failed  map[string]bool
+	mu      sync.Mutex
 }
 
 func (f *failOnceExecutor) ExecuteStep(ctx context.Context, step PlanStep) (string, error) {

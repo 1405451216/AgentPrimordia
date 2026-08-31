@@ -165,10 +165,10 @@ func (p *RandomLoadPattern) Name() string {
 // RampLoadPattern 渐进负载模式
 // 从 minRPS 线性增长到 maxRPS，然后循环
 type RampLoadPattern struct {
-	minRPS      int
-	maxRPS      int
+	minRPS       int
+	maxRPS       int
 	rampDuration time.Duration
-	elapsed     time.Duration
+	elapsed      time.Duration
 }
 
 // RampPattern 创建渐进负载模式
@@ -183,7 +183,7 @@ func RampPattern(minRPS, maxRPS int, rampDuration time.Duration) *RampLoadPatter
 		rampDuration = 60 * time.Second
 	}
 	return &RampLoadPattern{
-		minRPS:      minRPS,
+		minRPS:       minRPS,
 		maxRPS:       maxRPS,
 		rampDuration: rampDuration,
 	}

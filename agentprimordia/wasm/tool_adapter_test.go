@@ -133,7 +133,7 @@ func TestWASMToolAdapterUploadToolNoName(t *testing.T) {
 	adapter := NewWASMToolAdapter(sandbox)
 
 	resp, err := adapter.UploadTool(context.Background(), UploadRequest{
-		ToolName: "",
+		ToolName:  "",
 		WasmBytes: []byte("test"),
 	})
 	if err != nil {
@@ -151,7 +151,7 @@ func TestWASMToolAdapterUploadToolNoBytes(t *testing.T) {
 	adapter := NewWASMToolAdapter(sandbox)
 
 	resp, err := adapter.UploadTool(context.Background(), UploadRequest{
-		ToolName: "test",
+		ToolName:  "test",
 		WasmBytes: nil,
 	})
 	if err != nil {

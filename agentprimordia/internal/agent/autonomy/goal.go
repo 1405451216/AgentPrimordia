@@ -67,7 +67,7 @@ type AgentGoal struct {
 	// CostSpentUSD 已消耗成本（v4.9-4 目标级预算；原子访问）
 	CostSpentUSD float64 `json:"cost_spent_usd"`
 	// budgetUSD 目标预算（内部字段，经 Budget 方法读取）
-	budgetUSD    float64
+	budgetUSD float64
 	// replanCostUSD 每次重规划成本估计
 	replanCostUSD float64
 
@@ -222,19 +222,19 @@ func NewAgentGoal(description string, cfg GoalConfig) *AgentGoal {
 	}
 
 	g := &AgentGoal{
-		ID:              generateGoalID(),
-		Description:     description,
+		ID:                 generateGoalID(),
+		Description:        description,
 		AcceptanceCriteria: cfg.AcceptanceCriteria,
-		Priority:        priority,
-		State:           GoalCreated,
-		MaxRetries:      maxRetries,
-		Deadline:        cfg.Deadline,
-		CreatedAt:       time.Now(),
-		UpdatedAt:       time.Now(),
-		budgetUSD:       cfg.BudgetUSD,
-		replanCostUSD:   cfg.ReplanCostUSD,
-		metadata:        cfg.Metadata,
-		sm:              NewStateMachine(),
+		Priority:           priority,
+		State:              GoalCreated,
+		MaxRetries:         maxRetries,
+		Deadline:           cfg.Deadline,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+		budgetUSD:          cfg.BudgetUSD,
+		replanCostUSD:      cfg.ReplanCostUSD,
+		metadata:           cfg.Metadata,
+		sm:                 NewStateMachine(),
 	}
 	if g.metadata == nil {
 		g.metadata = make(map[string]string)

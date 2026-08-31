@@ -10,8 +10,8 @@ import (
 // 提供带 TTL 的分布式状态存储。
 // 在领导者节点上写入，其他节点通过同步获取。
 type DistributedState struct {
-	mu      sync.RWMutex
-	data    map[string]*stateEntry
+	mu   sync.RWMutex
+	data map[string]*stateEntry
 }
 
 type stateEntry struct {
@@ -173,8 +173,8 @@ func (s *DistributedState) Merge(other map[string]RemoteEntry) int {
 			// 远程版本更新，采用远程值
 			s.data[key] = &stateEntry{
 				value:     remote.Value,
-				expiresAt:  remote.ExpiresAt,
-				version:    remote.Version,
+				expiresAt: remote.ExpiresAt,
+				version:   remote.Version,
 			}
 			merged++
 		}

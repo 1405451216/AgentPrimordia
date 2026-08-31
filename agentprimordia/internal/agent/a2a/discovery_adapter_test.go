@@ -118,5 +118,3 @@ func TestDiscoveryAdapter_Watch(t *testing.T) {
 		t.Errorf("event agentID = %q, want %q", ev.AgentID, "a1")
 	}
 }
-
-

@@ -256,13 +256,13 @@ func runMarketplaceInstall(args []string) error {
 
 // remoteTemplate 远程模板清单（v4.4-3 在线安装协议）。
 type remoteTemplate struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	Description  string            `json:"description"`
-	Version      string            `json:"version"`
-	Author       string            `json:"author"`
-	Category     string            `json:"category"`
-	SystemPrompt string            `json:"system_prompt"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	Version      string `json:"version"`
+	Author       string `json:"author"`
+	Category     string `json:"category"`
+	SystemPrompt string `json:"system_prompt"`
 	// Signature 对 Files JSON 的 base64 签名（ECDSA P-256 over SHA-256，可选）
 	Signature string `json:"signature,omitempty"`
 	// PublicKey 发布方公钥（PEM，ECDSA P-256）

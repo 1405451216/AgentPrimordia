@@ -7,7 +7,10 @@ import (
 	"time"
 )
 
-type mockReact struct{ mu sync.Mutex; calls int }
+type mockReact struct {
+	mu    sync.Mutex
+	calls int
+}
 
 func (m *mockReact) Reason(_ context.Context, in FusedInput) (string, error) {
 	m.mu.Lock()

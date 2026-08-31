@@ -30,9 +30,9 @@ import (
 //   - 丢包注入（tc netem loss）
 //   - 网络分区（iptables DROP）
 type RealNetworkInjector struct {
-	logger    *slog.Logger
-	iface     string // 网卡名称（默认 eth0）
-	dryRun    bool   // 干跑模式（仅记录不执行）
+	logger *slog.Logger
+	iface  string // 网卡名称（默认 eth0）
+	dryRun bool   // 干跑模式（仅记录不执行）
 }
 
 // RealNetworkInjectorConfig 真实注入器配置
@@ -173,7 +173,7 @@ func (inj *RealNetworkInjector) InjectPartition(ctx context.Context, target stri
 // runTC 执行 tc 命令
 func (inj *RealNetworkInjector) runTC(ctx context.Context, args ...string) error {
 	if inj.dryRun {
-		inj.logger.Info("[DRY RUN] tc "+strings.Join(args, " "))
+		inj.logger.Info("[DRY RUN] tc " + strings.Join(args, " "))
 		return nil
 	}
 

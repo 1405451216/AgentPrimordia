@@ -16,9 +16,9 @@ import (
 
 // PlanCheckpoint 计划级检查点
 type PlanCheckpoint struct {
-	Goal      string            `json:"goal"`
+	Goal      string             `json:"goal"`
 	SubTasks  []planning.SubTask `json:"subtasks"`
-	UpdatedAt time.Time         `json:"updated_at"`
+	UpdatedAt time.Time          `json:"updated_at"`
 }
 
 // PlanCheckpointStore 计划级检查点存储接口（复用既有 CheckpointStore 后端均可适配）

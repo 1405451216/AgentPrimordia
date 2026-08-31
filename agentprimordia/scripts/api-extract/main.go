@@ -30,30 +30,30 @@ import (
 
 // APIContract 顶层契约结构
 type APIContract struct {
-	Version    string      `json:"version"`
-	GeneratedAt string     `json:"generated_at"`
-	Modules    []ModuleAPI `json:"modules"`
+	Version     string      `json:"version"`
+	GeneratedAt string      `json:"generated_at"`
+	Modules     []ModuleAPI `json:"modules"`
 }
 
 // ModuleAPI 单个文件的 API 摘要
 type ModuleAPI struct {
-	Name      string    `json:"name"`
-	File      string    `json:"file"`
-	Stability string    `json:"stability,omitempty"`
-	Types     []TypeAPI `json:"types,omitempty"`
-	Functions []FuncAPI `json:"functions,omitempty"`
+	Name      string     `json:"name"`
+	File      string     `json:"file"`
+	Stability string     `json:"stability,omitempty"`
+	Types     []TypeAPI  `json:"types,omitempty"`
+	Functions []FuncAPI  `json:"functions,omitempty"`
 	Constants []ConstAPI `json:"constants,omitempty"`
-	Variables []VarAPI  `json:"variables,omitempty"`
+	Variables []VarAPI   `json:"variables,omitempty"`
 }
 
 // TypeAPI 公开类型
 type TypeAPI struct {
-	Name      string   `json:"name"`
-	Kind      string   `json:"kind"` // struct, interface, alias
-	Stability string   `json:"stability,omitempty"`
+	Name      string     `json:"name"`
+	Kind      string     `json:"kind"` // struct, interface, alias
+	Stability string     `json:"stability,omitempty"`
 	Fields    []FieldAPI `json:"fields,omitempty"`
-	Methods   []string `json:"methods,omitempty"`
-	Doc       string   `json:"doc,omitempty"`
+	Methods   []string   `json:"methods,omitempty"`
+	Doc       string     `json:"doc,omitempty"`
 }
 
 // FieldAPI 结构体字段

@@ -22,7 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"sync")
+	"sync"
+)
 
 // Manifest 插件远程安装清单。
 type Manifest struct {

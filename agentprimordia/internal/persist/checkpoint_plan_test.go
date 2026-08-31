@@ -18,8 +18,8 @@ func TestAgentState_PlanRoundTrip(t *testing.T) {
 				{ID: "1", Description: "编写", DependsOn: []string{}},
 				{ID: "2", Description: "测试", DependsOn: []string{"1"}},
 			},
-			Completed: []string{"1"},
-			Results:   map[string]string{"1": "ok"},
+			Completed:  []string{"1"},
+			Results:    map[string]string{"1": "ok"},
 			TotalTools: 3,
 		},
 	}

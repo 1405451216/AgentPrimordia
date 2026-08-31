@@ -82,9 +82,9 @@ func (m *mockCheckpointCapable) Run(_ context.Context, _ Message) (*Response, er
 func (m *mockCheckpointCapable) StreamRun(_ context.Context, _ Message) (<-chan StreamEvent, error) {
 	return nil, errors.New("not used in test")
 }
-func (m *mockCheckpointCapable) Stop()                     {}
-func (m *mockCheckpointCapable) Stats() AgentStats         { return AgentStats{} }
-func (m *mockCheckpointCapable) Name() string              { return "mock" }
+func (m *mockCheckpointCapable) Stop()             {}
+func (m *mockCheckpointCapable) Stats() AgentStats { return AgentStats{} }
+func (m *mockCheckpointCapable) Name() string      { return "mock" }
 
 // TestExecutePlan_SubtaskRetryAndCheckpoint 验证：
 //  1. 子任务失败自动重试（maxRetries=1）

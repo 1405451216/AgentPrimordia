@@ -61,8 +61,12 @@ type mockGoalMetrics struct {
 	replanCount    int
 }
 
-func (m *mockGoalMetrics) RecordGoalLifecycle(_ string, _ GoalState, _ time.Duration) { m.lifecycleCount++ }
-func (m *mockGoalMetrics) RecordStepExecution(_ string, _ string, _ time.Duration, _ error) { m.stepCount++ }
+func (m *mockGoalMetrics) RecordGoalLifecycle(_ string, _ GoalState, _ time.Duration) {
+	m.lifecycleCount++
+}
+func (m *mockGoalMetrics) RecordStepExecution(_ string, _ string, _ time.Duration, _ error) {
+	m.stepCount++
+}
 func (m *mockGoalMetrics) RecordReplan(_ string, _ string) { m.replanCount++ }
 
 type mockStepGuardrail struct {

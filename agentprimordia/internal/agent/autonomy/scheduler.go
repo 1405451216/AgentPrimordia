@@ -18,13 +18,13 @@ type SchedulerConfig struct {
 
 // Scheduler 自治调度器：支持定时唤醒与事件驱动
 type Scheduler struct {
-	cfg       SchedulerConfig
-	mu        sync.Mutex
-	tickFns   []func()
-	eventFns  []func(string)
-	eventCh   chan string
-	wg        sync.WaitGroup
-	started   bool
+	cfg      SchedulerConfig
+	mu       sync.Mutex
+	tickFns  []func()
+	eventFns []func(string)
+	eventCh  chan string
+	wg       sync.WaitGroup
+	started  bool
 }
 
 // NewScheduler 创建调度器

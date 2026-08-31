@@ -16,16 +16,16 @@ import (
 type DistanceType string
 
 const (
-	CosineDistance    DistanceType = "cosine"
-	L2Distance        DistanceType = "l2"
-	InnerProduct      DistanceType = "inner_product"
+	CosineDistance DistanceType = "cosine"
+	L2Distance     DistanceType = "l2"
+	InnerProduct   DistanceType = "inner_product"
 )
 
 // 索引类型
 type IndexType string
 
 const (
-	HNSWIndex   IndexType = "hnsw"
+	HNSWIndex    IndexType = "hnsw"
 	IVFFlatIndex IndexType = "ivfflat"
 )
 

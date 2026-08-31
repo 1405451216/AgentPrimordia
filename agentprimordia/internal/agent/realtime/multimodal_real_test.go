@@ -128,7 +128,7 @@ func TestRuntime_ProcessTurnStream_Fallback(t *testing.T) {
 // TestRuntime_ProcessTurnStream_Blocked 流式链路输入被护栏拦截。
 func TestRuntime_ProcessTurnStream_Blocked(t *testing.T) {
 	rt := NewRuntime(RuntimeConfig{
-		React:    &mockStreamBridge{chunks: []string{"x"}},
+		React:     &mockStreamBridge{chunks: []string{"x"}},
 		Guardrail: &fakeGuardrail{blocked: map[string]bool{"危险指令": true}},
 	})
 	rt.OpenSession("s1")

@@ -96,10 +96,10 @@ func (f *LLMHTTPStatusFault) Inject(ctx context.Context) (CleanupFunc, error) {
 
 // LLMTimeoutFault LLM 超时故障
 type LLMTimeoutFault struct {
-	Provider  string
-	Timeout   time.Duration
-	active    atomic.Bool
-	server    *http.Server
+	Provider string
+	Timeout  time.Duration
+	active   atomic.Bool
+	server   *http.Server
 }
 
 // LLMTimeoutFault 创建超时故障
@@ -212,11 +212,11 @@ func (f *LLMIntermittentFault) Inject(ctx context.Context) (CleanupFunc, error) 
 
 // LLMSlowResponseFault LLM 慢响应故障
 type LLMSlowResponseFault struct {
-	Provider  string
-	MinDelay  time.Duration
-	MaxDelay  time.Duration
-	active    atomic.Bool
-	server    *http.Server
+	Provider string
+	MinDelay time.Duration
+	MaxDelay time.Duration
+	active   atomic.Bool
+	server   *http.Server
 }
 
 // NewLLMSlowResponseFault 创建慢响应故障
@@ -271,9 +271,9 @@ func (f *LLMSlowResponseFault) Inject(ctx context.Context) (CleanupFunc, error) 
 
 // LLMFaultScenario 预定义 LLM 故障场景序列
 type LLMFaultScenario struct {
-	Name      string
-	Provider  string
-	Faults    []Fault
+	Name     string
+	Provider string
+	Faults   []Fault
 }
 
 // LLMFailoverScenario 创建完整的 LLM 故障转移场景

@@ -318,11 +318,11 @@ func (s *EtcdKVStore) Close() error {
 //   - KeepAlive 自动续租，节点宕机后租约过期、键自动删除
 //   - 其他节点通过 Watch 感知节点上下线
 type LeaseManager struct {
-	client  *clientv3.Client
-	logger  *slog.Logger
-	mu      sync.Mutex
-	leases  map[string]*leaseEntry
-	closed  bool
+	client *clientv3.Client
+	logger *slog.Logger
+	mu     sync.Mutex
+	leases map[string]*leaseEntry
+	closed bool
 }
 
 type leaseEntry struct {
@@ -459,11 +459,11 @@ func (lm *LeaseManager) Close() error {
 
 // Election 基于 etcd 的 Leader 选举
 type Election struct {
-	session   *concurrency.Session
-	election  *concurrency.Election
-	logger    *slog.Logger
-	prefix    string
-	nodeID    string
+	session  *concurrency.Session
+	election *concurrency.Election
+	logger   *slog.Logger
+	prefix   string
+	nodeID   string
 }
 
 // NewElection 创建 Leader 选举实例

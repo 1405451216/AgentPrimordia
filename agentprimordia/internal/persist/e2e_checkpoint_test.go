@@ -260,4 +260,3 @@ func TestE2E_EtcdCheckpoint_CrossNodeRecovery(t *testing.T) {
 	// 清理
 	_ = storeB.Delete(ctx, agentID)
 }
-

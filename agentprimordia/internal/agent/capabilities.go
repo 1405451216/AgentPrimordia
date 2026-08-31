@@ -48,7 +48,7 @@ type InputGuardCapable interface {
 }
 
 // AuditEvent 审计事件结构——统一为 internal/audit.Event 的别名
-//（修复评估报告 §六.2：此前 agent/observability/audit 三份重复模型；
+// （修复评估报告 §六.2：此前 agent/observability/audit 三份重复模型；
 // audit 包仅依赖标准库，agent→audit 无循环依赖）。
 type AuditEvent = audit.Event
 

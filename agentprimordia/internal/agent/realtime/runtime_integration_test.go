@@ -30,11 +30,11 @@ func (g *fakeGuardrail) CheckTranscript(_ context.Context, transcript string) (s
 
 // fakeSessionMetrics 记录型会话指标（测试替身）
 type fakeSessionMetrics struct {
-	mu      sync.Mutex
-	opened  []string
-	closed  []string
-	turns   []string
-	errs    []error
+	mu     sync.Mutex
+	opened []string
+	closed []string
+	turns  []string
+	errs   []error
 }
 
 func (m *fakeSessionMetrics) RecordSessionOpened(id string) {
@@ -60,9 +60,9 @@ func (m *fakeSessionMetrics) RecordTurn(id string, _ time.Duration, err error) {
 
 // fakeMemorySink 记录型会话摘要记忆出口（测试替身）
 type fakeMemorySink struct {
-	mu       sync.Mutex
-	summary  map[string]string
-	fail     bool
+	mu      sync.Mutex
+	summary map[string]string
+	fail    bool
 }
 
 func (m *fakeMemorySink) SaveSessionSummary(_ context.Context, sessionID, summary string) error {
@@ -99,7 +99,7 @@ func TestRuntime_GuardrailBlocked(t *testing.T) {
 func TestRuntime_GuardrailSanitize(t *testing.T) {
 	rt := NewRuntime(RuntimeConfig{
 		Guardrail: &fakeGuardrail{sanitize: map[string]string{
-			"帮我转账":   "帮我查询",
+			"帮我转账":      "帮我查询",
 			"echo:帮我查询": "echo:已脱敏",
 		}},
 	})

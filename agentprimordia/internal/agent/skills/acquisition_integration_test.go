@@ -48,9 +48,9 @@ func (m *fakeAcqMetrics) count() int {
 
 // fakeTrajectorySink 记录型轨迹记忆出口（测试替身）
 type fakeTrajectorySink struct {
-	mu     sync.Mutex
-	saved  []Trajectory
-	fail   bool
+	mu    sync.Mutex
+	saved []Trajectory
+	fail  bool
 }
 
 func (s *fakeTrajectorySink) SaveTrajectory(_ context.Context, t Trajectory) error {

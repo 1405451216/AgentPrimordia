@@ -94,7 +94,7 @@ func DefaultPrivacyRouterConfig() PrivacyRouterConfig {
 	return PrivacyRouterConfig{
 		RedactionTTL:          time.Hour,
 		RequireLocalInference: false,
-		FallbackToRedaction: true,
+		FallbackToRedaction:   true,
 	}
 }
 
@@ -139,7 +139,7 @@ type PrivacyRouter struct {
 	logger   *slog.Logger
 
 	mu           sync.RWMutex
-	capabilities map[string]*NodeCapability // nodeID -> 能力
+	capabilities map[string]*NodeCapability   // nodeID -> 能力
 	redactions   map[string]*RedactionMapping // token -> 映射
 	tokenCounter int
 }
@@ -214,7 +214,7 @@ func (r *PrivacyRouter) UnregisterCapability(nodeID string) {
 
 	// 从分布式状态删除
 	if r.state != nil {
-		r.state.Delete("privacy:cap:"+nodeID)
+		r.state.Delete("privacy:cap:" + nodeID)
 	}
 }
 

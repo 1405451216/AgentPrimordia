@@ -84,9 +84,9 @@ func (a *ReActAgent) executeToolCallsParallel(ctx context.Context, history []Mes
 							Content:    fmt.Sprintf("tool %s panic recovered: %v", tc.Name, r),
 							IsError:    true,
 						},
-						err:  fmt.Errorf("tool %s panic: %v", tc.Name, r),
+						err:     fmt.Errorf("tool %s panic: %v", tc.Name, r),
 						latency: 0,
-						tc:   tc,
+						tc:      tc,
 					}
 				}
 			}()

@@ -43,11 +43,11 @@ type Client struct {
 	serverInfo ServerInfo         // 服务器信息
 	dataMu     sync.RWMutex       // 保护 tools/resources/prompts/serverInfo
 
-	logger  *slog.Logger  // 日志记录器
-	timeout time.Duration // request timeout时间
-	done    chan struct{} // 关闭信号
+	logger   *slog.Logger  // 日志记录器
+	timeout  time.Duration // request timeout时间
+	done     chan struct{} // 关闭信号
 	reapDone chan struct{} // 子进程收割完成信号（reapProcess 退出时关闭）
-	closed  bool          // 是否已关闭
+	closed   bool          // 是否已关闭
 }
 
 // Config MCP 客户端配置
@@ -101,10 +101,10 @@ func NewClient(cfg Config) (*Client, error) {
 	}
 
 	c := &Client{
-		cmd:     cmd,
-		stdin:   stdin,
-		stdout:  bufio.NewReader(stdout),
-		pending: make(map[int64]chan *jsonRPCResponse),
+		cmd:      cmd,
+		stdin:    stdin,
+		stdout:   bufio.NewReader(stdout),
+		pending:  make(map[int64]chan *jsonRPCResponse),
 		logger:   slog.Default(),
 		timeout:  timeout,
 		done:     make(chan struct{}),

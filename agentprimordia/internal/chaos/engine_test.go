@@ -88,9 +88,9 @@ func TestEngineExperimentWithNeverMetSteadyState(t *testing.T) {
 func TestEnginePreSteadyStateFailure(t *testing.T) {
 	engine := NewEngine()
 	exp := Experiment{
-		Name:       "pre-failure-test",
-		Hypothesis: "实验前稳态不满足时应该中止",
-		Faults:     []Fault{NewNoopFault("a")},
+		Name:        "pre-failure-test",
+		Hypothesis:  "实验前稳态不满足时应该中止",
+		Faults:      []Fault{NewNoopFault("a")},
 		SteadyState: NewNeverMetSteadyState(),
 		Duration:    100 * time.Millisecond,
 	}
@@ -107,9 +107,9 @@ func TestEngineAbort(t *testing.T) {
 	// 启动一个长时间实验
 	go func() {
 		exp := Experiment{
-			Name:       "long-test",
-			Hypothesis: "长时间实验可被中止",
-			Faults:     []Fault{NewNoopFault("a")},
+			Name:        "long-test",
+			Hypothesis:  "长时间实验可被中止",
+			Faults:      []Fault{NewNoopFault("a")},
 			SteadyState: NewAlwaysMetSteadyState(),
 			Duration:    10 * time.Second,
 		}
@@ -260,11 +260,11 @@ func TestFormatReport(t *testing.T) {
 		FaultResults: []FaultResult{
 			{
 				FaultType:  "noop_test",
-				Injected:  true,
+				Injected:   true,
 				InjectTime: time.Now(),
 			},
 		},
-		PreSteadyState: SteadyStateResult{Met: true, Message: "ok"},
+		PreSteadyState:  SteadyStateResult{Met: true, Message: "ok"},
 		PostSteadyState: SteadyStateResult{Met: true, Message: "ok"},
 	}
 
@@ -314,9 +314,9 @@ func TestLLMFaultScenario(t *testing.T) {
 // TestExperimentValidate 验证实验定义校验（v3.5-3 跨语言混沌契约）。
 func TestExperimentValidate(t *testing.T) {
 	cases := []struct {
-		name       string
-		exp        Experiment
-		wantErr    bool
+		name    string
+		exp     Experiment
+		wantErr bool
 	}{
 		{"合法实验", Experiment{Name: "valid", Hypothesis: "h"}, false},
 		{"空名称", Experiment{Name: "", Hypothesis: "h"}, true},

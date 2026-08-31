@@ -46,13 +46,13 @@ func WithGRPCClientCredentials(creds credentials.TransportCredentials) GRPCClien
 
 // A2AGRPCClient gRPC 客户端。
 type A2AGRPCClient struct {
-	client        a2av1.A2AServiceClient
-	conn          *grpc.ClientConn
-	apiKey        string
-	bearerToken   string
-	logger        *slog.Logger
-	tlsConfig     *TLSConfig
-	tlsCreds      credentials.TransportCredentials
+	client         a2av1.A2AServiceClient
+	conn           *grpc.ClientConn
+	apiKey         string
+	bearerToken    string
+	logger         *slog.Logger
+	tlsConfig      *TLSConfig
+	tlsCreds       credentials.TransportCredentials
 	circuitBreaker *resilience.CircuitBreaker
 }
 

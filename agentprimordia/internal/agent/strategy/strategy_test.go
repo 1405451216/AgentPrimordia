@@ -19,7 +19,6 @@ type fakeEngine struct {
 	calls     int
 	toolCalls [][2]string // (name, args)
 	toolFn    func(name, args string) string
-	usage     llm.Usage
 }
 
 func (e *fakeEngine) Complete(_ context.Context, _ *llm.CompletionRequest) (*llm.CompletionResponse, error) {
@@ -152,8 +151,8 @@ func TestPlanReflectPassFirstAttempt(t *testing.T) {
 	eng := &fakeEngine{
 		responses: []string{
 			`[{"id":"1","description":"步骤一"},{"id":"2","description":"步骤二"}]`, // 计划
-			`步骤一完成`, // 执行 1
-			`步骤二完成`, // 执行 2
+			`步骤一完成`,            // 执行 1
+			`步骤二完成`,            // 执行 2
 			`{"passed": true}`, // 反思通过
 		},
 	}
@@ -172,12 +171,12 @@ func TestPlanReflectPassFirstAttempt(t *testing.T) {
 func TestPlanReflectReplanOnFail(t *testing.T) {
 	eng := &fakeEngine{
 		responses: []string{
-			`[{"id":"1","description":"方案A"}]`, // 第一次计划
-			`无法完成`,                             // 执行失败信号
+			`[{"id":"1","description":"方案A"}]`,        // 第一次计划
+			`无法完成`,                                    // 执行失败信号
 			`{"passed": false, "reasons": ["方案不可行"]}`, // 反思不通过
-			`[{"id":"1","description":"方案B"}]`, // 重规划
-			`方案B完成`, //
-			`{"passed": true}`, // 二次反思通过
+			`[{"id":"1","description":"方案B"}]`,        // 重规划
+			`方案B完成`,                                   //
+			`{"passed": true}`,                        // 二次反思通过
 		},
 	}
 	res, err := (&PlanExecuteReflectStrategy{}).Run(context.Background(), eng, Task{Goal: "迁移"})

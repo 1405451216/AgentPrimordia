@@ -83,7 +83,7 @@ type RequestTrace struct {
 }
 
 // AuditEvent 关联层使用的审计事件——统一为 internal/audit.Event 的别名
-//（修复评估报告 §六.2：三份重复模型合并为 audit 一份；字段与 json tag 完全一致）。
+// （修复评估报告 §六.2：三份重复模型合并为 audit 一份；字段与 json tag 完全一致）。
 type AuditEvent = audit.Event
 
 // record 单条请求的内部存储（带锁保证并发安全）。

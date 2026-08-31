@@ -79,20 +79,20 @@ func RunnerConfigWithDefaults(cfg RunnerConfig) RunnerConfig {
 
 // SoakResult Soak Test 结果
 type SoakResult struct {
-	Config        RunnerConfig
-	StartTime     time.Time
-	EndTime       time.Time
-	Duration      time.Duration
-	TotalRequests int64
-	TotalErrors   int64
+	Config         RunnerConfig
+	StartTime      time.Time
+	EndTime        time.Time
+	Duration       time.Duration
+	TotalRequests  int64
+	TotalErrors    int64
 	TotalLatencyNs int64 // 纳秒
 
 	// 采样点
-	Samples      []Sample
+	Samples []Sample
 	// 退化分析
-	Degradation  *DegradationReport
+	Degradation *DegradationReport
 	// 错误
-	Error        error
+	Error error
 }
 
 // AvgLatency 计算全程平均延迟
@@ -115,20 +115,20 @@ func (r *SoakResult) ErrorRate() float64 {
 type Sample struct {
 	Timestamp   time.Time
 	Elapsed     time.Duration // 从开始至今的时间
-	Requests    int64          // 采样区间请求数
-	Errors      int64          // 采样区间错误数
-	AvgLatency  time.Duration  // 采样区间平均延迟
-	MaxLatency  time.Duration  // 采样区间最大延迟
-	MinLatency  time.Duration  // 采样区间最小延迟
-	P99Latency  time.Duration  // 采样区间 P99 延迟
-	Throughput  float64        // RPS
-	SuccessRate float64        // 成功率
+	Requests    int64         // 采样区间请求数
+	Errors      int64         // 采样区间错误数
+	AvgLatency  time.Duration // 采样区间平均延迟
+	MaxLatency  time.Duration // 采样区间最大延迟
+	MinLatency  time.Duration // 采样区间最小延迟
+	P99Latency  time.Duration // 采样区间 P99 延迟
+	Throughput  float64       // RPS
+	SuccessRate float64       // 成功率
 }
 
 // SoakRunner Soak Test 运行器
 type SoakRunner struct {
-	config  RunnerConfig
-	logger *slog.Logger
+	config    RunnerConfig
+	logger    *slog.Logger
 	startTime time.Time
 
 	mu      sync.Mutex
@@ -151,9 +151,9 @@ type SoakRunner struct {
 func NewRunner(cfg RunnerConfig) *SoakRunner {
 	cfg = RunnerConfigWithDefaults(cfg)
 	return &SoakRunner{
-		config:  cfg,
-		logger:  cfg.Logger,
-		stopCh:  make(chan struct{}),
+		config: cfg,
+		logger: cfg.Logger,
+		stopCh: make(chan struct{}),
 	}
 }
 
@@ -223,11 +223,11 @@ func (r *SoakRunner) Stop() {
 // buildResult 构建最终结果
 func (r *SoakRunner) buildResult() *SoakResult {
 	result := &SoakResult{
-		Config:        r.config,
-		StartTime:     r.startTime,
-		EndTime:       time.Now(),
-		TotalRequests: r.totalRequests.Load(),
-		TotalErrors:   r.totalErrors.Load(),
+		Config:         r.config,
+		StartTime:      r.startTime,
+		EndTime:        time.Now(),
+		TotalRequests:  r.totalRequests.Load(),
+		TotalErrors:    r.totalErrors.Load(),
 		TotalLatencyNs: r.totalLatencyNs.Load(),
 	}
 	result.Duration = result.EndTime.Sub(result.StartTime)
@@ -360,7 +360,7 @@ func calculateP99(latencies []time.Duration) time.Duration {
 	copy(sorted, latencies)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
 
-	idx := int(math.Ceil(0.99 * float64(len(sorted)))) - 1
+	idx := int(math.Ceil(0.99*float64(len(sorted)))) - 1
 	if idx < 0 {
 		idx = 0
 	}
@@ -428,5 +428,3 @@ func FormatReport(result *SoakResult) string {
 
 	return sb.String()
 }
-
-

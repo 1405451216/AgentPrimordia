@@ -15,9 +15,9 @@ type RAGRetriever interface {
 
 // RAGDocument RAG 检索结果文档
 type RAGDocument struct {
-	Content  string  `json:"content"`
-	Score    float64 `json:"score"`
-	Source   string  `json:"source"`
+	Content string  `json:"content"`
+	Score   float64 `json:"score"`
+	Source  string  `json:"source"`
 }
 
 // RAGIntegration 自治执行的 RAG 集成

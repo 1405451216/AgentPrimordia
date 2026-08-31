@@ -47,8 +47,8 @@ type RAGRetriever interface {
 
 // RetrievedChunk RAG 检索结果片段
 type RetrievedChunk struct {
-	Content  string  `json:"content"`
-	Score    float64 `json:"score"`
+	Content  string            `json:"content"`
+	Score    float64           `json:"score"`
 	Metadata map[string]string `json:"metadata,omitempty"`
 }
 
@@ -88,26 +88,26 @@ func DefaultDistillPipelineConfig() DistillPipelineConfig {
 //   - 弱项能力 → RAG 检索补充知识
 //   - 偏好模型 → 系统提示注入
 type DistillPipeline struct {
-	distiller  *KnowledgeDistiller
-	evolver    *CapabilityEvolver
-	feedback   *FeedbackLearner
-	semSink    SemanticMemorySink
-	rag        RAGRetriever
-	config     DistillPipelineConfig
-	logger     *slog.Logger
+	distiller *KnowledgeDistiller
+	evolver   *CapabilityEvolver
+	feedback  *FeedbackLearner
+	semSink   SemanticMemorySink
+	rag       RAGRetriever
+	config    DistillPipelineConfig
+	logger    *slog.Logger
 
-	mu         sync.RWMutex
+	mu             sync.RWMutex
 	lastRAGResults map[string][]RetrievedChunk // capability -> 最近 RAG 结果
-	stats      PipelineStats
+	stats          PipelineStats
 }
 
 // PipelineStats 管道统计
 type PipelineStats struct {
-	TotalProcessed    int64     `json:"total_processed"`
-	TotalFactsWritten int64     `json:"total_facts_written"`
-	TotalPatternsWritten int64  `json:"total_patterns_written"`
-	TotalRAGQueries   int64     `json:"total_rag_queries"`
-	LastProcessTime   time.Time `json:"last_process_time"`
+	TotalProcessed       int64     `json:"total_processed"`
+	TotalFactsWritten    int64     `json:"total_facts_written"`
+	TotalPatternsWritten int64     `json:"total_patterns_written"`
+	TotalRAGQueries      int64     `json:"total_rag_queries"`
+	LastProcessTime      time.Time `json:"last_process_time"`
 }
 
 // DistillPipelineOption 管道选项

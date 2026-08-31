@@ -3,19 +3,19 @@
 // 场景：StudioHandler 注入真实引擎（AutonomyRuntime 100 目标 + SkillStore +
 // RealtimeHub/EventBus），并发客户端混合请求全部 9 个 /api/v1/* 端点
 // （含 v3.3-v3.6 五端点），验证：
-//   1. 并发下 0 错误（无数据竞争、无 panic）
-//   2. 端点延迟分布 P50/P95/P99 量化
-//   3. 模拟前端轮询节奏（2s/5s/10s 混合）下的稳定性
+//  1. 并发下 0 错误（无数据竞争、无 panic）
+//  2. 端点延迟分布 P50/P95/P99 量化
+//  3. 模拟前端轮询节奏（2s/5s/10s 混合）下的稳定性
 package suite
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -303,10 +303,10 @@ func TestStudio_WritePathConcurrentLoad(t *testing.T) {
 	// 注意：demo 存储有界保留上限为 maxDemoRetained=1000（v5.0 压测修复引入）。
 	// 写入总量必须 ≤ 保留上限，否则"写后读一致"断言会因旧记录被淘汰而失败。
 	const (
-		chaosWorkers = 100
-		chaosRounds  = 8  // 800 次 POST /chaos/experiments（≤ 保留上限 1000）
+		chaosWorkers  = 100
+		chaosRounds   = 8 // 800 次 POST /chaos/experiments（≤ 保留上限 1000）
 		deployWorkers = 100
-		deployRounds  = 8  // 800 次 POST /marketplace/deploy（≤ 保留上限 1000）
+		deployRounds  = 8 // 800 次 POST /marketplace/deploy（≤ 保留上限 1000）
 	)
 	var (
 		chaosOK    atomic.Int64

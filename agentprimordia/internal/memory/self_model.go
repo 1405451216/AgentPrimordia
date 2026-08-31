@@ -14,11 +14,11 @@ import (
 
 // CapabilityProfile 单项能力画像
 type CapabilityProfile struct {
-	Domain       string    `json:"domain"`        // 能力域（如 "go_testing"、"sql_migration"）
-	Successes    int       `json:"successes"`
-	Failures     int       `json:"failures"`
-	AvgTurns     float64   `json:"avg_turns"`     // 平均完成轮数（效率信号）
-	LastUpdated  time.Time `json:"last_updated"`
+	Domain      string    `json:"domain"` // 能力域（如 "go_testing"、"sql_migration"）
+	Successes   int       `json:"successes"`
+	Failures    int       `json:"failures"`
+	AvgTurns    float64   `json:"avg_turns"` // 平均完成轮数（效率信号）
+	LastUpdated time.Time `json:"last_updated"`
 }
 
 // SuccessRate 成功率
@@ -31,17 +31,17 @@ func (p CapabilityProfile) SuccessRate() float64 {
 
 // FailurePattern 失败模式画像
 type FailurePattern struct {
-	Signature string    `json:"signature"` // 失败签名（归一化错误类别）
-	Count     int       `json:"count"`
-	LastSeen  time.Time `json:"last_seen"`
-	Mitigation string   `json:"mitigation,omitempty"` // 已知缓解手段
+	Signature  string    `json:"signature"` // 失败签名（归一化错误类别）
+	Count      int       `json:"count"`
+	LastSeen   time.Time `json:"last_seen"`
+	Mitigation string    `json:"mitigation,omitempty"` // 已知缓解手段
 }
 
 // SelfModel Agent 自我模型：能力画像 + 失败画像
 type SelfModel struct {
-	mu         sync.RWMutex
-	caps       map[string]*CapabilityProfile
-	failures   map[string]*FailurePattern
+	mu          sync.RWMutex
+	caps        map[string]*CapabilityProfile
+	failures    map[string]*FailurePattern
 	maxFailures int // 失败画像容量上限（防膨胀）
 }
 

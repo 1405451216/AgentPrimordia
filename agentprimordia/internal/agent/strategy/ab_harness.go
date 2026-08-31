@@ -11,8 +11,8 @@ import (
 
 // ABTask A/B 任务用例
 type ABTask struct {
-	Goal      string // 任务目标
-	MaxTurns  int    // 可选轮数上限
+	Goal     string // 任务目标
+	MaxTurns int    // 可选轮数上限
 }
 
 // EngineFactory 引擎工厂：为第 i 个任务构造独立引擎（确定性/可复现由实现保证）

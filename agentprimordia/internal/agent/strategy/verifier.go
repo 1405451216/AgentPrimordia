@@ -15,7 +15,7 @@ import (
 
 // VerificationReport 验证报告
 type VerificationReport struct {
-	Passed bool     `json:"passed"`
+	Passed  bool     `json:"passed"`
 	Reasons []string `json:"reasons,omitempty"` // 失败原因（供修正轮反馈）
 }
 

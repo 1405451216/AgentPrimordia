@@ -17,10 +17,10 @@ import (
 
 // testCluster 测试集群，包含多个 ClusterManager 和共享的 MemKVStore
 type testCluster struct {
-	kv         *MemKVStore
+	kv          *MemKVStore
 	discoveries []*DistributedDiscovery
-	managers   []*ClusterManager
-	cancel     context.CancelFunc
+	managers    []*ClusterManager
+	cancel      context.CancelFunc
 }
 
 // createTestCluster 创建 n 节点测试集群

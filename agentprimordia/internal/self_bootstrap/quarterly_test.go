@@ -4,9 +4,9 @@
 // 验收：季度报告——成功率/缺陷检出率曲线持续上升（对照 base 模型）。
 //
 // 制度三件套：
-//   1. RunQuarterly：一次季度测量 = 自举组（记忆+经验积累） vs base 对照组（冻结能力、无记忆延续）
-//   2. CompareQuarters：季度回归门——本期较上期退化超过容差即失败
-//   3. Save/LoadQuarterlyRecord：JSON 落盘 bench/results/，跨季度可追溯
+//  1. RunQuarterly：一次季度测量 = 自举组（记忆+经验积累） vs base 对照组（冻结能力、无记忆延续）
+//  2. CompareQuarters：季度回归门——本期较上期退化超过容差即失败
+//  3. Save/LoadQuarterlyRecord：JSON 落盘 bench/results/，跨季度可追溯
 package self_bootstrap
 
 import (

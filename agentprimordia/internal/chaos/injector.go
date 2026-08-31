@@ -44,10 +44,10 @@ func (f *NetworkDelayFault) Inject(ctx context.Context) (CleanupFunc, error) {
 
 // CPUStressFault CPU 压力故障
 type CPUStressFault struct {
-	Cores     int           // 占用 CPU 核心数
-	Duration  time.Duration // 持续时间
-	stopChan  chan struct{}
-	running   atomic.Bool
+	Cores    int           // 占用 CPU 核心数
+	Duration time.Duration // 持续时间
+	stopChan chan struct{}
+	running  atomic.Bool
 }
 
 func NewCPUStressFault(cores int, duration time.Duration) *CPUStressFault {
@@ -89,10 +89,10 @@ func (f *CPUStressFault) Inject(ctx context.Context) (CleanupFunc, error) {
 
 // MemoryStressFault 内存压力故障
 type MemoryStressFault struct {
-	SizeMB    int           // 分配内存大小（MB）
-	Duration  time.Duration // 持续时间
-	stopChan  chan struct{}
-	running   atomic.Bool
+	SizeMB   int           // 分配内存大小（MB）
+	Duration time.Duration // 持续时间
+	stopChan chan struct{}
+	running  atomic.Bool
 }
 
 func NewMemoryStressFault(sizeMB int, duration time.Duration) *MemoryStressFault {
@@ -131,9 +131,9 @@ func (f *MemoryStressFault) Inject(ctx context.Context) (CleanupFunc, error) {
 
 // ProcessKillFault 进程杀死故障
 type ProcessKillFault struct {
-	PID       int
-	Signal    string
-	executed  atomic.Bool
+	PID      int
+	Signal   string
+	executed atomic.Bool
 }
 
 func NewProcessKillFault(pid int, signal string) *ProcessKillFault {

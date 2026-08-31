@@ -37,18 +37,18 @@ func (d *demoChaos) CreateExperiment(_ context.Context, req CreateExperimentRequ
 	now := time.Now()
 	exp := ExperimentResult{
 		Experiment: Experiment{
-			Name:        req.Name,
-			Hypothesis:  req.Hypothesis,
-			Status:      "completed",
-			Duration:    "12.5s",
+			Name:                req.Name,
+			Hypothesis:          req.Hypothesis,
+			Status:              "completed",
+			Duration:            "12.5s",
 			HypothesisValidated: true,
 			Faults: []Fault{{
 				Type:        req.FaultType,
 				Description: fmt.Sprintf("demo %s 注入（演示数据，未执行真实故障）", req.FaultType),
 			}},
 		},
-		StartTime: now.Add(-15 * time.Second).Format(time.RFC3339),
-		EndTime:   now.Format(time.RFC3339),
+		StartTime:       now.Add(-15 * time.Second).Format(time.RFC3339),
+		EndTime:         now.Format(time.RFC3339),
 		PreSteadyState:  SteadyState{Met: true, Message: "稳态基线正常"},
 		PostSteadyState: SteadyState{Met: true, Message: "故障恢复后稳态正常"},
 	}
