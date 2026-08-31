@@ -191,6 +191,9 @@ func (a *ReActAgent) saveCheckpoint(ctx context.Context, history []Message, turn
 		},
 		SavedAt: time.Now().UTC(),
 	}
+	// v6.1 state-checkpoint 协议：世界模型快照随检查点落盘（opt-in；
+	// tracker 未注入时 no-op，检查点格式向后兼容）
+	a.wmSaveWorldState(state)
 
 	if err := cs.Save(ctx, state); err != nil {
 		a.logger.Warn("保存检查点失败", "error", err)

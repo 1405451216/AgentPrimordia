@@ -29,8 +29,13 @@ type AgentState struct {
 	TurnCount int                 `json:"turn_count"`
 	Metrics   CheckpointMetrics   `json:"metrics"`
 	// Plan 保存 Plan（executePlan）执行的中间状态；非空表示从计划断点恢复。
-	Plan    *CheckpointPlan `json:"plan,omitempty"`
-	SavedAt time.Time       `json:"saved_at"`
+	Plan *CheckpointPlan `json:"plan,omitempty"`
+	// WorldState 世界模型状态快照（v6.1 state-checkpoint 协议，提案 E7–E10）。
+	// json.RawMessage 透传：persist 层不感知世界模型内部结构（依赖方向约束，
+	// persist 不得 import agent/*），序列化/反序列化由 agent 接线层完成。
+	// 旧检查点无此字段（nil）——恢复语义不变，向后兼容。
+	WorldState json.RawMessage `json:"world_state,omitempty"`
+	SavedAt    time.Time       `json:"saved_at"`
 }
 
 // CheckpointPlan Plan 执行的持久化进度，用于断点续跑整个计划。

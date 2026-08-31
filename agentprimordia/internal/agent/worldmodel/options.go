@@ -66,6 +66,8 @@ func NewWorldModelOptions(opts ...Option) WorldModelOptions {
 //  6. ✅ 行动后回溯校验（观察模式）：ComparePaths(计划路径, tracker
 //     .PlanTrajectory()) 偏离 → 失败库 + 审计 worldmodel.backdiff_diverged。
 //
-// 下一切片：state-checkpoint 协议（kill -9 后「续知」而非「重放」，
-// 提案 E7–E10）；随后 CI 状态断言一致性门（提案 §三.2 随行项）。
+// 第三切片（已完成）：state-checkpoint 协议——worldmodel.Snapshot/Restore
+// 快照层 + persist.AgentState.WorldState（json.RawMessage 透传）+
+// saveCheckpoint 嵌入 / resumeFromState「续知而非重放」载入（提案 E7–E10）。
+// 剩余随行项：CI 状态断言一致性门（提案 §三.2）。
 // 「评价线默认开」「v7.0 翻默认」分属提案 §2.2/§2.3，与本切片无关。

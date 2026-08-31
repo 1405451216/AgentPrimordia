@@ -13,6 +13,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -250,6 +251,41 @@ func (a *ReActAgent) wmBackDiffCheck(ctx context.Context, turn int) {
 		fmt.Fprintf(&b, "；计划外执行: %s", strings.Join(diff.ExecutedButUnplanned, ","))
 	}
 	a.wmRecordWorldModelAnomaly(ctx, turn, b.String(), auditActionWMBackDiff)
+}
+
+// wmSaveWorldState state-checkpoint 协议（v6.1 切片三，提案 E7–E10）：
+// 把世界模型快照嵌入检查点（tracker 未注入时为 no-op，检查点无 WorldState
+// 字段——旧检查点/旧 agent 双向兼容）。序列化失败仅告警，不影响检查点保存。
+func (a *ReActAgent) wmSaveWorldState(state *persist.AgentState) {
+	t := a.wmTracker()
+	if t == nil || state == nil {
+		return
+	}
+	data, err := json.Marshal(t.Snapshot())
+	if err != nil {
+		a.logger.Warn("世界模型快照序列化失败", "error", err)
+		return
+	}
+	state.WorldState = data
+}
+
+// wmRestoreWorldState state-checkpoint 协议：从检查点恢复世界模型状态。
+// 「续知而非重放」——恢复路径重建 history 后不再把历史消息重放给 tracker，
+// 结构化世界状态（图/计划/轨迹）由本方法一次性载入；快照损坏（校验失败）
+// 时告警并以空图继续（恢复语义不因世界模型失败而阻塞主流程）。
+func (a *ReActAgent) wmRestoreWorldState(state *persist.AgentState) {
+	t := a.wmTracker()
+	if t == nil || state == nil || len(state.WorldState) == 0 {
+		return
+	}
+	var snap worldmodel.Snapshot
+	if err := json.Unmarshal(state.WorldState, &snap); err != nil {
+		a.logger.Warn("世界模型快照反序列化失败，以空图恢复", "error", err)
+		return
+	}
+	if err := t.Restore(snap); err != nil {
+		a.logger.Warn("世界模型快照校验失败，以空图恢复", "error", err)
+	}
 }
 
 // wmRecordWorldModelAnomaly 世界模型异常 → 失败库 + 审计。

@@ -197,10 +197,17 @@ func (a *ReActAgent) resumeFromState(ctx context.Context, state *persist.AgentSt
 	// v3.4-1：若 checkpoint 含 plan 进度，从计划断点恢复——重建 plan 与进度，
 	// 跳过已完成子任务、沿用其结果，仅执行剩余子任务。
 	if state.Plan != nil {
+		// v6.1 state-checkpoint 协议：恢复路径「续知而非重放」——历史消息
+		// 不会重放给 tracker，世界状态由快照一次性载入（opt-in；无快照时
+		// 恢复语义与 v6.0 完全一致）
+		a.wmRestoreWorldState(state)
 		pp := buildPlanProgressFromState(state.Plan)
 		plan := &planning.Plan{SubTasks: pp.subtasks}
 		return a.executePlanWithState(ctx, history, plan, loopConfig{requestID: reqID}, a.startTime, totalLLMLatency, totalToolLatency, toolCount, pp)
 	}
+
+	// v6.1 state-checkpoint 协议：同上，普通 ReAct 路径的世界状态恢复
+	a.wmRestoreWorldState(state)
 
 	return a.runLoop(ctx, history, state.TurnCount, loopConfig{requestID: reqID}, totalLLMLatency, totalToolLatency, toolCount)
 }

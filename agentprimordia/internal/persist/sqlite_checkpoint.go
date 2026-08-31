@@ -51,6 +51,7 @@ func (s *SQLiteCheckpointStore) initSchema() error {
 		turn_count INTEGER NOT NULL,
 		metrics TEXT NOT NULL,
 		plan TEXT NOT NULL DEFAULT '',
+		world_state TEXT NOT NULL DEFAULT '',
 		saved_at TEXT NOT NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_checkpoints_session ON checkpoints(session_id);
@@ -58,8 +59,11 @@ func (s *SQLiteCheckpointStore) initSchema() error {
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
 	}
-	// 旧库迁移：为历史 checkpoints 表补充 plan 列（已存在时忽略错误，保持幂等）
+	// 旧库迁移：为历史 checkpoints 表补充 plan/world_state 列（已存在时忽略
+	// 错误，保持幂等）。world_state 为 v6.1 state-checkpoint 协议（提案 E7–E10）
+	// 新增；旧库该列为空串，WorldState 保持 nil——恢复语义向后兼容。
 	_, _ = s.db.Exec("ALTER TABLE checkpoints ADD COLUMN plan TEXT NOT NULL DEFAULT ''")
+	_, _ = s.db.Exec("ALTER TABLE checkpoints ADD COLUMN world_state TEXT NOT NULL DEFAULT ''")
 	return nil
 }
 
@@ -86,9 +90,14 @@ func (s *SQLiteCheckpointStore) Save(ctx context.Context, state *AgentState) err
 		planJSON = string(b)
 	}
 
+	worldStateJSON := ""
+	if len(state.WorldState) > 0 {
+		worldStateJSON = string(state.WorldState)
+	}
+
 	query := `
-	INSERT OR REPLACE INTO checkpoints (agent_id, session_id, status, messages, turn_count, metrics, plan, saved_at)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	INSERT OR REPLACE INTO checkpoints (agent_id, session_id, status, messages, turn_count, metrics, plan, world_state, saved_at)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	_, err = s.db.ExecContext(ctx, query,
 		state.AgentID,
@@ -98,6 +107,7 @@ func (s *SQLiteCheckpointStore) Save(ctx context.Context, state *AgentState) err
 		state.TurnCount,
 		string(metricsJSON),
 		string(planJSON),
+		worldStateJSON,
 		state.SavedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -111,13 +121,13 @@ func (s *SQLiteCheckpointStore) Load(ctx context.Context, agentID string) (*Agen
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT agent_id, session_id, status, messages, turn_count, metrics, plan, saved_at FROM checkpoints WHERE agent_id = ?`
+	query := `SELECT agent_id, session_id, status, messages, turn_count, metrics, plan, world_state, saved_at FROM checkpoints WHERE agent_id = ?`
 	row := s.db.QueryRowContext(ctx, query, agentID)
 
 	var state AgentState
-	var messagesJSON, metricsJSON, planJSON, savedAt string
+	var messagesJSON, metricsJSON, planJSON, worldStateJSON, savedAt string
 
-	err := row.Scan(&state.AgentID, &state.SessionID, &state.Status, &messagesJSON, &state.TurnCount, &metricsJSON, &planJSON, &savedAt)
+	err := row.Scan(&state.AgentID, &state.SessionID, &state.Status, &messagesJSON, &state.TurnCount, &metricsJSON, &planJSON, &worldStateJSON, &savedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("%w: %s", ErrCheckpointNotFound, agentID)
@@ -137,6 +147,10 @@ func (s *SQLiteCheckpointStore) Load(ctx context.Context, agentID string) (*Agen
 			return nil, fmt.Errorf("unmarshal plan: %w", err)
 		}
 	}
+	// world_state 列为空串（旧库/无世界模型）时保持 WorldState=nil（向后兼容）
+	if worldStateJSON != "" {
+		state.WorldState = json.RawMessage(worldStateJSON)
+	}
 
 	if t, err := timeParse(savedAt); err != nil {
 		slog.Warn("解析保存时间失败", "error", err, "saved_at", savedAt)
@@ -150,7 +164,7 @@ func (s *SQLiteCheckpointStore) List(ctx context.Context, sessionID string) ([]*
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	query := `SELECT agent_id, session_id, status, messages, turn_count, metrics, plan, saved_at FROM checkpoints WHERE session_id = ? ORDER BY saved_at DESC`
+	query := `SELECT agent_id, session_id, status, messages, turn_count, metrics, plan, world_state, saved_at FROM checkpoints WHERE session_id = ? ORDER BY saved_at DESC`
 	rows, err := s.db.QueryContext(ctx, query, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("list checkpoints: %w", err)
@@ -160,9 +174,9 @@ func (s *SQLiteCheckpointStore) List(ctx context.Context, sessionID string) ([]*
 	var results []*AgentState
 	for rows.Next() {
 		var state AgentState
-		var messagesJSON, metricsJSON, planJSON, savedAt string
+		var messagesJSON, metricsJSON, planJSON, worldStateJSON, savedAt string
 
-		if err := rows.Scan(&state.AgentID, &state.SessionID, &state.Status, &messagesJSON, &state.TurnCount, &metricsJSON, &planJSON, &savedAt); err != nil {
+		if err := rows.Scan(&state.AgentID, &state.SessionID, &state.Status, &messagesJSON, &state.TurnCount, &metricsJSON, &planJSON, &worldStateJSON, &savedAt); err != nil {
 			return nil, fmt.Errorf("scan checkpoint: %w", err)
 		}
 
@@ -176,6 +190,9 @@ func (s *SQLiteCheckpointStore) List(ctx context.Context, sessionID string) ([]*
 			if err := json.Unmarshal([]byte(planJSON), &state.Plan); err != nil {
 				return nil, fmt.Errorf("unmarshal plan: %w", err)
 			}
+		}
+		if worldStateJSON != "" {
+			state.WorldState = json.RawMessage(worldStateJSON)
 		}
 		if t, err := timeParse(savedAt); err != nil {
 			slog.Warn("解析保存时间失败", "error", err, "saved_at", savedAt)
