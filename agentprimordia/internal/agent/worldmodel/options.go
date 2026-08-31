@@ -45,23 +45,27 @@ func NewWorldModelOptions(opts ...Option) WorldModelOptions {
 	return o
 }
 
-// —— 接线点（下一切片实现；提案 §2.1：runLoop 接入与 E1–E3 逐点对应）——
+// —— 接线点（第二切片已全部接线，见 internal/agent/worldmodel_hook.go）——
 //
-// 前置：agent 层新增适配器（如 internal/agent/worldmodel_hook.go），把
-// WorldModelOptions.Tracker 挂进 loopConfig；默认 nil 时全部挂钩短路，
-// 保证默认路径一个字节都不经过。
+// 接线层实现：internal/agent/worldmodel_hook.go（WorldModelCapable 接口发现 +
+// 事件转换挂钩，全部 nil-safe：tracker 未注入时默认路径一个字节都不经过）。
 //
-//  1. reactLoopEngine 构造 loopConfig 时应用适配后的 Option，取 Tracker；
-//  2. assistantMsg 追加后（提案 E3：internal/agent/react_loop_core.go:275）：
-//     tracker.Apply(PlanRevised{...}) / Apply(HypothesisFormed{...})；
-//  3. executeToolCalls 工具结果回写后（提案 E3：react_loop_core.go:278）：
-//     tracker.Apply(ToolObserved{Turn: turn, ToolName: ..., ToolInput: ..., Observation: ...})；
-//  4. trimContext 裁剪发生时（提案 E6：internal/agent/react_persist.go trimContext，
-//     defaultMaxHistoryMessages=100 滑动窗口）：tracker.TrimNotification(被裁消息, turn)；
-//  5. 工具执行前（预演 gate）：Rehearse(当前计划, tracker.Graph()) 不过 →
-//     写失败库（internal/persist FailureStore 通道，参照 learning/feedback.go 失败入库路径）；
-//  6. 行动后（回溯校验）：ComparePaths(当前计划 Path(), tracker.Graph().PathTo(最新节点))
-//     结果写失败库并触发审计（审计口径沿用 AuditEvent）。
+//  1. ✅ 注入链：agent.WithWorldModel(tracker)（config.Cognition.WorldModel /
+//     NewAgent 选项 / CapabilityAgent 链式）→ capabilityCache.worldTracker；
+//  2. ✅ assistantMsg 追加后（提案 E3：react_loop_core.go）：本轮 ToolCalls →
+//     PlanRevised（步骤 ID 用 NodeID(KindToolCall, 摘要) 派生，与执行后调用
+//     节点收敛）；思考文本 → HypothesisFormed；planner 粗粒度计划 →
+//     PlanRevised + 组建期预演门；
+//  3. ✅ processToolResult 工具结果回写后（提案 E3）：ToolObserved
+//     （tool_call → observation 因果链，失败观察同样落图）；
+//  4. ✅ trimContext 裁剪发生后（提案 E6）：wmNotifyTrimmed 以公共前缀定位
+//     被裁消息 → tracker.TrimNotification 落为 observation 事实节点；
+//  5. ✅ 工具执行前预演门（观察模式）：Rehearse(当前计划, tracker.Graph())
+//     不过 → persist.FailureRecord + 审计 worldmodel.rehearsal_failed
+//     （不拦截执行——阻断语义待治理策略）；
+//  6. ✅ 行动后回溯校验（观察模式）：ComparePaths(计划路径, tracker
+//     .PlanTrajectory()) 偏离 → 失败库 + 审计 worldmodel.backdiff_diverged。
 //
-// 以上全部位于 opt-in 分支内；「评价线默认开」「v7.0 翻默认」分属提案
-// §2.2/§2.3，与本切片无关。
+// 下一切片：state-checkpoint 协议（kill -9 后「续知」而非「重放」，
+// 提案 E7–E10）；随后 CI 状态断言一致性门（提案 §三.2 随行项）。
+// 「评价线默认开」「v7.0 翻默认」分属提案 §2.2/§2.3，与本切片无关。

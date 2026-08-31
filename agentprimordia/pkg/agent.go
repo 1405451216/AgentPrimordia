@@ -36,6 +36,7 @@ package ap
 
 import (
 	"agentprimordia/internal/agent"
+	"agentprimordia/internal/agent/worldmodel"
 	"agentprimordia/internal/config"
 	"agentprimordia/internal/health"
 	"agentprimordia/internal/memory"
@@ -308,6 +309,10 @@ var (
 	WithToolsConfig = agent.WithToolsConfig
 	// WithCognition 一次性注入认知能力配置（Planner / Reflector / 阈值）
 	WithCognition = agent.WithCognition
+	// WithWorldModel 启用世界模型状态图（v6.1 opt-in，默认关闭；提案 §2.1）
+	//
+	// Stability: Experimental
+	WithWorldModel = agent.WithWorldModel
 )
 
 // AgentOption 是 NewAgent 的函数式选项类型（v0.7.0 起等同于 agent.Option）
@@ -340,8 +345,18 @@ type HITLConfig = agent.HITLConfig
 // LearningConfig 自适应学习分组配置（Distiller / Evolver / FeedbackLearner）
 type LearningConfig = agent.LearningConfig
 
-// CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold）
+// CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold / WorldModel）
 type CognitionConfig = agent.CognitionConfig
+
+// WorldModelTracker 世界模型跟踪器（v6.1 opt-in）。
+//
+// Stability: Experimental
+//
+// v6.1 新增：把任务世界增量维护为结构化状态图（实体/关系/因果算子）。
+// 经 ap.WithWorldModel 显式注入，默认关闭（铁律 7：不注入时默认 ReAct
+// 行为零变更）；「评价线默认开」「翻默认」分属三段式默认策略第二/三段，
+// 见 agentprimordia/docs/提案-世界模型默认策略切换.md，翻默认锁 v7.0。
+type WorldModelTracker = worldmodel.WorldModelTracker
 
 // ===== 协议式微内核：Capable 接口 + CapabilityAgent =====
 

@@ -80,9 +80,10 @@ type TrimmedMessage struct {
 type WorldModelTracker struct {
 	mu         sync.Mutex
 	graph      *StateGraph
-	plan       Plan   // 当前计划（PlanRevised 覆盖式修订）
-	hasPlan    bool   // 区分「空计划」与「尚未计划」
-	lastTaskID string // 最近任务节点 ID（"" 表示尚无）
+	plan       Plan     // 当前计划（PlanRevised 覆盖式修订）
+	hasPlan    bool     // 区分「空计划」与「尚未计划」
+	lastTaskID string   // 最近任务节点 ID（"" 表示尚无）
+	planTraj   []string // 自当前计划形成以来的实际工具调用节点 ID（应用序；接线点⑥轨迹端）
 }
 
 // NewWorldModelTracker 构造跟踪器（内部自建状态图）。
@@ -151,6 +152,8 @@ func (t *WorldModelTracker) onToolObserved(e ToolObserved) {
 	callID, _ := g.AddNode(KindToolCall, e.ToolName+" "+e.ToolInput, e.Turn)
 	obsID, _ := g.AddNode(KindObservation, e.Observation, e.Turn)
 	g.AddEdge(callID, obsID, EdgeCause)
+	// 接线点⑥轨迹端：自当前计划形成以来的实际调用序列（应用序，重复调用照实追加）
+	t.planTraj = append(t.planTraj, callID)
 }
 
 // onPlanRevised 计划（重新）形成（须持 t.mu）：
@@ -181,6 +184,8 @@ func (t *WorldModelTracker) onPlanRevised(e PlanRevised) {
 	}
 	t.plan = Plan{Goal: e.Goal, Steps: steps}
 	t.hasPlan = true
+	// 覆盖式修订同时重置轨迹端：回溯差异只对「本计划形成之后」的执行负责
+	t.planTraj = nil
 }
 
 // onHypothesisFormed 假设节点（须持 t.mu）：有当前任务时以 hypothesis 边
@@ -220,6 +225,22 @@ func (t *WorldModelTracker) TrimNotification(msgs []TrimmedMessage, turn int) []
 		}
 	}
 	return created
+}
+
+// PlanTrajectory 返回自当前计划（最近一次 PlanRevised）形成以来的
+// 实际工具调用节点 ID 序列（按应用序，重复调用照实保留）。
+// 回溯差异（ComparePaths）的实际轨迹端输入：计划步骤 ID 经 NodeID 派生后
+// 与调用节点 ID 同处一个确定性 ID 空间，二者可比对（接线点⑥契约）。
+// 尚无计划或计划形成后无工具观测时返回 nil；返回值为防御性拷贝。
+func (t *WorldModelTracker) PlanTrajectory() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if len(t.planTraj) == 0 {
+		return nil
+	}
+	out := make([]string, len(t.planTraj))
+	copy(out, t.planTraj)
+	return out
 }
 
 // graphLocked 返回内部图（须持 t.mu；懒初始化保证零值 tracker 可用）。

@@ -11,6 +11,7 @@ import (
 	"agentprimordia/internal/agent/learning"
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/worldmodel"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -110,6 +111,11 @@ type CognitionConfig struct {
 	// ReflectionSeverityThreshold 触发 Reflection 改进的最低严重度
 	// （low/medium/high/critical，空值时引擎默认 high）
 	ReflectionSeverityThreshold string
+
+	// WorldModel 世界模型跟踪器（v6.1 opt-in；nil 表示不启用——
+	// 默认 ReAct 行为零变更，铁律 7；三段式默认策略见
+	// docs/提案-世界模型默认策略切换.md §2.1，v7.0 才翻默认）
+	WorldModel *worldmodel.WorldModelTracker
 }
 
 // AgentConfig 是 Agent 的分组式配置结构。

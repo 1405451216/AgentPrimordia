@@ -6,6 +6,7 @@ package agent
 import (
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
+	"agentprimordia/internal/agent/worldmodel"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/persist"
@@ -140,6 +141,16 @@ func WithReflector(r reflection.Reflector) Option {
 // 取值 low/medium/high/critical，空值时引擎默认 high。
 func WithReflectionThreshold(severity string) Option {
 	return func(c *AgentConfig) { c.Cognition.ReflectionSeverityThreshold = severity }
+}
+
+// WithWorldModel 启用世界模型状态图（v6.1 opt-in，默认关闭；提案 §2.1）。
+// 注入后 ReAct 循环把任务世界增量维护为结构化状态图：工具调用/观察落图、
+// 上下文裁剪消息转为事实节点、预演门与回溯差异以观察模式写失败库+审计。
+// 不调用时默认 ReAct 行为零变更（铁律 7）；「评价线默认开」「v7.0 翻默认」
+// 分属提案 §2.2/§2.3，均不改变本选项的用户侧缺省语义。
+// tracker 允许 nil（等价不启用，便于条件装配）。
+func WithWorldModel(t *worldmodel.WorldModelTracker) Option {
+	return func(c *AgentConfig) { c.Cognition.WorldModel = t }
 }
 
 // ===== 4 个分组注入 Option =====

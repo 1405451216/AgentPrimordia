@@ -79,6 +79,10 @@ func buildAgent(cfg AgentConfig) (*CapabilityAgent, error) {
 	if cfg.Cognition.Reflector != nil {
 		cap = cap.WithReflector(cfg.Cognition.Reflector)
 	}
+	// v6.1：世界模型（opt-in；nil = 不启用，默认路径零变化）
+	if cfg.Cognition.WorldModel != nil {
+		cap = cap.WithWorldModel(cfg.Cognition.WorldModel)
+	}
 
 	// 注入记忆能力
 	if cfg.Memory.Store != nil {

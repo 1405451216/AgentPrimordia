@@ -53,6 +53,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 							"subtasks", len(plan.SubTasks),
 							"goal", plan.Goal,
 						)
+						// v6.1 接线点②（planner 粗粒度计划）：任务/子任务落图 + 组建期预演门
+						a.wmObservePlan(ctx, 0, userInput, plan)
 						// v3.6-1：失败自动换路径（replan/降级），故障恢复不依赖人工
 						return a.executePlanWithSelfHealing(ctx, history, plan, cfg)
 					}
@@ -127,6 +129,8 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		history = a.ragRetrieveAndInject(ctx, history, turn, startTurn, cfg, tracer, turnSpan)
 
 		trimmedHistory := a.trimContext(history, 0)
+		// v6.1 接线点④：被裁消息转世界事实节点（提案 E6 截断债务的结构化偿还）
+		a.wmNotifyTrimmed(history, trimmedHistory, turn)
 		llmMessages := convertToLLMMessages(trimmedHistory)
 
 		// 优化（Task 2 / Task 2.5 / perf-v2）：使用 capCache.toolkit 和预转换的 toolDefinitions
@@ -273,9 +277,17 @@ func (a *ReActAgent) runLoop(ctx context.Context, history []Message, startTurn i
 		}
 
 		history = append(history, assistantMsg)
+		// v6.1 接线点②：本轮工具调用 = 计划（重新）形成（预演态）；思考文本 = 假设
+		a.wmObserveAssistant(turn, thought)
+
+		// v6.1 接线点⑤：工具执行前预演门（观察模式——缺陷写失败库+审计，不拦截）
+		a.wmRehearseGate(ctx, turn)
 
 		// 执行所有tool调用
 		history, totalToolLatency, toolCount = a.executeToolCalls(ctx, history, thought.ToolCalls, turn, cfg, tracer, turnSpan, totalToolLatency, toolCount)
+
+		// v6.1 接线点⑥：行动后回溯校验（计划路径 vs 实际轨迹，偏离写失败库+审计）
+		a.wmBackDiffCheck(ctx, turn)
 
 		turnSpan.End()
 		_ = a.fireHookWithPool(HookAfterTurn, turn)

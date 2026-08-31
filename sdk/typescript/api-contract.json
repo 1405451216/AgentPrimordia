@@ -1106,7 +1106,13 @@
         {
           "name": "CognitionConfig",
           "kind": "alias",
-          "doc": "CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold）"
+          "doc": "CognitionConfig 认知能力分组配置（Planner / Reflector / ReflectionSeverityThreshold / WorldModel）"
+        },
+        {
+          "name": "WorldModelTracker",
+          "kind": "alias",
+          "stability": "Experimental",
+          "doc": "WorldModelTracker 世界模型跟踪器（v6.1 opt-in）。"
         },
         {
           "name": "CapabilityAgent",
@@ -1819,6 +1825,11 @@
         {
           "name": "WithCognition",
           "doc": "WithCognition 一次性注入认知能力配置（Planner / Reflector / 阈值）"
+        },
+        {
+          "name": "WithWorldModel",
+          "stability": "Experimental",
+          "doc": "WithWorldModel 启用世界模型状态图（v6.1 opt-in，默认关闭；提案 §2.1）"
         },
         {
           "name": "SessWithID",

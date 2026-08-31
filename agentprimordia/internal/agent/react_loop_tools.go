@@ -219,6 +219,9 @@ func (a *ReActAgent) processToolResult(ctx context.Context, tc *ToolCall, result
 	a.stats.ToolsCalled[tc.Name]++
 	a.statsMu.Unlock()
 
+	// v6.1 接线点③：工具调用/观察落图（因果链 tool_call → observation）
+	a.wmObserveToolResult(turn, tc, result, err)
+
 	// R1.5 G1-3：ToolLearning 经验记录（fire-and-forget，失败仅记录日志）
 	if learner := a.getToolLearnerOrNil(); learner != nil {
 		if err != nil || (result != nil && result.IsError) {

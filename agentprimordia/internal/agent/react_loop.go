@@ -15,6 +15,7 @@ import (
 	"agentprimordia/internal/agent/planning"
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/tool_learning"
+	"agentprimordia/internal/agent/worldmodel"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/observability"
@@ -253,6 +254,9 @@ type capabilityCache struct {
 	distiller       *learning.KnowledgeDistiller // 知识蒸馏器
 	evolver         *learning.CapabilityEvolver  // 能力进化器
 	feedbackLearner *learning.FeedbackLearner    // 反馈学习器
+
+	// v6.1：世界模型跟踪器（opt-in；nil = 不启用，默认路径零变化）
+	worldTracker *worldmodel.WorldModelTracker
 }
 
 // resolveCapabilities 一次性查找所有能力并填充到 capabilityCache。
@@ -283,6 +287,9 @@ func (a *ReActAgent) resolveCapabilities(requestID string) *capabilityCache {
 		distiller:       a.getKnowledgeDistiller(),
 		evolver:         a.getCapabilityEvolver(),
 		feedbackLearner: a.getFeedbackLearner(),
+
+		// v6.1：世界模型跟踪器（接线点①；opt-in，未注入时为 nil）
+		worldTracker: a.getWorldModelTracker(),
 	}
 	// 缓存 labeled 记录器
 	if c.metricsRecorder != nil {

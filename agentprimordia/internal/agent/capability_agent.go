@@ -8,6 +8,7 @@ import (
 	"agentprimordia/internal/agent/reflection"
 	"agentprimordia/internal/agent/skills"
 	"agentprimordia/internal/agent/tool_learning"
+	"agentprimordia/internal/agent/worldmodel"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/observability"
@@ -59,6 +60,9 @@ type CapabilityAgent struct {
 	distiller       *learning.KnowledgeDistiller
 	evolver         *learning.CapabilityEvolver
 	feedbackLearner *learning.FeedbackLearner
+
+	// v6.1：世界模型（opt-in，提案 §2.1）
+	worldModel *worldmodel.WorldModelTracker
 
 	// v3.3-v3.6：自治 / 技能 / 实时能力
 	autonomyRT  *autonomy.AutonomyRuntime
@@ -308,6 +312,17 @@ func (c *CapabilityAgent) WithPlanner(p planning.Planner) *CapabilityAgent {
 // GetPlanner 返回任务规划器
 func (c *CapabilityAgent) GetPlanner() planning.Planner {
 	return c.planner
+}
+
+// WithWorldModel 注入世界模型跟踪器（v6.1 opt-in，提案 §2.1）
+func (c *CapabilityAgent) WithWorldModel(t *worldmodel.WorldModelTracker) *CapabilityAgent {
+	c.worldModel = t
+	return c
+}
+
+// GetWorldModelTracker 返回世界模型跟踪器（WorldModelCapable 接口实现）
+func (c *CapabilityAgent) GetWorldModelTracker() *worldmodel.WorldModelTracker {
+	return c.worldModel
 }
 
 // WithReflector 注入反思器

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"agentprimordia/internal/agent/worldmodel"
 	"agentprimordia/internal/llm"
 	"agentprimordia/internal/memory"
 	"agentprimordia/internal/observability"
@@ -42,6 +43,12 @@ func (a *ReActAgent) WithMemory(m MemoryStore) *CapabilityAgent {
 // WithToolkit 注入tool注册表，返回可链式调用的 CapabilityAgent
 func (a *ReActAgent) WithToolkit(t *tools.Registry) *CapabilityAgent {
 	return a.wrapSelf(&CapabilityAgent{inner: a, toolkit: t})
+}
+
+// WithWorldModel 注入世界模型跟踪器（v6.1 opt-in，提案 §2.1），
+// 返回可链式调用的 CapabilityAgent。不注入时默认 ReAct 行为零变更（铁律 7）。
+func (a *ReActAgent) WithWorldModel(t *worldmodel.WorldModelTracker) *CapabilityAgent {
+	return a.wrapSelf(&CapabilityAgent{inner: a, worldModel: t})
 }
 
 // WithHooks 注入 Hook 管理器，返回可链式调用的 CapabilityAgent

@@ -200,6 +200,14 @@ func (g *StateGraph) PathTo(id string) []string {
 	return nil
 }
 
+// NodeID 由 (Kind, 摘要) 派生确定性节点 ID——先规范化摘要再哈希，
+// 与 AddNode 内部派生规则完全一致。接入层据此在事件构造前预知节点 ID，
+// 使「计划步骤 ID」与「实际工具调用节点 ID」收敛到同一确定性 ID 空间
+// （回溯差异 ComparePaths 的可比性前提；接线点②⑥契约，见 options.go）。
+func NodeID(kind NodeKind, summary string) string {
+	return stateNodeID(kind, normalizeSummary(summary))
+}
+
 // bfsPath 在持锁前提下从 root 做 BFS（邻接按目标 ID 升序），
 // 返回 root→target 的首达路径；不可达返回 nil。
 func bfsPath(nodes map[string]*StateNode, root, target string) []string {
