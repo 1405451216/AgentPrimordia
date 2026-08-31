@@ -1,6 +1,6 @@
 {
   "name": "@agentprimordia/sdk",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "description": "AgentPrimordia - Universal AI Agent Development Framework for TypeScript",
   "type": "module",
   "main": "dist/index.js",

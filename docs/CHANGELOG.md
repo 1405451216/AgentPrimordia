@@ -4,12 +4,23 @@
 
 ## [Unreleased]
 
-### Fixed — ap 脚手架生成的项目无法编译（v6.0 复测巡检发现）
+## [6.0.1] - 2026-08-31
 
-- **pgvector 依赖链断裂**：根模块的 `replace agentprimordia/pgvector => ../pgvector` 不具传递性，`ap init` / `ap plugin create` 生成的独立子项目经 pkg → internal/memory → pgvector 引用链解析失败，`go mod tidy` 直接报错（workspace 模式掩盖了该问题，独立构建必现）
-- 修复：脚手架统一走 `buildGoMod`——向上探测框架模块后 emit 相对路径 replace 并连带 pgvector 的 require+replace；standalone 场景不再 emit 失效 replace 并打印指引
-- **版本声明过时**：模板 `go 1.23` → `go 1.26`（对齐框架要求）、`agentprimordia v1.0.0` → SIV 合法占位版本（无 `/vN` 后缀路径不允许 require v2+，详见 版本规范.md「模块消费与语义化导入版本限制」）
-- E2E 验证：init → go mod tidy → go build 全链路通过（GOWORK=off 独立构建）；新增 gomod_template_test.go 锁定行为
+### Fixed
+
+- **ap 脚手架生成的项目无法编译**（v6.0 复测巡检发现）：pgvector 依赖链断裂——根模块的 `replace agentprimordia/pgvector => ../pgvector` 不具传递性，`ap init` / `ap plugin create` 生成的独立子项目经 pkg → internal/memory → pgvector 引用链解析失败，`go mod tidy` 直接报错（workspace 模式掩盖了该问题，独立构建必现）。修复：脚手架统一走 `buildGoMod`——向上探测框架模块后 emit 相对路径 replace 并连带 pgvector 的 require+replace；standalone 场景不再 emit 失效 replace 并打印指引。同时修正模板过时版本声明（`go 1.23` → `go 1.26`、`agentprimordia v1.0.0` → SIV 合法占位版本，详见 版本规范.md「模块消费与语义化导入版本限制」）。E2E 验证：init → go mod tidy → go build 全链路通过（GOWORK=off 独立构建）；新增 gomod_template_test.go 锁定行为
+- **多轮对话记忆失效**：回读会话历史注入 LLM 请求（`internal/agent`）
+- **评估器 requires 片段 OR 语义**：片段内 `|` 支持（Go + TS 双线）
+- **契约基线非确定性**：`make api-extract` 未传 `-no-timestamp`，生成的基线含时间戳导致 `TestAPIContractNoDrift` 恒漂移——目标补确定性参数
+
+### Added
+
+- bench 与集成测试支持自定义 OpenAI 兼容端点
+
+### Chores
+
+- 全仓 gofmt 格式化（161 文件）+ 3 处 unused 死代码清理（golangci-lint 归零）
+- go mod tidy 对齐 5 模块 go.mod/go.sum；AGENTS.md 同步 grpc/wazero 依赖边界条款
 
 ## [6.0.0] - 2026-08-21
 

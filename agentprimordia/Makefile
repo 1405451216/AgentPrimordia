@@ -83,7 +83,7 @@ api-diff:
 
 # API 契约提取：从 pkg/ 提取公共 API 签名，输出 JSON 供跨语言漂移检测
 api-extract:
-	go run ./scripts/api-extract/ -output ../sdk/typescript/api-contract.json
+	go run ./scripts/api-extract/ -output ../sdk/typescript/api-contract.json -no-timestamp
 
 # Phase 12.2: 覆盖率趋势跟踪
 cover-trend:
