@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### Added — v6.1 具模（World Model）
+
+- **v6.1 世界模型内核切片一——状态图（opt-in，默认行为零变化）**：`internal/agent/worldmodel/`（graph/tracker/backdiff/rehearsal/options，纯标准库）——StateGraph 有向图内核（五类节点/四类边，确定性 ID 去重，预演态/观测态靠边分型）、WorldModelTracker 最小事件流增量维护、TrimNotification 把上下文裁剪消息转为事实节点、ComparePaths 回溯差异（乱序安全纯函数）、Rehearse 无 LLM 预演门；测试 21 函数 74 用例 -race 绿，覆盖率 96.8%（067134ef）
+- **v6.1 世界模型内核切片二——runLoop 接线（六挂钩全通，观察模式）**：agent 侧 `worldmodel_hook.go` 接线层 + 注入链（`WithWorldModel` 进 `CognitionConfig`/NewAgent 选项/CapabilityAgent 链式/pkg `ap.WithWorldModel`+`ap.WorldModelTracker` Experimental 导出）——①接口发现入 capabilityCache；②assistantMsg 后本轮 ToolCalls→PlanRevised（步骤 ID 用新导出 `worldmodel.NodeID` 派生，与执行后调用节点收敛同一 ID 空间）+ 思考文本→HypothesisFormed + planner 粗粒度计划落图与组建期预演；③processToolResult 工具观察落图（tool_call→observation 因果链，失败观察同样落图）；④trimContext 被裁消息→observation 事实节点（提案 E6 截断债务结构化偿还）；⑤工具执行前 Rehearse 预演门（观察模式：缺陷写失败库 + 审计 `worldmodel.rehearsal_failed`，不拦截）；⑥行动后 ComparePaths(计划路径, 新增 `tracker.PlanTrajectory()`) 回溯校验（偏离写失败库 + 审计 `worldmodel.backdiff_diverged`）。tracker 未注入时全部挂钩短路，默认 ReAct 行为零变更（铁律 7）；api-contract 基线刷新（e32e6618）
+
 ### Added — V7 弧线 S0 预备期（度量仪与题面地基，不占版本号）
 
 - **S0-2 题面注册与冻结**：`docs/evals/` 七套题面 1364 样本 sha256 台账冻结（长程 24/缺口 65/对抗 700/外部 100/judge 标定 200/基线探针 12/embedding 语料 263，总体留出 34%）；确定性生成器 `scripts/gen-eval-sets.py` + 台账工具 `scripts/eval-manifest.py`（--write/--verify/--check）进 CI；Go 冻结门 `TestEvalRegistryFrozen`；题面判定断言 DSL `internal/eval/asserts.go`——7 种断言，文件不存在判 false 不判错，路径越界拒绝（027b5c56、737a5b2f）
