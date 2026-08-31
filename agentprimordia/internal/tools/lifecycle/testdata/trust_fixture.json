@@ -1,0 +1,7 @@
+{
+  "payload": "agentprimordia/lifecycle-trust-fixture/v1",
+  "payload_sha256": "fb7d0546eed4f444cc953578d7e6ef2d7fdbe122fd9737d02b541071754c58f4",
+  "signature_der_b64": "MEUCIQC7ZxqV6qzdThKpb0IiAfAC+nJdTSI0E5fKN/ZGwVX7sgIgKH8rgt5PNXo+Wj5tAIMuv6M5sJP0pPT8STymAqJb0RY=",
+  "pub_uncompressed_b64": "BFo6UlzE4fdhtpO25LVaZWgUnTRntKrwolqm88v0jENIZykkyiMBwEfIZtWK7LzLDeh++zva0iyFj9SJallr11U=",
+  "note": "cosign 同款口径：SHA-256 摘要 + ECDSA P-256（ASN.1 DER 签名）；TS 侧 WebCrypto 需 DER→raw 转换后导入非压缩公钥"
+}
