@@ -236,6 +236,9 @@ export class ACL {
 }
 
 // @public (undocumented)
+export function activateSkill(skill: Skill): void;
+
+// @public (undocumented)
 export interface ActorStats {
     // (undocumented)
     actions: Map<string, number>;
@@ -355,6 +358,32 @@ export class AgentDiscovery {
     findAgent(id: string): A2AAgentInfo | undefined;
     findByCapability(capability: string): A2AAgentInfo[];
     register(): Promise<void>;
+}
+
+// @public (undocumented)
+export interface AgentGoal {
+    // (undocumented)
+    acceptanceCriteria: string[];
+    // (undocumented)
+    createdAt: Date;
+    // (undocumented)
+    deadline?: Date;
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    maxRetries: number;
+    // (undocumented)
+    metadata: Record<string, string>;
+    // (undocumented)
+    priority: Priority;
+    // (undocumented)
+    retryCount: number;
+    // (undocumented)
+    state: GoalState;
+    // (undocumented)
+    updatedAt: Date;
 }
 
 // @public (undocumented)
@@ -652,6 +681,9 @@ export interface AgentToolConfig {
     passContext?: boolean;
 }
 
+// @public
+export function analyzePaired(pairs: readonly PairedOutcome[]): PairedAnalysis;
+
 // @public (undocumented)
 export class AnthropicProvider implements Provider {
     constructor(config: ProviderConfig);
@@ -728,6 +760,14 @@ export interface ArgPattern {
 
 // @public
 export function arrayPoolSize(): number;
+
+// @public (undocumented)
+export interface ASRAdapter {
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    transcribe(audio: Uint8Array): Promise<string>;
+}
 
 // @public (undocumented)
 export class AsyncMemoryWriter {
@@ -822,6 +862,24 @@ export class AuthenticatedDiscovery {
     register(info: AgentInfo, token: string): Promise<void>;
     // (undocumented)
     unregister(agentId: string, token: string): Promise<void>;
+}
+
+// @public (undocumented)
+export interface AutonomyPlanStep {
+    // (undocumented)
+    dependsOn?: string[];
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    error?: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    result?: string;
+    // Warning: (ae-forgotten-export) The symbol "StepStatus" needs to be exported by the entry point index.d.ts
+    //
+    // (undocumented)
+    status: StepStatus;
 }
 
 // @public (undocumented)
@@ -1026,6 +1084,36 @@ export interface BestPractice {
     toolName: string;
 }
 
+// @public
+export class BootstrapCI {
+    constructor(
+    point: number,
+    lower: number,
+    upper: number,
+    iterations: number,
+    seed: number);
+    iterations: number;
+    lower: number;
+    point: number;
+    seed: number;
+    toJSON(): BootstrapCIJSON;
+    upper: number;
+}
+
+// @public
+export interface BootstrapCIJSON {
+    // (undocumented)
+    iterations: number;
+    // (undocumented)
+    lower95: number;
+    // (undocumented)
+    point: number;
+    // (undocumented)
+    seed: number;
+    // (undocumented)
+    upper95: number;
+}
+
 // @public (undocumented)
 export interface BridgeAgent {
     // (undocumented)
@@ -1148,6 +1236,9 @@ export interface CacheStats {
     size: number;
 }
 
+// @public (undocumented)
+export function canRetry(goal: AgentGoal): boolean;
+
 // @public
 export class CapabilityAgent {
     constructor(opts: AgentOption);
@@ -1157,6 +1248,8 @@ export class CapabilityAgent {
     getContextWindowStrategy(): ContextWindowStrategy | undefined;
     // (undocumented)
     getCostTracker(): CostTracker | undefined;
+    // (undocumented)
+    getFailureStore(): FailureStore | undefined;
     // (undocumented)
     getHITLManager(): HITLManager | undefined;
     // (undocumented)
@@ -1178,6 +1271,7 @@ export class CapabilityAgent {
         id?: string;
         maxHistory?: number;
     }): Session;
+    replayFailure(failureID: string): Promise<Response_2>;
     // (undocumented)
     run(input: string): Promise<Response_2>;
     // (undocumented)
@@ -1192,6 +1286,7 @@ export class CapabilityAgent {
     withContextWindow(strategy: ContextWindowStrategy): CapabilityAgent;
     // (undocumented)
     withCostTracker(tracker: CostTracker): CapabilityAgent;
+    withFailureStore(store: FailureStore): CapabilityAgent;
     // (undocumented)
     withHITL(hitl: HITLManager): CapabilityAgent;
     // (undocumented)
@@ -1529,6 +1624,9 @@ export class CodeSecurityChecker {
         errors: string[];
     };
 }
+
+// @public
+export function cohenKappa(raterA: readonly string[], raterB: readonly string[]): number;
 
 // @public
 export class CohereProvider implements Provider {
@@ -1872,6 +1970,9 @@ export interface Condition {
     type: string;
 }
 
+// @public (undocumented)
+export type ConfidenceLevel = 'high' | 'medium' | 'low';
+
 // @public
 export type ConfigChangeCallback = (config: ProviderConfig) => void;
 
@@ -2187,8 +2288,17 @@ export function createAgentWithMemory(name: string, provider: Provider, toolkit:
 // @public
 export function createBasicAgent(name: string, provider: Provider, toolkit: ToolRegistry, opts?: Partial<ReActConfig>): ReActAgent;
 
+// @public (undocumented)
+export function createGoal(description: string, cfg?: GoalConfig): AgentGoal;
+
 // @public
 export function createMultimodalAgent(config: MultimodalFusionConfig): MultimodalFusion;
+
+// @public (undocumented)
+export function createPlan(goalId: string, steps: Omit<AutonomyPlanStep, 'status'>[]): GoalPlan;
+
+// @public (undocumented)
+export function createSkill(name: string, description: string, steps: StepDef[]): Skill;
 
 // @public
 export function createSplitter(strategy: SplitterStrategy, cfg?: SplitterConfig): RAGTextSplitter;
@@ -2198,6 +2308,9 @@ export function createSSEResponse(writable: WritableStreamDefaultWriter<Uint8Arr
     writer: SSEWriter;
     stop: () => void;
 };
+
+// @public
+export function createStudioBridge(inspector: Inspector): StudioBridge;
 
 // @public
 export function createTimer(callback: () => void, ms: number): {
@@ -2573,8 +2686,14 @@ export interface DeployResult {
     template_id: string;
 }
 
+// @public (undocumented)
+export function deprecateSkill(skill: Skill): void;
+
 // @public
 export function detectRuntime(): RuntimeInfo;
+
+// @public
+export function diagnoseFailure(rec: FailureRecord): string;
 
 // @public
 export class DirectoryLoader implements FileDocLoader {
@@ -3250,6 +3369,59 @@ export interface ExtractorConfig {
 export function extractTextContent(msg: Message): string;
 
 // @public (undocumented)
+export interface FailureCapable {
+    // (undocumented)
+    getFailureStore(): FailureStore | undefined;
+}
+
+// @public
+export interface FailureFilter {
+    // (undocumented)
+    agentId?: string;
+    // (undocumented)
+    sessionId?: string;
+}
+
+// @public
+export type FailurePhase = 'run' | 'plan';
+
+// @public
+export interface FailureRecord {
+    // (undocumented)
+    agentId: string;
+    // (undocumented)
+    createdAt: string;
+    // (undocumented)
+    error: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    input?: string;
+    // (undocumented)
+    phase: FailurePhase;
+    // (undocumented)
+    sessionId: string;
+    // (undocumented)
+    state?: Checkpoint;
+    // (undocumented)
+    subtaskId?: string;
+    // (undocumented)
+    turn: number;
+}
+
+// @public
+export interface FailureStore {
+    // (undocumented)
+    delete(id: string): Promise<boolean>;
+    // (undocumented)
+    get(id: string): Promise<FailureRecord | null>;
+    // (undocumented)
+    list(filter?: FailureFilter): Promise<FailureRecord[]>;
+    // (undocumented)
+    record(rec: FailureRecord): Promise<void>;
+}
+
+// @public (undocumented)
 export class FallbackHandler<T> {
     // (undocumented)
     add(name: string, fn: () => Promise<T>): this;
@@ -3426,6 +3598,9 @@ export class FingerprintCache implements LLMCache {
 export function formatRAGDocuments(docs: RAGDoc[]): string;
 
 // @public
+export function formatRate(r: RatePoint): string;
+
+// @public
 export function formatReport(result: ExperimentResult_2): string;
 
 // @public
@@ -3499,6 +3674,50 @@ export class GLMProvider extends OpenAICompatibleProvider {
     protected readonly providerName = "glm";
     // (undocumented)
     protected supportsTools(): boolean;
+}
+
+// @public (undocumented)
+export interface GoalConfig {
+    // (undocumented)
+    acceptanceCriteria?: string[];
+    // (undocumented)
+    deadline?: Date;
+    // (undocumented)
+    maxRetries?: number;
+    // (undocumented)
+    metadata?: Record<string, string>;
+    // (undocumented)
+    priority?: Priority;
+}
+
+// @public (undocumented)
+export interface GoalPlan {
+    // (undocumented)
+    createdAt: Date;
+    // (undocumented)
+    goalId: string;
+    // (undocumented)
+    replanReason?: string;
+    // (undocumented)
+    steps: AutonomyPlanStep[];
+    // (undocumented)
+    version: number;
+}
+
+// @public (undocumented)
+export enum GoalState {
+    // (undocumented)
+    Created = "created",
+    // (undocumented)
+    Done = "done",
+    // (undocumented)
+    Executing = "executing",
+    // (undocumented)
+    Failed = "failed",
+    // (undocumented)
+    Planned = "planned",
+    // (undocumented)
+    Validated = "validated"
 }
 
 // @public
@@ -3825,6 +4044,7 @@ export interface HNSWConfig {
     maxConnectionsLayer0: number;
     // (undocumented)
     ml: number;
+    random?: () => number;
 }
 
 // @public (undocumented)
@@ -3944,6 +4164,16 @@ export interface HTTPTransportConfig {
     host?: string;
     // (undocumented)
     port: number;
+}
+
+// @public (undocumented)
+export interface HubConfig {
+    // (undocumented)
+    asr?: ASRAdapter;
+    // (undocumented)
+    idleTimeoutMs?: number;
+    // (undocumented)
+    tts?: TTSAdapter;
 }
 
 // @public
@@ -4186,6 +4416,20 @@ export interface IntrospectionStats {
     totalRuns: number;
     trendRatio: number;
 }
+
+// @public (undocumented)
+export interface IOSchema {
+    // (undocumented)
+    fields: Record<string, string>;
+    // (undocumented)
+    required?: string[];
+}
+
+// @public (undocumented)
+export function isCompatible(a: Version, b: Version): boolean;
+
+// @public (undocumented)
+export function isPlanComplete(plan: GoalPlan): boolean;
 
 // @public (undocumented)
 export interface Issue {
@@ -4916,6 +5160,30 @@ export function Marshal(v: unknown): string;
 export function MarshalBody(v: unknown): string;
 
 // @public (undocumented)
+export interface MatcherConfig {
+    // (undocumented)
+    highThreshold?: number;
+    // (undocumented)
+    mediumThreshold?: number;
+}
+
+// @public (undocumented)
+export interface MatchResult {
+    // (undocumented)
+    confidence: ConfidenceLevel;
+    // (undocumented)
+    score: number;
+    // (undocumented)
+    skill: Skill;
+}
+
+// @public
+export function mcnemarExact(b: number, c: number): number;
+
+// @public
+export function mcnemarPower(n: number, delta: number, omega: number, alpha: number): number;
+
+// @public (undocumented)
 export class MCPAdapter {
     constructor(registry: MCPRegistry);
     toTool(mcpTool: MCPToolDefinition): Tool;
@@ -5156,6 +5424,18 @@ export interface MemoryEpisode {
     summary?: string;
     // (undocumented)
     topics?: string;
+}
+
+// @public
+export class MemoryFailureStore implements FailureStore {
+    // (undocumented)
+    delete(id: string): Promise<boolean>;
+    // (undocumented)
+    get(id: string): Promise<FailureRecord | null>;
+    // (undocumented)
+    list(filter?: FailureFilter): Promise<FailureRecord[]>;
+    // (undocumented)
+    record(rec: FailureRecord): Promise<void>;
 }
 
 // @public (undocumented)
@@ -5427,6 +5707,14 @@ export interface MMRRerankOptions {
     topK?: number;
 }
 
+// @public (undocumented)
+export class MockASR implements ASRAdapter {
+    // (undocumented)
+    readonly name = "mock-asr";
+    // (undocumented)
+    transcribe(audio: Uint8Array): Promise<string>;
+}
+
 // @public
 export class MockProvider implements Provider {
     constructor(opts?: {
@@ -5438,11 +5726,19 @@ export class MockProvider implements Provider {
     // (undocumented)
     callTools(_req: ToolCallRequest): Promise<ToolCallResponse>;
     // (undocumented)
-    complete(_req: CompletionRequest): Promise<CompletionResponse>;
+    complete(req: CompletionRequest): Promise<CompletionResponse>;
     // (undocumented)
     info(): ModelInfo;
     // (undocumented)
-    stream(_req: CompletionRequest): AsyncIterable<Chunk>;
+    stream(req: CompletionRequest): AsyncIterable<Chunk>;
+}
+
+// @public (undocumented)
+export class MockTTS implements TTSAdapter {
+    // (undocumented)
+    readonly name = "mock-tts";
+    // (undocumented)
+    synthesize(text: string): Promise<Uint8Array>;
 }
 
 // @public
@@ -5725,7 +6021,13 @@ export class NoopTracer implements Tracer {
 }
 
 // @public
+export function normalCDF(x: number): number;
+
+// @public
 export function normalizeForCheck(s: string): string;
+
+// @public
+export function normalQuantile(p: number): number;
 
 // @public
 export class ObjectPool<T> {
@@ -5760,6 +6062,23 @@ export class ObservabilityMetrics {
     recordToolCall(agent: string, tool: string, durationSeconds: number): void;
     // (undocumented)
     setActiveSessions(agent: string, count: number): void;
+}
+
+// @public
+export class OfficialOTelBridge {
+    // (undocumented)
+    addAttribute(spanId: string, key: string, value: string | number | boolean): void;
+    // (undocumented)
+    addEvent(spanId: string, eventName: string, attributes?: Record<string, unknown>): void;
+    // (undocumented)
+    clear(): void;
+    static create(): OfficialOTelBridge | null;
+    // (undocumented)
+    endSpan(spanId: string, status?: 'ok' | 'error'): void;
+    // (undocumented)
+    getSpans(): OTelBridgeSpan[];
+    // (undocumented)
+    startSpan(name: string, attributes?: Record<string, string | number | boolean>): string;
 }
 
 // @public (undocumented)
@@ -5937,8 +6256,10 @@ export interface OrchNode {
     type: 'agent' | 'tool' | 'decision' | 'parallel' | 'start' | 'end';
 }
 
+// Warning: (ae-forgotten-export) The symbol "OTelBridgeLike" needs to be exported by the entry point index.d.ts
+//
 // @public (undocumented)
-export class OTelBridge {
+export class OTelBridge implements OTelBridgeLike {
     // (undocumented)
     addAttribute(spanId: string, key: string, value: string | number | boolean): void;
     // (undocumented)
@@ -6103,6 +6424,58 @@ export interface OutputSafetyRuleConfig {
     detectURLs?: boolean;
     // (undocumented)
     severity?: GuardrailSeverity;
+}
+
+// @public
+export class PairedAnalysis {
+    constructor(
+    n: number,
+    concordant: number,
+    discB: number,
+    discC: number,
+    lift: number,
+    pValue: number,
+    baselineRate: RatePoint,
+    treatmentRate: RatePoint);
+    baselineRate: RatePoint;
+    concordant: number;
+    discB: number;
+    discC: number;
+    lift: number;
+    n: number;
+    pValue: number;
+    toJSON(): PairedAnalysisJSON;
+    treatmentRate: RatePoint;
+}
+
+// @public
+export interface PairedAnalysisJSON {
+    // (undocumented)
+    baseline_rate: RatePointJSON;
+    // (undocumented)
+    concordant: number;
+    // (undocumented)
+    disc_b: number;
+    // (undocumented)
+    disc_c: number;
+    // (undocumented)
+    lift: number;
+    // (undocumented)
+    n: number;
+    // (undocumented)
+    p_value: number;
+    // (undocumented)
+    treatment_rate: RatePointJSON;
+}
+
+// @public
+export function pairedBootstrapCI(deltas: readonly number[], iterations: number, seed: number): BootstrapCI;
+
+// @public
+export interface PairedOutcome {
+    baseline: boolean;
+    taskId: string;
+    treatment: boolean;
 }
 
 // @public (undocumented)
@@ -6285,6 +6658,9 @@ export interface Planner {
     // (undocumented)
     generatePlan(task: string): Promise<TaskPlan>;
 }
+
+// @public (undocumented)
+export function planProgress(plan: GoalPlan): number;
 
 // @public (undocumented)
 export interface PlanStep {
@@ -6515,6 +6891,18 @@ export class PricingCalculator {
     getPricing(model: string): ModelPricingInfo | undefined;
     listModels(): string[];
     setPricing(pricing: ModelPricingInfo): void;
+}
+
+// @public (undocumented)
+export enum Priority {
+    // (undocumented)
+    Critical = 3,
+    // (undocumented)
+    High = 2,
+    // (undocumented)
+    Low = 0,
+    // (undocumented)
+    Normal = 1
 }
 
 // @public
@@ -6967,6 +7355,37 @@ export class RateLimiter {
 // @public
 export function rateLimitMiddleware(minIntervalMs: number): StreamMiddleware;
 
+// @public
+export class RatePoint {
+    constructor(
+    successes: number,
+    trials: number,
+    point: number,
+    wilsonLower: number,
+    wilsonUpper: number);
+    point: number;
+    successes: number;
+    toJSON(): RatePointJSON;
+    toString(): string;
+    trials: number;
+    wilsonLower: number;
+    wilsonUpper: number;
+}
+
+// @public
+export interface RatePointJSON {
+    // (undocumented)
+    point: number;
+    // (undocumented)
+    successes: number;
+    // (undocumented)
+    trials: number;
+    // (undocumented)
+    wilson_lower95: number;
+    // (undocumented)
+    wilson_upper95: number;
+}
+
 // @public (undocumented)
 export class ReActAgent {
     constructor(config: ReActConfig);
@@ -6974,6 +7393,7 @@ export class ReActAgent {
     isGracefulShutdownRequested(): boolean;
     // (undocumented)
     readonly name: string;
+    replayFailure(failureID: string, options?: RunOptions): Promise<Response_2>;
     // (undocumented)
     requestGracefulShutdown(): void;
     // (undocumented)
@@ -6998,6 +7418,8 @@ export interface ReActConfig {
     costTracker?: CostTracker;
     // (undocumented)
     enhancedToolLearner?: EnhancedToolLearner;
+    failureStore?: FailureStore;
+    guardrail?: GuardrailEngine;
     // (undocumented)
     hooks?: HookManager;
     // (undocumented)
@@ -7017,9 +7439,12 @@ export interface ReActConfig {
     // (undocumented)
     name: string;
     // (undocumented)
-    otelBridge?: OTelBridge;
+    otelBridge?: OTelBridgeLike;
     // (undocumented)
     parallelToolExecution?: boolean;
+    planner?: Planner;
+    reflectionSeverityThreshold?: Severity;
+    reflector?: Reflector;
     // (undocumented)
     selfTuner?: AgentSelfTuner;
     // (undocumented)
@@ -7030,6 +7455,48 @@ export interface ReActConfig {
     systemPrompt?: string;
     // (undocumented)
     toolkit: ToolRegistry;
+}
+
+// @public (undocumented)
+export function readySteps(plan: GoalPlan): AutonomyPlanStep[];
+
+// @public (undocumented)
+export class RealtimeHub {
+    constructor(cfg?: HubConfig);
+    // (undocumented)
+    get activeSessions(): number;
+    // (undocumented)
+    bargeIn(sessionId: string): void;
+    // (undocumented)
+    closeSession(id: string): void;
+    // (undocumented)
+    createSession(id: string): RealtimeSession;
+    // (undocumented)
+    getSession(id: string): RealtimeSession | undefined;
+    // (undocumented)
+    handleAudioInput(sessionId: string, audio: Uint8Array): Promise<{
+        text: string;
+        audioOut: Uint8Array;
+    }>;
+}
+
+// @public (undocumented)
+export class RealtimeSession {
+    constructor(id: string);
+    // (undocumented)
+    readonly createdAt: Date;
+    // (undocumented)
+    readonly id: string;
+    // (undocumented)
+    get isActive(): boolean;
+    // (undocumented)
+    onTransition(fn: (e: SessionEvent) => void): void;
+    // (undocumented)
+    state: SessionState;
+    // (undocumented)
+    transitionTo(next: SessionState, reason?: string): void;
+    // (undocumented)
+    updatedAt: Date;
 }
 
 // @public (undocumented)
@@ -7062,6 +7529,9 @@ export interface ReasoningStreamEvent {
 
 // @public
 export function recordPoolSize(): number;
+
+// @public (undocumented)
+export function recordUsage(skill: Skill, success: boolean): void;
 
 // @public (undocumented)
 export interface Reflection {
@@ -7133,6 +7603,9 @@ export interface RemoteNode {
     // (undocumented)
     sendMessage(msg: ClusterMessage): Promise<ClusterReply>;
 }
+
+// @public
+export function reportRate(successes: number, trials: number): RatePoint;
 
 // @public
 export function requireApiKey(apiKey: string | undefined, providerName: string): void;
@@ -7372,6 +7845,12 @@ export interface RuntimeInfo {
 // @public
 export type RuntimeName = 'node' | 'cloudflare' | 'deno' | 'bun' | 'browser' | 'unknown';
 
+// @public
+export function sampleSizeMcNemar(delta: number, omega: number, alpha: number, targetPower: number): number;
+
+// @public
+export function sampleSizeTwoProportion(p1: number, p2: number, alpha: number, targetPower: number): number;
+
 // @public (undocumented)
 export const Sandbox: typeof CommandSandbox;
 
@@ -7542,11 +8021,37 @@ export class Session {
 }
 
 // @public (undocumented)
+export interface SessionEvent {
+    // (undocumented)
+    from: SessionState;
+    // (undocumented)
+    reason?: string;
+    // (undocumented)
+    sessionId: string;
+    // (undocumented)
+    timestamp: Date;
+    // (undocumented)
+    to: SessionState;
+}
+
+// @public (undocumented)
 export interface SessionOption {
     // (undocumented)
     id?: string;
     // (undocumented)
     maxHistory?: number;
+}
+
+// @public (undocumented)
+export enum SessionState {
+    // (undocumented)
+    Idle = "idle",
+    // (undocumented)
+    Listening = "listening",
+    // (undocumented)
+    Speaking = "speaking",
+    // (undocumented)
+    Thinking = "thinking"
 }
 
 // @public (undocumented)
@@ -7676,6 +8181,68 @@ export function singleRoundReasoningStream(provider: Provider, messages: Message
     maxTokens?: number;
     onStream?: (event: ReasoningStreamEvent) => void;
 }): Promise<Thought>;
+
+// @public (undocumented)
+export interface Skill {
+    // (undocumented)
+    createdAt: Date;
+    // (undocumented)
+    dependencies?: string[];
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    input: IOSchema;
+    // (undocumented)
+    metadata?: Record<string, string>;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    output: IOSchema;
+    // (undocumented)
+    status: SkillStatus;
+    // (undocumented)
+    steps: StepDef[];
+    // (undocumented)
+    successRate: number;
+    // (undocumented)
+    tags?: string[];
+    // (undocumented)
+    updatedAt: Date;
+    // (undocumented)
+    usageCount: number;
+    // (undocumented)
+    version: Version;
+}
+
+// @public (undocumented)
+export class SkillMatcher {
+    constructor(store: SkillStore, cfg?: MatcherConfig);
+    // (undocumented)
+    match(taskDescription: string): MatchResult | null;
+}
+
+// @public (undocumented)
+export type SkillStatus = 'draft' | 'verified' | 'active' | 'deprecated';
+
+// @public (undocumented)
+export class SkillStore {
+    // (undocumented)
+    get count(): number;
+    // (undocumented)
+    delete(id: string): void;
+    // (undocumented)
+    findByName(name: string): Skill | undefined;
+    // (undocumented)
+    get(id: string): Skill | undefined;
+    // (undocumented)
+    list(): Skill[];
+    // (undocumented)
+    listActive(): Skill[];
+    // (undocumented)
+    save(skill: Skill): void;
+}
 
 // @public
 export class SLOSteadyState implements SteadyState {
@@ -7848,6 +8415,20 @@ export class SSEWriter {
     writeToken(content: string): Promise<void>;
 }
 
+// @public (undocumented)
+export interface StateChangeEvent {
+    // (undocumented)
+    from: GoalState;
+    // (undocumented)
+    goalId: string;
+    // (undocumented)
+    reason?: string;
+    // (undocumented)
+    timestamp: Date;
+    // (undocumented)
+    to: GoalState;
+}
+
 // @public
 export interface SteadyState {
     check(): Promise<SteadyStateResult>;
@@ -7890,6 +8471,22 @@ export interface StepConfig {
     trueStep?: string;
     // (undocumented)
     waitMs?: number;
+}
+
+// @public (undocumented)
+export interface StepDef {
+    // (undocumented)
+    dependsOn?: string[];
+    // (undocumented)
+    description: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    inputMapping?: Record<string, string>;
+    // (undocumented)
+    outputKey?: string;
+    // (undocumented)
+    toolName: string;
 }
 
 // @public (undocumented)
@@ -8073,6 +8670,23 @@ export class StructuredOutputExtractor {
     // Warning: (ae-forgotten-export) The symbol "SchemaDef$1" needs to be exported by the entry point index.d.ts
     extract<T = unknown>(prompt: string, schema: SchemaDef$1): Promise<T>;
     extractInto<T>(prompt: string, schema: SchemaDef$1): Promise<T>;
+}
+
+// @public
+export class StudioBridge implements OTelBridgeLike {
+    constructor(inspector: Inspector, traceID?: string);
+    // (undocumented)
+    addAttribute(spanId: string, key: string, value: string | number | boolean): void;
+    // (undocumented)
+    addEvent(_spanId: string, _eventName: string, _attributes?: Record<string, unknown>): void;
+    // (undocumented)
+    clear(): void;
+    // (undocumented)
+    endSpan(spanId: string, status?: 'ok' | 'error'): void;
+    // (undocumented)
+    getSpans(): never[];
+    // (undocumented)
+    startSpan(name: string, attributes?: Record<string, string | number | boolean>): string;
 }
 
 // @public (undocumented)
@@ -8732,6 +9346,9 @@ export interface TracingSpec {
 export function transformMiddleware(fn: (content: string) => string): StreamMiddleware;
 
 // @public (undocumented)
+export function transitionGoal(goal: AgentGoal, to: GoalState): void;
+
+// @public (undocumented)
 export interface Transport {
     close(): void;
     onMessage(handler: (message: BusMessage) => void): void;
@@ -8765,6 +9382,14 @@ export class TrieRule {
     }>;
 }
 
+// @public (undocumented)
+export interface TTSAdapter {
+    // (undocumented)
+    readonly name: string;
+    // (undocumented)
+    synthesize(text: string): Promise<Uint8Array>;
+}
+
 // @public
 export interface TuningSuggestion {
     confidence: number;
@@ -8775,6 +9400,19 @@ export interface TuningSuggestion {
     reason: string;
     shouldAdjust: boolean;
 }
+
+// @public
+export interface TwoProportionZResult {
+    // (undocumented)
+    diff: number;
+    // (undocumented)
+    pValue: number;
+    // (undocumented)
+    z: number;
+}
+
+// @public
+export function twoProportionZTest(x1: number, n1: number, x2: number, n2: number): TwoProportionZResult;
 
 // @public
 export function Unmarshal<T = unknown>(data: string | Buffer): T;
@@ -8813,6 +9451,9 @@ export function validatePathTraversal(path: string): {
     reason?: string;
 };
 
+// @public (undocumented)
+export function validateSkill(skill: Skill): string[];
+
 // @public
 export function validateTemperature(temp: number | undefined): void;
 
@@ -8845,6 +9486,7 @@ export class VectorStore {
         M?: number;
         efConstruction?: number;
         efSearch?: number;
+        random?: () => number;
     });
     // (undocumented)
     add(id: string, vector: number[], metadata?: Record<string, string>): void;
@@ -8865,6 +9507,19 @@ export class VectorStore {
 
 // @public
 export const VERSION = "1.0.0";
+
+// @public (undocumented)
+export interface Version {
+    // (undocumented)
+    major: number;
+    // (undocumented)
+    minor: number;
+    // (undocumented)
+    patch: number;
+}
+
+// @public (undocumented)
+export function versionString(v: Version): string;
 
 // @public
 export type VfsNodeType = 'file' | 'directory';
@@ -9108,6 +9763,17 @@ export class WebTool implements Tool {
         required: string[];
     };
 }
+
+// @public
+export interface WilsonInterval {
+    // (undocumented)
+    lower: number;
+    // (undocumented)
+    upper: number;
+}
+
+// @public
+export function wilsonInterval(successes: number, trials: number, z: number): WilsonInterval;
 
 // @public (undocumented)
 export function withAutoscaling(deployment: AgentDeployment, config: Partial<AutoscalingSpec>): AgentDeployment;
@@ -9354,6 +10020,9 @@ export type WSErrorHandler = (error: Error) => void;
 
 // @public (undocumented)
 export type WSMessageHandler = (message: A2AMessage) => void;
+
+// @public
+export const Z95 = 1.959963984540054;
 
 // @public (undocumented)
 export class ZeroCopyMessage {

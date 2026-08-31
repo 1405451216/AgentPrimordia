@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @agentprimordia/sdk — AgentPrimordia TypeScript SDK
  *
  * Build cross-platform AI Agent applications with ReAct loop,
@@ -520,6 +520,18 @@ export type {
 // ===== Agent Marketplace（对齐 Go internal/agent/marketplace/） =====
 export { TemplateRegistry as MarketplaceTemplateRegistry, Deployer, validateTemplate } from './marketplace/index.js';
 export type { AgentTemplate as MarketplaceTemplate, ValidationResult as TemplateValidationResult, DeployConfig, DeployResult, TemplateCategory, MemoryStrategy } from './marketplace/index.js';
+
+// ===== V7 弧线 S0-1 统计框架（对齐 Go internal/eval/stats.go，双线数值对账） =====
+export {
+  Z95, normalCDF, normalQuantile, wilsonInterval, reportRate, formatRate,
+  mcnemarExact, analyzePaired, twoProportionZTest, sampleSizeTwoProportion,
+  mcnemarPower, sampleSizeMcNemar, cohenKappa, pairedBootstrapCI,
+  RatePoint, PairedAnalysis, BootstrapCI,
+} from './eval/index.js';
+export type {
+  WilsonInterval, RatePointJSON, PairedOutcome, PairedAnalysisJSON,
+  TwoProportionZResult, BootstrapCIJSON,
+} from './eval/index.js';
 
 // ===== Governance 多租户治理（对齐 Go internal/governance/） =====
 export { TenantManager, TokenBucket, QuotaManager, ResourceManager, PolicyEnforcer, PolicyViolationError, InMemoryAuditLogger, defaultQuota } from './governance/index.js';
