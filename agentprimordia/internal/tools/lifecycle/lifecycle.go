@@ -102,6 +102,13 @@ func (m *Manager) AuditCount() int {
 	return len(m.audit)
 }
 
+// AppendAudit 公开审计入口（autoloop 等协作组件留痕；链式哈希续接）。
+func (m *Manager) AppendAudit(stage, detail string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.appendAuditLocked(stage, detail)
+}
+
 // AuditEntries 审计链拷贝（追加序）。
 func (m *Manager) AuditEntries() []auditEntry {
 	m.mu.Lock()

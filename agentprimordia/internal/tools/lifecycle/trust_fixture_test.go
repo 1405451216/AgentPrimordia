@@ -20,11 +20,11 @@ import (
 )
 
 type trustFixture struct {
-	Payload            string `json:"payload"`                 // 被签原文（UTF-8）
-	PayloadSHA256      string `json:"payload_sha256"`          // 摘要十六进制
-	SignatureDERB64    string `json:"signature_der_b64"`       // ECDSA ASN.1 DER 签名
-	PubUncompressedB64 string `json:"pub_uncompressed_b64"`    // P-256 非压缩公钥（0x04||X||Y）
-	Note               string `json:"note"`                    // 口径说明
+	Payload            string `json:"payload"`              // 被签原文（UTF-8）
+	PayloadSHA256      string `json:"payload_sha256"`       // 摘要十六进制
+	SignatureDERB64    string `json:"signature_der_b64"`    // ECDSA ASN.1 DER 签名
+	PubUncompressedB64 string `json:"pub_uncompressed_b64"` // P-256 非压缩公钥（0x04||X||Y）
+	Note               string `json:"note"`                 // 口径说明
 }
 
 // TestWriteTrustFixture 生成夹具（默认跳过）。
