@@ -671,6 +671,31 @@ jobs:
       - name: Run dual-SDK version sync check
         run: node scripts/version-sync-check.mjs
 
+  eval-gates:
+    name: Eval Registry & Dual-Line Gates (V7 S0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # V7 新规 R4：题面一经冻结不得修改——台账与磁盘 sha256 对账，漂移即红
+      - name: 题面冻结门（eval-manifest verify）
+        run: python3 scripts/eval-manifest.py --verify
+
+      - name: 题面台账结构自检（留出比例 ≥30% / id 唯一）
+        run: python3 scripts/eval-manifest.py --check
+
+      # S0-5：双线豁免矩阵进 CI（豁免必须带理由与升格条件；已落地路径必须存在）
+      - name: 双线豁免矩阵门（dual-line-matrix-check）
+        run: node scripts/dual-line-matrix-check.mjs
+
   version-consistency:
     name: Version Consistency Check
     runs-on: ubuntu-latest
