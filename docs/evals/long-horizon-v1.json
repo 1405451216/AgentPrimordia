@@ -1,0 +1,2168 @@
+[
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "cust,price,qty\nA,10,3\nB,5,-2\nA,10,3\nC,,4\nB,5,2\n",
+    "path": "data/orders_raw.csv"
+   }
+  ],
+  "goal": "读取 data/orders_raw.csv（含空值/重复/负数量脏数据），清洗后按客户聚合实付金额（单价×数量），产出 report.json（键 totals={客户:金额} 与 clean_rows=2），并把剔除行数 2 写入 report.txt。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "data/orders_clean.csv"
+    }
+   ],
+   "success": [
+    {
+     "json_path_eq": [
+      "report.json",
+      "totals.B",
+      10
+     ]
+    },
+    {
+     "json_path_eq": [
+      "report.json",
+      "clean_rows",
+      2
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-001",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_exists": "data/orders_clean.csv"
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "report.json",
+       "totals.A",
+       30
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "report.txt",
+       "2"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "订单管道：清洗-聚合-报告",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "E db_timeout conn1\nE api_5xx /u\nE db_timeout conn2\nE disk_full /var\nE db_timeout conn3\nE api_5xx /v\n",
+    "path": "app.log"
+   },
+   {
+    "inline": "timeout_seconds: 1\n",
+    "path": "config.yaml"
+   },
+   {
+    "inline": "#!/bin/sh\n# 读取 config.yaml 的 timeout_seconds：>=30 时 errors_new.log 为空，否则写 3 行 db_timeout\nt=$(grep -o '[0-9]*' config.yaml); if [ \"$t\" -ge 30 ]; then : > errors_new.log; else printf 'db_timeout x\\n' 1 2 3 > errors_new.log; fi\n",
+    "path": "simulate.sh"
+   }
+  ],
+  "goal": "app.log 含 db_timeout/api_5xx/disk_full 三类错误。产出 triage.md（每类计数+首样本行）；修 config.yaml 的 timeout_seconds 为 30；运行 simulate.sh 后 errors_new.log 的 db_timeout 计数为 0；结论写入 fix_note.txt。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "triage.md"
+    }
+   ],
+   "success": [
+    {
+     "lines_match_count": [
+      "errors_new.log",
+      "db_timeout",
+      0
+     ]
+    },
+    {
+     "file_contains": [
+      "fix_note.txt",
+      "0"
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-002",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "triage.md",
+       "db_timeout"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "config.yaml",
+       "30"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_exists": "errors_new.log"
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "日志分诊到配置修复",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "CREATE TABLE users(id INTEGER PRIMARY KEY, name TEXT); INSERT INTO users VALUES(1,'ann'),(2,'bob'),(3,'cid');\n",
+    "path": "setup.sql"
+   }
+  ],
+  "goal": "从 legacy.db 导出 users 表 3 行到 migrated/users.json（对象数组，键 id/name）与 users.csv；再写 checksum.txt（users.json 的 sha256，64 位 hex）。fixture 说明：legacy.db 由 setup.sql 在沙箱内初始化。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "migrated/users.json"
+    }
+   ],
+   "success": [
+    {
+     "json_path_eq": [
+      "migrated/users.json",
+      "[2].id",
+      3
+     ]
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-003",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "migrated/users.json",
+       "[0].name",
+       "ann"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "migrated/users.csv",
+       "bob",
+       1
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "checksum.txt",
+       "^[0-9a-f]{64}",
+       1
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "SQLite 迁移双后端对账",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "a\n",
+    "path": "notes/a.txt"
+   },
+   {
+    "inline": "b\n",
+    "path": "notes/b.txt"
+   }
+  ],
+  "goal": "将 notes/ 下 a.txt、b.txt 重命名为同名 .md；写 rename_manifest.csv（old,new 两列各 2 行数据）；再产 undo.sh（内容含两原文件名，可按 manifest 还原）。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "rename_manifest.csv"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "undo.sh"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-004",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_exists": "notes/a.md"
+     },
+     {
+      "file_exists": "notes/b.md"
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "rename_manifest.csv",
+       ".md",
+       2
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "undo.sh",
+       "a.txt"
+      ]
+     },
+     {
+      "file_contains": [
+       "undo.sh",
+       "b.txt"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "批量重命名与可逆清单",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 45
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "DB_HOST=x\nDB_PORT=1\nAPI_KEY=k\nLOG_LEVEL=i\nCACHE_TTL=60\nWORKERS=4\nTIMEOUT=30\nREGION=cn\n",
+    "path": "monolith.env"
+   }
+  ],
+  "goal": "把 monolith.env（8 变量）拆为 env.d/base.env 与 env.d/app.env（app 至少 3 个，无丢失/重复）；split_report.txt 每键一行共 8 行。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "split_report.txt"
+    }
+   ],
+   "success": [
+    {
+     "lines_match_count": [
+      "env.d/base.env",
+      "API_KEY",
+      0
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-005",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_exists": "env.d/base.env"
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_exists": "env.d/app.env"
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "split_report.txt",
+       "^[A-Z_]+=",
+       8
+      ]
+     }
+    ],
+    "id": "m3"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "split_report.txt",
+       "WORKERS",
+       1
+      ]
+     }
+    ],
+    "id": "m4"
+   }
+  ],
+  "name": "单体配置拆分与引用校验",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "package main\nfunc main(){}\n",
+    "path": "src/main.go"
+   },
+   {
+    "inline": "package main\nfunc helper()int{return 1}\n",
+    "path": "src/util.go"
+   }
+  ],
+  "goal": "为 src/（main.go/util.go）写 Makefile（build 产出 build/app，test 依赖 build，lint 依赖 test）；dag.txt 三行 'target:deps'（build:、test:build、lint:test）；实际执行到 build/app 存在。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "Makefile"
+    }
+   ],
+   "success": [
+    {
+     "lines_match_count": [
+      "dag.txt",
+      ":",
+      3
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-006",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_exists": "Makefile"
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "dag.txt",
+       "test:build"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "dag.txt",
+       "lint:test"
+      ]
+     }
+    ],
+    "id": "m3"
+   },
+   {
+    "assert": [
+     {
+      "file_exists": "build/app"
+     }
+    ],
+    "id": "m4"
+   }
+  ],
+  "name": "构建编排 DAG",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "row,type,amount\n1,debit,50\n2,debit,90\n3,credit,40\n4,credit,100\n",
+    "path": "ledger.csv"
+   },
+   {
+    "inline": "第三行应为 credit 100（漏记 60）",
+    "path": "journal.txt"
+   }
+  ],
+  "goal": "ledger.csv 第 3 行漏记 60（journal.txt 佐证：应为 credit 100）。补行使借=贷=140；输出 balance.json（debit=140、credit=140、fixed_row=3）与 period_close.txt（含 closed）。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "balance.json"
+    }
+   ],
+   "success": [
+    {
+     "json_path_eq": [
+      "balance.json",
+      "credit",
+      140
+     ]
+    },
+    {
+     "file_contains": [
+      "period_close.txt",
+      "closed"
+     ]
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-007",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "ledger.csv",
+       "credit,100",
+       1
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "balance.json",
+       "debit",
+       140
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "balance.json",
+       "fixed_row",
+       3
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "账本对平与期间关闭",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "t1=msg('hello');t2=msg('bye');t3=msg('ok');\n",
+    "path": "ui/app.js"
+   },
+   {
+    "inline": "msg('save');msg('cancel');msg('retry');\n",
+    "path": "ui/panel.js"
+   },
+   {
+    "inline": "a=msg('hello');b=msg('save');\n",
+    "path": "ui/zh.js"
+   },
+   {
+    "inline": "{\"hello\":\"你好\",\"save\":\"保存\"}\n",
+    "path": "i18n/zh.json"
+   }
+  ],
+  "goal": "从 ui/app.js 与 ui/panel.js 的 6 处 msg(key) 调用抽取键集合到 i18n/en.json（键值同名即可）；再把 ui/zh.js 的 msg 调用按 i18n/zh.json 替换为中文值，替换后 ui/zh.js 不含 msg( 子串。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "i18n/en.json"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "ui/zh.js",
+      "你好"
+     ]
+    },
+    {
+     "file_contains": [
+      "ui/zh.js",
+      "保存"
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-008",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "i18n/en.json",
+       "hello",
+       "hello"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "i18n/en.json",
+       "retry",
+       "retry"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "ui/zh.js",
+       "msg(",
+       0
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "i18n 抽取与回merge",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "a->b\nb->c\nc->a\nd->a\n",
+    "path": "graph/mods.txt"
+   },
+   {
+    "inline": "allowed: any\n",
+    "path": "import_policy.txt"
+   }
+  ],
+  "goal": "graph/mods.txt 声明 a->b,b->c,c->a,d->a。cycles.txt 报告环 c->a（1 行）；verify_cycles.sh 执行输出 NO_CYCLE；import_policy.txt 含 forbid: c->a。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "cycles.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "verify_cycles.sh"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-009",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "cycles.txt",
+       "c->a"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "import_policy.txt",
+       "forbid: c->a"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "verify_out.txt",
+       "NO_CYCLE"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "循环依赖检测与打破",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "user,age\nu1,999\nu2,30\n,40\nu4,500\nu5,22\nu6,\nu7,45\nu8,888\nu9,19\nu10,61\nu11,23\nu12,87\nu13,12\nu14,99\nu15,3\nu16,55\nu17,28\nu18,74\nu19,41\nu20,17\n",
+    "path": "dataset.csv"
+   }
+  ],
+  "goal": "dataset.csv 共 20 数据行：3 行 age 越界（999/500/888）、2 行空名/缺值。qa_report.txt 记 越界=3 与 缺失=2；clean/dataset_clean.csv 恰 15 数据行；manifest.json removed=5、kept=15。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "clean/dataset_clean.csv"
+    }
+   ],
+   "success": [
+    {
+     "json_path_eq": [
+      "manifest.json",
+      "removed",
+      5
+     ]
+    },
+    {
+     "lines_match_count": [
+      "clean/dataset_clean.csv",
+      "^u",
+      15
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-010",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "qa_report.txt",
+       "越界=3"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "qa_report.txt",
+       "缺失=2"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "manifest.json",
+       "kept",
+       15
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "数据集质检与清洗",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "api_key: SK=old-secret\n",
+    "path": "prod.yaml"
+   },
+   {
+    "inline": "export KEY=SK=old-secret\n",
+    "path": "deploy.sh"
+   }
+  ],
+  "goal": "prod.yaml 与 deploy.sh 均硬编码 SK=old-secret。两文件替换为 SK=new-secret（0 残留）；audit.txt 含两文件路径与轮换时间戳行、不含 old-secret 字样。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "audit.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "prod.yaml",
+      "new-secret"
+     ]
+    },
+    {
+     "file_contains": [
+      "deploy.sh",
+      "new-secret"
+     ]
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-011",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "prod.yaml",
+       "old-secret",
+       0
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "deploy.sh",
+       "old-secret",
+       0
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "audit.txt",
+       "prod.yaml"
+      ]
+     }
+    ],
+    "id": "m3"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "audit.txt",
+       "deploy.sh"
+      ]
+     }
+    ],
+    "id": "m4"
+   }
+  ],
+  "name": "密钥轮换审计",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "v1 p95=40\nline1 batch=64\nline2 conn=keep\nline3 pool=8\nline4 route=exact\nline5 dns=on\nline6 keepalive=60s\nline7 cache_ttl=0\nline8 warmup=3\nv2 p95=120\n",
+    "path": "bench.log"
+   },
+   {
+    "inline": "修复：cache_ttl 0->60\n",
+    "path": "patch_hint.txt"
+   },
+   {
+    "inline": "#!/bin/sh\ngrep -q 'cache_ttl=60' config 2>/dev/null && echo 'v3 p95=42' > bench2.log || echo 'v3 p95=120' > bench2.log\n",
+    "path": "rerun.sh"
+   }
+  ],
+  "goal": "bench.log：v1 p95=40、v2 p95=120，line7 为 cache_ttl=0。regression.md 引用 40 与 120 且定位 line7；按 patch_hint.txt 写 config（含 cache_ttl=60）；运行 rerun.sh 产 bench2.log（p95=42）；regression.md 末行 FIXED。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "config"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "regression.md",
+      "FIXED"
+     ]
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-012",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "regression.md",
+       "120"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "regression.md",
+       "line7"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "config",
+       "cache_ttl=60"
+      ]
+     }
+    ],
+    "id": "m3"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "bench2.log",
+       "42"
+      ]
+     }
+    ],
+    "id": "m4"
+   }
+  ],
+  "name": "性能回归分诊",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "states: NEW PENDING BLOCKED DONE\nNEW->PENDING\nNEW->CANCELLED?\nPENDING->BLOCKED\nBLOCKED->PENDING\n",
+    "path": "fsm.txt"
+   }
+  ],
+  "goal": "fsm.txt 声明状态 NEW/PENDING/BLOCKED/DONE。枚举报告 2 条非法迁移（含 PENDING 的 2 行）入 illegal.txt；把表修正为合法（含 PENDING->DONE）；recheck.txt 记 0。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "fsm.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "illegal.txt"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-013",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "illegal.txt",
+       "PENDING",
+       2
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "fsm.txt",
+       "PENDING->DONE"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "recheck.txt",
+       "0"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "状态机穷举验证",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "a1\n",
+    "path": "data/a.txt"
+   },
+   {
+    "inline": "b1\n",
+    "path": "data/b.txt"
+   },
+   {
+    "inline": "c1\n",
+    "path": "data/c.txt"
+   }
+  ],
+  "goal": "对 data/（3 文件）建 snap1 全量；改 b.txt 后建 snap2；chain.json 记两快照（snap2.changed=[b.txt]）；restore 后 verify.txt 为 OK。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "chain.json"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "snapshots/snap2/b.txt"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-014",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "chain.json",
+       "snap1"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "chain.json",
+       "snap2.changed[0]",
+       "b.txt"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "verify.txt",
+       "OK"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "增量备份哈希链",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "{\"paths\":{\"/users\":{\"response\":[\"id\",\"name\"]}}}\n",
+    "path": "openapi.json"
+   },
+   {
+    "inline": "resp={\"id\":1,\"name\":\"a\",\"email\":\"x\"}\n",
+    "path": "handler.py"
+   },
+   {
+    "inline": "#!/bin/sh\ngrep -q email handler.py && echo FAIL > smoke_out.txt || echo PASS > smoke_out.txt\n",
+    "path": "smoke.sh"
+   }
+  ],
+  "goal": "openapi.json 声明 /users 响应字段 id/name；handler.py 多返回 email。mismatches.txt 恰 1 行 email；修 handler.py 至不含 email；运行 smoke.sh 输出 PASS 入 smoke_out.txt。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "smoke_out.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "mismatches.txt"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-015",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "mismatches.txt",
+       "email",
+       1
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "handler.py",
+       "email",
+       0
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "smoke_out.txt",
+       "PASS"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "API 契约同步",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "2026-03-07T18:00Z\n2026-03-08T01:00Z\n2026-03-08T02:30Z\n2026-03-09T12:00Z\n2026-03-10T04:00Z\n",
+    "path": "events.csv"
+   }
+  ],
+  "goal": "events.csv（UTC 5 行）+8 小时转 tokyo.csv（18:00Z→02:00(+8) 等）；summary.json rows=5、invalid=1（第 3 行为标记样本）。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "summary.json"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "tokyo.csv",
+      "2026-03-08T10:30"
+     ]
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-016",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "tokyo.csv",
+       "2026-03-08T09:00"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "summary.json",
+       "rows",
+       5
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "summary.json",
+       "invalid",
+       1
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "时区迁移与 DST 边界",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "hit stale user:1\nhit fresh sess:9\nhit stale user:2\nhit stale user:3\n",
+    "path": "cache.log"
+   }
+  ],
+  "goal": "cache.log 有 3 处 stale 命中（user:1/2/3）。stale.txt 列 3 键；invalidations.sql 每键一条 DELETE（3 行）；replay.log 生成且 stale 计数 0；audit.txt 尾行 audit=done。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "stale.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "stale.txt",
+      "user:2"
+     ]
+    },
+    {
+     "file_exists": "replay.log"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-017",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "stale.txt",
+       "^user:",
+       3
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "invalidations.sql",
+       "DELETE",
+       3
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "audit.txt",
+       "audit=done"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "缓存失效审计",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "t1\nt2\nt3\nt4\nt5\nt6\nt7\nt8\nt9\nt10\n",
+    "path": "queue.txt"
+   }
+  ],
+  "goal": "queue.txt 含 t1..t10。逐个处理并在 processed.log 追加一行任务 id；在已处理 5 个后模拟崩溃并重启会话，续跑剩余且不重复——processed.log 终态恰 10 行、t1 恰 1 次；checkpoint.json last=10。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "checkpoint.json"
+    }
+   ],
+   "success": [
+    {
+     "lines_match_count": [
+      "processed.log",
+      "^t1$",
+      1
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-018",
+  "interruptions": [
+   {
+    "action": "crash_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "processed.log",
+       "^t",
+       5
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "processed.log",
+       "^t",
+       10
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "checkpoint.json",
+       "last",
+       10
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "队列批处理与断点续跑",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "id,tenant\n1,a\n2,b\n3,c\n4,a\n5,b\n6,c\n",
+    "path": "mixed.csv"
+   }
+  ],
+  "goal": "mixed.csv（6 数据行，tenant a/b/c 各 2）拆为 tenants/{a,b,c}.csv；quota.json 每租户 2；index.txt 3 行文件路径。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "quota.json"
+    }
+   ],
+   "success": [
+    {
+     "json_path_eq": [
+      "quota.json",
+      "c",
+      2
+     ]
+    },
+    {
+     "file_exists": "tenants/b.csv"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-019",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "tenants/a.csv",
+       "^[0-9]",
+       2
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "quota.json",
+       "a",
+       2
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "index.txt",
+       "tenants/",
+       3
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "多租户数据拆分",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "hard",
+  "fixtures": [
+   {
+    "inline": "feat: a\nfeat: b\nfeat: c\nfeat: d\nfeat: e\nBREAKING CHANGE: drop jsonrpc\nfix: f1\nfix: f2\nfix: f3\nfix: f4\nchore: c1\nchore: c2\ndocs: d1\n",
+    "path": "commits.txt"
+   }
+  ],
+  "goal": "commits.txt 12 行（feat 5、fix 4、chore 2、docs 1，1 行含 BREAKING CHANGE）。release_notes.md：Added/Fixed/Chores/Docs 四节齐全、含 v2.0.0 与 BREAKING；semver.json bump=major。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "semver.json"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "release_notes.md",
+      "Chores"
+     ]
+    },
+    {
+     "file_contains": [
+      "release_notes.md",
+      "Docs"
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-020",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "release_notes.md",
+       "Added"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "release_notes.md",
+       "Fixed"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "release_notes.md",
+       "v2.0.0"
+      ]
+     }
+    ],
+    "id": "m3"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "release_notes.md",
+       "BREAKING"
+      ]
+     }
+    ],
+    "id": "m4"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "semver.json",
+       "bump",
+       "major"
+      ]
+     }
+    ],
+    "id": "m5"
+   }
+  ],
+  "name": "发布说明编译",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "# RPT\n{{rows}}\n",
+    "path": "tpl/v1.tmpl"
+   },
+   {
+    "inline": "# RPT\n{{rows}}\nFOOT\nREPORT_END\n",
+    "path": "tpl/v2.tmpl"
+   },
+   {
+    "inline": "row1\nrow2\nrow3\n",
+    "path": "rows.txt"
+   }
+  ],
+  "goal": "会话 A：用 tpl/v1.tmpl 渲染 out.md（含 # RPT 与 3 行数据）。中断并换 tpl/v2.tmpl（新增 FOOT/REPORT_END 节）。会话 B：重渲染——终态含 FOOT 1 处、REPORT_END 1 处、row 行 3 行。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "out.md"
+    }
+   ],
+   "success": [
+    {
+     "lines_match_count": [
+      "out.md",
+      "FOOT",
+      1
+     ]
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-021",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1",
+    "swap": "tpl v1->v2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "out.md",
+       "RPT"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "out.md",
+       "REPORT_END"
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "out.md",
+       "^row",
+       3
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "模板换版重生成（跨会话）",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "SKU-7 qty=8\n",
+    "path": "wms.txt"
+   },
+   {
+    "inline": "sku,qty\nSKU-7,6\n",
+    "path": "api.csv"
+   },
+   {
+    "inline": "SKU-7,8\n",
+    "path": "sheet.csv"
+   }
+  ],
+  "goal": "三源对 SKU-7 报 8/6/8。evidence.txt 3 行记三源值；多数决 corrected.json SKU-7=8；audit_trail.txt 2 行（决议行+ISO 时间戳行）。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "audit_trail.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "evidence.txt"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-022",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m2"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "evidence.txt",
+       "SKU-7",
+       3
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "corrected.json",
+       "SKU-7",
+       8
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "audit_trail.txt",
+       "20",
+       2
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "三源库存对账",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "medium",
+  "fixtures": [
+   {
+    "inline": "[{\"name\":\"a\"},{\"name\":\"b\"},{\"name\":\"c\"},{\"name\":\"d\"}]\n",
+    "path": "v1.json"
+   }
+  ],
+  "goal": "v1.json（4 个 {name} 记录）迁移为 v2.json（first 保留原值、last=空串）；再由 v2 往返导出 v1_roundtrip.json（含全部原 name）；forward.json 含 last 的记录过同一校验器，forward_check.txt=PASS。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "forward.json"
+    }
+   ],
+   "success": [
+    {
+     "file_contains": [
+      "v1_roundtrip.json",
+      "\"d\""
+     ]
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "lh-023",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "v2.json",
+       "[0].first",
+       "a"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "json_path_eq": [
+       "v2.json",
+       "[3].last",
+       ""
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "forward_check.txt",
+       "PASS"
+      ]
+     }
+    ],
+    "id": "m3"
+   }
+  ],
+  "name": "schema 演进往返",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "budget": {
+   "max_tool_calls": 90,
+   "max_turns": 60
+  },
+  "category": "long-horizon",
+  "difficulty": "hard",
+  "fixtures": [
+   {
+    "inline": "02:14 disk_full web-3\n",
+    "path": "alert.txt"
+   },
+   {
+    "inline": "01:50 logrotate disabled by policy\n02:13 disk usage 98%\n",
+    "path": "logs/web3.log"
+   },
+   {
+    "inline": "logrotate exit=1\n",
+    "path": "logs/cron.log"
+   },
+   {
+    "inline": "- [ ] 确认告警\n- [ ] 收集日志\n- [ ] 定位根因\n- [ ] 执行处置\n- [ ] 复盘归档\n",
+    "path": "runbook.md"
+   }
+  ],
+  "goal": "alert.txt（02:14 disk_full web-3）。logs/ 定位根因 logrotate → root_cause.txt 含 logrotate；runbook.md 5 项全勾选 [x]；postmortem.md 含时间线 02:14、根因、行动项三要素。",
+  "grading": {
+   "partial": [
+    {
+     "file_exists": "root_cause.txt"
+    }
+   ],
+   "success": [
+    {
+     "file_exists": "postmortem.md"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "lh-024",
+  "interruptions": [
+   {
+    "action": "session_restart",
+    "after_milestone": "m1"
+   }
+  ],
+  "lang": "multi",
+  "milestones": [
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "root_cause.txt",
+       "logrotate"
+      ]
+     }
+    ],
+    "id": "m1"
+   },
+   {
+    "assert": [
+     {
+      "lines_match_count": [
+       "runbook.md",
+       "[x]",
+       5
+      ]
+     }
+    ],
+    "id": "m2"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "postmortem.md",
+       "02:14"
+      ]
+     }
+    ],
+    "id": "m3"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "postmortem.md",
+       "根因"
+      ]
+     }
+    ],
+    "id": "m4"
+   },
+   {
+    "assert": [
+     {
+      "file_contains": [
+       "postmortem.md",
+       "行动项"
+      ]
+     }
+    ],
+    "id": "m5"
+   }
+  ],
+  "name": "事故响应演练",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ }
+]

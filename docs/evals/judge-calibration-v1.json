@@ -1,0 +1,1602 @@
+[
+ {
+  "holdout": false,
+  "id": "jc-001",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 29*78?",
+  "response": "答案是 2262（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-002",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 29*78?",
+  "response": "我认为是 2264"
+ },
+ {
+  "holdout": false,
+  "id": "jc-003",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 28*76?",
+  "response": "答案是 2128（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-004",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 28*76?",
+  "response": "我认为是 2129"
+ },
+ {
+  "holdout": false,
+  "id": "jc-005",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 95*88?",
+  "response": "答案是 8360（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-006",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 95*88?",
+  "response": "我认为是 8361"
+ },
+ {
+  "holdout": false,
+  "id": "jc-007",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 59*39?",
+  "response": "答案是 2301（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-008",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 59*39?",
+  "response": "我认为是 2302"
+ },
+ {
+  "holdout": false,
+  "id": "jc-009",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 38*85?",
+  "response": "答案是 3230（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-010",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 38*85?",
+  "response": "我认为是 3229"
+ },
+ {
+  "holdout": false,
+  "id": "jc-011",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 53*82?",
+  "response": "答案是 4346（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-012",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 53*82?",
+  "response": "我认为是 4343"
+ },
+ {
+  "holdout": true,
+  "id": "jc-013",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 74*47?",
+  "response": "答案是 3478（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-014",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 74*47?",
+  "response": "我认为是 3480"
+ },
+ {
+  "holdout": false,
+  "id": "jc-015",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 18*42?",
+  "response": "答案是 756（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-016",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 18*42?",
+  "response": "我认为是 758"
+ },
+ {
+  "holdout": false,
+  "id": "jc-017",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 52*58?",
+  "response": "答案是 3016（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-018",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 52*58?",
+  "response": "我认为是 3015"
+ },
+ {
+  "holdout": false,
+  "id": "jc-019",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 63*92?",
+  "response": "答案是 5796（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-020",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 63*92?",
+  "response": "我认为是 5798"
+ },
+ {
+  "holdout": false,
+  "id": "jc-021",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 83*35?",
+  "response": "答案是 2905（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-022",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 83*35?",
+  "response": "我认为是 2902"
+ },
+ {
+  "holdout": false,
+  "id": "jc-023",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 85*25?",
+  "response": "答案是 2125（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-024",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 85*25?",
+  "response": "我认为是 2126"
+ },
+ {
+  "holdout": false,
+  "id": "jc-025",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 88*64?",
+  "response": "答案是 5632（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-026",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 88*64?",
+  "response": "我认为是 5630"
+ },
+ {
+  "holdout": false,
+  "id": "jc-027",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 75*27?",
+  "response": "答案是 2025（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-028",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 75*27?",
+  "response": "我认为是 2022"
+ },
+ {
+  "holdout": true,
+  "id": "jc-029",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 96*73?",
+  "response": "答案是 7008（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-030",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 96*73?",
+  "response": "我认为是 7009"
+ },
+ {
+  "holdout": true,
+  "id": "jc-031",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 64*34?",
+  "response": "答案是 2176（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-032",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 64*34?",
+  "response": "我认为是 2178"
+ },
+ {
+  "holdout": false,
+  "id": "jc-033",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 81*24?",
+  "response": "答案是 1944（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-034",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 81*24?",
+  "response": "我认为是 1946"
+ },
+ {
+  "holdout": false,
+  "id": "jc-035",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 49*45?",
+  "response": "答案是 2205（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-036",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 49*45?",
+  "response": "我认为是 2204"
+ },
+ {
+  "holdout": false,
+  "id": "jc-037",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 90*13?",
+  "response": "答案是 1170（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-038",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 90*13?",
+  "response": "我认为是 1167"
+ },
+ {
+  "holdout": false,
+  "id": "jc-039",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 82*13?",
+  "response": "答案是 1066（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-040",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 82*13?",
+  "response": "我认为是 1068"
+ },
+ {
+  "holdout": true,
+  "id": "jc-041",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 70*76?",
+  "response": "答案是 5320（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-042",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 70*76?",
+  "response": "我认为是 5318"
+ },
+ {
+  "holdout": true,
+  "id": "jc-043",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 19*12?",
+  "response": "答案是 228（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-044",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 19*12?",
+  "response": "我认为是 225"
+ },
+ {
+  "holdout": false,
+  "id": "jc-045",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 95*51?",
+  "response": "答案是 4845（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-046",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 95*51?",
+  "response": "我认为是 4844"
+ },
+ {
+  "holdout": false,
+  "id": "jc-047",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 86*61?",
+  "response": "答案是 5246（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-048",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 86*61?",
+  "response": "我认为是 5243"
+ },
+ {
+  "holdout": true,
+  "id": "jc-049",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What is 45*59?",
+  "response": "答案是 2655（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-050",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What is 45*59?",
+  "response": "我认为是 2654"
+ },
+ {
+  "holdout": false,
+  "id": "jc-051",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab98c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-052",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab98c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 8"
+ },
+ {
+  "holdout": true,
+  "id": "jc-053",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab92c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-054",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab92c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 -1"
+ },
+ {
+  "holdout": true,
+  "id": "jc-055",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab45c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-056",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab45c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 -2"
+ },
+ {
+  "holdout": false,
+  "id": "jc-057",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab69c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-058",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab69c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 -1"
+ },
+ {
+  "holdout": false,
+  "id": "jc-059",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab34c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-060",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab34c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 3"
+ },
+ {
+  "holdout": true,
+  "id": "jc-061",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab58c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-062",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab58c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 2"
+ },
+ {
+  "holdout": true,
+  "id": "jc-063",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab38c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-064",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab38c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 8"
+ },
+ {
+  "holdout": false,
+  "id": "jc-065",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab85c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-066",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab85c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 3"
+ },
+ {
+  "holdout": false,
+  "id": "jc-067",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab70c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-068",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab70c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 3"
+ },
+ {
+  "holdout": false,
+  "id": "jc-069",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab24c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-070",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab24c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 2"
+ },
+ {
+  "holdout": false,
+  "id": "jc-071",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab39c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-072",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab39c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 8"
+ },
+ {
+  "holdout": false,
+  "id": "jc-073",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab99c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-074",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab99c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 0"
+ },
+ {
+  "holdout": false,
+  "id": "jc-075",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab77c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-076",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab77c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 0"
+ },
+ {
+  "holdout": false,
+  "id": "jc-077",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab53c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-078",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab53c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 0"
+ },
+ {
+  "holdout": false,
+  "id": "jc-079",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab11c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-080",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab11c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 3"
+ },
+ {
+  "holdout": true,
+  "id": "jc-081",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab21c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-082",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab21c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 2"
+ },
+ {
+  "holdout": false,
+  "id": "jc-083",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab17c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-084",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab17c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 2"
+ },
+ {
+  "holdout": false,
+  "id": "jc-085",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab83c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-086",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab83c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 2"
+ },
+ {
+  "holdout": false,
+  "id": "jc-087",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab33c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-088",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab33c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 8"
+ },
+ {
+  "holdout": true,
+  "id": "jc-089",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "Reverse 'ab8c' and count vowels in the result. Answer with the count only.",
+  "response": "答案是 1（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-090",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "Reverse 'ab8c' and count vowels in the result. Answer with the count only.",
+  "response": "我认为是 2"
+ },
+ {
+  "holdout": false,
+  "id": "jc-091",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-092",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-093",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-094",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-095",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-096",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": false,
+  "id": "jc-097",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-098",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-099",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-100",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": false,
+  "id": "jc-101",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-102",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": false,
+  "id": "jc-103",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-104",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-105",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-106",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-107",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-108",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-109",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-110",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": false,
+  "id": "jc-111",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-112",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": false,
+  "id": "jc-113",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-114",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-115",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-116",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-117",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-118",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": true,
+  "id": "jc-119",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "答案是 是（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-120",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）",
+  "response": "我认为是：否"
+ },
+ {
+  "holdout": false,
+  "id": "jc-121",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 201 天的 ISO 日期？",
+  "response": "答案是 2027-03-20（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-122",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 201 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-123",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 398 天的 ISO 日期？",
+  "response": "答案是 2027-10-03（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-124",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 398 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-125",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 269 天的 ISO 日期？",
+  "response": "答案是 2027-05-27（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-126",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 269 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-127",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 159 天的 ISO 日期？",
+  "response": "答案是 2027-02-06（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-128",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 159 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": true,
+  "id": "jc-129",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 334 天的 ISO 日期？",
+  "response": "答案是 2027-07-31（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-130",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 334 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-131",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 307 天的 ISO 日期？",
+  "response": "答案是 2027-07-04（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-132",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 307 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-133",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 151 天的 ISO 日期？",
+  "response": "答案是 2027-01-29（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-134",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 151 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-135",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 254 天的 ISO 日期？",
+  "response": "答案是 2027-05-12（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-136",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 254 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-137",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 295 天的 ISO 日期？",
+  "response": "答案是 2027-06-22（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-138",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 295 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-139",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 375 天的 ISO 日期？",
+  "response": "答案是 2027-09-10（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-140",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 375 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": true,
+  "id": "jc-141",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 273 天的 ISO 日期？",
+  "response": "答案是 2027-05-31（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-142",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 273 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": true,
+  "id": "jc-143",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 328 天的 ISO 日期？",
+  "response": "答案是 2027-07-25（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-144",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 328 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-145",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 374 天的 ISO 日期？",
+  "response": "答案是 2027-09-09（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-146",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 374 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-147",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 207 天的 ISO 日期？",
+  "response": "答案是 2027-03-26（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-148",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 207 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": false,
+  "id": "jc-149",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "2026-08-31 之后第 348 天的 ISO 日期？",
+  "response": "答案是 2027-08-14（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-150",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "2026-08-31 之后第 348 天的 ISO 日期？",
+  "response": "答案：2026-13-45"
+ },
+ {
+  "holdout": true,
+  "id": "jc-151",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=8\nprint(x**4)",
+  "response": "答案是 4096（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-152",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=8\nprint(x**4)",
+  "response": "我认为是 4097"
+ },
+ {
+  "holdout": false,
+  "id": "jc-153",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=7\nprint(x**4)",
+  "response": "答案是 2401（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-154",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=7\nprint(x**4)",
+  "response": "我认为是 2399"
+ },
+ {
+  "holdout": false,
+  "id": "jc-155",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=7\nprint(x**2)",
+  "response": "答案是 49（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-156",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=7\nprint(x**2)",
+  "response": "我认为是 48"
+ },
+ {
+  "holdout": false,
+  "id": "jc-157",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=9\nprint(x**3)",
+  "response": "答案是 729（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-158",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=9\nprint(x**3)",
+  "response": "我认为是 730"
+ },
+ {
+  "holdout": false,
+  "id": "jc-159",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**4)",
+  "response": "答案是 81（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-160",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**4)",
+  "response": "我认为是 80"
+ },
+ {
+  "holdout": false,
+  "id": "jc-161",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=4\nprint(x**3)",
+  "response": "答案是 64（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-162",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=4\nprint(x**3)",
+  "response": "我认为是 66"
+ },
+ {
+  "holdout": false,
+  "id": "jc-163",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=7\nprint(x**3)",
+  "response": "答案是 343（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-164",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=7\nprint(x**3)",
+  "response": "我认为是 342"
+ },
+ {
+  "holdout": false,
+  "id": "jc-165",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**2)",
+  "response": "答案是 9（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-166",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**2)",
+  "response": "我认为是 7"
+ },
+ {
+  "holdout": true,
+  "id": "jc-167",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=7\nprint(x**3)",
+  "response": "答案是 343（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-168",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=7\nprint(x**3)",
+  "response": "我认为是 344"
+ },
+ {
+  "holdout": true,
+  "id": "jc-169",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=4\nprint(x**4)",
+  "response": "答案是 256（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-170",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=4\nprint(x**4)",
+  "response": "我认为是 257"
+ },
+ {
+  "holdout": true,
+  "id": "jc-171",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**4)",
+  "response": "答案是 81（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-172",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**4)",
+  "response": "我认为是 82"
+ },
+ {
+  "holdout": false,
+  "id": "jc-173",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=5\nprint(x**2)",
+  "response": "答案是 25（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-174",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=5\nprint(x**2)",
+  "response": "我认为是 22"
+ },
+ {
+  "holdout": true,
+  "id": "jc-175",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=9\nprint(x**4)",
+  "response": "答案是 6561（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-176",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=9\nprint(x**4)",
+  "response": "我认为是 6558"
+ },
+ {
+  "holdout": true,
+  "id": "jc-177",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=2\nprint(x**4)",
+  "response": "答案是 16（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-178",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=2\nprint(x**4)",
+  "response": "我认为是 17"
+ },
+ {
+  "holdout": false,
+  "id": "jc-179",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=6\nprint(x**4)",
+  "response": "答案是 1296（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-180",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=6\nprint(x**4)",
+  "response": "我认为是 1295"
+ },
+ {
+  "holdout": false,
+  "id": "jc-181",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=8\nprint(x**2)",
+  "response": "答案是 64（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-182",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=8\nprint(x**2)",
+  "response": "我认为是 61"
+ },
+ {
+  "holdout": false,
+  "id": "jc-183",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=7\nprint(x**3)",
+  "response": "答案是 343（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-184",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=7\nprint(x**3)",
+  "response": "我认为是 344"
+ },
+ {
+  "holdout": false,
+  "id": "jc-185",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**3)",
+  "response": "答案是 27（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-186",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**3)",
+  "response": "我认为是 28"
+ },
+ {
+  "holdout": false,
+  "id": "jc-187",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**3)",
+  "response": "答案是 27（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-188",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**3)",
+  "response": "我认为是 24"
+ },
+ {
+  "holdout": false,
+  "id": "jc-189",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=2\nprint(x**4)",
+  "response": "答案是 16（附简短推导）"
+ },
+ {
+  "holdout": true,
+  "id": "jc-190",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=2\nprint(x**4)",
+  "response": "我认为是 18"
+ },
+ {
+  "holdout": false,
+  "id": "jc-191",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=4\nprint(x**4)",
+  "response": "答案是 256（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-192",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=4\nprint(x**4)",
+  "response": "我认为是 258"
+ },
+ {
+  "holdout": false,
+  "id": "jc-193",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**4)",
+  "response": "答案是 81（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-194",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**4)",
+  "response": "我认为是 80"
+ },
+ {
+  "holdout": true,
+  "id": "jc-195",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=2\nprint(x**3)",
+  "response": "答案是 8（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-196",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=2\nprint(x**3)",
+  "response": "我认为是 7"
+ },
+ {
+  "holdout": false,
+  "id": "jc-197",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=2\nprint(x**2)",
+  "response": "答案是 4（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-198",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=2\nprint(x**2)",
+  "response": "我认为是 11"
+ },
+ {
+  "holdout": true,
+  "id": "jc-199",
+  "label": "good",
+  "objective_basis": "与注册答案一致",
+  "prompt": "What does this print?\nx=3\nprint(x**2)",
+  "response": "答案是 9（附简短推导）"
+ },
+ {
+  "holdout": false,
+  "id": "jc-200",
+  "label": "bad",
+  "objective_basis": "与注册答案不一致",
+  "prompt": "What does this print?\nx=3\nprint(x**2)",
+  "response": "我认为是 6"
+ }
+]

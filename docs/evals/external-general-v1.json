@@ -1,0 +1,1202 @@
+[
+ {
+  "answer_check": {
+   "exact": "2262"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-001",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 29*78?"
+ },
+ {
+  "answer_check": {
+   "exact": "2128"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-002",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 28*76?"
+ },
+ {
+  "answer_check": {
+   "exact": "8360"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-003",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 95*88?"
+ },
+ {
+  "answer_check": {
+   "exact": "2301"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-004",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 59*39?"
+ },
+ {
+  "answer_check": {
+   "exact": "3230"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-005",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 38*85?"
+ },
+ {
+  "answer_check": {
+   "exact": "4346"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-006",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 53*82?"
+ },
+ {
+  "answer_check": {
+   "exact": "3478"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-007",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 74*47?"
+ },
+ {
+  "answer_check": {
+   "exact": "756"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-008",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 18*42?"
+ },
+ {
+  "answer_check": {
+   "exact": "3016"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-009",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 52*58?"
+ },
+ {
+  "answer_check": {
+   "exact": "5796"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-010",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 63*92?"
+ },
+ {
+  "answer_check": {
+   "exact": "2905"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-011",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 83*35?"
+ },
+ {
+  "answer_check": {
+   "exact": "2125"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-012",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 85*25?"
+ },
+ {
+  "answer_check": {
+   "exact": "5632"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-013",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 88*64?"
+ },
+ {
+  "answer_check": {
+   "exact": "2025"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-014",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 75*27?"
+ },
+ {
+  "answer_check": {
+   "exact": "7008"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-015",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 96*73?"
+ },
+ {
+  "answer_check": {
+   "exact": "2176"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-016",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 64*34?"
+ },
+ {
+  "answer_check": {
+   "exact": "1944"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-017",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 81*24?"
+ },
+ {
+  "answer_check": {
+   "exact": "2205"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-018",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 49*45?"
+ },
+ {
+  "answer_check": {
+   "exact": "1170"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-019",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 90*13?"
+ },
+ {
+  "answer_check": {
+   "exact": "1066"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-020",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 82*13?"
+ },
+ {
+  "answer_check": {
+   "exact": "5320"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-021",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 70*76?"
+ },
+ {
+  "answer_check": {
+   "exact": "228"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-022",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 19*12?"
+ },
+ {
+  "answer_check": {
+   "exact": "4845"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-023",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 95*51?"
+ },
+ {
+  "answer_check": {
+   "exact": "5246"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-024",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 86*61?"
+ },
+ {
+  "answer_check": {
+   "exact": "2655"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-025",
+  "kind": "arithmetic",
+  "lang": "en",
+  "prompt": "What is 45*59?"
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-026",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab98c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-027",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab92c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-028",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab45c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-029",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab69c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-030",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab34c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-031",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab58c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-032",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab38c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-033",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab85c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-034",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab70c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-035",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab24c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-036",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab39c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-037",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab99c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-038",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab77c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-039",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab53c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-040",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab11c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-041",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab21c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-042",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab17c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-043",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab83c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-044",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab33c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "1"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-045",
+  "kind": "string",
+  "lang": "en",
+  "prompt": "Reverse 'ab8c' and count vowels in the result. Answer with the count only."
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-046",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-047",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-048",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-049",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-050",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-051",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-052",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-053",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-054",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-055",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-056",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-057",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-058",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-059",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "是"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-060",
+  "kind": "logic",
+  "lang": "multi",
+  "prompt": "所有 Bloops 都是 Razzles；所有 Razzles 都是 Lazzles。Bloops 是 Lazzles 吗？（是/否）"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-03-20"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-061",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 201 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-10-03"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-062",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 398 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-05-27"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-063",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 269 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-02-06"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-064",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 159 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-07-31"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-065",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 334 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-07-04"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-066",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 307 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-01-29"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-067",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 151 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-05-12"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-068",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 254 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-06-22"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-069",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 295 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-09-10"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-070",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 375 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-05-31"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-071",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 273 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-07-25"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-072",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 328 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-09-09"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-073",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 374 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-03-26"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": true,
+  "id": "xg-074",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 207 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "2027-08-14"
+  },
+  "category": "external-general",
+  "difficulty": "medium",
+  "holdout": false,
+  "id": "xg-075",
+  "kind": "date",
+  "lang": "multi",
+  "prompt": "2026-08-31 之后第 348 天的 ISO 日期？"
+ },
+ {
+  "answer_check": {
+   "exact": "4096"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-076",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=8\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "2401"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-077",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=7\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "49"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-078",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=7\nprint(x**2)"
+ },
+ {
+  "answer_check": {
+   "exact": "729"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-079",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=9\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "81"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-080",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "64"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-081",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=4\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "343"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-082",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=7\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "9"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-083",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**2)"
+ },
+ {
+  "answer_check": {
+   "exact": "343"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-084",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=7\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "256"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-085",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=4\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "81"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-086",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "25"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-087",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=5\nprint(x**2)"
+ },
+ {
+  "answer_check": {
+   "exact": "6561"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-088",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=9\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "16"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-089",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=2\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "1296"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-090",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=6\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "64"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-091",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=8\nprint(x**2)"
+ },
+ {
+  "answer_check": {
+   "exact": "343"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-092",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=7\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "27"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-093",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "27"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-094",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "16"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-095",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=2\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "256"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-096",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=4\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "81"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-097",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**4)"
+ },
+ {
+  "answer_check": {
+   "exact": "8"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": true,
+  "id": "xg-098",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=2\nprint(x**3)"
+ },
+ {
+  "answer_check": {
+   "exact": "4"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-099",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=2\nprint(x**2)"
+ },
+ {
+  "answer_check": {
+   "exact": "9"
+  },
+  "category": "external-general",
+  "difficulty": "easy",
+  "holdout": false,
+  "id": "xg-100",
+  "kind": "code-output",
+  "lang": "en",
+  "prompt": "What does this print?\nx=3\nprint(x**2)"
+ }
+]

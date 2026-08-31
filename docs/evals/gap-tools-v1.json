@@ -1,0 +1,2102 @@
+[
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2026-09-01T09:00:00"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-001",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=0 9 * * 1-5 base=2026-08-31T12:00:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2026-08-31T12:15:00"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-002",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=*/15 * * * * base=2026-08-31T12:07:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2026-09-01T02:30:00"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-003",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=30 2 1 * * base=2026-08-31T12:00:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2028-02-29T00:00:00"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-004",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=0 0 29 2 * base=2026-08-31T12:00:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2026-08-31T14:00:00"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-005",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=0 */2 * * * base=2026-08-31T13:10:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2026-09-06T03:15:00"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-006",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=15 3 * * 0 base=2026-08-31T12:00:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "cron-next-run",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "计算 cron 表达式在给定基准时刻之后的下一次触发时间，ISO 输出",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2026-09-05T12:00:00"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-007",
+  "lang": "multi",
+  "name": "cron-next-run",
+  "prompt": "cron=0 12 * * 6 base=2026-08-31T13:00:00",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "NBUQ===="
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-008",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:hi",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "MBRU===="
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-009",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:Zoo",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "MFRGGZBT"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-010",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:abc123",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "NBSWY3DP"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-011",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:hello",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "ME===="
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-012",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:ab",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "MFRGG==="
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-013",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:abcd",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "base32-encode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "RFC4648 base32 编码（含 = 填充）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "M4QTEA===="
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-014",
+  "lang": "multi",
+  "name": "base32-encode",
+  "prompt": "encode:ap!",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "IV"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-015",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:4",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "IX"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-016",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:9",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "LVIII"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-017",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:58",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "MCMXCIV"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-018",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:1994",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "MMXXVI"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-019",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:2026",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "XLIX"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-020",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:49",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "D"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-021",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:500",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "roman-numerals",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "整数转罗马数字（标准记法）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "MMMDCCCLXXXVIII"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-022",
+  "lang": "multi",
+  "name": "roman-numerals",
+  "prompt": "to:3888",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "242"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-023",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "2026-01-01..2026-08-31",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-024",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "2024-02-28..2024-03-01",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "0"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-025",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "2026-08-31..2026-08-31",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-026",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "2025-12-31..2026-01-01",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "9740"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-027",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "2000-01-01..2026-08-31",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "30"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-028",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "2026-03-01..2026-03-31",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "date-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 ISO 日期间的天数差（绝对值）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-029",
+  "lang": "multi",
+  "name": "date-diff",
+  "prompt": "1999-12-31..2000-01-01",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "matrix-det",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "3x3 矩阵行列式（整数）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "0"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-030",
+  "lang": "multi",
+  "name": "matrix-det",
+  "prompt": "[[1, 2, 3], [4, 5, 6], [7, 8, 9]]",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "matrix-det",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "3x3 矩阵行列式（整数）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "24"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-031",
+  "lang": "multi",
+  "name": "matrix-det",
+  "prompt": "[[2, 0, 0], [0, 3, 0], [0, 0, 4]]",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "matrix-det",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "3x3 矩阵行列式（整数）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-032",
+  "lang": "multi",
+  "name": "matrix-det",
+  "prompt": "[[1, 1, 1], [1, 2, 3], [1, 3, 6]]",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "matrix-det",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "3x3 矩阵行列式（整数）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "0"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-033",
+  "lang": "multi",
+  "name": "matrix-det",
+  "prompt": "[[3, 3, 3], [3, 3, 3], [3, 3, 3]]",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "matrix-det",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "3x3 矩阵行列式（整数）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-034",
+  "lang": "multi",
+  "name": "matrix-det",
+  "prompt": "[[1, 0, 0], [0, 1, 0], [0, 0, 1]]",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "matrix-det",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "3x3 矩阵行列式（整数）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "4"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-035",
+  "lang": "multi",
+  "name": "matrix-det",
+  "prompt": "[[2, 1, 1], [1, 2, 1], [1, 1, 2]]",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "regex-semver",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "正则提取语义化版本（x.y.z），无匹配输出 NONE",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1.2.3"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-036",
+  "lang": "multi",
+  "name": "regex-semver",
+  "prompt": "v1.2.3",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "regex-semver",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "正则提取语义化版本（x.y.z），无匹配输出 NONE",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "NONE"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-037",
+  "lang": "multi",
+  "name": "regex-semver",
+  "prompt": "release-2026.08",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "regex-semver",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "正则提取语义化版本（x.y.z），无匹配输出 NONE",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "NONE"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-038",
+  "lang": "multi",
+  "name": "regex-semver",
+  "prompt": "no match here",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "regex-semver",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "正则提取语义化版本（x.y.z），无匹配输出 NONE",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "2.10.4"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-039",
+  "lang": "multi",
+  "name": "regex-semver",
+  "prompt": "pkg@2.10.4-beta",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "regex-semver",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "正则提取语义化版本（x.y.z），无匹配输出 NONE",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "0.0.1"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-040",
+  "lang": "multi",
+  "name": "regex-semver",
+  "prompt": "0.0.1",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "unit-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "二进制单位换算为字节（KiB=1024）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1048576"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-041",
+  "lang": "multi",
+  "name": "unit-convert",
+  "prompt": "1024KiB->B",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "unit-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "二进制单位换算为字节（KiB=1024）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "5242880"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-042",
+  "lang": "multi",
+  "name": "unit-convert",
+  "prompt": "5MiB->B",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "unit-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "二进制单位换算为字节（KiB=1024）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1073741824"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-043",
+  "lang": "multi",
+  "name": "unit-convert",
+  "prompt": "1GiB->B",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "unit-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "二进制单位换算为字节（KiB=1024）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "3072"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-044",
+  "lang": "multi",
+  "name": "unit-convert",
+  "prompt": "3KiB->B",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "radix-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "进制转换（结果大写字母）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "111101101"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-045",
+  "lang": "multi",
+  "name": "radix-convert",
+  "prompt": "0o755->bin",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "radix-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "进制转换（结果大写字母）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "377"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-046",
+  "lang": "multi",
+  "name": "radix-convert",
+  "prompt": "0xFF->oct",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "radix-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "进制转换（结果大写字母）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "FF"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-047",
+  "lang": "multi",
+  "name": "radix-convert",
+  "prompt": "255->hex",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "radix-convert",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "进制转换（结果大写字母）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "10"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-048",
+  "lang": "multi",
+  "name": "radix-convert",
+  "prompt": "0b1010->dec",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "levenshtein",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两词 Levenshtein 编辑距离",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "3"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-049",
+  "lang": "multi",
+  "name": "levenshtein",
+  "prompt": "kitten sitting",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "levenshtein",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两词 Levenshtein 编辑距离",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-050",
+  "lang": "multi",
+  "name": "levenshtein",
+  "prompt": "abc abd",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "levenshtein",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两词 Levenshtein 编辑距离",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "0"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-051",
+  "lang": "multi",
+  "name": "levenshtein",
+  "prompt": "same same",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "levenshtein",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两词 Levenshtein 编辑距离",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "1"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-052",
+  "lang": "multi",
+  "name": "levenshtein",
+  "prompt": "flaw lawn",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "levenshtein",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两词 Levenshtein 编辑距离",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "3"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-053",
+  "lang": "multi",
+  "name": "levenshtein",
+  "prompt": "abc abcdef",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "csv-to-nested",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "CSV（含点号列名）转嵌套 JSON",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "{\"a\":{\"b\":\"1\",\"c\":\"2\"},\"b\":\"3\"}"
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-054",
+  "lang": "multi",
+  "name": "csv-to-nested",
+  "prompt": "cols=a.b,a.c,b;row=1,2,3",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "csv-to-nested",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "CSV（含点号列名）转嵌套 JSON",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": "{\"x\":{\"y\":{\"z\":\"7\"}}}"
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-055",
+  "lang": "multi",
+  "name": "csv-to-nested",
+  "prompt": "cols=x.y.z;row=7",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "ical-parse",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "解析 RRULE:FREQ=WEEKLY;INTERVAL=2 从 DTSTART 展开未来 3 个事件日期",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "ical-parse"
+     }
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-056",
+  "lang": "multi",
+  "name": "ical-parse",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "jwt-decode",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "不验签解码 JWT payload 的声明 JSON",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "jwt-decode"
+     }
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-057",
+  "lang": "multi",
+  "name": "jwt-decode",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "json-diff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "两 JSON 文档按路径 diff 输出 added/removed/changed 三键",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "json-diff"
+     }
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-058",
+  "lang": "multi",
+  "name": "json-diff",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "url-slug",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "中文标题转拼音 slug（无声调、连字符分隔）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "url-slug"
+     }
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-059",
+  "lang": "multi",
+  "name": "url-slug",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "color-contrast",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "WCAG 2.1 对比度比值计算并判定 AA(>=4.5)",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "color-contrast"
+     }
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-060",
+  "lang": "multi",
+  "name": "color-contrast",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "size-parse",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "human-size 字符串（如 2.5MiB/500K）转字节整数",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "size-parse"
+     }
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-061",
+  "lang": "multi",
+  "name": "size-parse",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "glob-escape",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "glob 模式元字符转义（* ? [ 转义）",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "glob-escape"
+     }
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-062",
+  "lang": "multi",
+  "name": "glob-escape",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "shlex-join",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "把参数数组连接为 shell 安全引号串",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "shlex-join"
+     }
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-063",
+  "lang": "multi",
+  "name": "shlex-join",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "mimetype-sniff",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "按魔数嗅探 PNG/GZIP/PDF/ELF 四类 MIME",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "mimetype-sniff"
+     }
+    }
+   ]
+  },
+  "holdout": false,
+  "id": "gt-064",
+  "lang": "multi",
+  "name": "mimetype-sniff",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ },
+ {
+  "absent_capability": "csv-quarantine",
+  "budget": {
+   "max_tool_calls": 30,
+   "max_turns": 25
+  },
+  "category": "gap-tool",
+  "difficulty": "medium",
+  "goal": "含控制字符的 CSV 行隔离并输出报告",
+  "grading": {
+   "partial": [
+    {
+     "tool_registered": true
+    }
+   ],
+   "success": [
+    {
+     "tool_output_json_eq": {
+      "tool_registered": "csv-quarantine"
+     }
+    }
+   ]
+  },
+  "holdout": true,
+  "id": "gt-065",
+  "lang": "multi",
+  "name": "csv-quarantine",
+  "prompt": "实现并注册该工具：通过自带单元彩排（>=3 用例）后处理宿主随机提交的任务实例，成功判据=注册且彩排通过",
+  "toolset": [
+   "filesystem",
+   "shell",
+   "code_execution"
+  ]
+ }
+]
