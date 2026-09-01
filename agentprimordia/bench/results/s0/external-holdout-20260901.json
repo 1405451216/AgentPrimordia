@@ -1,0 +1,292 @@
+{
+  "set": "external-general-v1.json",
+  "set_sha256": "5af8f5d2f631261c2d4b683109df81a0489340213463f24c287cf5fb42ac927a",
+  "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
+  "track": "real",
+  "mode": "external",
+  "provider": "openai",
+  "model": "deepseek-v4-flash",
+  "holdout_only": true,
+  "generated_at": "2026-08-31T16:21:16Z",
+  "records": [
+    {
+      "id": "xg-001",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2262",
+      "response": "2262",
+      "passed": true
+    },
+    {
+      "id": "xg-002",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2128",
+      "response": "2128",
+      "passed": true
+    },
+    {
+      "id": "xg-010",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5796",
+      "response": "5796",
+      "passed": true
+    },
+    {
+      "id": "xg-013",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5632",
+      "response": "88 × 64 = **5,632**",
+      "passed": false
+    },
+    {
+      "id": "xg-017",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "1944",
+      "response": "1944",
+      "passed": true
+    },
+    {
+      "id": "xg-021",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5320",
+      "response": "70 × 76 = **5320**",
+      "passed": false
+    },
+    {
+      "id": "xg-026",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-030",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-031",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-032",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-033",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-034",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-039",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-041",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-045",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "1",
+      "passed": true
+    },
+    {
+      "id": "xg-052",
+      "kind": "logic",
+      "holdout": true,
+      "expected": "是",
+      "response": "是。",
+      "passed": true
+    },
+    {
+      "id": "xg-053",
+      "kind": "logic",
+      "holdout": true,
+      "expected": "是",
+      "response": "是。",
+      "passed": true
+    },
+    {
+      "id": "xg-063",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-05-27",
+      "response": "2027-05-27",
+      "passed": true
+    },
+    {
+      "id": "xg-065",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-07-31",
+      "response": "2027-07-31",
+      "passed": true
+    },
+    {
+      "id": "xg-066",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-07-04",
+      "response": "2026-08-31 之后第 307 天是：\n\n**2027-07-04**",
+      "passed": false
+    },
+    {
+      "id": "xg-068",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-05-12",
+      "response": "2026-08-31 之后第 254 天是：\n\n**2027-05-12**",
+      "passed": false
+    },
+    {
+      "id": "xg-069",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-06-22",
+      "response": "2026-08-31 之后第 295 天是：\n\n**2027-06-22**",
+      "passed": false
+    },
+    {
+      "id": "xg-070",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-09-10",
+      "response": "2027-09-10",
+      "passed": true
+    },
+    {
+      "id": "xg-072",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-07-25",
+      "response": "2026-08-31 之后第 328 天的 ISO 日期是：\n\n**2027-07-25**",
+      "passed": false
+    },
+    {
+      "id": "xg-074",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-03-26",
+      "response": "2027-03-26",
+      "passed": true
+    },
+    {
+      "id": "xg-076",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "4096",
+      "response": "4096",
+      "passed": true
+    },
+    {
+      "id": "xg-085",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "256",
+      "response": "256",
+      "passed": true
+    },
+    {
+      "id": "xg-087",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "25",
+      "response": "25",
+      "passed": true
+    },
+    {
+      "id": "xg-091",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "64",
+      "response": "64",
+      "passed": true
+    },
+    {
+      "id": "xg-094",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "27",
+      "response": "27",
+      "passed": true
+    },
+    {
+      "id": "xg-095",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "16",
+      "response": "16",
+      "passed": true
+    },
+    {
+      "id": "xg-096",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "256",
+      "response": "256",
+      "passed": true
+    },
+    {
+      "id": "xg-097",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "81",
+      "response": "81",
+      "passed": true
+    },
+    {
+      "id": "xg-098",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "8",
+      "response": "8",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "successes": 28,
+    "trials": 34,
+    "point": 0.8235294117647058,
+    "wilson_lower95": 0.6648626260015724,
+    "wilson_upper95": 0.9165103095462768
+  }
+}
