@@ -197,12 +197,16 @@ func main() {
 			fmt.Printf("运行 %s round=%d arm=%s ... ", u.item.ID, u.round, arm)
 			start := time.Now()
 			var res unitResult
-			rateLimited := false
+			transient := false // 暂时性异常（限流/余额耗尽）不落盘——留给幂等续跑补跑
 			for attempt := 0; ; attempt++ {
 				res = runUnit(prov, u.item, u.round, arm)
+				if isBalanceErr(res.Error) {
+					transient = true // 余额耗尽：退避重试无意义，立即放弃本单元
+					break
+				}
 				if !isRateLimited(res.Error) || attempt >= *maxRetry {
 					if isRateLimited(res.Error) {
-						rateLimited = true // 登记限流，不落盘——留给幂等续跑补跑
+						transient = true // 登记限流——留给幂等续跑补跑
 					}
 					break
 				}
@@ -210,8 +214,8 @@ func main() {
 				fmt.Printf("(429 限流，%v 后重试 %d/%d) ", backoff, attempt+1, *maxRetry)
 				time.Sleep(backoff)
 			}
-			if rateLimited {
-				fmt.Printf("LIMITED %s round=%d arm=%s\n", u.item.ID, u.round, arm)
+			if transient {
+				fmt.Printf("TRANSIENT %s round=%d arm=%s（限流/余额，未落盘）\n", u.item.ID, u.round, arm)
 				time.Sleep(*pace)
 				continue
 			}
@@ -406,6 +410,11 @@ func runUnit(prov llm.Provider, item lhItem, round int, arm string) unitResult {
 func isRateLimited(err string) bool {
 	return strings.Contains(err, "429") || strings.Contains(strings.ToLower(err), "rate_limit") ||
 		strings.Contains(strings.ToLower(err), "rate limit")
+}
+
+// isBalanceErr 网关账户余额耗尽判定（与限流同属暂时性异常：不落盘，留给幂等续跑补跑）。
+func isBalanceErr(err string) bool {
+	return strings.Contains(err, "Insufficient balance") || strings.Contains(err, "CreditsError")
 }
 
 // shutdownOnce 由 runUnit 注入（单元级一次性停机信号）。
