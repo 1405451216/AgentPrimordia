@@ -107,6 +107,8 @@ func main() {
 		limit    = flag.Int("limit", 0, "仅跑前 N 个配对单元（0=全部 108；冒烟用）")
 		rounds   = flag.Int("rounds", 5, "总轮次（预注册 5）")
 		arms     = flag.String("arms", "A,B", "执行的臂")
+		pace     = flag.Duration("pace", 30*time.Second, "采样单元间隔（网关限流节流）")
+		maxRetry = flag.Int("max-retry", 6, "429 限流单元重试次数（指数退避 60s 起）")
 	)
 	flag.Parse()
 
@@ -194,7 +196,25 @@ func main() {
 			}
 			fmt.Printf("运行 %s round=%d arm=%s ... ", u.item.ID, u.round, arm)
 			start := time.Now()
-			res := runUnit(prov, u.item, u.round, arm)
+			var res unitResult
+			rateLimited := false
+			for attempt := 0; ; attempt++ {
+				res = runUnit(prov, u.item, u.round, arm)
+				if !isRateLimited(res.Error) || attempt >= *maxRetry {
+					if isRateLimited(res.Error) {
+						rateLimited = true // 登记限流，不落盘——留给幂等续跑补跑
+					}
+					break
+				}
+				backoff := time.Duration(60*(attempt+1)) * time.Second
+				fmt.Printf("(429 限流，%v 后重试 %d/%d) ", backoff, attempt+1, *maxRetry)
+				time.Sleep(backoff)
+			}
+			if rateLimited {
+				fmt.Printf("LIMITED %s round=%d arm=%s\n", u.item.ID, u.round, arm)
+				time.Sleep(*pace)
+				continue
+			}
 			res.DurationSec = int(time.Since(start).Seconds())
 			fmt.Printf("success=%v milestones=%d turns=%d tools=%d restarts=%d (%ds)\n",
 				res.Success, res.Milestones, res.Turns, res.Tools, res.Restarts, res.DurationSec)
@@ -205,6 +225,7 @@ func main() {
 			}
 			_, _ = f.Write(append(line, '\n'))
 			_ = f.Close()
+			time.Sleep(*pace)
 		}
 	}
 	fmt.Printf("本轮执行 %d 次运行（跳过已完成 %d）\n", total-skipped, skipped)
@@ -379,6 +400,12 @@ func runUnit(prov llm.Provider, item lhItem, round int, arm string) unitResult {
 		res.Tools = resp.Metrics.TotalTools
 	}
 	return res
+}
+
+// isRateLimited 网关限流错误判定（计划书⑥：限流类异常登记后补跑）。
+func isRateLimited(err string) bool {
+	return strings.Contains(err, "429") || strings.Contains(strings.ToLower(err), "rate_limit") ||
+		strings.Contains(strings.ToLower(err), "rate limit")
 }
 
 // shutdownOnce 由 runUnit 注入（单元级一次性停机信号）。
