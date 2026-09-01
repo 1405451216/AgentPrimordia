@@ -406,10 +406,14 @@ func runUnit(prov llm.Provider, item lhItem, round int, arm string) unitResult {
 	return res
 }
 
-// isRateLimited 网关限流错误判定（计划书⑥：限流类异常登记后补跑）。
+// isRateLimited 网关限流/余额类瞬态错误判定（计划书⑥：异常登记后补跑）。
+// 余额耗尽（401 CreditsError）与限流（429）同为 TRANSIENT——不落盘，
+// 留给幂等续跑（充值/配额恢复后补齐）。
 func isRateLimited(err string) bool {
-	return strings.Contains(err, "429") || strings.Contains(strings.ToLower(err), "rate_limit") ||
-		strings.Contains(strings.ToLower(err), "rate limit")
+	e := strings.ToLower(err)
+	return strings.Contains(err, "429") || strings.Contains(e, "rate_limit") ||
+		strings.Contains(e, "rate limit") || strings.Contains(e, "insufficient balance") ||
+		strings.Contains(e, "creditserror") || strings.Contains(e, "http 401")
 }
 
 // isBalanceErr 网关账户余额耗尽判定（与限流同属暂时性异常：不落盘，留给幂等续跑补跑）。
