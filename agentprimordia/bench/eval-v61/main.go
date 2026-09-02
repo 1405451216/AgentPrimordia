@@ -411,9 +411,18 @@ func runUnit(prov llm.Provider, item lhItem, round int, arm string) unitResult {
 // 留给幂等续跑（充值/配额恢复后补齐）。
 func isRateLimited(err string) bool {
 	e := strings.ToLower(err)
-	return strings.Contains(err, "429") || strings.Contains(e, "rate_limit") ||
+	if strings.Contains(err, "429") || strings.Contains(e, "rate_limit") ||
 		strings.Contains(e, "rate limit") || strings.Contains(e, "insufficient balance") ||
-		strings.Contains(e, "creditserror") || strings.Contains(e, "http 401")
+		strings.Contains(e, "creditserror") || strings.Contains(e, "http 401") {
+		return true
+	}
+	// 网关瞬态超时（502/503/504）：服务端侧瞬态，登记后补跑
+	for _, code := range []string{"http 502", "http 503", "http 504"} {
+		if strings.Contains(e, code) {
+			return true
+		}
+	}
+	return false
 }
 
 // isBalanceErr 网关账户余额耗尽判定（与限流同属暂时性异常：不落盘，留给幂等续跑补跑）。
