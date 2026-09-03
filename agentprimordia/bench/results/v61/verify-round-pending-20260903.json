@@ -1,0 +1,70 @@
+{
+ "note": "红队/网关坏窗口期间无错误标记的失败单元——主实验完成后重跑一次对照验证，两次结果全量披露",
+ "units": [
+  {
+   "item": "lh-010",
+   "round": 1,
+   "arm": "A"
+  },
+  {
+   "item": "lh-010",
+   "round": 1,
+   "arm": "B"
+  },
+  {
+   "item": "lh-010",
+   "round": 2,
+   "arm": "A"
+  },
+  {
+   "item": "lh-010",
+   "round": 2,
+   "arm": "B"
+  },
+  {
+   "item": "lh-014",
+   "round": 2,
+   "arm": "A"
+  },
+  {
+   "item": "lh-014",
+   "round": 2,
+   "arm": "B"
+  },
+  {
+   "item": "lh-010",
+   "round": 3,
+   "arm": "A"
+  },
+  {
+   "item": "lh-010",
+   "round": 3,
+   "arm": "B"
+  },
+  {
+   "item": "lh-016",
+   "round": 3,
+   "arm": "A"
+  },
+  {
+   "item": "lh-017",
+   "round": 3,
+   "arm": "A"
+  },
+  {
+   "item": "lh-010",
+   "round": 4,
+   "arm": "A"
+  },
+  {
+   "item": "lh-010",
+   "round": 4,
+   "arm": "B"
+  },
+  {
+   "item": "lh-014",
+   "round": 4,
+   "arm": "B"
+  }
+ ]
+}
