@@ -28,10 +28,14 @@ func main() {
 	telemetryEvery := flag.Duration("telemetry-every", time.Hour, "资源遥测间隔（兼报告落盘节奏）")
 	step := flag.Duration("step", time.Second, "Step 推进粒度")
 	out := flag.String("out", "bench/results/v64-soak", "报告输出目录")
+	statePath := flag.String("state", "", "跨重启累计状态文件路径（空 = <out>/soak-state.json；累计在线口径，2026-09-03 修订）")
 	flag.Parse()
 
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		fatal(err)
+	}
+	if *statePath == "" {
+		*statePath = filepath.Join(*out, "soak-state.json")
 	}
 	reportPath := filepath.Join(*out, "soak-report.json")
 
@@ -56,10 +60,15 @@ func main() {
 		WakeEvery:      *wakeEvery,
 		TelemetryEvery: *telemetryEvery,
 		StateDir:       *out,
+		StatePath:      *statePath,
 		Metabolism:     "echo-synthetic（无 LLM：长活门测运行时工程，不测模型质量）",
 	})
 
-	fmt.Printf("soak 启动：目标 %v / 注入每 %v / 遥测每 %v / 输出 %s\n", *duration, *injectEvery, *telemetryEvery, *out)
+	if st, err := os.Stat(*statePath); err == nil {
+		fmt.Printf("soak 启动（续计）：目标累计 %v / 注入每 %v / 状态文件 %s（%s）\n", *duration, *injectEvery, *statePath, st.ModTime().Format("01-02 15:04"))
+	} else {
+		fmt.Printf("soak 启动：目标累计 %v / 注入每 %v / 遥测每 %v / 输出 %s\n", *duration, *injectEvery, *telemetryEvery, *out)
+	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -102,7 +111,8 @@ func main() {
 		}
 	}
 
-	// 信号中断：如实落盘部分证据（Interrupted 标记），判定不通过
+	// 信号中断：如实落盘累计状态与部分证据（Interrupted 标记），判定不通过
+	_ = soak.Save(time.Now())
 	rep := soak.Report()
 	rep.Interrupted = true
 	if err := live.WriteSoakReport(reportPath, rep); err != nil {

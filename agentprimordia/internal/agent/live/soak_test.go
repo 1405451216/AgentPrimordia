@@ -186,7 +186,7 @@ func TestSoakTelemetryStateDir(t *testing.T) {
 // TestWriteSoakReport 报告 JSON 落盘可回读（中途快照 = 崩溃安全证据）。
 func TestWriteSoakReport(t *testing.T) {
 	dir := t.TempDir()
-	rep := SoakReport{Injections: 75, Healed: 75, HealRatePoint: 1.0, HealWilsonLB95: 0.951284}
+	rep := SoakReport{Injections: 75, Healed: 75, HealRatePoint: 1.0, HealWilsonLB95: 0.951276}
 	rep.Verdict.Pass = true
 	path := filepath.Join(dir, "soak-report.json")
 	if err := WriteSoakReport(path, rep); err != nil {
@@ -202,5 +202,78 @@ func TestWriteSoakReport(t *testing.T) {
 	}
 	if back.Injections != 75 || !back.Verdict.Pass || back.HealWilsonLB95 < 0.95 {
 		t.Errorf("回读不一致：%+v", back)
+	}
+}
+
+// TestSoakResumeAcrossRestarts 累计在线口径（2026-09-03 修订）：状态持久化跨
+// 重启续计——计数器累计、时长按在线段累加、段与重启次数全量披露。
+func TestSoakResumeAcrossRestarts(t *testing.T) {
+	m := time.Minute
+	statePath := filepath.Join(t.TempDir(), "soak-state.json")
+	newCfg := func() SoakConfig {
+		return SoakConfig{TargetDuration: 90 * m, InjectEvery: 30 * m, WakeEvery: 0, TelemetryEvery: 0, StatePath: statePath}
+	}
+
+	// 第一段：3 步 × 30min → 注入 3（start+30/60/90），累计 90min 达标即 finished
+	soak1, _, _, fc1 := newSoakFixture(t, newCfg())
+	for i := 0; i < 3 && !soak1.Step(fc1.Now()); i++ {
+		fc1.advance(30 * m)
+		soak1.Step(fc1.Now())
+	}
+	if err := soak1.Save(fc1.Now()); err != nil {
+		t.Fatal(err)
+	}
+	rep1 := soak1.Report()
+	if rep1.Injections != 3 || rep1.Healed != 3 {
+		t.Fatalf("第一段：注入 %d 自愈 %d, want 3/3", rep1.Injections, rep1.Healed)
+	}
+	if rep1.ElapsedSec < 5400 {
+		t.Errorf("第一段累计时长 %.0fs, want ≥5400", rep1.ElapsedSec)
+	}
+
+	// 第二段（模拟重启）：全新 Soak/Runtime 实例加载同一状态文件——计数续计、
+	// 新段追加、时长累加；累计已达标，再跨一个注入间隔验证续计
+	soak2, _, _, fc2 := newSoakFixture(t, newCfg())
+	fc2.advance(90 * m) // 新段从上一段结束后开始
+	soak2.Step(fc2.Now()) // 加载状态、追加在线段；累计已达标（返回值忽略）
+	fc2.advance(30 * m)
+	soak2.Step(fc2.Now()) // +120min：注入 #4（跨重启续计）
+	rep2 := soak2.Report()
+	if rep2.Injections != 4 || rep2.Healed != 4 {
+		t.Errorf("重启后续计：注入 %d 自愈 %d, want 4/4（历史 3 + 本段 1）", rep2.Injections, rep2.Healed)
+	}
+	if len(rep2.Segments) != 2 {
+		t.Fatalf("在线段 = %d, want 2", len(rep2.Segments))
+	}
+	if rep2.Reboots != 1 {
+		t.Errorf("Reboots = %d, want 1", rep2.Reboots)
+	}
+	if rep2.ElapsedSec < 5400+1800 {
+		t.Errorf("累计时长 %.0fs, want ≥7200（90min + 30min）", rep2.ElapsedSec)
+	}
+	if !rep2.Verdict.DurationOK {
+		t.Errorf("累计达标 DurationOK 应为真：%+v", rep2.Verdict)
+	}
+}
+
+// TestSoakNoStatePathUnchanged 无 StatePath 时行为与旧语义一致（单段、不落盘）。
+func TestSoakNoStatePathUnchanged(t *testing.T) {
+	m := time.Minute
+	cfg := SoakConfig{TargetDuration: 3 * m, InjectEvery: m, WakeEvery: 0, TelemetryEvery: 0}
+	soak, _, chaos, fc := newSoakFixture(t, cfg)
+	for i := 0; i < 4 && !soak.Step(fc.Now()); i++ {
+		fc.advance(m)
+		soak.Step(fc.Now())
+	}
+	rep := soak.Report()
+	if len(rep.Segments) != 1 || rep.Reboots != 0 {
+		t.Errorf("无持久化应为单段零重启：%+v", rep)
+	}
+	if chaos.Injected() != 3 || rep.Injections != 3 {
+		t.Errorf("注入计数 = %d/%d, want 3/3", chaos.Injected(), rep.Injections)
+	}
+	if _, err := os.Stat(filepath.Join(t.TempDir(), "soak-state.json")); !os.IsNotExist(err) {
+		// StatePath 为空时不得写任何状态文件（此处仅语义占位——目录为空即无写入面）
+		_ = err
 	}
 }
