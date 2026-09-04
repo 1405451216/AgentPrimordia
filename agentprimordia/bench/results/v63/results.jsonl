@@ -1,2 +1,10 @@
 {"item":"gap-001","arm":"A","success":false,"turns":12,"tools":0,"duration_sec":69}
 {"item":"gap-001","arm":"B","success":true,"turns":6,"tools":0,"duration_sec":18}
+{"item":"gap-002","arm":"A","success":false,"turns":0,"tools":0,"duration_sec":75,"error":"max turns exceeded"}
+{"item":"gap-002","arm":"B","success":true,"turns":11,"tools":0,"duration_sec":33}
+{"item":"gap-003","arm":"A","success":false,"turns":12,"tools":0,"duration_sec":40}
+{"item":"gap-003","arm":"B","success":true,"turns":18,"tools":0,"duration_sec":298}
+{"item":"gap-004","arm":"A","success":true,"turns":9,"tools":0,"duration_sec":46}
+{"item":"gap-004","arm":"B","success":false,"turns":13,"tools":0,"duration_sec":102}
+{"item":"gap-005","arm":"A","success":false,"turns":16,"tools":0,"duration_sec":50}
+{"item":"gap-005","arm":"B","success":false,"turns":0,"tools":0,"duration_sec":101,"error":"max turns exceeded"}
