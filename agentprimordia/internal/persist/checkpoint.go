@@ -6,10 +6,19 @@ import (
 	"time"
 )
 
+// CheckpointToolCall 检查点中的 tool call 表示
+type CheckpointToolCall struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Args string `json:"args"`
+}
+
 // CheckpointMessage 是检查点中的消息表示（独立于 agent.Message 避免循环依赖）
 type CheckpointMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string               `json:"role"`
+	Content    string               `json:"content"`
+	ToolCalls  []CheckpointToolCall `json:"tool_calls,omitempty"`
+	ToolCallID string               `json:"tool_call_id,omitempty"`
 }
 
 // CheckpointMetrics 是检查点中的指标表示

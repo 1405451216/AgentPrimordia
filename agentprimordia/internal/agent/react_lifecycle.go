@@ -128,10 +128,24 @@ func (a *ReActAgent) ResumeFromCheckpoint(ctx context.Context) (*Response, error
 func (a *ReActAgent) resumeFromState(ctx context.Context, state *persist.AgentState) (*Response, error) {
 	history := make([]Message, 0, len(state.Messages))
 	for _, m := range state.Messages {
-		history = append(history, Message{
+		msg := Message{
 			Role:    Role(m.Role),
 			Content: m.Content,
-		})
+		}
+		if len(m.ToolCalls) > 0 {
+			msg.ToolCalls = make([]ToolCall, len(m.ToolCalls))
+			for j, tc := range m.ToolCalls {
+				msg.ToolCalls[j] = ToolCall{
+					ID:   tc.ID,
+					Name: tc.Name,
+					Args: tc.Args,
+				}
+			}
+		}
+		if m.ToolCallID != "" {
+			msg.Metadata.Extra = map[string]string{"tool_call_id": m.ToolCallID}
+		}
+		history = append(history, msg)
 	}
 
 	// 恢复 startTime 时减去已运行的时长，保持 Duration 累计一致

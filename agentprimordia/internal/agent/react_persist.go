@@ -167,12 +167,27 @@ func (a *ReActAgent) saveCheckpoint(ctx context.Context, history []Message, turn
 		return
 	}
 
-	// 转换消息格式
+	// 转换消息格式（保留 tool_calls 和 tool_call_id，确保恢复后 tool 链路完整）
 	msgs := make([]persist.CheckpointMessage, len(history))
 	for i, m := range history {
 		msgs[i] = persist.CheckpointMessage{
 			Role:    string(m.Role),
 			Content: m.Content,
+		}
+		if len(m.ToolCalls) > 0 {
+			msgs[i].ToolCalls = make([]persist.CheckpointToolCall, len(m.ToolCalls))
+			for j, tc := range m.ToolCalls {
+				msgs[i].ToolCalls[j] = persist.CheckpointToolCall{
+					ID:   tc.ID,
+					Name: tc.Name,
+					Args: tc.Args,
+				}
+			}
+		}
+		if m.Role == RoleTool {
+			if id, ok := m.Metadata.Extra["tool_call_id"]; ok {
+				msgs[i].ToolCallID = id
+			}
 		}
 	}
 

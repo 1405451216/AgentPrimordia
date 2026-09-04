@@ -281,6 +281,21 @@ func (a *ReActAgent) savePlanCheckpoint(ctx context.Context, history []Message, 
 			Role:    string(m.Role),
 			Content: m.Content,
 		}
+		if len(m.ToolCalls) > 0 {
+			msgs[i].ToolCalls = make([]persist.CheckpointToolCall, len(m.ToolCalls))
+			for j, tc := range m.ToolCalls {
+				msgs[i].ToolCalls[j] = persist.CheckpointToolCall{
+					ID:   tc.ID,
+					Name: tc.Name,
+					Args: tc.Args,
+				}
+			}
+		}
+		if m.Role == RoleTool {
+			if id, ok := m.Metadata.Extra["tool_call_id"]; ok {
+				msgs[i].ToolCallID = id
+			}
+		}
 	}
 
 	cpSubtasks := make([]persist.CheckpointSubTask, 0, len(pp.subtasks))
