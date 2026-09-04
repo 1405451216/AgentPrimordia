@@ -17,6 +17,11 @@ func TestNormalizeAnswer(t *testing.T) {
 		{"是 ", "是"},
 		{"42.0", "42.0"}, // 数值语义不做转换——机检只做规范化全等，避免隐式换算
 		{"", ""},
+		// markdown/LaTeX 剥离
+		{"**2262**", "2262"},
+		{`\boxed{2027-07-31}`, "2027-07-31"},
+		{`\( 2262 \)`, "2262"},
+		{"`code`", "code"},
 	}
 	for _, c := range cases {
 		if got := NormalizeAnswer(c.in); got != c.want {
@@ -36,6 +41,20 @@ func TestGradeExactAnswer(t *testing.T) {
 	noCheck := EvalSetItem{ID: "xg-002"}
 	if _, err := GradeExactAnswer(noCheck, "x"); err == nil {
 		t.Error("缺 answer_check.exact 应报错（不可机检的题面不允许混入真实轨）")
+	}
+	// 短答案包含匹配：模型把答案嵌在长文本里
+	if ok, _ := GradeExactAnswer(item, "The answer is **2262**."); !ok {
+		t.Error("短答案应做包含匹配")
+	}
+	// 短答案逻辑题
+	logicItem := EvalSetItem{ID: "xg-052", AnswerCheck: map[string]any{"exact": "是"}}
+	if ok, _ := GradeExactAnswer(logicItem, "是的。因为所有 Bloops 都是 Razzles"); !ok {
+		t.Error("短答案「是」应包含匹配")
+	}
+	// 日期答案（10 字符）
+	dateItem := EvalSetItem{ID: "xg-063", AnswerCheck: map[string]any{"exact": "2027-05-27"}}
+	if ok, _ := GradeExactAnswer(dateItem, "最终答案：2027-05-27"); !ok {
+		t.Error("日期答案应包含匹配")
 	}
 }
 

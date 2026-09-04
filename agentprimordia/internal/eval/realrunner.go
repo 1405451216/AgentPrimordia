@@ -29,16 +29,28 @@ type CompletionFunc func(ctx context.Context, prompt string) (string, error)
 // JudgeFunc judge 裁决函数：对 (任务, 回答) 输出 good/bad。
 type JudgeFunc func(ctx context.Context, task, response string) (string, error)
 
-// NormalizeAnswer 机检判分的答案规范化：去首尾空白/引号/句末标点，拉丁字母小写。
+// NormalizeAnswer 机检判分的答案规范化：去首尾空白/引号/句末标点，拉丁字母小写，剥离 markdown/LaTeX。
 func NormalizeAnswer(s string) string {
 	s = strings.TrimSpace(s)
 	s = strings.Trim(s, "\"'")
 	s = strings.TrimRight(s, "。.！!？?\n\t ")
+	// 剥离 markdown 格式标记
+	s = strings.ReplaceAll(s, "**", "")
+	s = strings.ReplaceAll(s, "*", "")
+	s = strings.ReplaceAll(s, "`", "")
+	// 剥离 LaTeX 标记
+	s = strings.ReplaceAll(s, `\(`, "")
+	s = strings.ReplaceAll(s, `\)`, "")
+	s = strings.ReplaceAll(s, `\[`, "")
+	s = strings.ReplaceAll(s, `\]`, "")
+	s = strings.ReplaceAll(s, `\boxed{`, "")
+	s = strings.ReplaceAll(s, `{`, "")
+	s = strings.ReplaceAll(s, `}`, "")
 	s = strings.ToLower(strings.TrimSpace(s))
 	return s
 }
 
-// GradeExactAnswer 外部泛化题判分：response 与注册答案规范化后全等。
+// GradeExactAnswer 外部泛化题判分：短答案（≤10 字符）做包含匹配，长答案做全等匹配。
 func GradeExactAnswer(item EvalSetItem, response string) (bool, error) {
 	raw, ok := item.AnswerCheck["exact"]
 	if !ok {
@@ -48,7 +60,14 @@ func GradeExactAnswer(item EvalSetItem, response string) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf("eval: 题面 %s answer_check.exact 应为字符串", item.ID)
 	}
-	return NormalizeAnswer(response) == NormalizeAnswer(want), nil
+	normWant := NormalizeAnswer(want)
+	normResp := NormalizeAnswer(response)
+	// 短答案（≤10 字符）：模型常把答案嵌在长文本里，做包含匹配
+	if len(normWant) <= 10 {
+		return strings.Contains(normResp, normWant), nil
+	}
+	// 长答案：全等匹配
+	return normResp == normWant, nil
 }
 
 // JudgePrompt judge 标定/评审的系统化提示词（约束只输出 good 或 bad）。
