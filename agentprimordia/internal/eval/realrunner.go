@@ -29,7 +29,7 @@ type CompletionFunc func(ctx context.Context, prompt string) (string, error)
 // JudgeFunc judge 裁决函数：对 (任务, 回答) 输出 good/bad。
 type JudgeFunc func(ctx context.Context, task, response string) (string, error)
 
-// NormalizeAnswer 机检判分的答案规范化：去首尾空白/引号/句末标点，拉丁字母小写，剥离 markdown/LaTeX。
+// NormalizeAnswer 机检判分的答案规范化：去首尾空白/引号/句末标点，拉丁字母小写，剥离 markdown/LaTeX/千分位逗号。
 func NormalizeAnswer(s string) string {
 	s = strings.TrimSpace(s)
 	s = strings.Trim(s, "\"'")
@@ -44,10 +44,29 @@ func NormalizeAnswer(s string) string {
 	s = strings.ReplaceAll(s, `\[`, "")
 	s = strings.ReplaceAll(s, `\]`, "")
 	s = strings.ReplaceAll(s, `\boxed{`, "")
-	s = strings.ReplaceAll(s, `{`, "")
-	s = strings.ReplaceAll(s, `}`, "")
+	s = strings.ReplaceAll(s, "{", "")
+	s = strings.ReplaceAll(s, "}", "")
+	// 剥离千分位逗号（数字中的 "," 如 "2,128" → "2128"）
+	s = stripThousandCommas(s)
 	s = strings.ToLower(strings.TrimSpace(s))
 	return s
+}
+
+// stripThousandCommas 剥离数字中的千分位逗号（仅当逗号前后都是数字时移除）。
+func stripThousandCommas(s string) string {
+	var b strings.Builder
+	runes := []rune(s)
+	for i, r := range runes {
+		if r == ',' && i > 0 && i < len(runes)-1 {
+			prev := runes[i-1]
+			next := runes[i+1]
+			if prev >= '0' && prev <= '9' && next >= '0' && next <= '9' {
+				continue
+			}
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 // GradeExactAnswer 外部泛化题判分：短答案（≤10 字符）做包含匹配，长答案做全等匹配。

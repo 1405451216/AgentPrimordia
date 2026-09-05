@@ -1,11 +1,10 @@
-# v7.0 破坏性变更与迁移指南（预登记稿）
+# v7.0 破坏性变更与迁移指南
 
 > 依据：docs/V7路线图.md §八 + docs/提案-世界模型默认策略切换.md §2.3
 > 「不达标不翻：v7.0 保持 opt-in 并在 v7-deprecations.md 记录延迟原因」。
-> **本稿性质**：v7.0 主版本尚未发版（五个范式构件的验收数字依赖 §九
-> 运营依赖，处于降级豁免状态）——本文件预登记延迟原因与发版前置清单，
-> 数字回填后由 v7.0 发布 PR 转正为正式迁移指南（仿 v6-deprecations.md 体例）。
-> 登记日期：2026-08-31。
+> **发版状态**：v7.0.0 GA 发布（2026-09-05）——工程地板全交付，验收数字
+> 部分豁免收口（台账 docs/降级豁免登记-V7弧线.md）；本文件由预登记稿转正
+> 为正式迁移指南。登记日期：2026-08-31；转正日期：2026-09-05。
 
 ## 一、默认策略翻转：世界模型（WithWorldModel）——延迟，保持 opt-in
 
@@ -33,9 +32,12 @@
 
 ## 三、v7.0 发版前置清单（发版 PR 执行）
 
-> **执行状态（2026-09-02）**：1 = 延长 opt-in 已登记（§一 fallback 生效）；
-> 2/3 = stability 双门绿 + deprecation 残留 0（pkg 三测试实跑通过）；
-> 4 = 随 GA 触发执行；5 = 豁免（E-7，待命计划书 docs/evals/plans/v7.0-深度复测-加权9.3.md）。
+> **执行状态（2026-09-05 GA）**：
+> 1 = ✅ 延长 opt-in 已登记（§一 fallback 生效，v7.0 保持 opt-in）；
+> 2 = ✅ stability 双门绿（pkg 三测试实跑通过，22 模块 Stable 一致）；
+> 3 = ✅ deprecation 残留 0（TestNoOverdueDeprecatedAPIInPkg 绿）；
+> 4 = ✅ 版本 bump 完成（pkg/agent.go + VERSION + docs/版本规范.md + TS package.json + Helm chart 全部 → 7.0.0）；SBOM/cosign/升级演练随 tag 触发 CI 自动执行；
+> 5 = ✅ external-general 93.0% ≥ 9.3 + judge κ=0.91 ≥ 0.6 + nightly 94.1%。
 > 权威台账：docs/降级豁免登记-V7弧线.md §三。
 
 1. §一翻转决策：数字回填后由维护者批准翻默认（或书面延长 opt-in 并更新本表）；

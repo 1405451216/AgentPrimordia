@@ -60,12 +60,13 @@ type unitResult struct {
 
 func main() {
 	var (
-		model   = flag.String("model", "Deepseek-V4-Flash", "model name")
-		apiKey  = flag.String("api-key", "", "API key")
-		baseURL = flag.String("base-url", "", "base URL")
-		outDir  = flag.String("out", "bench/results/v63", "output directory")
-		limit   = flag.Int("limit", 0, "limit items (0=all)")
-		pace    = flag.Duration("pace", 10*time.Second, "pace between runs")
+		model     = flag.String("model", "Deepseek-V4-Flash", "model name")
+		apiKey    = flag.String("api-key", "", "API key")
+		baseURL   = flag.String("base-url", "", "base URL")
+		outDir    = flag.String("out", "bench/results/v63", "output directory")
+		limit     = flag.Int("limit", 0, "limit items (0=all)")
+		pace      = flag.Duration("pace", 10*time.Second, "pace between runs")
+		maxTokens = flag.Int("max-tokens", 4096, "max tokens per request (reasoning models need higher)")
 	)
 	flag.Parse()
 
@@ -87,7 +88,12 @@ func main() {
 	}
 	fmt.Printf("缺口题面: %d 条\n", len(items))
 
-	prov, err := llm.NewOpenAIProvider(llm.Config{APIKey: *apiKey, Model: *model, BaseURL: *baseURL})
+	prov, err := llm.NewOpenAIProvider(llm.Config{
+		APIKey:    *apiKey,
+		Model:     *model,
+		BaseURL:   *baseURL,
+		MaxTokens: *maxTokens,
+	})
 	if err != nil {
 		fmt.Printf("创建 Provider 失败: %v\n", err)
 		os.Exit(1)
@@ -171,12 +177,16 @@ func runUnit(ctx context.Context, prov llm.Provider, item gapItem, arm string) u
 
 	// 构造工具集
 	reg := sandboxToolkit(sandbox)
-	if arm == "B" {
+	var prompt string
+	if arm == "B" && item.MissingTool != "" {
 		// B 臂：注入缺口工具（简化版：注册专用 shell 脚本模拟缺口工具）
 		registerGapTools(reg, sandbox, item)
+		prompt = systemPrompt(sandbox, item.MissingTool)
+	} else {
+		prompt = systemPrompt(sandbox)
 	}
 
-	ag, err := agent.NewAgent("gap-"+item.ID, systemPrompt(sandbox), prov,
+	ag, err := agent.NewAgent("gap-"+item.ID, prompt, prov,
 		agent.WithMaxTurns(20),
 		agent.WithToolkit(reg),
 		agent.WithCheckpointStore(ckpt),
@@ -234,6 +244,21 @@ grep -c "ERROR" "$1" 2>/dev/null || echo "0"`
 # json_merge: 合并两个 JSON 数组并去重
 cat "$1" "$2" | python3 -c "import json,sys; a=json.load(sys.stdin); b=json.load(sys.stdin); print(json.dumps(list(set(a+b))))" 2>/dev/null || echo "[]"`
 		writeGapTool(reg, sandbox, "json_merge", script)
+	case "xml_parser":
+		script := `#!/bin/sh
+# xml_parser: 提取指定标签的值
+grep -oP "<$2>\K[^<]+" "$1" 2>/dev/null || sed -n "s/.*<$2>\([^<]*\)<\/$2>.*/\1/p" "$1" 2>/dev/null || echo ""`
+		writeGapTool(reg, sandbox, "xml_parser", script)
+	case "date_calc":
+		script := `#!/bin/sh
+# date_calc: 日期计算（N天后）
+date -d "$1 + $2 days" +%Y-%m-%d 2>/dev/null || date -v+"$2"d -j -f "%Y-%m-%d" "$1" +%Y-%m-%d 2>/dev/null || echo "error"`
+		writeGapTool(reg, sandbox, "date_calc", script)
+	case "hash_gen":
+		script := `#!/bin/sh
+# hash_gen: 计算文件 SHA256 哈希
+shasum -a 256 "$1" 2>/dev/null | cut -d' ' -f1 || sha256sum "$1" 2>/dev/null | cut -d' ' -f1 || echo "error"`
+		writeGapTool(reg, sandbox, "hash_gen", script)
 	}
 }
 
@@ -275,17 +300,28 @@ func checkAssertions(sandbox string, asserts []struct {
 	return true
 }
 
-func systemPrompt(sandbox string) string {
-	return fmt.Sprintf(`你在一个隔离沙箱目录中工作（根目录: %s）。
+func systemPrompt(sandbox string, gapTools ...string) string {
+	base := fmt.Sprintf(`你在一个隔离沙箱目录中工作（根目录: %s）。
 使用提供的工具完成任务。所有产物必须写在该目录内。
 直接开始工作，不要询问用户。`, sandbox)
+
+	if len(gapTools) > 0 {
+		base += "\n\n可用专用工具（通过 shell 执行）：\n"
+		for _, t := range gapTools {
+			base += fmt.Sprintf("- %s/%s（用法: bash %s/%s <参数>）\n", 
+				filepath.Join(sandbox, ".gap-tools"), t,
+				filepath.Join(sandbox, ".gap-tools"), t)
+		}
+		base += "\n优先使用专用工具完成任务。"
+	}
+	return base
 }
 
 func loadGapItems() ([]gapItem, error) {
-	// 缺口题面：需要专用工具的任务
+	// 缺口题面：需要专用工具的任务（路径为沙箱内相对路径）
 	items := []gapItem{
 		{
-			ID: "gap-001", Task: "计算 /tmp/data.csv 中所有数值的平均值，结果写入 /tmp/result.txt",
+			ID: "gap-001", Task: "计算 data.csv 中所有数值的平均值，结果写入 result.txt",
 			Expected: "42", GapKind: "missing_tool", MissingTool: "csv_stats",
 			Fixtures: []struct {
 				Path   string `json:"path"`
@@ -298,7 +334,7 @@ func loadGapItems() ([]gapItem, error) {
 			}{{Kind: "file_contains", Path: "result.txt", Contains: "50"}},
 		},
 		{
-			ID: "gap-002", Task: "从 /tmp/log.txt 提取 ERROR 行数，写入 /tmp/error_count.txt",
+			ID: "gap-002", Task: "从 log.txt 提取 ERROR 行数，写入 error_count.txt",
 			Expected: "3", GapKind: "missing_tool", MissingTool: "log_parser",
 			Fixtures: []struct {
 				Path   string `json:"path"`
@@ -311,7 +347,7 @@ func loadGapItems() ([]gapItem, error) {
 			}{{Kind: "file_contains", Path: "error_count.txt", Contains: "3"}},
 		},
 		{
-			ID: "gap-003", Task: "合并 /tmp/a.json 和 /tmp/b.json 为去重数组，写入 /tmp/merged.json",
+			ID: "gap-003", Task: "合并 a.json 和 b.json 为去重数组，写入 merged.json",
 			Expected: "merged", GapKind: "missing_tool", MissingTool: "json_merge",
 			Fixtures: []struct {
 				Path   string `json:"path"`
@@ -328,7 +364,7 @@ func loadGapItems() ([]gapItem, error) {
 		},
 		// 无缺口工具也能用 shell 完成的基线任务
 		{
-			ID: "gap-004", Task: "统计 /tmp/files/ 下的文件数量，写入 /tmp/count.txt",
+			ID: "gap-004", Task: "统计 files/ 目录下的文件数量，写入 count.txt",
 			Expected: "5", GapKind: "baseline",
 			Fixtures: []struct {
 				Path   string `json:"path"`
@@ -347,7 +383,7 @@ func loadGapItems() ([]gapItem, error) {
 			}{{Kind: "file_contains", Path: "count.txt", Contains: "5"}},
 		},
 		{
-			ID: "gap-005", Task: "将 /tmp/input.txt 内容转为大写，写入 /tmp/upper.txt",
+			ID: "gap-005", Task: "将 input.txt 内容转为大写，写入 upper.txt",
 			Expected: "done", GapKind: "baseline",
 			Fixtures: []struct {
 				Path   string `json:"path"`
@@ -358,6 +394,72 @@ func loadGapItems() ([]gapItem, error) {
 				Path     string `json:"path,omitempty"`
 				Contains string `json:"contains,omitempty"`
 			}{{Kind: "file_contains", Path: "upper.txt", Contains: "HELLO"}},
+		},
+		// 扩展题面：更多缺口工具类型
+		{
+			ID: "gap-006", Task: "从 config.xml 提取所有 <port> 标签的值，写入 ports.txt",
+			Expected: "ports", GapKind: "missing_tool", MissingTool: "xml_parser",
+			Fixtures: []struct {
+				Path   string `json:"path"`
+				Inline string `json:"inline"`
+			}{{Path: "config.xml", Inline: "<config><port>8080</port><port>8443</port><port>9000</port></config>"}},
+			SuccessAssert: []struct {
+				Kind     string `json:"kind"`
+				Path     string `json:"path,omitempty"`
+				Contains string `json:"contains,omitempty"`
+			}{{Kind: "file_contains", Path: "ports.txt", Contains: "8080"}},
+		},
+		{
+			ID: "gap-007", Task: "计算 2026-09-05 之后 30 天的日期，写入 future.txt",
+			Expected: "date", GapKind: "missing_tool", MissingTool: "date_calc",
+			Fixtures: []struct {
+				Path   string `json:"path"`
+				Inline string `json:"inline"`
+			}{},
+			SuccessAssert: []struct {
+				Kind     string `json:"kind"`
+				Path     string `json:"path,omitempty"`
+				Contains string `json:"contains,omitempty"`
+			}{{Kind: "file_contains", Path: "future.txt", Contains: "2026-10-05"}},
+		},
+		{
+			ID: "gap-008", Task: "计算 secret.txt 内容的 SHA256 哈希，写入 hash.txt",
+			Expected: "hash", GapKind: "missing_tool", MissingTool: "hash_gen",
+			Fixtures: []struct {
+				Path   string `json:"path"`
+				Inline string `json:"inline"`
+			}{{Path: "secret.txt", Inline: "hello"}},
+			SuccessAssert: []struct {
+				Kind     string `json:"kind"`
+				Path     string `json:"path,omitempty"`
+				Contains string `json:"contains,omitempty"`
+			}{{Kind: "file_contains", Path: "hash.txt", Contains: "2cf24"}},
+		},
+		{
+			ID: "gap-009", Task: "将 lines.txt 按字母排序，写入 sorted.txt",
+			Expected: "sorted", GapKind: "baseline",
+			Fixtures: []struct {
+				Path   string `json:"path"`
+				Inline string `json:"inline"`
+			}{{Path: "lines.txt", Inline: "cherry\napple\nbanana\n"}},
+			SuccessAssert: []struct {
+				Kind     string `json:"kind"`
+				Path     string `json:"path,omitempty"`
+				Contains string `json:"contains,omitempty"`
+			}{{Kind: "file_contains", Path: "sorted.txt", Contains: "apple"}},
+		},
+		{
+			ID: "gap-010", Task: "找出 nums.txt 中的最大值，写入 max.txt",
+			Expected: "max", GapKind: "baseline",
+			Fixtures: []struct {
+				Path   string `json:"path"`
+				Inline string `json:"inline"`
+			}{{Path: "nums.txt", Inline: "15\n42\n28\n7\n33\n"}},
+			SuccessAssert: []struct {
+				Kind     string `json:"kind"`
+				Path     string `json:"path,omitempty"`
+				Contains string `json:"contains,omitempty"`
+			}{{Kind: "file_contains", Path: "max.txt", Contains: "42"}},
 		},
 	}
 	return items, nil

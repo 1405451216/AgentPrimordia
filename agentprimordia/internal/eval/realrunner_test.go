@@ -22,6 +22,10 @@ func TestNormalizeAnswer(t *testing.T) {
 		{`\boxed{2027-07-31}`, "2027-07-31"},
 		{`\( 2262 \)`, "2262"},
 		{"`code`", "code"},
+		// 千分位逗号剥离
+		{"2,128", "2128"},
+		{"1,000,000", "1000000"},
+		{"hello, world", "hello, world"}, // 非数字逗号保留
 	}
 	for _, c := range cases {
 		if got := NormalizeAnswer(c.in); got != c.want {

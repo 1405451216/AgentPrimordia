@@ -56,12 +56,13 @@ type unitResult struct {
 
 func main() {
 	var (
-		model   = flag.String("model", "Deepseek-V4-Flash", "model name")
-		apiKey  = flag.String("api-key", "", "API key")
-		baseURL = flag.String("base-url", "", "base URL")
-		outDir  = flag.String("out", "bench/results/v64", "output directory")
-		limit   = flag.Int("limit", 0, "limit items (0=all)")
-		pace    = flag.Duration("pace", 10*time.Second, "pace between runs")
+		model     = flag.String("model", "Deepseek-V4-Flash", "model name")
+		apiKey    = flag.String("api-key", "", "API key")
+		baseURL   = flag.String("base-url", "", "base URL")
+		outDir    = flag.String("out", "bench/results/v64", "output directory")
+		limit     = flag.Int("limit", 0, "limit items (0=all)")
+		pace      = flag.Duration("pace", 10*time.Second, "pace between runs")
+		maxTokens = flag.Int("max-tokens", 4096, "max tokens per request (reasoning models need higher)")
 	)
 	flag.Parse()
 
@@ -83,7 +84,12 @@ func main() {
 	}
 	fmt.Printf("题面: %d 条\n", len(items))
 
-	prov, err := llm.NewOpenAIProvider(llm.Config{APIKey: *apiKey, Model: *model, BaseURL: *baseURL})
+	prov, err := llm.NewOpenAIProvider(llm.Config{
+		APIKey:    *apiKey,
+		Model:     *model,
+		BaseURL:   *baseURL,
+		MaxTokens: *maxTokens,
+	})
 	if err != nil {
 		fmt.Printf("创建 Provider 失败: %v\n", err)
 		os.Exit(1)

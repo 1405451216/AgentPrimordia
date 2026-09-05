@@ -1,0 +1,565 @@
+{
+  "set": "judge-calibration-v1.json",
+  "set_sha256": "6a45baf430f5da0d423d98e8623ae6eb30293cd523b8dda2e3a53171aeec8485",
+  "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
+  "track": "real",
+  "mode": "judge",
+  "provider": "openai",
+  "model": "sensenova-6.8-flash-lite",
+  "holdout_only": true,
+  "generated_at": "2026-09-05T02:55:26Z",
+  "records": [
+    {
+      "id": "jc-006",
+      "holdout": true,
+      "response": "我认为是 8361",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-008",
+      "holdout": true,
+      "response": "我认为是 2302",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-013",
+      "holdout": true,
+      "response": "答案是 3478（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-014",
+      "holdout": true,
+      "response": "我认为是 3480",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-016",
+      "holdout": true,
+      "response": "我认为是 758",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-029",
+      "holdout": true,
+      "response": "答案是 7008（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-031",
+      "holdout": true,
+      "response": "答案是 2176（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-032",
+      "holdout": true,
+      "response": "我认为是 2178",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-036",
+      "holdout": true,
+      "response": "我认为是 2204",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-041",
+      "holdout": true,
+      "response": "答案是 5320（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-043",
+      "holdout": true,
+      "response": "答案是 228（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-048",
+      "holdout": true,
+      "response": "我认为是 5243",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-049",
+      "holdout": true,
+      "response": "答案是 2655（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-050",
+      "holdout": true,
+      "response": "我认为是 2654",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-052",
+      "holdout": true,
+      "response": "我认为是 8",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-053",
+      "holdout": true,
+      "response": "答案是 1（附简短推导）",
+      "judge_say": "bad",
+      "gold": "good",
+      "passed": false
+    },
+    {
+      "id": "jc-055",
+      "holdout": true,
+      "response": "答案是 1（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-061",
+      "holdout": true,
+      "response": "答案是 1（附简短推导）",
+      "judge_say": "bad",
+      "gold": "good",
+      "passed": false
+    },
+    {
+      "id": "jc-062",
+      "holdout": true,
+      "response": "我认为是 2",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-063",
+      "holdout": true,
+      "response": "答案是 1（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-064",
+      "holdout": true,
+      "response": "我认为是 8",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-070",
+      "holdout": true,
+      "response": "我认为是 2",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-080",
+      "holdout": true,
+      "response": "我认为是 3",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-081",
+      "holdout": true,
+      "response": "答案是 1（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-082",
+      "holdout": true,
+      "response": "我认为是 2",
+      "judge_say": "good",
+      "gold": "bad",
+      "passed": false
+    },
+    {
+      "id": "jc-086",
+      "holdout": true,
+      "response": "我认为是 2",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-089",
+      "holdout": true,
+      "response": "答案是 1（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-090",
+      "holdout": true,
+      "response": "我认为是 2",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-093",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-095",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-096",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-099",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-100",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-102",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-105",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-106",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-107",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-109",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-114",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-115",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-116",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-117",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-119",
+      "holdout": true,
+      "response": "答案是 是（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-120",
+      "holdout": true,
+      "response": "我认为是：否",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-122",
+      "holdout": true,
+      "response": "答案：2026-13-45",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-129",
+      "holdout": true,
+      "response": "答案是 2027-07-31（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-130",
+      "holdout": true,
+      "response": "答案：2026-13-45",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-136",
+      "holdout": true,
+      "response": "答案：2026-13-45",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-138",
+      "holdout": true,
+      "response": "答案：2026-13-45",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-141",
+      "holdout": true,
+      "response": "答案是 2027-05-31（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-142",
+      "holdout": true,
+      "response": "答案：2026-13-45",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-143",
+      "holdout": true,
+      "response": "答案是 2027-07-25（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-150",
+      "holdout": true,
+      "response": "答案：2026-13-45",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-151",
+      "holdout": true,
+      "response": "答案是 4096（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-152",
+      "holdout": true,
+      "response": "我认为是 4097",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-160",
+      "holdout": true,
+      "response": "我认为是 80",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-164",
+      "holdout": true,
+      "response": "我认为是 342",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-167",
+      "holdout": true,
+      "response": "答案是 343（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-168",
+      "holdout": true,
+      "response": "我认为是 344",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-169",
+      "holdout": true,
+      "response": "答案是 256（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-171",
+      "holdout": true,
+      "response": "答案是 81（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-175",
+      "holdout": true,
+      "response": "答案是 6561（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-176",
+      "holdout": true,
+      "response": "我认为是 6558",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-177",
+      "holdout": true,
+      "response": "答案是 16（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-178",
+      "holdout": true,
+      "response": "我认为是 17",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-190",
+      "holdout": true,
+      "response": "我认为是 18",
+      "judge_say": "bad",
+      "gold": "bad",
+      "passed": true
+    },
+    {
+      "id": "jc-195",
+      "holdout": true,
+      "response": "答案是 8（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    },
+    {
+      "id": "jc-199",
+      "holdout": true,
+      "response": "答案是 9（附简短推导）",
+      "judge_say": "good",
+      "gold": "good",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "successes": 65,
+    "trials": 68,
+    "point": 0.9558823529411765,
+    "wilson_lower95": 0.8781280481750362,
+    "wilson_upper95": 0.9848833802919585
+  },
+  "kappa": 0.911304347826087
+}

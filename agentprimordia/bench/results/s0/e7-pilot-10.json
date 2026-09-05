@@ -1,0 +1,100 @@
+{
+  "set": "external-general-v1.json",
+  "set_sha256": "5af8f5d2f631261c2d4b683109df81a0489340213463f24c287cf5fb42ac927a",
+  "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
+  "track": "real",
+  "mode": "external",
+  "provider": "openai",
+  "model": "sensenova-6.8-flash-lite",
+  "holdout_only": false,
+  "generated_at": "2026-09-04T17:59:24Z",
+  "records": [
+    {
+      "id": "xg-001",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2262",
+      "response": "\n\n29 × 78 = **2,262**\n\nHere's the breakdown:\n- 29 × 80 = 2,320\n- 29 × 2 = 58\n- 2,320 − 58 = 2,262",
+      "passed": true
+    },
+    {
+      "id": "xg-002",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2128",
+      "response": "\n\n# 28 × 76 = **2,128**\n\n**Step-by-step breakdown:**\n\n```\n    28\n  × 76\n  ─────\n   168    (28 × 6)\n +1960    (28 × 70)\n  ─────\n  2128\n```",
+      "passed": true
+    },
+    {
+      "id": "xg-003",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "8360",
+      "response": "\n\n95 × 88 = **8,360**\n\nHere's one way to work it out:\n\n95 × 88 = 95 × (90 − 2)  \n= 95 × 90 − 95 × 2  \n= 8,550 − 190  \n= **8,360**",
+      "passed": true
+    },
+    {
+      "id": "xg-004",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2301",
+      "response": "\n\n## 59 × 39 = **2301**\n\nHere's one way to break it down:\n\n**59 × 39 = 59 × (40 − 1)**\n= 59 × 40 − 59\n= 2360 − 59\n= **2301**",
+      "passed": true
+    },
+    {
+      "id": "xg-005",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "3230",
+      "response": "\n\n**38 × 85 = 3,230**\n\nHere's the breakdown:\n\n- 38 × 80 = 3,040\n- 38 × 5 = 190\n- 3,040 + 190 = **3,230**",
+      "passed": true
+    },
+    {
+      "id": "xg-006",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "4346",
+      "response": "\n\nLet me work through this:\n\n53 × 82\n= 53 × (80 + 2)\n= 53 × 80 + 53 × 2\n= 4240 + 106\n= **4346**",
+      "passed": true
+    },
+    {
+      "id": "xg-007",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "3478",
+      "response": "\n\nTo solve this, I can break it down:\n\n74 × 47\n= 74 × (50 - 3)\n= 74 × 50 - 74 × 3\n= 3,700 - 222\n= **3,478**",
+      "passed": true
+    },
+    {
+      "id": "xg-008",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "756",
+      "response": "\n\n**18 × 42 = 756**",
+      "passed": true
+    },
+    {
+      "id": "xg-009",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "3016",
+      "response": "\n\n**52 × 58 = 3,016**\n\nHere's a quick way to compute it in your head:\n\n- Notice that 52 and 58 are both 4 away from the midpoint **55**.\n- Use the identity: (a − b)(a + b) = a² − b²\n- So 52 × 58 = (55 − 3)(55 + 3) = 55² − 3² = 3,025 − 9 = **3,016**",
+      "passed": true
+    },
+    {
+      "id": "xg-010",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5796",
+      "response": "\n\n63 × 92 = **5,796**",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "successes": 10,
+    "trials": 10,
+    "point": 1,
+    "wilson_lower95": 0.7224672001371107,
+    "wilson_upper95": 0.9999999999999999
+  }
+}

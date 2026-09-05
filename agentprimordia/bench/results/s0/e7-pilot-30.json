@@ -1,0 +1,260 @@
+{
+  "set": "external-general-v1.json",
+  "set_sha256": "5af8f5d2f631261c2d4b683109df81a0489340213463f24c287cf5fb42ac927a",
+  "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
+  "track": "real",
+  "mode": "external",
+  "provider": "openai",
+  "model": "sensenova-6.8-flash-lite",
+  "holdout_only": false,
+  "generated_at": "2026-09-04T18:00:09Z",
+  "records": [
+    {
+      "id": "xg-001",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2262",
+      "response": "\n\n**29 × 78 = 2,262**\n\nHere's a quick way to break it down:\n\n29 × 78 = 29 × (80 − 2)\n= 29 × 80 − 29 × 2\n= 2,320 − 58\n= **2,262**",
+      "passed": true
+    },
+    {
+      "id": "xg-002",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2128",
+      "response": "\n\n**28 × 76 = 2128**\n\nHere's the breakdown:\n\n- 28 × 70 = 1,960\n- 28 × 6 = 168\n- 1,960 + 168 = **2,128**",
+      "passed": true
+    },
+    {
+      "id": "xg-003",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "8360",
+      "response": "\n\n**95 × 88 = 8,360**",
+      "passed": true
+    },
+    {
+      "id": "xg-004",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2301",
+      "response": "\n\n**2301**\n\nQuick way to see it:\n(60 − 1)(40 − 1) = 2400 − 60 − 40 + 1 = **2301**",
+      "passed": true
+    },
+    {
+      "id": "xg-005",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "3230",
+      "response": "\n\n**38 × 85 = 3,230**\n\nHere's a quick way to break it down:\n\n38 × 85 = 38 × (80 + 5)\n- 38 × 80 = 3,040\n- 38 × 5 = 190\n- 3,040 + 190 = **3,230**",
+      "passed": true
+    },
+    {
+      "id": "xg-006",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "4346",
+      "response": "\n\n## 53 × 82 = **4,346**\n\nHere's the step-by-step breakdown:\n\n```\n    53\n  × 82\n  ----\n   106   (53 × 2)\n 4240    (53 × 80)\n  ----\n 4346\n```\n\n- **53 × 2** = 106\n- **53 × 80** = 4,240\n- **106 + 4,240** = **4,346**",
+      "passed": true
+    },
+    {
+      "id": "xg-007",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "3478",
+      "response": "\n\n3478",
+      "passed": true
+    },
+    {
+      "id": "xg-008",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "756",
+      "response": "\n\n18 multiplied by 42 is **756**.",
+      "passed": true
+    },
+    {
+      "id": "xg-009",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "3016",
+      "response": "\n\n## Calculating 52 × 58\n\n**3016**\n\nHere's the breakdown:\n\n52 × 58 = 52 × (60 − 2) = 3,120 − 104 = **3,016**",
+      "passed": true
+    },
+    {
+      "id": "xg-010",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5796",
+      "response": "\n\n## Calculating 63 × 92\n\nHere's the step-by-step breakdown:\n\n**63 × 92 = 63 × (90 + 2)**\n\n1. 63 × 90 = 5,670\n2. 63 × 2 = 126\n3. 5,670 + 126 = **5,796**",
+      "passed": true
+    },
+    {
+      "id": "xg-011",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2905",
+      "response": "\n\n**83 × 35 = 2,905**\n\nHere's the step-by-step breakdown:\n\n- **83 × 30 = 2,490**\n- **83 × 5 = 415**\n- **2,490 + 415 = 2,905**",
+      "passed": true
+    },
+    {
+      "id": "xg-012",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2125",
+      "response": "\n\n# 85 × 25 = **2,125**\n\nHere's one way to break it down:\n\n| Step | Calculation |\n|------|-------------|\n| 85 × 20 | 1,700 |\n| 85 × 5 | 425 |\n| **Total** | **2,125** |",
+      "passed": true
+    },
+    {
+      "id": "xg-013",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5632",
+      "response": "\n\n88 × 64 = **5632**",
+      "passed": true
+    },
+    {
+      "id": "xg-014",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2025",
+      "response": "\n\n## 75 × 27 = **2025**\n\nHere's the step-by-step breakdown:\n\n- 75 × 20 = 1500\n- 75 × 7 = 525\n- 1500 + 525 = **2025**",
+      "passed": true
+    },
+    {
+      "id": "xg-015",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "7008",
+      "response": "\n\n**96 × 73 = 7,008**",
+      "passed": true
+    },
+    {
+      "id": "xg-016",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2176",
+      "response": "\n\n**64 × 34 = 2176**\n\nHere's the breakdown:\n- 64 × 30 = 1920\n- 64 × 4 = 256\n- 1920 + 256 = **2176**",
+      "passed": true
+    },
+    {
+      "id": "xg-017",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "1944",
+      "response": "\n\n**81 × 24 = 1,944**\n\nHere's a quick way to break it down:\n- 81 × 20 = 1,620\n- 81 × 4 = 324\n- 1,620 + 324 = **1,944**",
+      "passed": true
+    },
+    {
+      "id": "xg-018",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2205",
+      "response": "\n\nTo calculate 49 × 45:\n\n49 × 45 = 2205\n\nHere's the breakdown:\n49 × 45 = (50 − 1) × 45 = 2250 − 45 = **2205**",
+      "passed": true
+    },
+    {
+      "id": "xg-019",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "1170",
+      "response": "\n\n90 × 13 = **1170**\n\nHere's a quick way to break it down:\n\n- 90 × 10 = 900\n- 90 × 3 = 270\n- 900 + 270 = 1170",
+      "passed": true
+    },
+    {
+      "id": "xg-020",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "1066",
+      "response": "\n\n82 × 13 = **1066**",
+      "passed": true
+    },
+    {
+      "id": "xg-021",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5320",
+      "response": "\n\n**70 × 76 = 5,320**",
+      "passed": true
+    },
+    {
+      "id": "xg-022",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "228",
+      "response": "\n\n19 * 12 = 228",
+      "passed": true
+    },
+    {
+      "id": "xg-023",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "4845",
+      "response": "\n\n**95 × 51 = 4,845**",
+      "passed": true
+    },
+    {
+      "id": "xg-024",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "5246",
+      "response": "\n\n**5,246**\n\nHere's the breakdown:\n- 86 × 61\n- = 86 × (60 + 1)\n- = (86 × 60) + (86 × 1)\n- = 5,160 + 86\n- = **5,246**",
+      "passed": true
+    },
+    {
+      "id": "xg-025",
+      "kind": "arithmetic",
+      "holdout": false,
+      "expected": "2655",
+      "response": "\n\n## 45 × 59 = **2,655**\n\n**Step-by-step breakdown:**\n\n$$45 \\times 59 = 45 \\times (60 - 1) = 2700 - 45 = \\mathbf{2655}$$",
+      "passed": true
+    },
+    {
+      "id": "xg-026",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "\n\n1",
+      "passed": true
+    },
+    {
+      "id": "xg-027",
+      "kind": "string",
+      "holdout": false,
+      "expected": "1",
+      "response": "\n\n1",
+      "passed": true
+    },
+    {
+      "id": "xg-028",
+      "kind": "string",
+      "holdout": false,
+      "expected": "1",
+      "response": "\n\n2",
+      "passed": false
+    },
+    {
+      "id": "xg-029",
+      "kind": "string",
+      "holdout": false,
+      "expected": "1",
+      "response": "\n\n1",
+      "passed": true
+    },
+    {
+      "id": "xg-030",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "response": "\n\n1",
+      "passed": true
+    }
+  ],
+  "summary": {
+    "successes": 29,
+    "trials": 30,
+    "point": 0.9666666666666667,
+    "wilson_lower95": 0.8332960900859082,
+    "wilson_upper95": 0.9940914096183874
+  }
+}

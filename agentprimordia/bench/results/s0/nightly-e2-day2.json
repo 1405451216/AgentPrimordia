@@ -1,0 +1,292 @@
+{
+  "set": "external-general-v1.json",
+  "set_sha256": "5af8f5d2f631261c2d4b683109df81a0489340213463f24c287cf5fb42ac927a",
+  "freeze_commit": "027b5c56542783dab601558eb99ced10b0458277",
+  "track": "real",
+  "mode": "external",
+  "provider": "openai",
+  "model": "Deepseek-V4-Flash",
+  "holdout_only": true,
+  "generated_at": "2026-09-04T18:00:18Z",
+  "records": [
+    {
+      "id": "xg-001",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2262",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-002",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "2128",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-010",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5796",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-013",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5632",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-017",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "1944",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-021",
+      "kind": "arithmetic",
+      "holdout": true,
+      "expected": "5320",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-026",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-030",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-031",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-032",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-033",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-034",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-039",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-041",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-045",
+      "kind": "string",
+      "holdout": true,
+      "expected": "1",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-052",
+      "kind": "logic",
+      "holdout": true,
+      "expected": "是",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-053",
+      "kind": "logic",
+      "holdout": true,
+      "expected": "是",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-063",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-05-27",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-065",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-07-31",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-066",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-07-04",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-068",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-05-12",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-069",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-06-22",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-070",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-09-10",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-072",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-07-25",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-074",
+      "kind": "date",
+      "holdout": true,
+      "expected": "2027-03-26",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-076",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "4096",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-085",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "256",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-087",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "25",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-091",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "64",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-094",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "27",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-095",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "16",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-096",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "256",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-097",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "81",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    },
+    {
+      "id": "xg-098",
+      "kind": "code-output",
+      "holdout": true,
+      "expected": "8",
+      "passed": false,
+      "error": "openai: HTTP 429: rate_limited: API error: 暂无可用的算力豆 (invalid_request_error)"
+    }
+  ],
+  "summary": {
+    "successes": 0,
+    "trials": 34,
+    "point": 0,
+    "wilson_lower95": 0,
+    "wilson_upper95": 0.10151455415332376
+  }
+}
