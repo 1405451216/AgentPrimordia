@@ -1,0 +1,22 @@
+[
+  {"id":"mm-001","kind":"visual_qa","task":"描述 images/logo.png 中的主要内容","expected":"logo","fixtures":[{"path":"images/logo.png","inline_b64":"placeholder"}]},
+  {"id":"mm-002","kind":"visual_qa","task":"图片 images/chart.png 是什么类型的图表？","expected":"chart","fixtures":[{"path":"images/chart.png","inline_b64":"placeholder"}]},
+  {"id":"mm-003","kind":"visual_qa","task":"描述 images/photo.jpg 中的场景","expected":"photo","fixtures":[{"path":"images/photo.jpg","inline_b64":"placeholder"}]},
+  {"id":"mm-004","kind":"visual_qa","task":"图片 images/diagram.png 展示了什么流程？","expected":"diagram","fixtures":[{"path":"images/diagram.png","inline_b64":"placeholder"}]},
+  {"id":"mm-005","kind":"visual_qa","task":"描述 images/screenshot.png 中的界面元素","expected":"screenshot","fixtures":[{"path":"images/screenshot.png","inline_b64":"placeholder"}]},
+  {"id":"mm-006","kind":"visual_qa","task":"图片 images/infographic.png 主要传达了什么信息？","expected":"infographic","fixtures":[{"path":"images/infographic.png","inline_b64":"placeholder"}]},
+  {"id":"mm-007","kind":"visual_qa","task":"描述 images/map.png 中的地理位置","expected":"map","fixtures":[{"path":"images/map.png","inline_b64":"placeholder"}]},
+  {"id":"mm-008","kind":"visual_qa","task":"图片 images/product.png 展示的是什么产品？","expected":"product","fixtures":[{"path":"images/product.png","inline_b64":"placeholder"}]},
+  {"id":"mm-009","kind":"visual_qa","task":"描述 images/meme.png 中的幽默内容","expected":"meme","fixtures":[{"path":"images/meme.png","inline_b64":"placeholder"}]},
+  {"id":"mm-010","kind":"visual_qa","task":"图片 images/document.png 中包含什么文字？","expected":"document","fixtures":[{"path":"images/document.png","inline_b64":"placeholder"}]},
+  {"id":"mm-011","kind":"audio_transcribe","task":"将音频 audio/greeting.wav 转为文字","expected":"greeting","fixtures":[{"path":"audio/greeting.wav","inline_b64":"placeholder"}]},
+  {"id":"mm-012","kind":"audio_transcribe","task":"音频 audio/instruction.mp3 中说了什么？","expected":"instruction","fixtures":[{"path":"audio/instruction.mp3","inline_b64":"placeholder"}]},
+  {"id":"mm-013","kind":"audio_transcribe","task":"转录 audio/meeting.ogg 的语音内容","expected":"meeting","fixtures":[{"path":"audio/meeting.ogg","inline_b64":"placeholder"}]},
+  {"id":"mm-014","kind":"audio_transcribe","task":"将 audio/podcast.wav 的语音内容转为文字摘要","expected":"podcast","fixtures":[{"path":"audio/podcast.wav","inline_b64":"placeholder"}]},
+  {"id":"mm-015","kind":"audio_transcribe","task":"音频 audio/commands.mp3 中包含哪些指令？","expected":"commands","fixtures":[{"path":"audio/commands.mp3","inline_b64":"placeholder"}]},
+  {"id":"mm-016","kind":"mixed_reasoning","task":"结合 images/flow.png 和 audio/explain.wav，描述流程图中与语音说明对应的步骤","expected":"flow","fixtures":[{"path":"images/flow.png","inline_b64":"placeholder"},{"path":"audio/explain.wav","inline_b64":"placeholder"}]},
+  {"id":"mm-017","kind":"mixed_reasoning","task":"比较 images/table.png 中的数据与 audio/summary.mp3 中的结论是否一致","expected":"table","fixtures":[{"path":"images/table.png","inline_b64":"placeholder"},{"path":"audio/summary.mp3","inline_b64":"placeholder"}]},
+  {"id":"mm-018","kind":"mixed_reasoning","task":"根据 images/code.png 中的代码和 audio/hint.wav 中的提示，说明程序的功能","expected":"code","fixtures":[{"path":"images/code.png","inline_b64":"placeholder"},{"path":"audio/hint.wav","inline_b64":"placeholder"}]},
+  {"id":"mm-019","kind":"mixed_reasoning","task":"综合 images/graph.png 的趋势和 audio/narration.wav 的分析，给出总结","expected":"graph","fixtures":[{"path":"images/graph.png","inline_b64":"placeholder"},{"path":"audio/narration.wav","inline_b64":"placeholder"}]},
+  {"id":"mm-020","kind":"mixed_reasoning","task":"结合 images/arch.png 的架构图与 audio/overview.mp3 的概述，列出三个关键组件","expected":"arch","fixtures":[{"path":"images/arch.png","inline_b64":"placeholder"},{"path":"audio/overview.mp3","inline_b64":"placeholder"}]}
+]
