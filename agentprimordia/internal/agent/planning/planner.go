@@ -113,3 +113,57 @@ func (p *LLMPlanner) GeneratePlan(ctx context.Context, task string) (*Plan, erro
 		CreatedAt: time.Now(),
 	}, nil
 }
+
+// ===== v7.1 规划增强接口 =====
+
+// Decomposer 子目标分解器
+type Decomposer interface {
+	Decompose(ctx context.Context, goal string, context []string) (*Plan, error)
+}
+
+// Replanner 动态重规划器
+type Replanner interface {
+	ShouldReplan(ctx context.Context, plan *Plan, observation string) (bool, string)
+	Replan(ctx context.Context, plan *Plan, reason string) (*Plan, error)
+}
+
+// RecoveryStrategy 失败恢复策略
+type RecoveryStrategy interface {
+	DetectDeadlock(ctx context.Context, plan *Plan, failedSubTask string) bool
+	Recover(ctx context.Context, plan *Plan, failedSubTask string) (*Plan, error)
+}
+
+// ApprovalGate 审批门
+type ApprovalGate interface {
+	RequiresApproval(ctx context.Context, action string) bool
+	RequestApproval(ctx context.Context, action, reason string) error
+	WaitApproval(ctx context.Context, action string) error
+}
+
+// PlanState 计划状态
+type PlanState string
+
+const (
+	PlanStatePending   PlanState = "pending"
+	PlanStateActive    PlanState = "active"
+	PlanStateBlocked   PlanState = "blocked"
+	PlanStateCompleted PlanState = "completed"
+	PlanStateFailed    PlanState = "failed"
+)
+
+// ManagedPlan 带状态机的计划
+type ManagedPlan struct {
+	Plan      *Plan
+	State     PlanState
+	History   []PlanTransition
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// PlanTransition 状态转换记录
+type PlanTransition struct {
+	From PlanState `json:"from"`
+	To   PlanState `json:"to"`
+	At   time.Time `json:"at"`
+	Why  string    `json:"why"`
+}
