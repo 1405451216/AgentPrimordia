@@ -318,3 +318,53 @@ func SortTraceByStart(traces []*RequestTrace, desc bool) {
 		return traces[i].StartedAt.Before(traces[j].StartedAt)
 	})
 }
+
+// ===== v7.1 告警接口 =====
+
+// AlertSeverity 告警严重度
+type AlertSeverity string
+
+const (
+	SeverityInfo     AlertSeverity = "info"
+	SeverityWarning  AlertSeverity = "warning"
+	SeverityCritical AlertSeverity = "critical"
+)
+
+// AlertRule 告警规则接口
+type AlertRule interface {
+	Name() string
+	Evaluate(store *CorrelationStore) ([]AlertEvent, error)
+}
+
+// AlertEvent 告警事件
+type AlertEvent struct {
+	Rule      string        `json:"rule"`
+	Severity  AlertSeverity `json:"severity"`
+	Message   string        `json:"message"`
+	TraceIDs  []string      `json:"trace_ids,omitempty"`
+	Threshold float64       `json:"threshold"`
+	Actual    float64       `json:"actual"`
+}
+
+// thresholdRule 阈值告警规则
+type thresholdRule struct {
+	name      string
+	threshold float64
+	severity  AlertSeverity
+	metricFn  func(store *CorrelationStore) float64
+}
+
+func (r *thresholdRule) Name() string { return r.name }
+func (r *thresholdRule) Evaluate(store *CorrelationStore) ([]AlertEvent, error) {
+	val := r.metricFn(store)
+	if val > r.threshold {
+		return []AlertEvent{{
+			Rule:      r.name,
+			Severity:  r.severity,
+			Message:   r.name + " exceeded threshold",
+			Threshold: r.threshold,
+			Actual:    val,
+		}}, nil
+	}
+	return nil, nil
+}
