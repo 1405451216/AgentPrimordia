@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"agentprimordia/internal/llm"
@@ -112,6 +113,38 @@ func (p *LLMPlanner) GeneratePlan(ctx context.Context, task string) (*Plan, erro
 		SubTasks:  subtasks,
 		CreatedAt: time.Now(),
 	}, nil
+}
+
+// parseSubTasksFromResponse 从 LLM 响应中解析子任务 JSON 数组
+// 支持纯 JSON 和 markdown 代码块包裹的 JSON
+func parseSubTasksFromResponse(content string) ([]SubTask, error) {
+	// 尝试直接解析
+	var subtasks []SubTask
+	if err := json.Unmarshal([]byte(content), &subtasks); err == nil {
+		for i := range subtasks {
+			if subtasks[i].Status == "" {
+				subtasks[i].Status = TaskPending
+			}
+		}
+		return subtasks, nil
+	}
+
+	// 尝试从 markdown 代码块中提取 JSON
+	start := strings.Index(content, "[")
+	end := strings.LastIndex(content, "]")
+	if start >= 0 && end > start {
+		jsonStr := content[start : end+1]
+		if err := json.Unmarshal([]byte(jsonStr), &subtasks); err == nil {
+			for i := range subtasks {
+				if subtasks[i].Status == "" {
+					subtasks[i].Status = TaskPending
+				}
+			}
+			return subtasks, nil
+		}
+	}
+
+	return nil, fmt.Errorf("无法从 LLM 响应中解析子任务 JSON: %s", content)
 }
 
 // ===== v7.1 规划增强接口 =====
