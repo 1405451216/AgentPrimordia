@@ -8,7 +8,7 @@ import (
 
 	"agentprimordia/internal/agent"
 	"agentprimordia/internal/metrics"
-	"agentprimordia/internal/otel"
+	obsotel "agentprimordia/internal/observability/export/otel"
 )
 
 // TestIntegration_FullGuardrailPipeline 端到端集成测试：
@@ -66,7 +66,7 @@ func TestIntegration_GuardrailWithHooksAndTelemetry(t *testing.T) {
 	defer server.Close()
 
 	m := metrics.NewMetrics()
-	tp, err := otel.NewTelemetryProvider(otel.TelemetryConfig{
+	tp, err := obsotel.NewTelemetryProvider(obsotel.TelemetryConfig{
 		EnableTraces:  true,
 		EnableMetrics: true,
 		OTLPEndpoint:  server.URL,
