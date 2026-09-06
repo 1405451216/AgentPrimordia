@@ -1,0 +1,128 @@
+[
+  {
+    "id": "lh-001",
+    "task": "创建一个 Python 项目，包含 setup.py、README.md、src/ 目录结构和基础单元测试，项目名 mylib",
+    "expected": "setup.py",
+    "success_assert": [
+      {"kind": "file_exists", "path": "setup.py"},
+      {"kind": "file_exists", "path": "README.md"},
+      {"kind": "file_exists", "path": "src/mylib/__init__.py"}
+    ]
+  },
+  {
+    "id": "lh-002",
+    "task": "分析 data.csv 中每列的统计信息（均值、中位数、标准差），将结果以 JSON 格式写入 stats.json",
+    "expected": "stats.json",
+    "fixtures": [
+      {"path": "data.csv", "inline": "name,age,score\nalice,30,85\nbob,25,92\ncharlie,35,78\ndave,28,95\neve,32,88\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "stats.json"},
+      {"kind": "file_contains", "path": "stats.json", "contains": "age"}
+    ]
+  },
+  {
+    "id": "lh-003",
+    "task": "将 logs/ 目录下的多个日志文件合并为 merged.log，按时间戳排序，并统计 ERROR 行数写入 error_count.txt",
+    "expected": "merged.log",
+    "fixtures": [
+      {"path": "logs/app1.log", "inline": "2026-01-01 10:00:00 INFO start\n2026-01-01 10:05:00 ERROR crash\n2026-01-01 10:10:00 INFO retry\n"},
+      {"path": "logs/app2.log", "inline": "2026-01-01 09:55:00 INFO init\n2026-01-01 10:02:00 ERROR timeout\n2026-01-01 10:08:00 INFO done\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "merged.log"},
+      {"kind": "file_exists", "path": "error_count.txt"},
+      {"kind": "file_contains", "path": "error_count.txt", "contains": "2"}
+    ]
+  },
+  {
+    "id": "lh-004",
+    "task": "读取 config.json 的配置，根据其中 rules 列表为每个用户生成个性化报告，输出到 reports/ 目录",
+    "expected": "reports",
+    "fixtures": [
+      {"path": "config.json", "inline": "{\"users\": [\"alice\", \"bob\"], \"rules\": [{\"user\": \"alice\", \"task\": \"数据分析\"}, {\"user\": \"bob\", \"task\": \"前端开发\"}]}"},
+      {"path": "template.txt", "inline": "用户: {user}\n任务: {task}\n状态: 待分配\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "reports/alice.txt"},
+      {"kind": "file_exists", "path": "reports/bob.txt"},
+      {"kind": "file_contains", "path": "reports/alice.txt", "contains": "数据分析"}
+    ]
+  },
+  {
+    "id": "lh-005",
+    "task": "将 input/ 目录下所有 .txt 文件的内容合并，去除重复行，按字母排序后输出到 combined.txt",
+    "expected": "combined.txt",
+    "fixtures": [
+      {"path": "input/a.txt", "inline": "cherry\napple\nbanana\n"},
+      {"path": "input/b.txt", "inline": "banana\ndate\napple\n"},
+      {"path": "input/c.txt", "inline": "elderberry\ncherry\nfig\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "combined.txt"},
+      {"kind": "file_contains", "path": "combined.txt", "contains": "apple"},
+      {"kind": "file_contains", "path": "combined.txt", "contains": "fig"}
+    ]
+  },
+  {
+    "id": "lh-006",
+    "task": "读取 sales.csv，按产品分组计算总销售额和平均单价，将汇总写入 summary.csv",
+    "expected": "summary.csv",
+    "fixtures": [
+      {"path": "sales.csv", "inline": "product,quantity,price\nwidget,10,5.0\nwidget,20,5.0\ngadget,5,15.0\ngadget,3,15.0\nwidget,15,5.0\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "summary.csv"},
+      {"kind": "file_contains", "path": "summary.csv", "contains": "widget"},
+      {"kind": "file_contains", "path": "summary.csv", "contains": "gadget"}
+    ]
+  },
+  {
+    "id": "lh-007",
+    "task": "在 src/ 目录创建一个简单的 HTTP 服务器（Go），包含 main.go、handler.go 和对应的 handler_test.go",
+    "expected": "main.go",
+    "success_assert": [
+      {"kind": "file_exists", "path": "src/main.go"},
+      {"kind": "file_exists", "path": "src/handler.go"},
+      {"kind": "file_exists", "path": "src/handler_test.go"}
+    ]
+  },
+  {
+    "id": "lh-008",
+    "task": "将 emails.txt 中的邮箱地址提取出来，去重后按域名分组统计，输出到 email_stats.json",
+    "expected": "email_stats.json",
+    "fixtures": [
+      {"path": "emails.txt", "inline": "联系 alice@example.com 或 bob@example.com\n也可以找 charlie@test.org\n重复: alice@example.com\n新邮箱: dave@test.org\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "email_stats.json"},
+      {"kind": "file_contains", "path": "email_stats.json", "contains": "example.com"}
+    ]
+  },
+  {
+    "id": "lh-009",
+    "task": "根据 requirements.txt 中的依赖列表，生成一个 Dockerfile（多阶段构建）和 docker-compose.yml",
+    "expected": "Dockerfile",
+    "fixtures": [
+      {"path": "requirements.txt", "inline": "flask==3.0\nredis==5.0\nsqlalchemy==2.0\n"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "Dockerfile"},
+      {"kind": "file_exists", "path": "docker-compose.yml"},
+      {"kind": "file_contains", "path": "Dockerfile", "contains": "flask"}
+    ]
+  },
+  {
+    "id": "lh-010",
+    "task": "读取 users.json，为每个用户生成一个 Markdown 个人页面到 pages/ 目录，并生成 index.html 索引页",
+    "expected": "index.html",
+    "fixtures": [
+      {"path": "users.json", "inline": "[{\"name\": \"张三\", \"role\": \"工程师\"}, {\"name\": \"李四\", \"role\": \"设计师\"}]"}
+    ],
+    "success_assert": [
+      {"kind": "file_exists", "path": "index.html"},
+      {"kind": "file_contains", "path": "index.html", "contains": "张三"},
+      {"kind": "file_contains", "path": "index.html", "contains": "李四"}
+    ]
+  }
+]
