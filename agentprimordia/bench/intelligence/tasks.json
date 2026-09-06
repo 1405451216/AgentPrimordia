@@ -1,0 +1,242 @@
+[
+  {
+    "id": "intel-001",
+    "task": "从 data.csv 计算每列的平均值并写入 result.txt",
+    "expected": "average",
+    "kind": "tool_create",
+    "fixtures": [{"path": "data.csv", "inline": "name,score,age\nalice,85,30\nbob,92,25\ncharlie,78,28\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "result.txt", "contains": "85"}]
+  },
+  {
+    "id": "intel-002",
+    "task": "从 log.txt 统计 ERROR 行数并写入 error_count.txt",
+    "expected": "count",
+    "kind": "tool_create",
+    "fixtures": [{"path": "log.txt", "inline": "INFO start\nERROR failed\nINFO retry\nERROR timeout\nINFO done\nERROR crash\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "error_count.txt", "contains": "3"}]
+  },
+  {
+    "id": "intel-003",
+    "task": "合并 a.json 和 b.json 去重后写入 merged.json",
+    "expected": "merge",
+    "kind": "tool_create",
+    "fixtures": [{"path": "a.json", "inline": "[1,2,3]"}, {"path": "b.json", "inline": "[2,3,4]"}],
+    "success_assert": [{"kind": "file_contains", "path": "merged.json", "contains": "1"}]
+  },
+  {
+    "id": "intel-004",
+    "task": "优化 shell 工具的重试策略，当前成功率只有 40%",
+    "expected": "optimize",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "retry"}]
+  },
+  {
+    "id": "intel-005",
+    "task": "分析 file 工具的性能瓶颈，平均延迟 8 秒，建议调优方案",
+    "expected": "tuning",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "timeout"}]
+  },
+  {
+    "id": "intel-006",
+    "task": "从 config.xml 提取所有 port 标签值写入 ports.txt",
+    "expected": "xml",
+    "kind": "tool_create",
+    "fixtures": [{"path": "config.xml", "inline": "<config><port>8080</port><port>8443</port></config>"}],
+    "success_assert": [{"kind": "file_contains", "path": "ports.txt", "contains": "8080"}]
+  },
+  {
+    "id": "intel-007",
+    "task": "计算 2026-09-05 之后 30 天的日期写入 future.txt",
+    "expected": "date",
+    "kind": "tool_create",
+    "fixtures": [],
+    "success_assert": [{"kind": "file_contains", "path": "future.txt", "contains": "2026-10-05"}]
+  },
+  {
+    "id": "intel-008",
+    "task": "计算 secret.txt 的 SHA256 哈希写入 hash.txt",
+    "expected": "hash",
+    "kind": "tool_create",
+    "fixtures": [{"path": "secret.txt", "inline": "hello"}],
+    "success_assert": [{"kind": "file_contains", "path": "hash.txt", "contains": "2cf24"}]
+  },
+  {
+    "id": "intel-009",
+    "task": "选择最佳工具处理 CSV 数据：有 shell、file、web、csv_stats 四个候选",
+    "expected": "select",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "csv_stats"}]
+  },
+  {
+    "id": "intel-010",
+    "task": "将 input.txt 转为大写写入 upper.txt",
+    "expected": "upper",
+    "kind": "baseline",
+    "fixtures": [{"path": "input.txt", "inline": "hello world"}],
+    "success_assert": [{"kind": "file_contains", "path": "upper.txt", "contains": "HELLO"}]
+  },
+  {
+    "id": "intel-011",
+    "task": "从 data.tsv 提取第二列写入 col2.txt",
+    "expected": "tsv",
+    "kind": "tool_create",
+    "fixtures": [{"path": "data.tsv", "inline": "name\tage\tcity\nalice\t30\tBJ\nbob\t25\tSH\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "col2.txt", "contains": "30"}]
+  },
+  {
+    "id": "intel-012",
+    "task": "从 config.yaml 提取 port 字段到 port.txt",
+    "expected": "yaml",
+    "kind": "tool_create",
+    "fixtures": [{"path": "config.yaml", "inline": "server:\n  host: localhost\n  port: 8080\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "port.txt", "contains": "8080"}]
+  },
+  {
+    "id": "intel-013",
+    "task": "计算 numbers.txt 的中位数写入 median.txt",
+    "expected": "median",
+    "kind": "tool_create",
+    "fixtures": [{"path": "numbers.txt", "inline": "10\n20\n30\n40\n50\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "median.txt", "contains": "30"}]
+  },
+  {
+    "id": "intel-014",
+    "task": "根据历史数据，web 工具成功率 90%、file 工具 60%、shell 工具 30%，选择最优工具",
+    "expected": "select",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "web"}]
+  },
+  {
+    "id": "intel-015",
+    "task": "将 markdown.md 的标题行提取到 headings.txt",
+    "expected": "headings",
+    "kind": "tool_create",
+    "fixtures": [{"path": "markdown.md", "inline": "# Title\nSome text\n## Section\nMore text\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "headings.txt", "contains": "# Title"}]
+  },
+  {
+    "id": "intel-016",
+    "task": "从 emails.txt 提取所有邮箱写入 emails_found.txt",
+    "expected": "emails",
+    "kind": "tool_create",
+    "fixtures": [{"path": "emails.txt", "inline": "Contact info@example.com or support@test.org\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "emails_found.txt", "contains": "info@example.com"}]
+  },
+  {
+    "id": "intel-017",
+    "task": "识别失败模式：permission denied 出现 5 次，timeout 出现 3 次，生成调优建议",
+    "expected": "gap_detect",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "permission"}]
+  },
+  {
+    "id": "intel-018",
+    "task": "将 csv_data.csv 转置写入 transposed.csv",
+    "expected": "transpose",
+    "kind": "tool_create",
+    "fixtures": [{"path": "csv_data.csv", "inline": "a,b,c\n1,2,3\n4,5,6\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "transposed.csv", "contains": "a,1,4"}]
+  },
+  {
+    "id": "intel-019",
+    "task": "计算 scores.txt 的标准差写入 stddev.txt",
+    "expected": "stddev",
+    "kind": "tool_create",
+    "fixtures": [{"path": "scores.txt", "inline": "10\n20\n30\n40\n50\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "stddev.txt", "contains": "14"}]
+  },
+  {
+    "id": "intel-020",
+    "task": "统计 files/ 目录下文件数量写入 count.txt",
+    "expected": "count",
+    "kind": "baseline",
+    "fixtures": [{"path": "files/a.txt", "inline": "a"}, {"path": "files/b.txt", "inline": "b"}, {"path": "files/c.txt", "inline": "c"}],
+    "success_assert": [{"kind": "file_contains", "path": "count.txt", "contains": "3"}]
+  },
+  {
+    "id": "intel-021",
+    "task": "从 urls.txt 提取域名写入 domains.txt",
+    "expected": "domains",
+    "kind": "tool_create",
+    "fixtures": [{"path": "urls.txt", "inline": "https://example.com/path\nhttp://test.org/page\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "domains.txt", "contains": "example.com"}]
+  },
+  {
+    "id": "intel-022",
+    "task": "为高频失败工具 csv_parser 生成替代实现",
+    "expected": "create",
+    "kind": "tool_create",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "csv_parser"}]
+  },
+  {
+    "id": "intel-023",
+    "task": "将 lines.txt 按字母排序写入 sorted.txt",
+    "expected": "sorted",
+    "kind": "baseline",
+    "fixtures": [{"path": "lines.txt", "inline": "cherry\napple\nbanana\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "sorted.txt", "contains": "apple"}]
+  },
+  {
+    "id": "intel-024",
+    "task": "从 log.json 提取 level=ERROR 的 message 写入 errors.txt",
+    "expected": "json_filter",
+    "kind": "tool_create",
+    "fixtures": [{"path": "log.json", "inline": "[{\"level\":\"INFO\",\"message\":\"start\"},{\"level\":\"ERROR\",\"message\":\"fail\"}]"}],
+    "success_assert": [{"kind": "file_contains", "path": "errors.txt", "contains": "fail"}]
+  },
+  {
+    "id": "intel-025",
+    "task": "计算 text.txt 的词频统计，取最高频词写入 top_word.txt",
+    "expected": "wordfreq",
+    "kind": "tool_create",
+    "fixtures": [{"path": "text.txt", "inline": "the cat sat on the mat the cat\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "top_word.txt", "contains": "the"}]
+  },
+  {
+    "id": "intel-026",
+    "task": "根据工具画像（成功率、延迟、token 消耗），建议是否需要调优",
+    "expected": "profile",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "success"}]
+  },
+  {
+    "id": "intel-027",
+    "task": "将 hex.txt 的十六进制数转为十进制写入 decimal.txt",
+    "expected": "hex2dec",
+    "kind": "tool_create",
+    "fixtures": [{"path": "hex.txt", "inline": "FF\n1A\n2B\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "decimal.txt", "contains": "255"}]
+  },
+  {
+    "id": "intel-028",
+    "task": "找出 nums.txt 中最大值写入 max.txt",
+    "expected": "max",
+    "kind": "baseline",
+    "fixtures": [{"path": "nums.txt", "inline": "15\n42\n28\n7\n33\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "max.txt", "contains": "42"}]
+  },
+  {
+    "id": "intel-029",
+    "task": "从 template.txt 替换 {{name}} 为 Alice 写入 filled.txt",
+    "expected": "template",
+    "kind": "tool_create",
+    "fixtures": [{"path": "template.txt", "inline": "Hello {{name}}, welcome!\n"}],
+    "success_assert": [{"kind": "file_contains", "path": "filled.txt", "contains": "Alice"}]
+  },
+  {
+    "id": "intel-030",
+    "task": "综合评估工具集性能：shell 成功率 0.5 延迟 3s，file 成功率 0.9 延迟 1s，web 成功率 0.3 延迟 10s，给出整体调优建议",
+    "expected": "comprehensive",
+    "kind": "tool_optimize",
+    "fixtures": [],
+    "success_assert": [{"kind": "response_contains", "contains": "tuning"}]
+  }
+]

@@ -5,17 +5,9 @@ import (
 	"context"
 	"fmt"
 	"time"
-)
 
-// TuningSuggestion 调优建议
-type TuningSuggestion struct {
-	ToolName     string  `json:"tool_name"`
-	Parameter    string  `json:"parameter"`
-	CurrentVal   string  `json:"current_val"`
-	SuggestedVal string  `json:"suggested_val"`
-	Confidence   float64 `json:"confidence"`
-	Reason       string  `json:"reason"`
-}
+	"agentprimordia/internal/tools/intelligence"
+)
 
 // DataDrivenTuner 数据驱动调优器（基于画像提出参数调整建议）
 type DataDrivenTuner struct {
@@ -35,14 +27,14 @@ func NewDataDrivenTuner() *DataDrivenTuner {
 // SuggestTuning 基于画像生成调优建议
 // 低成功率 → 建议重试；高延迟 → 建议增大超时；
 // 成功率 >= MinSuccessRate 且延迟正常时返回 nil
-func (t *DataDrivenTuner) SuggestTuning(_ context.Context, toolName string, profile *ToolProfile) (*TuningSuggestion, error) {
+func (t *DataDrivenTuner) SuggestTuning(_ context.Context, toolName string, profile *intelligence.ToolProfile) (*intelligence.TuningSuggestion, error) {
 	if profile == nil {
 		return nil, fmt.Errorf("画像为空")
 	}
 
 	// 成功率低于阈值 → 建议重试
 	if profile.SuccessRate < t.MinSuccessRate {
-		return &TuningSuggestion{
+		return &intelligence.TuningSuggestion{
 			ToolName:     toolName,
 			Parameter:    "retry",
 			CurrentVal:   "0",
@@ -55,7 +47,7 @@ func (t *DataDrivenTuner) SuggestTuning(_ context.Context, toolName string, prof
 	// 平均延迟超过阈值 → 建议增大超时
 	if profile.AvgDuration > t.MaxAvgDuration {
 		suggestedTimeout := profile.AvgDuration * 2
-		return &TuningSuggestion{
+		return &intelligence.TuningSuggestion{
 			ToolName:     toolName,
 			Parameter:    "timeout",
 			CurrentVal:   profile.AvgDuration.String(),
@@ -70,7 +62,7 @@ func (t *DataDrivenTuner) SuggestTuning(_ context.Context, toolName string, prof
 }
 
 // ApplyTuning 应用调优建议（当前为空操作，实际应注册到工具配置）
-func (t *DataDrivenTuner) ApplyTuning(_ context.Context, _ string, _ *TuningSuggestion) error {
+func (t *DataDrivenTuner) ApplyTuning(_ context.Context, _ string, _ *intelligence.TuningSuggestion) error {
 	// 当前实现为空操作，后续可接入配置热加载
 	return nil
 }

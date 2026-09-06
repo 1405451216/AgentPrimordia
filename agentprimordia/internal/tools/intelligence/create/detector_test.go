@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"agentprimordia/internal/tools/intelligence"
 )
 
 // TestTraceGapDetector_Detect 测试检测失败模式
@@ -13,7 +15,7 @@ func TestTraceGapDetector_Detect(t *testing.T) {
 	detector := NewTraceGapDetector()
 
 	now := time.Now()
-	trace := []ToolCallRecord{
+	trace := []intelligence.ToolCallRecord{
 		{ToolName: "shell", Error: "permission denied: /etc/secret", Success: false, Timestamp: now},
 		{ToolName: "file", Error: "no such file: /tmp/missing.txt", Success: false, Timestamp: now.Add(time.Second)},
 		{ToolName: "shell", Error: "permission denied: /root/key", Success: false, Timestamp: now.Add(2 * time.Second)},
@@ -32,7 +34,7 @@ func TestTraceGapDetector_Detect(t *testing.T) {
 	}
 
 	// 查找 permission 缺口
-	var permGap *GapCandidate
+	var permGap *intelligence.GapCandidate
 	for i := range gaps {
 		if gaps[i].Key == "missing_permission" {
 			permGap = &gaps[i]
@@ -48,7 +50,7 @@ func TestTraceGapDetector_Detect(t *testing.T) {
 	}
 
 	// 查找 file 缺口
-	var fileGap *GapCandidate
+	var fileGap *intelligence.GapCandidate
 	for i := range gaps {
 		if gaps[i].Key == "missing_file" {
 			fileGap = &gaps[i]
@@ -69,7 +71,7 @@ func TestTraceGapDetector_EmptyTrace(t *testing.T) {
 	ctx := context.Background()
 	detector := NewTraceGapDetector()
 
-	gaps, err := detector.Detect(ctx, []ToolCallRecord{})
+	gaps, err := detector.Detect(ctx, []intelligence.ToolCallRecord{})
 	if err != nil {
 		t.Fatalf("检测失败: %v", err)
 	}
@@ -84,7 +86,7 @@ func TestTraceGapDetector_AllSuccess(t *testing.T) {
 	ctx := context.Background()
 	detector := NewTraceGapDetector()
 
-	trace := []ToolCallRecord{
+	trace := []intelligence.ToolCallRecord{
 		{ToolName: "shell", Success: true},
 		{ToolName: "file", Success: true},
 	}

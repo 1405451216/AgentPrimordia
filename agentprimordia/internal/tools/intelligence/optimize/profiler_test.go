@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"agentprimordia/internal/tools/intelligence"
 )
 
 // TestInMemoryProfiler_RecordAndProfile 测试记录并获取画像
@@ -13,7 +15,7 @@ func TestInMemoryProfiler_RecordAndProfile(t *testing.T) {
 	p := NewInMemoryProfiler()
 
 	// 记录 5 次调用：3 成功，2 失败
-	records := []UsageRecord{
+	records := []intelligence.ToolUsageRecord{
 		{ToolName: "shell", Success: true, Duration: 100 * time.Millisecond, Tokens: 50},
 		{ToolName: "shell", Success: true, Duration: 200 * time.Millisecond, Tokens: 60},
 		{ToolName: "shell", Success: false, Duration: 50 * time.Millisecond, Tokens: 30},
@@ -61,9 +63,9 @@ func TestInMemoryProfiler_AllProfiles(t *testing.T) {
 	p := NewInMemoryProfiler()
 
 	// 记录两个工具的数据
-	p.Record(ctx, UsageRecord{ToolName: "shell", Success: true, Duration: 100 * time.Millisecond, Tokens: 50})
-	p.Record(ctx, UsageRecord{ToolName: "shell", Success: false, Duration: 200 * time.Millisecond, Tokens: 60})
-	p.Record(ctx, UsageRecord{ToolName: "file", Success: true, Duration: 150 * time.Millisecond, Tokens: 40})
+	p.Record(ctx, intelligence.ToolUsageRecord{ToolName: "shell", Success: true, Duration: 100 * time.Millisecond, Tokens: 50})
+	p.Record(ctx, intelligence.ToolUsageRecord{ToolName: "shell", Success: false, Duration: 200 * time.Millisecond, Tokens: 60})
+	p.Record(ctx, intelligence.ToolUsageRecord{ToolName: "file", Success: true, Duration: 150 * time.Millisecond, Tokens: 40})
 
 	// 获取所有画像
 	profiles, err := p.AllProfiles(ctx)

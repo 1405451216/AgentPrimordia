@@ -4,6 +4,8 @@ package create
 import (
 	"context"
 	"testing"
+
+	"agentprimordia/internal/tools/intelligence"
 )
 
 // TestLifecycleCreator_Create 测试工具生成
@@ -11,7 +13,7 @@ func TestLifecycleCreator_Create(t *testing.T) {
 	ctx := context.Background()
 	creator := NewLifecycleCreator()
 
-	gap := GapCandidate{
+	gap := intelligence.GapCandidate{
 		Kind:        "missing_tool",
 		Key:         "csv_parser",
 		Count:       5,
@@ -53,7 +55,7 @@ func TestLifecycleCreator_EmptyKey(t *testing.T) {
 	ctx := context.Background()
 	creator := NewLifecycleCreator()
 
-	gap := GapCandidate{Key: ""}
+	gap := intelligence.GapCandidate{Key: ""}
 
 	_, err := creator.Create(ctx, gap)
 	if err == nil {

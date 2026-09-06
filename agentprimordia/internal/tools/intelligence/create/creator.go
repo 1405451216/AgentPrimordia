@@ -6,16 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-)
 
-// ToolArtifact 工具产物
-type ToolArtifact struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	ArtifactSHA string `json:"artifact_sha"`
-	Artifact    []byte `json:"artifact"`
-}
+	"agentprimordia/internal/tools/intelligence"
+)
 
 // LifecycleCreator 生命周期工具生成器
 // 当前为简化实现，返回占位工具产物；后续接入 lifecycle.AutoLoop 完成完整闭环
@@ -28,7 +21,7 @@ func NewLifecycleCreator() *LifecycleCreator {
 
 // Create 基于缺口候选生成工具
 // 当前实现：生成描述性占位工件（WASM 字节码生成后续由 lifecycle 闭环完成）
-func (c *LifecycleCreator) Create(_ context.Context, gap GapCandidate) (*ToolArtifact, error) {
+func (c *LifecycleCreator) Create(_ context.Context, gap intelligence.GapCandidate) (*intelligence.ToolArtifact, error) {
 	if gap.Key == "" {
 		return nil, fmt.Errorf("缺口键为空")
 	}
@@ -39,7 +32,7 @@ func (c *LifecycleCreator) Create(_ context.Context, gap GapCandidate) (*ToolArt
 
 	sum := sha256.Sum256(artifact)
 
-	return &ToolArtifact{
+	return &intelligence.ToolArtifact{
 		ID:          fmt.Sprintf("auto-%s", gap.Key),
 		Name:        gap.Key,
 		Description: description,

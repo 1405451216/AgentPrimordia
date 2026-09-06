@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"agentprimordia/internal/tools/intelligence"
 )
 
 // TestDataDrivenTuner_LowSuccessRate 测试低成功率建议重试
@@ -12,7 +14,7 @@ func TestDataDrivenTuner_LowSuccessRate(t *testing.T) {
 	ctx := context.Background()
 	tuner := NewDataDrivenTuner()
 
-	profile := &ToolProfile{
+	profile := &intelligence.ToolProfile{
 		ToolName:    "shell",
 		TotalCalls:  10,
 		SuccessRate: 0.3, // 低于 0.7 阈值
@@ -40,7 +42,7 @@ func TestDataDrivenTuner_HighLatency(t *testing.T) {
 	ctx := context.Background()
 	tuner := NewDataDrivenTuner()
 
-	profile := &ToolProfile{
+	profile := &intelligence.ToolProfile{
 		ToolName:    "web",
 		TotalCalls:  10,
 		SuccessRate: 0.8, // 高于阈值
@@ -65,7 +67,7 @@ func TestDataDrivenTuner_GoodPerformance(t *testing.T) {
 	ctx := context.Background()
 	tuner := NewDataDrivenTuner()
 
-	profile := &ToolProfile{
+	profile := &intelligence.ToolProfile{
 		ToolName:    "file",
 		TotalCalls:  10,
 		SuccessRate: 0.9, // 高于阈值

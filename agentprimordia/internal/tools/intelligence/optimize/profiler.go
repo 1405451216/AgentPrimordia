@@ -6,6 +6,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"agentprimordia/internal/tools/intelligence"
 )
 
 // usageRecord 内部使用记录
@@ -14,25 +16,6 @@ type usageRecord struct {
 	Duration time.Duration
 	Tokens   int
 	At       time.Time
-}
-
-// ToolProfile 工具性能画像
-type ToolProfile struct {
-	ToolName    string        `json:"tool_name"`
-	TotalCalls  int           `json:"total_calls"`
-	SuccessRate float64       `json:"success_rate"`
-	AvgDuration time.Duration `json:"avg_duration"`
-	P95Duration time.Duration `json:"p95_duration"`
-	AvgTokens   int           `json:"avg_tokens"`
-	LastUsed    time.Time     `json:"last_used"`
-}
-
-// UsageRecord 工具使用记录（外部输入）
-type UsageRecord struct {
-	ToolName string
-	Success  bool
-	Duration time.Duration
-	Tokens   int
 }
 
 // InMemoryProfiler 内存版工具性能画像器（并发安全）
@@ -47,7 +30,7 @@ func NewInMemoryProfiler() *InMemoryProfiler {
 }
 
 // Record 记录一次工具使用
-func (p *InMemoryProfiler) Record(_ context.Context, rec UsageRecord) error {
+func (p *InMemoryProfiler) Record(_ context.Context, rec intelligence.ToolUsageRecord) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.records[rec.ToolName] = append(p.records[rec.ToolName], usageRecord{
@@ -60,21 +43,21 @@ func (p *InMemoryProfiler) Record(_ context.Context, rec UsageRecord) error {
 }
 
 // Profile 获取单个工具的性能画像
-func (p *InMemoryProfiler) Profile(_ context.Context, toolName string) (*ToolProfile, error) {
+func (p *InMemoryProfiler) Profile(_ context.Context, toolName string) (*intelligence.ToolProfile, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	recs := p.records[toolName]
 	if len(recs) == 0 {
-		return &ToolProfile{ToolName: toolName}, nil
+		return &intelligence.ToolProfile{ToolName: toolName}, nil
 	}
 	return computeProfile(toolName, recs), nil
 }
 
 // AllProfiles 获取所有工具的性能画像
-func (p *InMemoryProfiler) AllProfiles(_ context.Context) (map[string]*ToolProfile, error) {
+func (p *InMemoryProfiler) AllProfiles(_ context.Context) (map[string]*intelligence.ToolProfile, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	result := make(map[string]*ToolProfile, len(p.records))
+	result := make(map[string]*intelligence.ToolProfile, len(p.records))
 	for name, recs := range p.records {
 		result[name] = computeProfile(name, recs)
 	}
@@ -82,7 +65,7 @@ func (p *InMemoryProfiler) AllProfiles(_ context.Context) (map[string]*ToolProfi
 }
 
 // computeProfile 从记录列表计算画像（无锁，调用方须持锁）
-func computeProfile(toolName string, recs []usageRecord) *ToolProfile {
+func computeProfile(toolName string, recs []usageRecord) *intelligence.ToolProfile {
 	total := len(recs)
 	var successCount int
 	var totalDuration time.Duration
@@ -109,7 +92,7 @@ func computeProfile(toolName string, recs []usageRecord) *ToolProfile {
 		p95Idx = total - 1
 	}
 
-	return &ToolProfile{
+	return &intelligence.ToolProfile{
 		ToolName:    toolName,
 		TotalCalls:  total,
 		SuccessRate: float64(successCount) / float64(total),
